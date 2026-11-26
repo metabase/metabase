@@ -75,7 +75,7 @@
                  (catch clojure.lang.ExceptionInfo e (ex-message e)))))))))
 
 (defn- tag-by-name
-  "Template tags are stored on the pMBQL stage as a vector (not a map keyed by name — see
+  "Template tags are stored on the MBQL 5 stage as a vector (not a map keyed by name — see
    `metabase.lib.schema.template-tag/template-tags`), so tests look up by `:name`."
   [q tag-name]
   (some #(when (= tag-name (:name %)) %) (get-in q [:stages 0 :template-tags])))
@@ -273,7 +273,7 @@
 
 (defn- mint-handle-via-execute!
   "Mint a query_handle for `query` the way `execute_query` does — straight into the handle store,
-   reproducing the exact round-trip (pMBQL → JSON → string-valued map) the save path must survive.
+   reproducing the exact round-trip (MBQL 5 → JSON → string-valued map) the save path must survive.
    Deferred-tests ledger: `execute_query` itself lands in the query PR (GHY-4363); when it does,
    route this through `registry/call-tool` with `:validate_only true` so the whole tool path is
    exercised, not just the store."
@@ -949,27 +949,21 @@
           (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card)))))))))
 
 (deftest update-move-into-dashboard-requires-destination-write-test
-  (mt/with-model-cleanup [:model/Card]
-    (mt/with-temp [:model/Collection coll-a {}
-                   :model/Collection coll-b {}
-                   :model/Dashboard dash-b {:collection_id (:id coll-b)}
-                   :model/Card card {:dataset_query (orders-query) :collection_id (:id coll-a)}]
-      ;; Read but not write on the destination: the caller can see the dashboard, so the read check
-      ;; in `resolve-dashboard!` passes and the *write* requirement on the dashboard's collection is
-      ;; what refuses — which is what this test exists to prove. Revoking read too would collapse the
-      ;; refusal into the not-found that
-      ;; `create-dashboard-question-existence-does-not-leak-test` covers, and this assertion would
-      ;; pass for the wrong reason.
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-b)
-      (mt/with-current-user (mt/user->id :rasta)
-        (let [result (call-tool v2.tu/all-scopes (str (random-uuid)) "question_write"
-                                {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
-          (is (:isError result))
-          (is (re-find #"You don't have permissions to do that"
-                       (-> result :content first :text)))
-          (testing "the card is untouched"
-            (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
+  (mt/with-model-cleanup [:model/Card :model/Collection]
+    (let [[coll-a] (collection/create-collections! [{:name (mt/random-name)}])
+          [coll-b] (collection/create-collections! [{:name (mt/random-name)}])]
+      (mt/with-temp [:model/Dashboard dash-b {:collection_id (:id coll-b)}
+                     :model/Card card {:dataset_query (orders-query) :collection_id (:id coll-a)}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-b)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (call-tool v2.tu/all-scopes (str (random-uuid)) "question_write"
+                                  {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
+            (is (:isError result))
+            (is (re-find #"You don't have permissions to do that"
+                         (-> result :content first :text)))
+            (testing "the card is untouched"
+              (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card)))))))))))
 
 ;;; ---------------------------------------------- Card-type guard -------------------------------------------------
 

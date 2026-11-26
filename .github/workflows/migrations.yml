@@ -1,30 +1,37 @@
-name: Lint migrations
+name: Check migration versions
 
 on:
-  push:
-    branches:
-      - 'master'
-      - 'release-**'
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-jobs:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-  lint-migrations:
-    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 15
+jobs:
+  files-changed:
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 10
+    outputs:
+      migrations: ${{ steps.changes.outputs.migrations }}
     steps:
       - uses: actions/checkout@v7
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Verify Liquibase Migrations
-        run: ./bin/mage lint-migrations
 
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          base: ${{ github.ref }}
+          filters: .github/file-paths.yaml
+
+  # TODO: remove when master is at v67, at that point versioned migrations are no longer allowed.
+  # See https://github.com/metabase/metabase/blob/2a7df44f02718377e08ab10ff27821853a427c02/bin/lint-migrations-file/src/lint_migrations_file.cljc#L390
   check-migration-versions:
-    if: github.event_name == 'pull_request'
+    needs: files-changed
+    if: needs.files-changed.outputs.migrations == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 10 # the `backport`-label path builds the release scripts
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:

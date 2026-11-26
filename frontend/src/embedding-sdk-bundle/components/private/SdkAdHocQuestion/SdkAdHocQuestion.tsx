@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { SdkQuestionProps } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { deserializeCard, parseHash } from "metabase/common/utils/card";
+import { useQuestionFromCard } from "metabase/metadata-store";
 
 import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
 
@@ -70,11 +71,8 @@ export const SdkAdHocQuestion = ({
     return { options, deserializedCard };
   }, [location.hash]);
 
-  const questionId = resolveQuestionId(
-    params.slug,
-    // Unjustified type cast. FIXME
-    deserializedCard as { dataset_query?: { type?: string } } | undefined,
-  );
+  const deserializedQuestion = useQuestionFromCard(deserializedCard);
+  const questionId = resolveQuestionId(params.slug, deserializedQuestion);
 
   return (
     <SdkQuestion

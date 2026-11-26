@@ -16,6 +16,9 @@
    [clojure.set :as set]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
+   [metabase.explorations.models.exploration-page :as exploration-page]
+   [metabase.explorations.models.exploration-query :as exploration-query]
+   [metabase.explorations.models.exploration-thread :as exploration-thread]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
@@ -87,29 +90,41 @@
   [row]
   [(:block_id row) (:card_id row) (:dimension_id row) (:query_type row)])
 
-(defn- find-or-create-page!
-  "Return the id of the `ExplorationPage` for `k` (a [[page-key]]), creating it at
-  `position` if it doesn't exist yet. An existing page keeps its id and position.
-
-  Select-then-insert with no unique index backing it (`dimension_id` is a text column, which
-  MySQL can't uniquely index): two planners in here at once would both miss and both insert. Safe
-  only because [[lock-thread-for-planning!]] keeps them out — see there."
-  [[block-id card-id dim-id query-type] position]
-  (or (explorations.db/page-id-for-key block-id card-id dim-id query-type)
-      (explorations.db/insert-page! {:exploration_block_id block-id
-                                     :card_id              card-id
-                                     :dimension_id         dim-id
-                                     :query_type           query-type
-                                     :position             position})))
+(defn- comparable-page-key
+  "A [[page-key]] `k` with its dimension and query type as strings, as an ExplorationPage stores them."
+  [[block-id card-id dimension-id query-type]]
+  [block-id card-id (some-> dimension-id str) (some-> query-type name)])
 
 (defn- reconcile-pages!
-  "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
-  page's block sets the `position` of newly-created pages); returns a `key -> page-id` map."
+  "Find or create a page per distinct [[page-key]] of `rows`, reading the pages of the rows' blocks once and creating
+  the missing ones in one call, and return a `key -> page-id` map, safe without a unique index only under
+  [[lock-thread-for-planning!]]."
   [rows]
-  (into {}
-        (mapcat (fn [[_block-id ks]]
-                  (map-indexed (fn [pos k] [k (find-or-create-page! k pos)]) ks)))
-        (group-by first (distinct (map page-key rows)))))
+  (let [by-block   (group-by first (distinct (map page-key rows)))
+        positioned (for [[_block-id ks] by-block
+                         [position k]   (map-indexed vector ks)]
+                     [k position])
+        existing   (into {}
+                         (map (fn [page]
+                                [(comparable-page-key [(:exploration_block_id page) (:card_id page)
+                                                       (:dimension_id page) (:query_type page)])
+                                 (:id page)]))
+                         (explorations.db/pages-for-blocks (vec (keys by-block))))
+        missing    (vec (remove (comp existing comparable-page-key first) positioned))
+        created    (when (seq missing)
+                     (exploration-page/create-pages!
+                      (for [[[block-id card-id dim-id query-type] position] missing]
+                        {:exploration_block_id block-id
+                         :card_id              card-id
+                         :dimension_id         dim-id
+                         :query_type           query-type
+                         :position             position})))
+        new-ids    (zipmap (map (comp comparable-page-key first) missing) (map :id created))]
+    (into {}
+          (map (fn [[k _position]]
+                 (let [ck (comparable-page-key k)]
+                   [k (or (existing ck) (new-ids ck))])))
+          positioned)))
 
 (defn- pages-with-comments
   "Subset of `page-ids` that a live (not soft-deleted) exploration comment still anchors to.
@@ -159,7 +174,7 @@
                              (pages-with-queries orphans))
         deletable (remove retained orphans)]
     (when (seq deletable)
-      (explorations.db/delete-pages! deletable))))
+      (exploration-page/delete-pages! deletable))))
 
 (defn- lock-thread-for-planning!
   "Take a row lock on `thread-id`'s `exploration_thread` row (call inside a transaction) so at most
@@ -169,7 +184,7 @@
   duplicate delivery that overlaps the first. Neither the planner nor its caller can gate that alone:
   `runner/plan-thread!`'s `exists?` check only sees committed rows, and two overlapping planners have
   each seen an empty query table. So the persist step takes this lock and re-checks under it, and the
-  loser discards. [[find-or-create-page!]] is what makes it load-bearing rather than merely tidy: it
+  loser discards. [[reconcile-pages!]] is what makes it load-bearing rather than merely tidy: it
   has no unique index to fall back on, so two planners would each create the thread's pages — and a
   page's id is its identity, so the duplicate strands every comment and star anchored to the loser."
   [thread-id]
@@ -227,7 +242,7 @@
                                      (assoc :page_id (key->page (page-key %)))
                                      (dissoc :block_id))
                                 rows)]
-            (explorations.db/insert-queries! (map-indexed (fn [i r] (assoc r :position i)) rows*))
+            (exploration-query/create-queries! (map-indexed (fn [i r] (assoc r :position i)) rows*))
             (gc-orphan-pages! thread-id (vals key->page))
             (count rows*)))))))
 
@@ -241,8 +256,8 @@
   doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (explorations.db/update-thread! thread-id {:analysis_started_at now
-                                               :completed_at        now})))
+    (exploration-thread/update-threads! [{:id thread-id :analysis_started_at now
+                                          :completed_at        now}])))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -258,7 +273,7 @@
 (defn- save-transcript!
   [thread-id transcript]
   (try
-    (explorations.db/update-thread! thread-id {:query_plan_transcript transcript})
+    (exploration-thread/update-threads! [{:id thread-id :query_plan_transcript transcript}])
     (catch Throwable e
       (when (schema-violation? e)
         (throw e))
@@ -280,14 +295,6 @@
 ;; Ctx building
 ;; ---------------------------------------------------------------------------
 
-(defn- thread-prompt-for
-  [thread-id]
-  (explorations.db/thread-prompt thread-id))
-
-(defn- creator-id-for-thread
-  [thread-id]
-  (explorations.db/exploration-creator-id-for-thread thread-id))
-
 (defn- build-planner-ctx
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
@@ -302,10 +309,10 @@
                                    m (:metrics g)]
                                [[(:block-id g) (:metric-id m)] m]))]
     {:thread-id      thread-id
-     :thread-prompt  (thread-prompt-for thread-id)
+     :thread-prompt  (explorations.db/thread-prompt thread-id)
      :metric-dim-ctx metric-dim-ctx
      :metric-by-key  metric-by-key
-     :creator-id     (creator-id-for-thread thread-id)
+     :creator-id     (explorations.db/exploration-creator-id-for-thread thread-id)
      :thread-blocks  thread-blocks}))
 
 ;; ---------------------------------------------------------------------------

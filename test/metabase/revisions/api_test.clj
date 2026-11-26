@@ -133,7 +133,7 @@
                   :model        "Card"
                   :model_id     id
                   :user_id      (mt/user->id :rasta)
-                  :object       (revision/serialize-instance :model/Card (:id card) card)
+                  :object       (revision/snapshot :model/Card card)
                   :message      "because i wanted to"
                   :is_creation  false
                   :is_reversion true)
@@ -175,7 +175,7 @@
         (let [revision-id (t2/select-one-pk :model/Revision :model "Transform" :model_id transform-id
                                             {:order-by [[:id :asc]]})
               topics      (atom [])]
-          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics into (for [change (:changes event [event])] [topic (get-in change [:object :id])])))]
             (mt/user-http-request :crowberto :post 200 "revision/revert"
                                   {:entity "transform" :id transform-id :revision_id revision-id}))
           (is (= "Before" (t2/select-one-fn :name :model/Transform :id transform-id)))
@@ -436,6 +436,25 @@
                               {:entity :card, :id card-id, :revision_id rev-id})
         (is (= "Before" (t2/select-one-fn :name :model/Card :id card-id)))))))
 
+(deftest revert-card-to-revision-with-empty-query-test
+  (testing "reverting a Card to a Revision whose snapshot has an empty query saves the Card with it"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Before", :dataset_query (mt/mbql-query venues)}]
+      (let [object (-> (t2/select-one :model/Card :id card-id)
+                       (select-keys [:name :description :display :dataset_query :visualization_settings
+                                     :collection_id :archived :type :parameters :parameter_mappings])
+                       (assoc :dataset_query {}))
+            rev-id (:id (t2/insert-returning-instance! :model/Revision
+                                                       {:model       "Card"
+                                                        :model_id    card-id
+                                                        :user_id     (mt/user->id :crowberto)
+                                                        :object      object
+                                                        :is_creation true}))]
+        (t2/update! :model/Card :id card-id {:name "After"})
+        (create-card-revision! card-id false :crowberto)
+        (mt/user-http-request :crowberto :post 200 "revision/revert"
+                              {:entity :card, :id card-id, :revision_id rev-id})
+        (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))
+
 (deftest dashboard-revision-description-test
   (testing "revision description for dashboard are generated correctly"
     (mt/with-temp
@@ -523,10 +542,11 @@
   (testing "revision description for card are generated correctly"
     (mt/with-temp
       [:model/Collection {coll-id :id} {:name "New Collection"}
-       :model/Card       {card-id :id} {:name                   "A card"
-                                        :display                "table"
-                                        :dataset_query          (mt/mbql-query venues)
-                                        :visualization_settings {}}]
+       :model/Card       {card-id :id} (mt/card-with-metadata
+                                        {:name                   "A card"
+                                         :display                "table"
+                                         :dataset_query          (mt/mbql-query venues)
+                                         :visualization_settings {}})]
       ;; 0. create the card
       (create-card-revision! card-id true :crowberto)
       ;; 1. rename
@@ -536,8 +556,11 @@
       (t2/update! :model/Card :id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
       ;; 3. edit query and metadata
-      (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-                                           :display       "scalar"})
+      (t2/update! :model/Card :id card-id
+                  (-> {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                      mt/card-with-metadata
+                      (select-keys [:dataset_query :result_metadata])
+                      (assoc :display "scalar")))
       (create-card-revision! card-id false :crowberto)
       ;; 4. add description
       (t2/update! :model/Card :id card-id {:description "meaningful number"})
@@ -681,7 +704,7 @@
                     {:model        "Card"
                      :model_id     card-id
                      :user_id      (mt/user->id :crowberto)
-                     :object       (assoc (revision/serialize-instance :model/Card card-id (t2/select-one :model/Card :id card-id))
+                     :object       (assoc (revision/snapshot :model/Card (t2/select-one :model/Card :id card-id))
                                           :unknown_field true)
                      :is_creation  false
                      :is_reversion false})
@@ -697,7 +720,7 @@
                     {:model        "Dashboard"
                      :model_id     dashboard-id
                      :user_id      (mt/user->id :crowberto)
-                     :object       (assoc (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))
+                     :object       (assoc (revision/snapshot :model/Dashboard (t2/select-one :model/Dashboard :id dashboard-id))
                                           :unknown_field true)
                      :is_creation  false
                      :is_reversion false})

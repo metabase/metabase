@@ -60,3 +60,23 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
                                 (cd.db/insert-findings! [(row 2 :empty {:threshold 0 :unit "rows"
                                                                         :as_of (str as-of)})]))))))))
+
+(deftest ^:synchronized reads-and-invalidations-over-partitions-test
+  (mt/with-temp [:model/Collection {coll1 :id} {:name "Partitioned A"}
+                 :model/Collection {coll2 :id} {:name "Partitioned B"}
+                 :model/Collection {coll3 :id} {:name "Partitioned C"}]
+    (testing "a map from partitions"
+      (is (= {coll1 "Partitioned A" coll2 "Partitioned B" coll3 "Partitioned C"}
+             (cd.db/collection-names-by-id #{coll1 coll2 coll3})
+             (mt/with-partition-size 2 (cd.db/collection-names-by-id #{coll1 coll2 coll3}))))
+      (is (= (cd.db/user-names-by-id #{(mt/user->id :rasta) (mt/user->id :crowberto) (mt/user->id :lucky)})
+             (mt/with-partition-size 2 (cd.db/user-names-by-id #{(mt/user->id :rasta) (mt/user->id :crowberto) (mt/user->id :lucky)})))))
+    (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+      (cd.db/insert-findings! [(row 1 :slow {:threshold_ms 1}) (row 2 :slow {:threshold_ms 1}) (row 3 :slow {:threshold_ms 1})])
+      (let [ids (vec (t2/select-pks-vec :model/ContentDiagnosticsFinding :scan_id "db-test"))]
+        (testing "a set from partitions"
+          (is (= (set ids)
+                 (mt/with-partition-size 2 (cd.db/active-finding-ids ids [:= :scan_id "db-test"])))))
+        (testing "an update count summed over partitions"
+          (is (= 3 (mt/with-partition-size 2 (cd.db/invalidate-findings-by-ids! ids))))
+          (is (nil? (cd.db/active-finding-ids ids [:= :scan_id "db-test"]))))))))

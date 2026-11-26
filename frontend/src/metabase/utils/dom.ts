@@ -175,6 +175,22 @@ export function isLoopbackHostname(hostname: string): boolean {
   return LOOPBACK_HOSTNAMES.has(hostname);
 }
 
+/**
+ * Whether a browser-supplied origin, such as `MessageEvent.origin`, is on a
+ * loopback hostname. Missing and opaque (`"null"`) origins are not loopback.
+ */
+export function isLoopbackOrigin(origin: string | null): boolean {
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    return isLoopbackHostname(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function initializeIframeResizer(onReady = () => {}): void {
   if (!isWithinIframe()) {
     return;
@@ -213,9 +229,7 @@ export function isReducedMotionPreferred(): boolean {
   return mediaQuery != null && mediaQuery.matches;
 }
 
-export function isFocusVisible(element: Element): boolean {
-  return element.matches(":focus-visible");
-}
+export { isFocusVisible } from "./focus-visible";
 
 export function isSmallScreen(): boolean {
   const mediaQuery = window.matchMedia("(max-width: 40em)");

@@ -112,6 +112,10 @@
 (defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
   [_driver _feature _database] false)
 
+;; BigQuery supports neither `:rename` nor `:atomic-renames`, so a Python transform drops its target and recreates it.
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/python-transforms-without-renames]
+  [_driver _feature _database] true)
+
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk

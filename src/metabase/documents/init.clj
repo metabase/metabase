@@ -1,4 +1,4 @@
 (ns metabase.documents.init
   (:require
-   [metabase.documents.recent-views]
+   [metabase.documents.models.document]
    [metabase.documents.view-log]))

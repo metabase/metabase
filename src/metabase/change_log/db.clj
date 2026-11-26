@@ -1,6 +1,7 @@
 (ns metabase.change-log.db
   "Application database queries for the change-log module."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -29,13 +30,7 @@
   [ids       :- [:sequential ms/PositiveInt]
    start     :- ms/PositiveInt
    lowest-id :- ms/PositiveInt]
-  (t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id ids]}))
-
-(mu/defn mariadb? :- :boolean
-  "Whether the app DB is MariaDB, whose app DB type is `:mysql` too. The driver answers without a query."
-  []
-  (t2/with-connection [^Connection conn]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+  (mdb/sum-batched mdb/update-partition-size #(t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id %]}) ids))
 
 (mu/defn foreign-keys
   "The foreign keys of the app DB's tables, as JDBC's `DatabaseMetaData.getImportedKeys` reports them."
@@ -63,7 +58,7 @@
    column     :- :keyword
    values     :- [:sequential [:or :int :string]]
    columns    :- [:sequential :keyword]]
-  (t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column values]}))
+  (mdb/select-batched #(t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column %]}) values))
 
 (mu/defn delete-before-by-id-subquery!
   "Deletes up to `batch-size` entries created before `cutoff`, lowest ids first, and returns how many."

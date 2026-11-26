@@ -18,7 +18,7 @@ function CartesianThemeProbe() {
   });
   const variables = getMetabaseSdkCssVariables({ theme, font: "Lato" });
   const axisCssColor = Array.from(
-    variables.styles.matchAll(/--mb-color-chart-axis:\s*([^;]+);/g),
+    variables.matchAll(/--mb-color-chart-axis:\s*([^;]+);/g),
   ).at(-1)?.[1];
 
   return (
@@ -31,7 +31,7 @@ function CartesianThemeProbe() {
       <output data-testid="tick-font-size">
         {visualizationTheme.cartesian.ticks.fontSize}
       </output>
-      <output data-testid="variables">{variables.styles}</output>
+      <output data-testid="variables">{variables}</output>
     </>
   );
 }

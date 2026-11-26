@@ -15,10 +15,9 @@
   Card row is needed."
   [card-id]
   {:id            card-id
-   :dataset_query (lib/->legacy-MBQL
-                   (-> (lib/query (mt/metadata-provider)
-                                  (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
-                       (lib/aggregate (lib/count))))})
+   :dataset_query (-> (lib/query (mt/metadata-provider)
+                                 (lib.metadata/table (mt/metadata-provider) (mt/id :products)))
+                      (lib/aggregate (lib/count)))})
 
 (defn- category-target []
   [:field (mt/id :products :category) nil])
@@ -55,10 +54,9 @@
   "Count metric on ORDERS, no breakout."
   [card-id]
   {:id            card-id
-   :dataset_query (lib/->legacy-MBQL
-                   (-> (lib/query (mt/metadata-provider)
-                                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
-                       (lib/aggregate (lib/count))))})
+   :dataset_query (-> (lib/query (mt/metadata-provider)
+                                 (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                      (lib/aggregate (lib/count)))})
 
 (defn- orders-count-with-default-time-dim-card
   "Count metric on ORDERS with a curated default CREATED_AT dimension — the
@@ -270,10 +268,9 @@
   [card]
   (let [mp (mt/metadata-provider)]
     (assoc card :dataset_query
-           (lib/->legacy-MBQL
-            (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                (lib/aggregate (lib/count))
-                (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Widget")))))))
+           (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+               (lib/aggregate (lib/count))
+               (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Widget"))))))
 
 (def ^:private widget-explore-filters
   "The `:explore_filters` chain that produced a Widget-scoped card — what the ctx carries and the
@@ -393,10 +390,9 @@
   [card-id]
   (let [mp (mt/metadata-provider)]
     {:id            card-id
-     :dataset_query (lib/->legacy-MBQL
-                     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                         (lib/aggregate (lib/count))
-                         (lib/filter (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4))))}))
+     :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                        (lib/aggregate (lib/count))
+                        (lib/filter (lib/>= (lib.metadata/field mp (mt/id :products :rating)) 4)))}))
 
 (deftest default-card-filter-still-narrows-binning-test
   (testing "a range filter in the metric card's own query still narrows the pinned width — only
@@ -485,11 +481,10 @@
   (testing "run-top-k-discovery returns [] when the query succeeds with no rows, so the caller can cache it"
     (let [mp   (mt/metadata-provider)
           card {:id            9000112
-                :dataset_query (lib/->legacy-MBQL
-                                (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                    (lib/aggregate (lib/count))
-                                    (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category))
-                                                       "No Such Category"))))}]
+                :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                   (lib/aggregate (lib/count))
+                                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category))
+                                                      "No Such Category")))}]
       (is (= [] (#'variants/run-top-k-discovery mp card (category-target) category-dim 2)))))
   (testing "and nil when the query throws, so the caller can skip caching it"
     (is (nil? (#'variants/run-top-k-discovery (mt/metadata-provider)

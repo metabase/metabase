@@ -37,6 +37,7 @@
    :user_message_count          (:user_message_count row)
    :assistant_message_count     (:assistant_message_count row)
    :total_tokens                (long (:total_tokens row 0))
+   :uncached_tokens             (long (:uncached_tokens row 0))
    :cache_read_tokens           (long (:cache_read_tokens row 0))
    :last_message_at             (:last_message_at row)
    :profile_id                  (:profile_id row)
@@ -123,6 +124,7 @@
   (let [conversation (metabot-analytics.db/conversation conversation-id)]
     (api/check-404 conversation)
     (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
+          token-usage  (metabot-analytics.db/token-usage-for-conversation conversation-id)
           forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]
       {:conversation_id             (:id conversation)
@@ -131,6 +133,8 @@
        :user                        (trim-user (:user hydrated))
        :message_count               (count all-messages)
        :total_tokens                (transduce (keep :total_tokens) + 0 all-messages)
+       :uncached_tokens             (:uncached_tokens token-usage)
+       :cache_read_tokens           (:cache_read_tokens token-usage)
        :profile_id                  (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
        :slack_permalink             (slack-permalink conversation)
        :messages                    (metabot-persistence/messages->threaded-client-messages

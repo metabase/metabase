@@ -247,7 +247,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       { action: "X-ray", title: "Source is Affiliate" },
       {
         action: "Compare to the rest",
-        title: "Comparison of Number of People by Source and People",
+        title:
+          "Comparison of Number of People where Source is Affiliate and All People",
       },
     ].forEach(({ action, title }, index) => {
       cy.log(action);

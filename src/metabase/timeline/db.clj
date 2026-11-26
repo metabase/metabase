@@ -2,8 +2,9 @@
   "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
@@ -31,11 +32,6 @@
      [:= (u/qualified-key alias :archived) false])
    (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
-(mu/defn insert-timeline!
-  "Insert the Timeline `row` and return the inserted instance."
-  [row :- (mut/select-keys ::timeline.schema/timeline.update [:name :creator_id :default :description :icon :collection_id :archived])]
-  (t2/insert-returning-instance! :model/Timeline row))
-
 (mu/defn timelines-in-visible-collections
   "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in
   case-insensitive name order."
@@ -51,15 +47,10 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Timeline :id id))
 
-(mu/defn timeline-icon
-  "The icon of the Timeline with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one-fn :icon :model/Timeline :id id))
-
-(mu/defn timelines-by-id
+(mu/defn timelines-by-ids
   "A map of id to Timeline for the Timelines with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Timeline :id [:in %]) ids))
 
 (mu/defn timelines-for-collection
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."
@@ -67,37 +58,36 @@
    archived      :- :boolean]
   (t2/select :model/Timeline :collection_id collection-id :archived archived))
 
-(mu/defn update-timeline!
-  "Apply `changes` to the Timeline with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
-  (t2/update! :model/Timeline :id id changes))
+(mu/defn unarchived-timelines-in-collections
+  "The unarchived Timelines in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (mdb/select-batched #(t2/select :model/Timeline :collection_id [:in %] :archived false) collection-ids))
 
-(mu/defn directly-archived-timeline-ids
-  "The ids among `ids` of the Timelines archived on their own rather than along with their Collection."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-set :model/Timeline :id [:in ids] :archived true :archived_directly true))
+(mu/defn restorable-timelines-in-collections
+  "The Timelines in the Collections with `collection-ids` that were archived along with them."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (mdb/select-batched #(t2/select :model/Timeline :collection_id [:in %] :archived true :archived_directly false) collection-ids))
 
-(mu/defn set-timeline-events-archived!
-  "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
-  [timeline-id :- ms/PositiveInt
-   archived    :- :boolean]
-  (t2/update! :model/TimelineEvent {:timeline_id timeline-id} {:archived archived}))
+(mu/defn timelines-in-collections
+  "The Timelines in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (mdb/select-batched #(t2/select :model/Timeline :collection_id [:in %]) collection-ids))
 
-(mu/defn delete-timeline!
-  "Delete the Timeline with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Timeline :id id))
+(mu/defn events-of-timelines-by-archived
+  "The TimelineEvents of the Timelines with `timeline-ids` whose archived flag is `archived`."
+  [timeline-ids :- [:sequential ms/PositiveInt]
+   archived     :- :boolean]
+  (mdb/select-batched #(t2/select :model/TimelineEvent :timeline_id [:in %] :archived archived) timeline-ids))
+
+(mu/defn delete-timelines-in-collections!
+  "Delete the Timelines in the Collections with `collection-ids`, returning the number deleted."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Timeline :collection_id [:in %]) collection-ids))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
-
-(mu/defn insert-timeline-event!
-  "Insert the TimelineEvent `row` and return the inserted instance."
-  [row :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :timestamp :timezone :timeline_id :creator_id :description :time_matters :icon :archived])]
-  (t2/insert-returning-instance! :model/TimelineEvent row))
 
 (mu/defn timeline-event
   "The TimelineEvent with `id`, or nil."
@@ -111,41 +101,55 @@
    all?         :- [:maybe :boolean]
    start        :- [:maybe ms/TemporalInstant]
    end          :- [:maybe ms/TemporalInstant]]
-  (t2/select :model/TimelineEvent
-             {:where [:and
-                      [:in :timeline_id timeline-ids]
-                      (when-not all?
-                        [:= :archived false])
-                      (when (or start end)
-                        [:or
-                         [:and
-                          [:= :time_matters true]
-                          (when start
-                            [:<= start :timestamp])
-                          (when end
-                            [:<= :timestamp end])]
-                         [:and
-                          [:= :time_matters false]
-                          (when start
-                            [:<= (h2x/->date start) (h2x/->date :timestamp)])
-                          (when end
-                            [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
+  (mdb/select-batched #(t2/select :model/TimelineEvent
+                                  {:where [:and
+                                           [:in :timeline_id %]
+                                           (when-not all?
+                                             [:= :archived false])
+                                           (when (or start end)
+                                             [:or
+                                              [:and
+                                               [:= :time_matters true]
+                                               (when start
+                                                 [:<= start :timestamp])
+                                               (when end
+                                                 [:<= :timestamp end])]
+                                              [:and
+                                               [:= :time_matters false]
+                                               (when start
+                                                 [:<= (h2x/->date start) (h2x/->date :timestamp)])
+                                               (when end
+                                                 [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]})
+                      timeline-ids))
 
-(mu/defn update-timeline-event!
-  "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent :id id changes))
-
-(mu/defn delete-timeline-event!
-  "Delete the TimelineEvent with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/TimelineEvent :id id))
+(mu/defn icon-clause
+  "The SQL expression for the icon of a new event of the Timeline with `timeline-id`: the icon of the Timeline, or
+  `default-icon` when it has none."
+  [timeline-id  :- ms/PositiveInt
+   default-icon :- :string]
+  [:coalesce ^:allow-subquery {:select [:timeline.icon]
+                               :from   [:timeline]
+                               :where  [:= :timeline.id [:auto/param timeline-id]]}
+   default-icon])
 
 (mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
   "The Timelines with `ids`, with their Collection and its ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Timeline :id :name :collection_id] :id [:in %]) ids)
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn collection-timeline-items :- [:maybe :map]
+  "The query of the Timelines in `collection` that the collection items listing of `opts` holds, nil when
+  `opts` restrict the items to those created by a user, which Timelines do not record,
+  and none of them when `opts` restrict the items to the pinned ones, which no Timeline is."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+     :from   [[:timeline :timeline]]
+     :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              [:= :archived (boolean archived?)]]}))

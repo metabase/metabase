@@ -5,5 +5,5 @@ export {
   type InputDescriptionProps,
   type DataAttributes,
 } from "./Select";
-export { selectOverrides } from "./Select.config";
+export { selectClearButtonProps, selectOverrides } from "./Select.config";
 export * from "./SelectItem";

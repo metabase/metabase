@@ -43,6 +43,7 @@ const knownIssues = [
   "--mantine-spacing-xxxs",
   "--mantine-spacing-xxs",
   "--mantine-spacing-xxl",
+  "--mantine-spacing-xxxl",
   "--mantine-radius-xxxs",
   "--mantine-radius-xxs",
   "--mantine-shadow-xs_outline",
@@ -60,6 +61,8 @@ const findFiles = (): string[] => {
   return glob
     .sync(
       "{frontend,enterprise/frontend,.storybook}/**/*.{css,module.css,js,jsx,ts,tsx}",
+      // Build output of the @metabase/ui package, which contains all of Mantine's CSS.
+      { ignore: "frontend/ui-package/dist/**" },
     )
     .filter((f) => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
 };
@@ -74,7 +77,7 @@ export const extractVariableDefinitionsFromFileContent = (
 ): Set<string> => {
   const patterns = [
     /--[a-zA-Z0-9_-]+:/g, // css files: --my-css-variable: blue
-    /['"`]--[a-zA-Z0-9_-]+['"`]\s*:/g, // css-in-js: "--my-css-variable-in-emotion": blue
+    /['"`]--[a-zA-Z0-9_-]+['"`]\s*:/g, // inline styles: "--my-css-variable": blue
   ];
 
   const matches = patterns.flatMap((pattern) => {

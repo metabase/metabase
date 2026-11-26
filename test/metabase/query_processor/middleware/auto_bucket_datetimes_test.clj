@@ -31,6 +31,8 @@
           query (lib/query metadata-provider query)]
       (-> query
           qp.auto-bucket-datetimes/auto-bucket-datetimes
+          ;; existing usage -- do not use going forward
+          #_{:clj-kondo/ignore [:deprecated-var]}
           lib.convert/->legacy-MBQL))))
 
 (defn- auto-bucket-mbql [mbql-query]

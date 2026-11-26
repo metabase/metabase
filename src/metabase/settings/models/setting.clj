@@ -10,12 +10,14 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.settings.app-db-copy :as settings.app-db-copy]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.settings.schema :as settings.schema]
@@ -107,13 +109,15 @@
         :when (and (export? key) (not is_env_setting))]
     {:key key :value value}))
 
-(defmethod serialization/spec :model/Setting [_]
-  {:schema    ::settings.schema/external-setting
-   :identity  [:key]
-   :copy      [:value]
-   :skip      [:value_with_aad]
-   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
-                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
+(defn- export-keys
+  "Exports the keys of Settings as strings."
+  [_store _settings ks _opts]
+  (mapv name ks))
+
+(defn- import-keys
+  "Imports the keys of Settings as keywords."
+  [_store _entities ks _opts]
+  (mapv keyword ks))
 
 (def ^:private Type
   [:fn
@@ -216,6 +220,7 @@
    [:type Type]
    ;; different getters/setters take care of parsing/unparsing
    [:getter ifn?]
+   [:custom-getter? :boolean]
    [:setter ifn?]
    ;; an init function can be used to seed initial values
    [:init [:maybe ifn?]]
@@ -420,13 +425,20 @@
                api/*current-user-id*)
     (swap! user-local-values vary-meta dissoc unreadable-user-settings-key)))
 
+(defmulti store-user-local-values!
+  "Store `settings-json`, the user-local setting values, on the row of `model` with `user-id`. The User model, whose
+  namespace requires this one, implements it with its own write function."
+  {:arglists '([model user-id settings-json])}
+  (fn [model _user-id _settings-json] model))
+
 (defn- set-user-local-value! [setting-definition-or-name value]
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
     (warn-discarding-unreadable-settings! @*user-local-values*)
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
+    (t2/resolve-model :model/User)
+    (store-user-local-values! :model/User api/*current-user-id* (json/encode @@*user-local-values*))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce-setting-access-checks*
@@ -730,6 +742,21 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
+(defn- csv-entries
+  "The entries in `row`, a parsed CSV row or a list of values, as strings without surrounding spaces or blank entries."
+  [row]
+  (into [] (comp (map (comp str/trim str)) (remove str/blank?)) row))
+
+(defn- csv-rows
+  "The rows of `csv-string`, lazily, without blank rows after the first.
+   Realizing a row that is not valid CSV throws."
+  [csv-string]
+  (let [rows (csv/read-csv csv-string)]
+    (lazy-seq
+     ;; `first` and `rest`, not destructuring, which would parse the second row too.
+     (when-let [rows (seq rows)]
+       (cons (first rows) (remove #(every? str/blank? %) (rest rows)))))))
+
 (defn- parse-string-value
   "The value of `setting-type` that its stored string form `string-value` encodes."
   [setting-type ^String string-value]
@@ -740,7 +767,8 @@
     :keyword                     (keyword string-value)
     :timestamp                   (u.date/parse string-value)
     :json                        (json/decode+kw string-value)
-    :csv                         (first (csv/read-csv string-value))
+    ;; Only the first line is read. [[validate-settings-formatting!]] warns about the rest of an env var.
+    :csv                         (some-> (first (csv/read-csv string-value)) csv-entries)
     string-value))
 
 (defn- random-uuid-str []
@@ -836,16 +864,12 @@
 ;;; |                                                      set!                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- update-setting!
-  "Update an existing Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
-  [setting-name new-value]
-  ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (settings.db/update-setting-value! setting-name new-value))
+(declare create-setting! update-setting! delete-setting!)
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (try (settings.db/insert-setting! setting-name new-value)
+  (try (create-setting! setting-name new-value)
        ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
@@ -914,11 +938,11 @@
             (cond
               (nil? new-value)
               (do
-                (settings.db/delete-setting! setting-name)
+                (delete-setting! setting-name)
                 ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
-                    (settings.db/delete-setting! deprecated-key)
+                    (delete-setting! deprecated-key)
                     (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
@@ -1001,17 +1025,38 @@
        (u.date/format timestamp)
        (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
-(defn- serialize-csv [value]
+(defn csv-string-entries
+  "The entries in `csv-string`, a CSV string of one line, without surrounding spaces or blank entries.
+   This is how a `:csv` setting reads a string it is given to store, so a custom setter can check the entries first.
+   Throws a 400 for a string that is not valid CSV or spans several lines."
+  [csv-string]
+  (let [rows (try
+               (doall (csv-rows csv-string))
+               (catch Exception _
+                 ;; Leave the parse error out: it can quote part of the value, which may be secret.
+                 (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
+    ;; Every read of a `:csv` value parses only its first line, so storing more would silently drop the rest.
+    (when (next rows)
+      (throw (ex-info (tru "Put comma-separated values on one line.") {:status-code 400})))
+    (csv-entries (first rows))))
+
+(defn- serialize-csv
+  "The stored form of `value`, a list of entries or a CSV string of one line.
+   Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]` or `,`.
+   Any other value is stored as printed.
+   Throws a 400 for a string that is not valid CSV or spans several lines."
+  [value]
   (cond
-    ;; if we're passed as string, assume it's already CSV-encoded
     (string? value)
-    value
+    (serialize-csv (csv-string-entries value))
 
     (sequential? value)
-    (let [s (with-open [writer (StringWriter.)]
-              (csv/write-csv writer [value])
-              (str writer))]
-      (first (str/split-lines s)))
+    (let [entries (csv-entries value)]
+      (when (seq entries)
+        (with-open [writer (StringWriter.)]
+          ;; Write the row without its line ending. An entry with a newline in it is quoted, so it stays in this row.
+          (csv/write-csv writer [entries] :newline :lf)
+          (str/replace (str writer) #"\n\z" ""))))
 
     (nil? value)
     nil
@@ -1203,6 +1248,7 @@
                  :default            default
                  :on-change          nil
                  :getter             (partial (default-getter-for-type setting-type) setting-name)
+                 :custom-getter?     (contains? setting :getter)
                  :setter             (partial (default-setter-for-type setting-type) setting-name)
                  :init               nil
                  :tag                (default-tag-for-type setting-type)
@@ -1803,11 +1849,31 @@
                :parse-error parse-error
                :env-var? env-var?)))))
 
+(defn warn-about-ignored-csv-lines!
+  "Logs a warning when `setting-definition-or-name`, a `:csv` setting, has an env var with lines after the first,
+   which are not read.
+   [[validate-settings-formatting!]] calls this for every `:csv` setting without a custom getter. A setting whose
+   custom getter reads its value with `get-value-of-type :csv` also ignores later lines, so its startup logic can call
+   this too."
+  [setting-definition-or-name]
+  (when-let [[env-var value] (let [setting (resolve-setting setting-definition-or-name)]
+                               (and (= :csv (:type setting))
+                                    (env-var-source setting)))]
+    ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
+    ;; they parse, so a parse error after the first line counts as one.
+    (let [rows               (csv-rows value)
+          first-line-parses? (try (some? (seq rows)) (catch Exception _ false))
+          more-lines?        (try (some? (next rows)) (catch Exception _ true))]
+      (when (and first-line-parses? more-lines?)
+        (log/warnf "Only the first line of %s is used. Put comma-separated values on one line." env-var)))))
+
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
 
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
+  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
+  (run! warn-about-ignored-csv-lines! (remove :custom-getter? (vals @registered-settings)))
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
@@ -1884,3 +1950,38 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-setting! :- :map
+  "Insert a Setting row for `setting-key` holding `value` and return it."
+  [setting-key :- [:or :keyword :string]
+   value       :- :string]
+  (settings.db/insert-setting! setting-key value))
+
+(mu/defn update-setting! :- :int
+  "Set the value of the Setting with `setting-key` to `value`, returning the number updated."
+  [setting-key :- [:or :keyword :string]
+   value       :- :string]
+  (settings.db/update-setting-value! setting-key value))
+
+(mu/defn delete-setting! :- :int
+  "Delete the Setting with `setting-key`, returning the number deleted."
+  [setting-key :- [:or :keyword :string]]
+  (settings.db/delete-setting! setting-key))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Setting [_model]
+  {:skip?     false
+   :transform settings.app-db-copy/transform-setting
+   :sequence  false})
+
+(defmethod serialization/spec :model/Setting [_]
+  {:schema       ::settings.schema/external-setting
+   :identity     [:key]
+   :copy         [:value]
+   :skip         [:value_with_aad]
+   :transform    {:key {:export export-keys
+                        :import import-keys}}
+   :rows-by-refs serialization/setting-rows-by-refs})

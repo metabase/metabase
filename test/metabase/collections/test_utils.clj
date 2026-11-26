@@ -1,17 +1,19 @@
 (ns metabase.collections.test-utils
   "Test utilities and macros for collection-related tests."
   (:require
+   [clojure.test :refer [is testing]]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
+   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn personal-collection
-  "A User's Personal Collection. It is created along with the User row itself, so a test that wants one should look it
-  up with this rather than creating its own — `personal_owner_id` is unique, so a second insert fails, and on Postgres
-  that failure poisons the surrounding transaction."
+  "The Personal Collection of a User, created with `user->personal-collection` when the User has none yet."
   [user-or-id]
-  (t2/select-one :model/Collection :personal_owner_id (u/the-id user-or-id)))
+  (collection/user->personal-collection (u/the-id user-or-id)))
 
 (defn personal-collection-id
   "The ID of a User's Personal Collection. See [[personal-collection]]."
@@ -52,18 +54,17 @@
                                  collection/library-data-collection-type
                                  collection/library-metrics-collection-type]])))))
 
-(defn do-with-library-synced
-  "Implementation for with-library-synced macro.
-   If a Library collection exists, temporarily sets is_remote_synced to true.
-   If no Library collection exists, creates a temporary one with is_remote_synced true."
+(defn do-with-library-synced!
+  "Implementation for with-library-synced macro: temporarily sets is_remote_synced to true on the Library collection,
+  creating a temporary one with is_remote_synced true when none exists."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection :id (:id library) {:is_remote_synced true})
+        (collection/update-collections! [{:id (:id library) :is_remote_synced true}] nil)
         (f)
         (finally
-          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}] nil))))
     ;; No library collection exists, create one for the test
     (mt/with-temp [:model/Collection _ {:name             "Library"
                                         :type             collection/library-collection-type
@@ -75,25 +76,25 @@
 (defmacro with-library-synced
   "Sets up Library collection as remote-synced for the duration of body."
   [& body]
-  `(do-with-library-synced (fn [] ~@body)))
+  `(do-with-library-synced! (fn [] ~@body)))
 
-(defn do-with-library-not-synced
-  "Implementation for with-library-not-synced macro.
-   If a Library collection exists, temporarily sets is_remote_synced to false."
+(defn do-with-library-not-synced!
+  "Implementation for with-library-not-synced macro: temporarily sets is_remote_synced to false on the Library
+  collection when one exists."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection :id (:id library) {:is_remote_synced false})
+        (collection/update-collections! [{:id (:id library) :is_remote_synced false}] nil)
         (f)
         (finally
-          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}] nil))))
     (f)))
 
 (defmacro with-library-not-synced
   "Ensures Library collection is not remote-synced for the duration of body."
   [& body]
-  `(do-with-library-not-synced (fn [] ~@body)))
+  `(do-with-library-not-synced! (fn [] ~@body)))
 
 (defn do-with-library
   "Implementation for [[with-library]]."
@@ -127,3 +128,54 @@
   {:style/indent 1}
   [[binding] & body]
   `(do-with-library (fn [~binding] ~@body)))
+
+(defn- new-collection!
+  "The id of a new top-level Collection that the All Users group writes when `writable?` and only reads otherwise."
+  [writable?]
+  (let [id (t2/insert-returning-pk! :model/Collection
+                                    (merge (mt/with-temp-defaults :model/Collection) {:name (str "bulk " (random-uuid))}))]
+    (if writable?
+      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) id)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) id))
+    id))
+
+(defn check-bulk-can-update-collection-move!
+  "Checks that [[mi/can-update-each?]] of the rows of `model` that `make-row!`, a function of a Collection id, makes
+  answers a move into another Collection as [[mi/can-update?]] answers row by row, for a batch of rows of Collections
+  the user writes, of one the user only reads, and into a Collection the user only reads, and that it takes as many
+  statements for many rows as for few, for a superuser and for a user."
+  [model make-row!]
+  (mt/with-model-cleanup [model :model/Collection]
+    (let [writable-target (new-collection! true)
+          read-only-target (new-collection! false)
+          rows-in          (fn [collection-ids]
+                             (t2/select model :id [:in (mapv make-row! collection-ids)]))
+          writable         (rows-in [(new-collection! true) (new-collection! true)])
+          read-only        (rows-in [(new-collection! false)])
+          per-row          (fn [rows changes]
+                             (every? #(mi/can-update? % changes) (t2/hydrate (vec rows) :can_write)))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label rows changes expected] [["rows the user writes into a Collection the user writes" writable {:collection_id writable-target} true]
+                                               ["a row the user only reads among rows the user writes" (concat writable read-only) {:collection_id writable-target} false]
+                                               ["rows the user writes into a Collection the user only reads" writable {:collection_id read-only-target} false]]]
+          (testing label
+            (is (= expected (mi/can-update-each? model rows changes)))
+            (is (= (per-row rows changes) (mi/can-update-each? model rows changes))))))
+      (testing "a move to a Collection that does not exist is a 404, as for one row"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= 404 (try (mi/can-update? (first (t2/hydrate (vec writable) :can_write)) {:collection_id Integer/MAX_VALUE})
+                          nil
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (is (= 404 (try (mi/can-update-each? model writable {:collection_id Integer/MAX_VALUE})
+                          nil
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))))
+      (doseq [user [:crowberto :rasta]]
+        (testing (str "statement count as " user)
+          (mt/with-current-user (mt/user->id user)
+            (let [counted (fn [n]
+                            (let [rows (rows-in (repeatedly n #(new-collection! true)))]
+                              (events.tu/real-statement-count! #(mi/can-update-each? model rows {:collection_id writable-target}))))]
+              (counted 2)
+              (let [few  (counted 10)
+                    many (counted 40)]
+                (is (= few many))))))))))

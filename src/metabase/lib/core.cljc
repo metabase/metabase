@@ -49,9 +49,7 @@
     existing calls when practical. Will be unexported when there are no callers left. Docstrings should suggest an
     alternative to calling these functions.
   - **Deprecated:** Stronger than Leak - the function should be removed altogether, not just unexported."
-  ;; remove and ->> have no lib export yet; excluded so the clojure.core versions can't leak into the API
-  {:clj-kondo/ignore [:unused-excluded-var]}
-  (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
+  (:refer-clojure :exclude [filter replace and or not = < <= > >= not-empty case count distinct max min
                             + - * / time abs concat replace ref float])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
@@ -1499,6 +1497,8 @@
 ;;; # IGNORE ME!
 ;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
 ;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+;; re-exported vars keep their deprecated status for callers
+#_{:clj-kondo/ignore [:deprecated-var]}
 (shared.ns/import-fns
  [lib.binning
   available-binning-strategies
@@ -1516,6 +1516,7 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
+  ->legacy-MBQL-ref
   ->mbql5
   legacy-default-join-alias
   without-cleaning]

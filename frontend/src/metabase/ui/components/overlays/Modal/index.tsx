@@ -2,9 +2,11 @@ import {
   Box,
   type BoxProps,
   type ElementProps,
+  type MantineComponent,
   Modal as MantineModal,
   type ModalProps as MantineModalProps,
   type ModalRootProps as MantineModalRootProps,
+  type ModalContentProps,
 } from "@mantine/core";
 import cx from "classnames";
 import type { ReactNode } from "react";
@@ -307,7 +309,13 @@ function ModalFooter({ className, ...props }: ModalFooterProps) {
 
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;
-Modal.Content = MantineModal.Content;
+const ModalContent: MantineComponent<{
+  props: ModalContentProps;
+  ref: HTMLDivElement;
+  stylesNames: "content" | "inner";
+  compound: true;
+}> = MantineModal.Content;
+Modal.Content = ModalContent;
 Modal.CloseButton = MantineModal.CloseButton;
 Modal.Header = MantineModal.Header;
 Modal.Heading = ModalHeading;

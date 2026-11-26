@@ -190,6 +190,7 @@ export function ReorderableTagsInput({
         ref={useExternalDnd ? setDroppableRef : undefined}
         radius="xl"
         size={size}
+        variant="unstyled"
         classNames={{
           input: cx(S.pillsRow, {
             [S.max]: maxValues && value.length >= maxValues,

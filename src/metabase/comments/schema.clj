@@ -1,6 +1,7 @@
 (ns metabase.comments.schema
   "Malli schemas for the comments module."
   (:require
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -64,30 +65,41 @@
   [:merge
    ::comment.update
    [:map {:closed true}
-    [:id                ms/PositiveInt]]])
+    [:id ms/PositiveInt]]])
 
 (mr/def ::comment.update
-  "What an update (or insert) of a Comment accepts: every column of `:comment` except `id`, all optional."
+  "A Comment by its `id` with the columns to change, each optional."
   [:map {:closed true}
-   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]
+   [:id                ms/PositiveInt]
    [:target_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:target_id         {:optional true} [:maybe ms/PositiveInt]]
-   [:child_target_id   {:optional true} [:maybe :string]]
    [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:content           {:optional true} [:maybe ::comment.content]]
+   [:child_target_id   {:optional true} [:maybe :string]]
+   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]
+   [:context           {:optional true} [:maybe ::comment.context]]
    [:is_resolved       {:optional true} [:maybe :boolean]]
    [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:deleted_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:content_html      {:optional true} [:maybe :string]]
-   [:context           {:optional true} [:maybe ::comment.context]]])
+   [:content_html      {:optional true} [:maybe :string]]])
+
+(mr/def ::comment.create
+  "What a caller gives to create a Comment: the columns of an update without the `:id`, and the target, creator and
+  content."
+  [:merge
+   (reduce mut/dissoc ::comment.update [:id :is_resolved :created_at :updated_at :deleted_at :content_html])
+   [:map {:closed true}
+    [:target_type [:or :keyword :string]]
+    [:target_id   ms/PositiveInt]
+    [:creator_id  ::lib.schema.id/user]
+    [:content     ::comment.content]]])
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
   [:merge
    ::comment-reaction.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
+   [:map {:closed true}]])
 
 ;; The `emoji` of a reaction: a string of 1 to 10 Unicode code points.
 ;;
@@ -109,9 +121,20 @@
    (deferred-tru "Emoji must be 1 to 10 Unicode code points.")))
 
 (mr/def ::comment-reaction.update
-  "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."
+  "A CommentReaction by its `id` with the columns to change, each optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:comment_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:emoji      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::comment-reaction.create
+  "What a caller gives to create a CommentReaction: the columns of an update without the `:id`, and the comment, user and
+  emoji."
+  [:merge
+   (reduce mut/dissoc ::comment-reaction.update [:id :created_at])
+   [:map {:closed true}
+    [:comment_id ms/PositiveInt]
+    [:user_id    ::lib.schema.id/user]
+    [:emoji      :string]]])

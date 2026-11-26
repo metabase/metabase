@@ -22,6 +22,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2])
   (:import
@@ -49,7 +50,7 @@
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
     (testing "Audit DB content is not installed when it is not found"
-      (t2/delete! :model/Database :is_audit true)
+      (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
       ;; reset checksum
       (audit/last-analytics-checksum! 0)
       (with-redefs [ee-audit/analytics-dir-resource nil]
@@ -59,7 +60,7 @@
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
-      (t2/delete! :model/Database :is_audit true)
+      (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
       (audit/last-analytics-checksum! 0))
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
@@ -138,7 +139,7 @@
 
 (deftest no-sync-tasks-for-audit-db
   ;; clear out the old audit-db instance so that a new one can setup triggers with the temp scheduler
-  (t2/delete! :model/Database :id audit/audit-db-id)
+  (database/delete-databases! (t2/select-pks-vec :model/Database :id audit/audit-db-id))
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
     (with-audit-db-restoration!
@@ -156,7 +157,7 @@
 
 (deftest checksum-not-recorded-when-load-fails-test
   (mt/test-drivers #{:postgres :h2 :mysql}
-    (t2/delete! :model/Database :is_audit true)
+    (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
     (testing "If audit content loading throws an exception, the checksum should not be stored"
       (audit/last-analytics-checksum! 0)
       (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
@@ -446,7 +447,7 @@
   ;; is interrupted, the checksum must stay put so the next boot re-runs the load and the adjust.
   (mt/test-drivers #{:postgres :h2 :mysql}
     (try
-      (t2/delete! :model/Database :is_audit true)
+      (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
       (audit/last-analytics-checksum! 0)
       (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
         (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
@@ -457,7 +458,7 @@
               "checksum stays 0 so the next boot re-runs the load and host-adjust")))
       (finally
         ;; restore a clean, installed audit DB for sibling tests regardless of how this test exits
-        (t2/delete! :model/Database :is_audit true)
+        (database/delete-databases! (t2/select-pks-vec :model/Database :is_audit true))
         (audit/last-analytics-checksum! 0)
         (mbc/ensure-audit-db-installed!)))))
 

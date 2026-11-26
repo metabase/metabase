@@ -7,7 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.models.schema :as models.schema]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -19,29 +18,6 @@
   "Slugs that collide with literal `/api/ee/apps/*` sub-routes, so an app with one would be unreachable."
   #{"repo-status" "generate"})
 
-(defn- decoders
-  "Schema properties decoding a value with `f` both in [[metabase.lib.core/normalize]] and at the API boundary."
-  [f]
-  {:decode/normalize f, :decode/api f})
-
-(defn- trim [x]
-  (cond-> x (string? x) str/trim))
-
-(defn- one-line [x]
-  (cond-> x (string? x) (-> (str/replace #"\s+" " ") str/trim not-empty)))
-
-(defn- relative-path [x]
-  (cond-> x (string? x) (-> str/trim (str/replace #"^\./" ""))))
-
-(defn- origin [x]
-  (cond-> x (string? x) (-> str/trim u/lower-case-en (str/replace #"/+$" ""))))
-
-(defn- version-or-1 [x]
-  (if (nil? x) 1 x))
-
-(defn- distinct-vec [x]
-  (cond-> x (nil? x) vec, (sequential? x) (-> distinct vec)))
-
 (mr/def ::slug
   "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters."
   [:and
@@ -52,20 +28,19 @@
 
 (mr/def ::name
   "A data app's name, which people see."
-  [:string (merge {:min 1} (decoders trim))])
+  ms/NonBlankString)
 
 (mr/def ::description
-  "A data app's optional one-line summary, nil when blank."
-  [:maybe (decoders one-line) [:string {:max 255}]])
+  "A data app's optional summary."
+  [:maybe [:string {:max 255}]])
 
 (mr/def ::version
-  "The data app contract version an app was built for, 1 when it declares none."
-  [:int (merge {:min 1} (decoders version-or-1))])
+  "The data app contract version an app was built for."
+  [:int {:min 1}])
 
 (mr/def ::bundle-path
   "The path of a data app's bundle, relative to the app's directory and inside it."
   [:and
-   (decoders relative-path)
    ms/NonBlankString
    [:fn {:error/message "must be relative to the app's directory and stay inside it"}
     #(and (not (str/starts-with? % "/"))
@@ -77,13 +52,12 @@
   "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an
    optional port."
   [:re
-   (merge {:error/message "must be an origin like https://api.example.com or https://*.example.com"}
-          (decoders origin))
+   {:error/message "must be an origin like https://api.example.com or https://*.example.com"}
    #"^https?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?(?![\s\S])"])
 
 (mr/def ::allowed-hosts
-  "The origins a data app's sandboxed bundle may fetch, `[]` when nil."
-  [:sequential (decoders {:leave distinct-vec}) ::allowed-host])
+  "The origins a data app's sandboxed bundle may fetch."
+  [:sequential ::allowed-host])
 
 (mr/def ::bundle
   "A data app's bundle bytes."
@@ -91,17 +65,23 @@
    bytes?
    [:fn {:error/message "must be less than 10 MiB"} #(<= (alength ^bytes %) max-bundle-bytes)]])
 
-(mr/def ::bundle-text
-  "The text of a data app's bundle file."
-  [:string {:max max-bundle-bytes}])
-
 (mr/def ::data-app
   "A DataApp as selected from the app DB: every column of `:data_app`."
-  [:merge
-   ::data-app.update
-   [:map {:closed true}
-    [:id              ms/PositiveInt]
-    [:bundle_hash     {:optional true} [:maybe :string]]]])
+  [:map {:closed true}
+   [:id              ms/PositiveInt]
+   [:entity_id       {:optional true} [:maybe :string]]
+   [:slug            {:optional true} ::slug]
+   [:name            {:optional true} ::name]
+   [:allowed_hosts   {:optional true} ::allowed-hosts]
+   [:bundle_path     {:optional true} ::bundle-path]
+   [:bundle          {:optional true} [:maybe ::bundle]]
+   [:bundle_hash     {:optional true} [:maybe :string]]
+   [:enabled         {:optional true} [:maybe :boolean]]
+   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
+   [:description     {:optional true} ::description]
+   [:version         {:optional true} ::version]
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app-preview
   "A data app's dev preview: the slug its manifest declares, whether or not the app exists on the instance."
@@ -115,30 +95,31 @@
    [:preview ::data-app-preview]])
 
 (mr/def ::data-app.update
-  "What an update (or insert) of a DataApp accepts: every column of `:data_app` except `id` and the `bundle_hash` the
-  model computes, all optional."
+  "What an update of a data app takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
-   [:entity_id       {:optional true} [:maybe :string]]
-   [:slug            {:optional true} ::slug]
-   [:name            {:optional true} ::name]
-   [:allowed_hosts   {:optional true} ::allowed-hosts]
-   [:bundle_path     {:optional true} ::bundle-path]
-   [:bundle          {:optional true} [:maybe ::bundle]]
-   [:enabled         {:optional true} [:maybe :boolean]]
-   [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:description     {:optional true} ::description]
-   [:version         {:optional true} ::version]
+   [:id ms/PositiveInt]
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:slug                   {:optional true} :string]
+   [:name                   {:optional true} :string]
+   [:allowed_hosts          {:optional true} [:maybe [:sequential :string]]]
+   [:bundle_path            {:optional true} :string]
+   [:bundle                 {:optional true} [:maybe [:or bytes? :string]]]
+   [:enabled                {:optional true} [:maybe :boolean]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:description            {:optional true} [:maybe :string]]
+   [:version                {:optional true} [:maybe :int]]
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app.create
-  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, name, and bundle path required."
+  "What creating a DataApp takes, as a caller gives it, before the hooks of the model normalize it: the columns of an
+  update without the `:id`, and the slug, name and bundle path."
   [:merge
-   ::data-app.update
+   (mut/dissoc ::data-app.update :id)
    [:map
-    [:slug        ::slug]
-    [:name        ::name]
-    [:bundle_path ::bundle-path]]])
+    [:slug        :string]
+    [:name        :string]
+    [:bundle_path :string]]])
 
 (mr/def ::query-stage-spec
   "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table

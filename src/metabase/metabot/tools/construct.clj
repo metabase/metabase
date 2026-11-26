@@ -1486,15 +1486,13 @@
 
   See repr-plan.md step 18."
   [{:keys [query-id query query-json result-columns]}]
-  (let [legacy-query (when (and (map? query) (:lib/type query))
-                       #_{:clj-kondo/ignore [:discouraged-var]}
-                       (lib/->legacy-MBQL query))]
-    {:query-type    "notebook"
-     :query-id      query-id
-     :database_id   (:database legacy-query)
-     :query-content (query-json->llm-content query-json)
-     :result        (when (seq result-columns)
-                      {:result_columns result-columns})}))
+  {:query-type    "notebook"
+   :query-id      query-id
+   :database_id   (when (and (map? query) (:lib/type query))
+                    (:database query))
+   :query-content (query-json->llm-content query-json)
+   :result        (when (seq result-columns)
+                    {:result_columns result-columns})})
 
 (defn- structured->chart-xml
   "Render the full chart XML for the construct_notebook_query tool result."

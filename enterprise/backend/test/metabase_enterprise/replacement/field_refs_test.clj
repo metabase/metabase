@@ -13,7 +13,7 @@
 
 (defn- field-id-ref
   [mp field-id]
-  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL))
+  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL-ref))
 
 (defn- dimension-field-id-ref
   ([mp field-id]
@@ -514,6 +514,6 @@
     (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                         :source {:type :query :query query}
                                                         :target {:database (mt/id) :type "table" :name "out"}}]
-      (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+      (with-redefs [events/publish-event! (fn [topic event] (swap! topics into (for [change (:changes event [event])] [topic (get-in change [:object :id])])))]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id]))
       (is (= [[:event/transform-update transform-id]] @topics)))))

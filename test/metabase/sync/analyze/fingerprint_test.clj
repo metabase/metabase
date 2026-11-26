@@ -2,12 +2,14 @@
   "Basic tests to make sure the fingerprint generatation code is doing something that makes sense."
   (:require
    [clojure.test :refer :all]
+   [metabase.analyze.db :as analyze.db]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.app-db.core :as app-db]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
-   [metabase.sync.db :as sync.db]
+   [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -27,9 +29,9 @@
 ;; Check that our `base-types->descendants` function properly returns a set of descendants including parent type
 (deftest ^:parallel base-type->descendats-test
   (is (= #{"type/URL" "type/ImageURL" "type/AvatarURL"}
-         (#'sync.db/base-types->descendants #{:type/URL})))
+         (#'analyze.db/base-types->descendants #{:type/URL})))
   (is (= #{"type/ImageURL" "type/AvatarURL"}
-         (#'sync.db/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
+         (#'analyze.db/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
 
 (def ^:private skip-fingerprint-base-types
   (into #{"type/*"
@@ -62,7 +64,7 @@
              [:and
               [:< :fingerprint_version 1]
               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]
-           (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/URL}})))))
+           (#'analyze.db/needs-fingerprint-update-clause false {1 #{:type/URL}})))))
 
 (deftest ^:parallel needs-fingerprint-update-clause-test-2
   (is (= [:and
@@ -80,8 +82,8 @@
            [:and
             [:< :fingerprint_version 1]
             [:in :base_type #{"type/ImageURL" "type/AvatarURL"}]]]]
-         (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/ImageURL :type/AvatarURL}
-                                                           2 #{:type/Float}}))))
+         (#'analyze.db/needs-fingerprint-update-clause false {1 #{:type/ImageURL :type/AvatarURL}
+                                                              2 #{:type/Float}}))))
 
 (deftest ^:parallel needs-fingerprint-update-clause-test-3
   (testing "our SQL generation code is clever enough to remove version checks when a newer version completely eclipses them"
@@ -101,8 +103,8 @@
              [:and
               [:< :fingerprint_version 1]
               [:in :base_type #{"type/URL" "type/ImageURL" "type/AvatarURL"}]]]]
-           (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/Float :type/URL}
-                                                             2 #{:type/Float}})))))
+           (#'analyze.db/needs-fingerprint-update-clause false {1 #{:type/Float :type/URL}
+                                                                2 #{:type/Float}})))))
 
 (deftest ^:parallel needs-fingerprint-update-clause-test-4
   (testing "our SQL generation code is also clever enough to completely skip completely eclipsed versions"
@@ -126,10 +128,10 @@
              [:and
               [:< :fingerprint_version 1]
               [:in :base_type #{"type/City"}]]]]
-           (#'sync.db/needs-fingerprint-update-clause false {1 #{:type/Coordinate :type/City}
-                                                             2 #{:type/Coordinate}
-                                                             3 #{:type/URL}
-                                                             4 #{:type/Float}})))))
+           (#'analyze.db/needs-fingerprint-update-clause false {1 #{:type/Coordinate :type/City}
+                                                                2 #{:type/Coordinate}
+                                                                3 #{:type/URL}
+                                                                4 #{:type/Float}})))))
 
 (deftest ^:parallel needs-fingerprint-update-clause-test-5
   (testing "when refingerprinting doesn't check for versions"
@@ -140,7 +142,7 @@
              [:= :semantic_type nil]]
             [:not-in :visibility_type ["retired" "sensitive"]]
             [:not-in :base_type skip-fingerprint-base-types]]
-           (#'sync.db/needs-fingerprint-update-clause true {1 #{:type/URL}})))))
+           (#'analyze.db/needs-fingerprint-update-clause true {1 #{:type/URL}})))))
 
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
 (defn- field-was-fingerprinted?! [fingerprint-versions field-properties]
@@ -149,7 +151,9 @@
       (mt/with-dynamic-fn-redefs [qp/process-query              (fn process-query
                                                                   [_query rff]
                                                                   (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                                  sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+                                  sync.fingerprint/save-fingerprints! (fn [rows _]
+                                                                        (when (some :fingerprint rows)
+                                                                          (reset! fingerprinted? true)))]
         (mt/with-temp [:model/Table table {}
                        :model/Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-table! table)
@@ -167,7 +171,7 @@
       (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {2 #{:type/Float}}]
         (mt/with-dynamic-fn-redefs [qp/process-query                   (fn [_query rff]
                                                                          (transduce identity (rff :metadata) [[1 1] [2 2] [3 3] [4 4] [5 5]]))
-                                    sync.fingerprint/save-fingerprint! (fn [& _] (swap! saved inc))]
+                                    sync.fingerprint/save-fingerprints! (fn [rows _] (swap! saved + (count (filter :fingerprint rows))))]
           (mt/with-temp [:model/Table table {}
                          :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}
                          :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}]
@@ -303,7 +307,7 @@
   (testing "if fingerprinting fails, the exception should be caught and included in the stats map"
     (mt/test-drivers (mt/normal-drivers)
       (let [mock-ex (Exception. "expected")]
-        (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_ _] (throw mock-ex))
+        (with-redefs [sync.fingerprint/sample-fingerprints (fn [_ _] (throw mock-ex))
                       sync.fingerprint/*refingerprint?* true]
           (is (= (assoc (sync.fingerprint/empty-stats-map 0)
                         :throwable mock-ex)
@@ -339,7 +343,7 @@
 (deftest refingerprint-fields-for-db!-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "refingerprints up to a limit"
-      (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
+      (with-redefs [sync.fingerprint/save-fingerprints! (constantly nil)
                     sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [results (sync.fingerprint/refingerprint-fields-for-db!
                        (lib.metadata/database (mt/metadata-provider))
@@ -384,7 +388,7 @@
 
 (def ^:private field-error-redefs
   "Query returns rows but each Field's fingerprinter yields a Throwable — exercises the per-field failure path in
-  `fingerprint-fields!`."
+  `sample-fingerprints`."
   {#'qp/process-query             (fn [_query rff] (transduce identity (rff :metadata) [["a"] ["b"]]))
    #'fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter (ex-info "fingerprinter boom" {})))})
 
@@ -404,7 +408,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "fingerprinting stops after the first table if we can't connect to the db"
       (let [tables-fingerprinted (atom 0)]
-        (with-redefs [sync.fingerprint/fingerprint-fields! (fn [_table _fields]
+        (with-redefs [sync.fingerprint/sample-fingerprints (fn [_table _fields]
                                                              (swap! tables-fingerprinted inc)
                                                              (throw (CannotAcquireResourceException. "Unable to acquire resource")))
                       sync.fingerprint/*refingerprint?* true]
@@ -412,3 +416,67 @@
                         :failed-fingerprints 1)
                  (sync.fingerprint/fingerprint-fields-for-db! (lib.metadata/database (mt/metadata-provider)) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))
+
+(def ^:private stub-fingerprint
+  {:global {:distinct-count 2, :nil% 0.0}})
+
+(defn- stub-sample-fingerprints
+  "Fingerprints of `fields` as [[sync.fingerprint/sample-fingerprints]] gives them, each the same, with no warehouse
+  query."
+  [_table fields]
+  {:rows  (mapv #(assoc (sync.fingerprint/incomplete-analysis-kvs) :id (:id %) :fingerprint stub-fingerprint) fields)
+   :stats (assoc (sync.fingerprint/empty-stats-map (count fields)) :updated-fingerprints (count fields))})
+
+(defn- fingerprint-db!
+  [database]
+  (sync.fingerprint/fingerprint-fields-for-db! database (constantly nil)))
+
+(deftest fingerprint-statement-count-test
+  (mt/test-driver :h2
+    (mt/with-dynamic-fn-redefs [sync.fingerprint/sample-fingerprints stub-sample-fingerprints]
+      (testing "fingerprinting issues as many statements for 16 Tables as for 4"
+        (testing "on first analysis"
+          (let [[small large] (analyze.tu/statement-counts-by-tables (constantly {:fingerprint_version 0}) (constantly nil) fingerprint-db!)]
+            (is (= small large))))
+        (testing "when nothing needs fingerprinting"
+          (let [[small large] (analyze.tu/statement-counts-by-tables (constantly {:fingerprint_version 0}) fingerprint-db! fingerprint-db!)]
+            (is (= small large))))))))
+
+(deftest fingerprint-save-failure-is-isolated-per-table-test
+  (mt/test-driver :h2
+    (testing "when saving the fingerprints of one Table fails, those of the other Tables are saved"
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    good    {:db_id (u/the-id db) :name "GOOD"}
+                     :model/Table    bad     {:db_id (u/the-id db) :name "BAD"}
+                     :model/Field    good-fd {:table_id (u/the-id good) :base_type :type/Text :fingerprint_version 0}
+                     :model/Field    bad-fd  {:table_id (u/the-id bad) :base_type :type/Text :fingerprint_version 0}]
+        (let [save! (mt/original-fn #'sync.fingerprint/save-fingerprints!)]
+          (mt/with-dynamic-fn-redefs [sync.fingerprint/sample-fingerprints stub-sample-fingerprints
+                                      sync.fingerprint/save-fingerprints!  (fn [rows fields]
+                                                                             (when (some #(and (= (:id %) (u/the-id bad-fd)) (:fingerprint %)) rows)
+                                                                               (throw (ex-info "save failed" {})))
+                                                                             (save! rows fields))]
+            (is (= {:no-data-fingerprints 0, :failed-fingerprints 1, :updated-fingerprints 1, :fingerprints-attempted 1}
+                   (fingerprint-db! (driver.u/lib-database (u/the-id db)))))
+            (is (= stub-fingerprint (t2/select-one-fn :fingerprint :model/Field :id (u/the-id good-fd))))
+            (testing "and the Fields of the failed Table are not retried on every sync"
+              (is (=? {:fingerprint         nil
+                       :fingerprint_version i/*latest-fingerprint-version*}
+                      (t2/select-one [:model/Field :fingerprint :fingerprint_version] :id (u/the-id bad-fd)))))))))))
+
+(deftest fingerprint-save-error-is-not-retried-per-table-test
+  (mt/test-driver :h2
+    (testing "an Error of saving the fingerprints of all Tables is thrown without saving those of each Table"
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    table-1 {:db_id (u/the-id db) :name "T1"}
+                     :model/Table    table-2 {:db_id (u/the-id db) :name "T2"}
+                     :model/Field    _       {:table_id (u/the-id table-1) :base_type :type/Text :fingerprint_version 0}
+                     :model/Field    _       {:table_id (u/the-id table-2) :base_type :type/Text :fingerprint_version 0}]
+        (let [saves (atom 0)]
+          (mt/with-dynamic-fn-redefs [sync.fingerprint/sample-fingerprints stub-sample-fingerprints
+                                      sync.fingerprint/save-fingerprints!  (fn [_rows _fields]
+                                                                             (swap! saves inc)
+                                                                             (throw (StackOverflowError.)))]
+            (is (thrown? StackOverflowError
+                         (fingerprint-db! (driver.u/lib-database (u/the-id db))))))
+          (is (= 1 @saves)))))))

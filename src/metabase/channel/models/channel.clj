@@ -3,6 +3,9 @@
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
    [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
    [metabase.events.core :as events]
@@ -29,25 +32,11 @@
 
 (doto :model/Channel
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
-
-(defmethod events/spec :model/Channel
-  [_model]
-  {:create :event/channel-create
-   :update :event/channel-update
-   :delete :event/channel-delete})
 
 (doto :model/ChannelTemplate
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
-
-(defmethod events/spec :model/ChannelTemplate
-  [_model]
-  {:create :event/channel-template-create
-   :update :event/channel-template-update
-   :delete :event/channel-template-delete})
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------
 
@@ -129,18 +118,11 @@
 
 (t2/define-before-update :model/Channel
   [channel]
-  (let [changes       (t2/changes channel)
-        deactivation? (false? (:active changes))]
+  (let [changes (t2/changes channel)]
     (when (not= (contains? changes :type) (contains? changes :details))
       (check-type-and-details channel))
-    (when deactivation?
-      (channel.db/delete-pulse-channels-for-channel! (:id channel)))
     (cond-> channel
-      deactivation?
-      ;; Channel.name has an unique constraint and it's a useful property for serialization
-      ;; We rename deactivated channels so that new channels can reuse the name
-      ;; Limit to 254 characters to avoid hitting character limit
-      (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id channel) (:name channel)) 254)))))
+      (false? (:active changes)) (assoc :name (channel.db/deactivated-name-clause (when (contains? changes :name) (:name channel)))))))
 
 (defn- check-valid-channel-template
   "Throws unless `channel-template` matches [[::ChannelTemplate]]."
@@ -199,26 +181,17 @@
 (methodical/defmethod t2/batched-hydrate [:model/Channel :can_read]
   "Whether the current user can read each of `channels`, answered once for all of them."
   [_model k channels]
-  (let [answer (can-manage-channels?)]
-    (for [channel channels]
-      (when channel
-        (vary-meta channel assoc k answer)))))
+  (mi/vary-meta-each channels k (can-manage-channels?)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Channel :can_write]
   "Whether the current user can write each of `channels`, answered once for all of them."
   [_model k channels]
-  (let [answer (can-manage-channels?)]
-    (for [channel channels]
-      (when channel
-        (assoc channel k answer)))))
+  (mi/assoc-each channels k (can-manage-channels?)))
 
 (methodical/defmethod t2/batched-hydrate [:model/ChannelTemplate :can_write]
   "Whether the current user can write each of `templates`, answered once for all of them."
   [_model k templates]
-  (let [answer (can-manage-channels?)]
-    (for [template templates]
-      (when template
-        (assoc template k answer)))))
+  (mi/assoc-each templates k (can-manage-channels?)))
 
 (defmethod mi/can-create? :model/Channel
   [_model _channel]
@@ -237,15 +210,129 @@
                  (dissoc channel :details))
                json-generator))
 
+;;; ------------------------------------------------------- Writes -------------------------------------------------------
+
+(defn- publish-channel-creates
+  "Publish the create event of the Channels `created`."
+  [created]
+  (events/publish-event! :event/channel-create (events/create-event created)))
+
+(mu/defn create-channels! :- [:sequential ::channel.schema/channel]
+  "Insert the Channel `rows` in one transaction, publishing their create event, and return the inserted channels in
+  order."
+  [rows :- [:sequential ::channel.schema/channel.create]]
+  (mdb/create-batched! :model/Channel rows {:after-create publish-channel-creates}))
+
+(defmulti delete-for-channels!
+  "Deletes the rows of `model` that belong to the Channels with `channel-ids`, which a model that follows its Channels
+  implements with its own write function, publishing its events with the `:context` of `opts`."
+  {:arglists '([model channel-ids opts])}
+  (fn [model _channel-ids _opts] model))
+
+(defn- delete-pulse-channels-of!
+  "Delete the PulseChannels of the Channels with `channel-ids`."
+  [channel-ids]
+  (when (seq channel-ids)
+    (t2/resolve-model :model/PulseChannel)
+    (delete-for-channels! :model/PulseChannel channel-ids nil)))
+
+(defn- prepare-channel-updates
+  "The `updates` of the Channels of `id->stored` that change a column, without the columns that already hold the value, so
+  that deactivating an inactive Channel does not rename it, after deleting the PulseChannels of the active Channels that
+  they deactivate."
+  [updates id->stored]
+  (let [changed (into []
+                      (keep (fn [{:keys [id] :as update}]
+                              (when-let [channel (id->stored id)]
+                                (when-let [changes (not-empty (into {} (remove (fn [[k v]] (= v (get channel k)))) (dissoc update :id)))]
+                                  (assoc changes :id id)))))
+                      updates)]
+    (delete-pulse-channels-of! (into [] (comp (filter #(false? (:active %))) (map :id) (filter (comp :active id->stored))) changed))
+    changed))
+
+(defn- publish-channel-updates
+  "Publish the update event of the Channels that `updates` changes, as stored before in `id->stored` and after in
+  `id->updated`."
+  [updates id->stored id->updated]
+  (events/publish-event! :event/channel-update
+                         (events/update-event id->stored updates {:objects id->updated})))
+
+(mu/defn update-channels! :- :nil
+  "Apply `updates`, each the id of a Channel and the columns to set, in one transaction, publishing their update
+  event, where deactivating an active Channel first deletes its PulseChannels and its before-update hook renames it."
+  [updates :- [:sequential ::channel.schema/channel.update]]
+  (mdb/update-batched! :model/Channel updates {:before-update prepare-channel-updates
+                                               :after-update  publish-channel-updates
+                                               :reread?       true}))
+
+(defn- publish-channel-deletes
+  "Publish the delete event of the Channels `channels`."
+  [channels]
+  (events/publish-event! :event/channel-delete (events/delete-event channels)))
+
+(mu/defn delete-channels! :- :nil
+  "Delete the Channels with `ids` in one transaction, publishing their delete event."
+  [ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/Channel ids {:before-delete publish-channel-deletes}))
+
+(mu/defn check-channel-templates :- :nil
+  "Throws what inserting the ChannelTemplate `rows` would throw for the first of them that is invalid."
+  [rows :- [:sequential ::channel.schema/channel-template.create]]
+  (run! check-valid-channel-template rows)
+  nil)
+
+(defn- publish-channel-template-creates
+  "Publish the create event of the ChannelTemplates `created`."
+  [created]
+  (events/publish-event! :event/channel-template-create (events/create-event created)))
+
+(mu/defn create-channel-templates! :- [:sequential ::channel.schema/channel-template]
+  "Insert the ChannelTemplate `rows` in one transaction, publishing their create event, and return the inserted
+  instances."
+  [rows :- [:sequential ::channel.schema/channel-template.create]]
+  (mdb/create-batched! :model/ChannelTemplate rows {:after-create publish-channel-template-creates}))
+
+(defn- publish-channel-template-deletes
+  "Publish the delete event of the ChannelTemplates `templates`."
+  [templates]
+  (events/publish-event! :event/channel-template-delete (events/delete-event templates)))
+
+(mu/defn delete-channel-templates! :- :nil
+  "Delete the ChannelTemplates with `template-ids` in one transaction, publishing their delete event."
+  [template-ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/ChannelTemplate template-ids {:before-delete publish-channel-template-deletes}))
+
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the Channel `entities`, under `channels/` by name."
+  [entities _ctx]
   (mapv (fn [channel]
           [{:label "channels"} {:label (:name channel) :key (:name channel)}])
         entities))
 
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Channel [_model]
+  {:skip? false})
+
 (defmethod serialization/spec :model/Channel [_]
-  {:schema   ::channel.schema/external-channel
-   :identity [:name]
-   :copy     [:name :description :type :details :active]
-   :defaults {:active true}})
+  {:schema        ::channel.schema/external-channel
+   :identity      [:name]
+   :copy          [:name :description :type :details :active]
+   :defaults      {:active true}
+   :storage-paths storage-paths
+   :insert!       create-channels!
+   :update!       update-channels!
+   :delete!       delete-channels!
+   :rows-by-refs  serialization/channel-rows-by-refs})
+
+(defmethod audit/spec :model/Channel [_model]
+  {:track          [:id :name :description :type :active]
+   :track-redacted [:details]
+   :skip           []
+   :topics         {:create :channel-create
+                    :update :channel-update}})
+
+(defmethod app-db-copy/spec :model/ChannelTemplate [_model]
+  {:skip? false})

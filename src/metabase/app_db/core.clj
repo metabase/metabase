@@ -46,6 +46,7 @@
   with-application-db
   do-before-commit
   do-after-commit
+  do-after-rollback
   in-transaction?
   mariadb?
   quartz-data-source
@@ -77,16 +78,34 @@
   spec]
  [metabase.app-db.query
   compile
+  create-batched!
+  create-partition-size
   current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  delete-partition-size
+  increment-counts!
+  insert-returning-instances!
   isa
   join
   qualify
   query
+  select-batched
+  select-batched-by-keys
+  select-batched-map
+  select-batched-reducible
+  select-batched-set
   select-or-insert!
+  select-partition-size
+  select-partitions
   streaming-reducible
+  sum-batched
   streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
+  update-batched!
+  update-grouped!
+  update-partition-size
   with-conflict-retry]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]

@@ -55,7 +55,7 @@ You can tell Metabase how often it should send the dashboard:
 - Weekly
 - Monthly
 
-You'll need to specify what time of day to send the dashboard, and, for weekly and monthly subscriptions, the day when to send the subscription.
+You'll need to specify what time of day to send the dashboard, and, for weekly and monthly subscriptions, the day when to send the subscription. Metabase sends subscriptions at the time you pick in your Metabase's [report timezone](../configuring-metabase/localization.md#set-default-instance-report-timezone), or in the server's timezone if no report timezone is set.
 
 ### Test subscription
 
@@ -153,6 +153,12 @@ See [Notification permissions](../permissions/notifications.md).
 ## Removing Metabase branding from subscriptions
 
 See [Remove Metabase branding from exports](../questions/exporting-results.md#remove-metabase-branding-from-exports).
+
+## Tables in subscriptions show the first 20 rows
+
+When a dashboard card displays a table (not a pivot table), the subscription shows the first 20 rows of the table, followed by a note like "Showing 20 of 1,250 rows." On self-hosted Metabases, admins can change how many rows the table shows with the [`MB_ATTACHMENT_TABLE_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_table_row_limit) environment variable, up to 100 rows.
+
+To send all of the results, [attach the results as a file](#email-attachments) (email subscriptions only). File attachments have their own [row limit](#questions-to-attach).
 
 ## Subscriptions in embedded dashboards exclude links
 
