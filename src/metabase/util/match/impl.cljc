@@ -54,41 +54,45 @@
     (conj clause-parents k)
     clause-parents))
 
+(defn- match-kv-fn
+  "Return a `reduce-kv` step that calls `match-fn` on each key, then on its value, and stops at the first match.
+  Like `clojure.walk`, it visits each key before its value. Keys don't add themselves to `clause-parents`."
+  [match-fn clause-parents]
+  (fn [_ k v]
+    (if-some [match (match-fn k clause-parents)]
+      (reduced match)
+      (when-some [match (match-fn v (maybe-add-to-parents clause-parents k))]
+        (reduced match)))))
+
 (defn match-one-in-collection
   "Internal impl for `match-one`. If `form` is a collection, call `match-fn` to recursively look for matches in it.
   `clause-parents` is a sequence of keywords naming the parent top-level keys and clauses of the match."
   [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}
-  (let [match-kv (fn [_ k v]
-                   ;; Like `clojure.walk`, visit each key before its value. Keys don't add themselves to
-                   ;; `clause-parents`.
-                   (if-some [match (match-fn k clause-parents)]
-                     (reduced match)
-                     (when-some [match (match-fn v (maybe-add-to-parents clause-parents k))]
-                       (reduced match))))]
-    (cond
-      ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so go through
-      ;; their entries with `seq`, like `metabase.util.performance/walk` does.
-      (record? form)
-      (reduce (fn [acc e] (match-kv acc (key e) (val e))) nil (seq form))
+  (cond
+    ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so go through
+    ;; their entries with `seq`, like `metabase.util.performance/walk` does.
+    (record? form)
+    (let [match-kv (match-kv-fn match-fn clause-parents)]
+      (reduce (fn [acc e] (match-kv acc (key e) (val e))) nil (seq form)))
 
-      (map? form)
-      (reduce-kv match-kv nil form)
+    (map? form)
+    (reduce-kv (match-kv-fn match-fn clause-parents) nil form)
 
-      (sequential? form)
-      (let [fst     (first form)
-            parents (maybe-add-to-parents clause-parents (when (keyword? fst) fst))]
-        (reduce (fn [_ v]
-                  (when-some [match (match-fn v parents)]
-                    (reduced match)))
-                nil form))
-
-      ;; Sets don't contribute to `clause-parents`.
-      (set? form)
+    (sequential? form)
+    (let [fst     (first form)
+          parents (maybe-add-to-parents clause-parents (when (keyword? fst) fst))]
       (reduce (fn [_ v]
-                (when-some [match (match-fn v clause-parents)]
+                (when-some [match (match-fn v parents)]
                   (reduced match)))
-              nil form))))
+              nil form))
+
+    ;; Sets don't contribute to `clause-parents`.
+    (set? form)
+    (reduce (fn [_ v]
+              (when-some [match (match-fn v clause-parents)]
+                (reduced match)))
+            nil form)))
 
 (defn replace-in-collection
   "Internal impl for `replace` when it uses `&parents`. Recursively replace values in a collection using a

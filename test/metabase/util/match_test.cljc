@@ -524,6 +524,20 @@
       (t/is (identical? form (match/replace form [:z] nil)))
       (t/is (identical? form (match/replace form :z nil))))))
 
+(t/deftest ^:parallel scalar-patterns-see-every-value-test
+  (t/testing "a pattern that can match a scalar still sees map keys and scalars next to a vector pattern"
+    (t/is (= [:a [:b]]
+             (match/match-many {:a [:b]} (:or [:b] :a) &match)))
+    (t/is (= [:a [:b] :b]
+             (match/match-all {:a [:b]} (:or [:b] (_ :guard keyword?)) &match)))
+    (t/is (= {:z [:c]}
+             (match/replace {:a [:b]} [:b] [:c] :a :z)))
+    (t/is (= {:c [:c]}
+             (match/replace-all {:b [:b]} :b :c))))
+  (t/testing "a default clause in match-all still sees scalars"
+    (t/is (= [[:a 1] :a 1]
+             (match/match-all [:a 1] [:x] :x _ &match)))))
+
 (t/deftest ^:parallel match-in-map-keys-test
   (t/testing "match-one looks inside map keys, before the values"
     (t/is (= [:field 1]
