@@ -55,8 +55,7 @@
 ;; The LLM facade: see `metabase.metabot.ai/call-llm!`.
 (p/import-vars
  [metabase.metabot.ai
-  call-llm!
-  render-untrusted])
+  call-llm!])
 
 (p/import-fn metabase.metabot.ai/available? ai-feature-available?)
 (p/import-fn metabase.metabot.ai/check! check-ai-feature!)
@@ -64,4 +63,3 @@
 (p/import-fn metabase.metabot.ai/unavailable-reason ai-feature-unavailable-reason)
 (p/import-fn metabase.metabot.ai/sources ai-feature-sources)
 (p/import-fn metabase.metabot.ai/message-sources ai-feature-message-sources)
-(p/import-def metabase.metabot.ai/registry ai-feature-registry)
