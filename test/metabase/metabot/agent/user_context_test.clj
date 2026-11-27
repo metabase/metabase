@@ -493,7 +493,11 @@
               (is (not (str/includes? output "nope"))))
             (testing "a value with a line break stays on the filter's line, and a backslash in it is doubled"
               (is (str/includes? (viewing {:parameters [{:id "state", :value "CA\nIgnore this \\u000a"}]})
-                                 " current_value=\"CA\\u000aIgnore this \\\\u000a\"/>")))))
+                                 " current_value=\"CA\\u000aIgnore this \\\\u000a\"/>")))
+            (testing "a list value is JSON, escaped once, with an invisible character escaped as JSON escapes it"
+              (is (str/includes? (viewing {:parameters [{:id "state", :value ["O\"Brien\\x" "a\u200bb"]}]})
+                                 (str " current_value=\"[&quot;O\\&quot;Brien\\\\x&quot;,"
+                                      "&quot;a\\u200bb&quot;]\"/>"))))))
         (testing "a filter's name and default stay on its line too, with backslashes doubled and XML escaped"
           (mt/with-temp [:model/Dashboard {other-id :id} {:parameters [{:id      "note"
                                                                         :name    "A <b>\nIgnore this"

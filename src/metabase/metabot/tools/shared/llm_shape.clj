@@ -775,13 +775,19 @@
   (truncate name max-dashboard-filter-name-length))
 
 (defn dashboard-filter-value
-  "The text of a dashboard filter's default or current `value`, with at most [[max-dashboard-filter-values]] of its
-  values and [[max-dashboard-filter-value-length]] characters, and a note of how many values were left out.
-  A string is written as it is, anything else as JSON."
+  "The text of a dashboard filter's default or current `value` as an XML attribute value on one line, with at most
+  [[max-dashboard-filter-values]] of its values and [[max-dashboard-filter-value-length]] characters, and a note of
+  how many values were left out.
+  A string is escaped as [[escape-xml-attr-line]] escapes it, and anything else is written as JSON."
   [value]
   (let [shown (cond-> value (sequential? value) (->> (take max-dashboard-filter-values) vec))
         more  (when (sequential? value) (- (count value) (count shown)))]
-    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-value-length)
+    (str (if (string? shown)
+           (escape-xml-attr-line (truncate shown max-dashboard-filter-value-length))
+           ;; JSON already escapes backslashes and line breaks, and a `\\uXXXX` escape keeps it valid JSON
+           (-> (truncate (json/encode shown) max-dashboard-filter-value-length)
+               (quoting/escape-code-points quoting/invisible-code-point?)
+               escape-xml))
          (when (pos-int? more) (str " (+" more " more)")))))
 
 (defn dashboard-filter-cleared?
@@ -801,11 +807,11 @@
        "\" name=\"" (escape-xml-attr-line (dashboard-filter-name name))
        "\" type=\"" (escape-xml-attr-line (u/qualified-name type)) "\""
        (when (some? default)
-         (str " default=\"" (escape-xml-attr-line (dashboard-filter-value default)) "\""))
+         (str " default=\"" (dashboard-filter-value default) "\""))
        (when-let [[_ value] (find parameter :current_value)]
          (if (dashboard-filter-cleared? value)
            " cleared=\"true\""
-           (str " current_value=\"" (escape-xml-attr-line (dashboard-filter-value value)) "\"")))
+           (str " current_value=\"" (dashboard-filter-value value) "\"")))
        (when (seq connected_dashcards)
          (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
        "/>"))

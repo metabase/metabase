@@ -142,7 +142,7 @@
         listed    (take llm-shape/max-dashboard-filters filters)
         unlisted  (- (count filters) (count listed))
         unknown?  #(not (contains? id->value (:id %)))
-        attr      #(str " " %1 "=\"" (llm-shape/escape-xml-attr-line %2) "\"")]
+        attr      #(str " " %1 "=\"" %2 "\"")]
     (cond
       (empty? filters)
       "No dashboard filter is connected to this card, so no filter values were applied."
@@ -159,7 +159,7 @@
                   "<dashboard_filters>"]
                  (for [{:keys [id name] :as dashboard-filter} listed
                        :let [value (get id->value id)]]
-                   (str "<filter" (attr "name" (llm-shape/dashboard-filter-name name))
+                   (str "<filter" (attr "name" (llm-shape/escape-xml-attr-line (llm-shape/dashboard-filter-name name)))
                         (apply attr (cond
                                       (unknown? dashboard-filter)
                                       ["value_unknown" true]
