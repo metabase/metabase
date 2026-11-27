@@ -130,18 +130,19 @@
     ;; a working docker and nothing else.
     (if-not (regeneration-test-enabled?)
       (log/warn "MB_APP_DB_SNAPSHOT_REGENERATION_TEST is not set; skipping app DB snapshot regeneration check")
-      (doseq [flavor (sort snapshot/flavors)]
-        (testing (name flavor)
-          (let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
+      (doseq [version snapshot/snapshot-versions
+              flavor  (sort snapshot/flavors)]
+        (testing (str version " " (name flavor))
+          (let [checked-in (io/resource (snapshot/resource-path version flavor "sql"))]
             (is (some? checked-in)
-                (format "a snapshot should be checked in for %s" (name flavor)))
+                (format "a %s snapshot should be checked in for %s" version (name flavor)))
             (when checked-in
-              (let [{:keys [content]} (generate/dump-snapshot! flavor)]
+              (let [{:keys [content]} (generate/dump-snapshot! flavor version)]
                 (is (nil? (first-difference (comparable-statements (slurp checked-in) flavor)
                                             (comparable-statements content flavor)))
-                    (format (str "regenerating the %s snapshot would change it; if that is intended, run "
-                                 "(metabase.app-db.snapshot-test-util.generate/generate! %s)")
-                            (name flavor) flavor))))))))))
+                    (format (str "regenerating the %s %s snapshot would change it; if that is intended, run "
+                                 "(metabase.app-db.snapshot-test-util.generate/generate! %s %s)")
+                            version (name flavor) flavor (pr-str version)))))))))))
 
 (deftest single-row-inserts-test
   (are [statement expected] (= expected (single-row-inserts statement))

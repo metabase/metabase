@@ -291,7 +291,7 @@
   "Log what the snapshot buys on this machine: the time to reach a fully migrated app DB by replaying the whole
   changelog, against the time to load the snapshot and replay only what it does not record.
   Neither includes fingerprinting."
-  [db-type full-ms snapshot-ms]
+  [db-type version full-ms snapshot-ms]
   ;; This is the same work [[metabase.test.initialize.db/init!]] does once per test JVM, so the difference is what
   ;; every backend job saves at startup. The log4j test config gives this namespace a console appender of its own, so
   ;; the line lands in the job output; everything else logged at INFO during a test run only reaches the JSON log.
@@ -300,7 +300,7 @@
                     "-- saves %dms (%.1fx)")
                (name db-type)
                full-ms
-               snapshot/snapshot-version
+               version
                snapshot-ms
                saved
                (if (pos? snapshot-ms)
@@ -312,45 +312,47 @@
 (deftest snapshot-loads-cleanly-test
   (testing "the checked-in snapshot loads into an empty app DB and leaves the changelog where its metadata says"
     (mt/test-drivers #{:h2 :mysql :postgres}
-      (let [driver driver/*driver*]
-        (impl/with-temp-empty-app-db [conn driver]
-          (let [flavor    (snapshot/flavor conn driver)
-                loadable? (snapshot/loadable? conn driver)]
-            (is loadable? (format "a snapshot should be checked in for %s" flavor))
-            (when loadable?
-              (snapshot/load-snapshot! conn driver)
-              (let [changesets (snapshot/changesets conn)
-                    through    (snapshot/through-changeset-id)
-                    boundary   (u/index-of (comp #{through} first) changesets)
-                    recorded   (recorded-changesets conn)]
-                (is (some? boundary)
-                    "the snapshot's boundary changeset should still exist in the changelog")
-                (is (some (comp #{through} first) recorded)
-                    "the snapshot should record its boundary changeset")
-                (is (empty? (remove (set changesets) recorded))
-                    "every changeset the snapshot records should still be in the changelog")
-                (is (= :valid (liquibase/with-liquibase [lb conn]
-                                (.validate lb)
-                                :valid))
-                    "Liquibase should accept the checksums the snapshot records")
-                ;; not a failure: these run after the snapshot loads, so tests stay correct, and they cost the same with
-                ;; or without it. Regenerating would load them too.
-                (when-let [missing (when boundary
-                                     (seq (remove recorded (take (inc boundary) changesets))))]
-                  (log/infof (str "app DB snapshot %s [%s] predates %d changesets before its boundary, "
-                                  "which run after it loads: %s")
-                             snapshot/snapshot-version flavor (count missing)
-                             (str/join ", " (map first missing))))))))))))
+      (doseq [version snapshot/snapshot-versions
+              :let    [driver driver/*driver*]]
+        (testing version
+          (impl/with-temp-empty-app-db [conn driver]
+            (let [flavor    (snapshot/flavor conn driver)
+                  loadable? (snapshot/loadable? conn driver version)]
+              (is loadable? (format "a %s snapshot should be checked in for %s" version flavor))
+              (when loadable?
+                (snapshot/load-snapshot! conn driver version)
+                (let [changesets (snapshot/changesets conn)
+                      through    (snapshot/through-changeset-id version)
+                      boundary   (u/index-of (comp #{through} first) changesets)
+                      recorded   (recorded-changesets conn)]
+                  (is (some? boundary)
+                      "the snapshot's boundary changeset should still exist in the changelog")
+                  (is (some (comp #{through} first) recorded)
+                      "the snapshot should record its boundary changeset")
+                  (is (empty? (remove (set changesets) recorded))
+                      "every changeset the snapshot records should still be in the changelog")
+                  (is (= :valid (liquibase/with-liquibase [lb conn]
+                                  (.validate lb)
+                                  :valid))
+                      "Liquibase should accept the checksums the snapshot records")
+                  ;; not a failure: these run after the snapshot loads, so tests stay correct, and they cost the same
+                  ;; with or without it. Regenerating would load them too.
+                  (when-let [missing (when boundary
+                                       (seq (remove recorded (take (inc boundary) changesets))))]
+                    (log/infof (str "app DB snapshot %s [%s] predates %d changesets before its boundary, "
+                                    "which run after it loads: %s")
+                               version flavor (count missing)
+                               (str/join ", " (map first missing)))))))))))))
 
 (defn- migrate-from-snapshot!
-  "Load the snapshot into the empty DB behind `conn` and migrate the rest of the way.
+  "Load the snapshot of `version` into the empty DB behind `conn` and migrate the rest of the way.
   Returns `{:flavor _, :ms _, :fingerprint _}`, with `:ms` and `:fingerprint` nil when no snapshot is checked in for
   the flavor."
-  [^java.sql.Connection conn driver]
+  [^java.sql.Connection conn driver version]
   (merge {:flavor (snapshot/flavor conn driver)}
-         (when (snapshot/loadable? conn driver)
+         (when (snapshot/loadable? conn driver version)
            {:ms          (timed (fn []
-                                  (snapshot/load-snapshot! conn driver)
+                                  (snapshot/load-snapshot! conn driver version)
                                   ;; the whole changelog, skipping what the snapshot records, so a changeset the
                                   ;; snapshot predates runs wherever it sits
                                   (impl/run-migrations-in-range! conn ["v00.00-000" nil] {:skip-ran? true})))
@@ -373,34 +375,38 @@
           ;; side gets it
           (binding [custom-migrations/*create-sample-content* false]
             ;; snapshot side first, so a dialect with no snapshot checked in costs nothing to skip
-            (let [{flavor :flavor, snapshot-ms :ms, from-snapshot :fingerprint}
-                  (impl/with-temp-empty-app-db [conn driver]
-                    (migrate-from-snapshot! conn driver))]
-              (is (some? from-snapshot) (format "a snapshot should be checked in for %s" flavor))
-              (when from-snapshot
-                (let [{full-ms :ms, from-scratch :fingerprint} (impl/with-temp-empty-app-db [conn driver]
-                                                                 (migrate-from-scratch! conn driver))]
-                  (log-timings! flavor full-ms snapshot-ms)
-                  (testing "same tables"
-                    (is (= (set (keys (:schema from-scratch)))
-                           (set (keys (:schema from-snapshot))))))
-                  (doseq [table (sort (set/intersection (set (keys (:schema from-scratch)))
-                                                        (set (keys (:schema from-snapshot)))))]
-                    (testing (format "%s structure" table)
-                      (is (= (get-in from-scratch [:schema table])
-                             (get-in from-snapshot [:schema table])))))
-                  (testing "same views"
-                    (is (= (:views from-scratch)
-                           (:views from-snapshot))))
-                  (testing "same database-level settings"
-                    (is (= (:database from-scratch)
-                           (:database from-snapshot))))
-                  (testing "same changesets recorded as run"
-                    (is (= (:changelog from-scratch)
-                           (:changelog from-snapshot))))
-                  (testing "same seeded rows"
-                    (is (= (:data from-scratch)
-                           (:data from-snapshot)))))))))))))
+            (let [scratch (delay (impl/with-temp-empty-app-db [conn driver]
+                                   (migrate-from-scratch! conn driver)))]
+              (doseq [version snapshot/snapshot-versions
+                      :let    [{flavor :flavor, snapshot-ms :ms, from-snapshot :fingerprint}
+                               (impl/with-temp-empty-app-db [conn driver]
+                                 (migrate-from-snapshot! conn driver version))]]
+                (testing (format "snapshot %s" version)
+                  (is (some? from-snapshot) (format "a %s snapshot should be checked in for %s" version flavor)))
+                (when from-snapshot
+                  (let [{full-ms :ms, from-scratch :fingerprint} @scratch]
+                    (log-timings! flavor version full-ms snapshot-ms)
+                    (testing (format "snapshot %s" version)
+                      (testing "same tables"
+                        (is (= (set (keys (:schema from-scratch)))
+                               (set (keys (:schema from-snapshot))))))
+                      (doseq [table (sort (set/intersection (set (keys (:schema from-scratch)))
+                                                            (set (keys (:schema from-snapshot)))))]
+                        (testing (format "%s structure" table)
+                          (is (= (get-in from-scratch [:schema table])
+                                 (get-in from-snapshot [:schema table])))))
+                      (testing "same views"
+                        (is (= (:views from-scratch)
+                               (:views from-snapshot))))
+                      (testing "same database-level settings"
+                        (is (= (:database from-scratch)
+                               (:database from-snapshot))))
+                      (testing "same changesets recorded as run"
+                        (is (= (:changelog from-scratch)
+                               (:changelog from-snapshot))))
+                      (testing "same seeded rows"
+                        (is (= (:data from-scratch)
+                               (:data from-snapshot)))))))))))))))
 
 (deftest skip-ran-replays-only-what-the-snapshot-does-not-record-test
   (testing "replaying the whole changelog over a loaded snapshot runs none of the changesets it records again"

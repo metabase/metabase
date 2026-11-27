@@ -58,8 +58,12 @@
   "--;;")
 
 (def snapshot-version
-  "Snapshot directory tests boot from."
+  "Snapshot directory test app DBs boot from. It is the newest of [[snapshot-versions]]."
   "v65")
+
+(def snapshot-versions
+  "Every snapshot directory. A migration test loads the one with the latest boundary before its start."
+  ["v57" "v61" snapshot-version])
 
 ;; MariaDB is not a MySQL alias: MySQL 8 dumps declare functional indexes (`KEY x ((case when ...)))`) that MariaDB
 ;; cannot parse. It also needs two snapshots of its own, because `explicit_defaults_for_timestamp` changes the schema
@@ -132,9 +136,11 @@
     db-type))
 
 (defn loadable?
-  "Whether a snapshot this connection can use is checked in."
-  [^java.sql.Connection conn db-type]
-  (boolean (some->> (flavor conn db-type) flavors (snapshot-resource snapshot-version) some?)))
+  "Whether a snapshot of `version` (default [[snapshot-version]]) this connection can use is checked in."
+  ([conn db-type]
+   (loadable? conn db-type snapshot-version))
+  ([^java.sql.Connection conn db-type version]
+   (boolean (some->> (flavor conn db-type) flavors (snapshot-resource version) some?))))
 
 (defn- comments-only?
   "Whether every line of `chunk` is blank or a `--` comment."
@@ -222,66 +228,68 @@
     (.execute stmt sql)))
 
 (defn load-snapshot!
-  "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
+  "Load the checked-in snapshot of `version` (default [[snapshot-version]]) into the empty DB behind `conn`, picking
+  the dialect from [[flavor]], and commit.
   Throws when no snapshot is checked in for that dialect, or when a statement fails, rolling back what it can."
-  [^java.sql.Connection conn db-type]
-  (let [version          snapshot-version
-        flavor           (flavor conn db-type)
-        resource         (or (snapshot-resource version flavor)
-                             (throw (ex-info "No app DB snapshot for this dialect"
-                                             {:version version, :db-type db-type, :flavor flavor})))
-        stmts            (statements (slurp resource))
-        [before after]   (session-guards flavor)
-        [guarded views]  (load-order flavor stmts)]
-    (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
-    (with-open [stmt (.createStatement conn)]
-      (letfn [(execute! [sqls]
-                (doseq [sql sqls]
-                  (try
-                    (.execute stmt sql)
-                    (catch Throwable e
-                      (throw (ex-info "Error loading app DB snapshot statement"
-                                      {:version version, :flavor flavor, :statement sql}
-                                      e))))))]
-        ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
-        ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
-        ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
-        (let [autocommit? (.getAutoCommit conn)]
-          (when autocommit?
-            (.setAutoCommit conn false))
-          (try
-            ;; the guards are set inside the `try`, so that a failing one still restores those before it and a pooled
-            ;; connection never goes back with foreign key checks or strict mode off
-            (try
-              (doseq [sql before]
-                (.execute stmt sql))
-              (execute! guarded)
-              (catch Throwable e
-                ;; a restore that fails too must not hide the statement that failed first
-                (try
-                  (restore-guards! stmt after)
-                  (catch Throwable restore-error
-                    (.addSuppressed e restore-error)))
-                (throw e)))
-            (restore-guards! stmt after)
-            (execute! views)
-            ;; Committed even when the caller had autocommit off. Postgres runs DDL inside the transaction, and
-            ;; anything that has already opened Liquibase against this connection has left autocommit off; Liquibase
-            ;; rolls back before taking its changelog lock, which would undo the entire load.
-            (.commit conn)
-            (catch Throwable e
-              ;; without this, restoring autocommit would commit however much of the load got through
-              (try (.rollback conn) (catch Throwable _))
-              ;; not a `finally`: on a dead connection this fails as well, and must not hide the statement that failed
-              (when autocommit?
-                (try
-                  (.setAutoCommit conn true)
-                  (catch Throwable restore-error
-                    (.addSuppressed e restore-error))))
-              (throw e)))
-          (when autocommit?
-            (.setAutoCommit conn true)))))
-    :done))
+  ([conn db-type]
+   (load-snapshot! conn db-type snapshot-version))
+  ([^java.sql.Connection conn db-type version]
+   (let [flavor           (flavor conn db-type)
+         resource         (or (snapshot-resource version flavor)
+                              (throw (ex-info "No app DB snapshot for this dialect"
+                                              {:version version, :db-type db-type, :flavor flavor})))
+         stmts            (statements (slurp resource))
+         [before after]   (session-guards flavor)
+         [guarded views]  (load-order flavor stmts)]
+     (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
+     (with-open [stmt (.createStatement conn)]
+       (letfn [(execute! [sqls]
+                 (doseq [sql sqls]
+                   (try
+                     (.execute stmt sql)
+                     (catch Throwable e
+                       (throw (ex-info "Error loading app DB snapshot statement"
+                                       {:version version, :flavor flavor, :statement sql}
+                                       e))))))]
+         ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
+         ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
+         ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
+         (let [autocommit? (.getAutoCommit conn)]
+           (when autocommit?
+             (.setAutoCommit conn false))
+           (try
+             ;; the guards are set inside the `try`, so that a failing one still restores those before it and a pooled
+             ;; connection never goes back with foreign key checks or strict mode off
+             (try
+               (doseq [sql before]
+                 (.execute stmt sql))
+               (execute! guarded)
+               (catch Throwable e
+                 ;; a restore that fails too must not hide the statement that failed first
+                 (try
+                   (restore-guards! stmt after)
+                   (catch Throwable restore-error
+                     (.addSuppressed e restore-error)))
+                 (throw e)))
+             (restore-guards! stmt after)
+             (execute! views)
+             ;; Committed even when the caller had autocommit off. Postgres runs DDL inside the transaction, and
+             ;; anything that has already opened Liquibase against this connection has left autocommit off; Liquibase
+             ;; rolls back before taking its changelog lock, which would undo the entire load.
+             (.commit conn)
+             (catch Throwable e
+               ;; without this, restoring autocommit would commit however much of the load got through
+               (try (.rollback conn) (catch Throwable _))
+               ;; not a `finally`: on a dead connection this fails as well, and must not hide the statement that failed
+               (when autocommit?
+                 (try
+                   (.setAutoCommit conn true)
+                   (catch Throwable restore-error
+                     (.addSuppressed e restore-error))))
+               (throw e)))
+           (when autocommit?
+             (.setAutoCommit conn true)))))
+     :done)))
 
 (defn changesets
   "The `[id author filename]` of every changeset in the current changelog, in the order Liquibase will run them."
@@ -307,13 +315,21 @@
   (or @changeset-index-cache
       (reset! changeset-index-cache (zipmap (map first (changesets conn)) (range)))))
 
-(defn usable-for-start?
-  "Whether the snapshot can stand in for replaying changesets up to (but not including) `start-id`.
-  It cannot when `start-id` is at or before the snapshot boundary, since those changesets still need to run, or when
+(defn version-for-start
+  "The snapshot version that can stand in for replaying changesets up to (but not including) `start-id`: the one of
+  [[snapshot-versions]] with the latest boundary before `start-id`.
+  It is nil when `start-id` is at or before every boundary, since those changesets still need to run, or when
   [[matches-environment?]] does not hold."
   [^java.sql.Connection conn db-type start-id]
-  (and (matches-environment?)
-       (loadable? conn db-type)
-       (let [idx (changeset-index conn)]
-         (when-let [through (idx (through-changeset-id))]
-           (boolean (some-> (idx start-id) (> through)))))))
+  (when (matches-environment?)
+    (let [idx (changeset-index conn)]
+      (when-let [start (idx start-id)]
+        (->> snapshot-versions
+             (keep (fn [version]
+                     (when-let [through (idx (through-changeset-id version))]
+                       (when (and (< through start)
+                                  (loadable? conn db-type version))
+                         [through version]))))
+             (sort-by first)
+             last
+             second)))))
