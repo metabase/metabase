@@ -46,6 +46,7 @@ const SAVED_REVIEWS_CARD = createMockCard({
 });
 
 type NativeDatasetRequestBody = {
+  database?: number;
   stages?: { "source-table"?: number; limit?: number }[];
 };
 
@@ -57,7 +58,9 @@ function setupReviewsNativeDatasetEndpoint() {
     );
     const stage = body.stages?.[0];
     const isReviewsQuery =
-      stage?.["source-table"] === REVIEWS_ID && stage?.limit === QUERY_LIMIT;
+      body.database === REVIEWS_QUERY.database &&
+      stage?.["source-table"] === REVIEWS_ID &&
+      stage?.limit === QUERY_LIMIT;
     return isReviewsQuery
       ? { query: REVIEWS_SQL, params: null }
       : { status: 400, body: "Unexpected query" };

@@ -1,7 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -43,12 +46,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     openSidebar();
     cy.wait("@nativeDataset");
 
-    cy.log("The saved sidebar width is restored after a reload");
-    cy.findByTestId("native-query-preview-sidebar").should(($sidebar) => {
-      const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
-      expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
-    });
-
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
       H.NativeEditor.get()
@@ -87,6 +84,15 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.entityPickerModal().button("Close").click();
 
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    cy.log("The saved sidebar width is restored on the next page load");
+    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    H.openNotebook();
+    openSidebar();
+    cy.findByTestId("native-query-preview-sidebar").should(($sidebar) => {
+      const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
+      expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
+    });
   });
 
   it(
