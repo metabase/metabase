@@ -114,8 +114,9 @@
                                       :metabase.tracing.core/otel-sdk}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
-;; needs: requests queue search updates, MQ messages, API key usage and notifications; queue listeners and notification
-;; sends record metrics and traces; MQ runs on the scheduler; scheduled jobs send notifications and run queries.
+;; needs. Requests queue search updates, MQ messages, API key usage and notifications, and schedule jobs.
+;; Queue listeners and notification sends record metrics and traces, MQ runs on the scheduler, and scheduled jobs send
+;; notifications and run queries.
 ;; [[shutdown-steps]] must run each step before every step it uses, which a test checks.
 ;; Public only so the test can read it; nothing else should.
 (def shutdown-step-uses
@@ -124,6 +125,7 @@
    "put the scheduler in standby" #{"stop queue listeners" "run shutdown logic" "shut down notifications"}
    "stop the web server"          #{"stop queue listeners"
                                     "run shutdown logic"
+                                    "stop the scheduler"
                                     "shut down notifications"
                                     "shut down tracing"
                                     "shut down analytics"
