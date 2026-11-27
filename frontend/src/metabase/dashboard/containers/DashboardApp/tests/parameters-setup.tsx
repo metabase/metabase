@@ -4,7 +4,9 @@ import fetchMock from "fetch-mock";
 import {
   setupActionsEndpoints,
   setupBookmarksEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
@@ -26,6 +28,7 @@ import {
   waitForDashboardToLoad,
   within,
 } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -38,23 +41,34 @@ import type {
   Card,
   Dashboard,
   DashboardCard,
+  ParameterId,
   ParameterTarget,
+  QuestionDashboardCard,
   VirtualCard,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCategoryColumn,
+  createMockCollectionItem,
   createMockDashboard,
+  createMockDashboardCard,
   createMockDashboardQueryMetadata,
+  createMockDashboardTab,
   createMockDataset,
   createMockDatasetData,
   createMockNumericColumn,
   createMockParameter,
+  createMockParameterMapping,
+  createMockVirtualCard,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
+  createProductsCategoryField,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { isObject } from "metabase-types/guards";
@@ -230,36 +244,76 @@ export function filterCategoryCounts(body: unknown) {
 
 export const DASHCARD_QUERY_URL = `express:/api/dashboard/${DASHBOARD_ID}/dashcard/:dashcardId/card/:cardId/query`;
 
+function createCategoryCountsDataset(body: unknown) {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [categoryColumn, countColumn],
+      rows: filterCategoryCounts(body),
+    }),
+  });
+}
+
 function setupDashcardQueryEndpoint() {
   fetchMock.post(DASHCARD_QUERY_URL, (call) => {
     const body: unknown = JSON.parse(String(call.options.body));
-    return createMockDataset({
-      data: createMockDatasetData({
-        cols: [categoryColumn, countColumn],
-        rows: filterCategoryCounts(body),
-      }),
-    });
+    return createCategoryCountsDataset(body);
   });
+}
+
+// New dashcards are not saved yet, so they run the card query
+function setupCardQueryEndpoint() {
+  fetchMock.post(
+    `path:/api/card/${ORDERS_COUNT_BY_CATEGORY_CARD.id}/query`,
+    (call) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      return createCategoryCountsDataset(body);
+    },
+  );
+  fetchMock.post(
+    `path:/api/card/${AVERAGE_TOTAL_BY_CATEGORY_CARD.id}/query`,
+    createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          categoryColumn,
+          createMockNumericColumn({
+            name: "avg",
+            display_name: "Average of Total",
+            source: "aggregation",
+          }),
+        ],
+        rows: [["Gadget", 60.5]],
+      }),
+    }),
+  );
 }
 
 export const PARAMETER_VALUES_URL = `express:/api/dashboard/${DASHBOARD_ID}/params/:parameterId/values`;
 export const PARAMETER_SEARCH_URL = `express:/api/dashboard/${DASHBOARD_ID}/params/:parameterId/search/:query`;
 
+/**
+ * Like the backend, a dashboard lists the field of every filter mapped to the
+ * category column.
+ */
+function getParamFields(dashboard: Dashboard): Dashboard["param_fields"] {
+  const parameterIds = dashboard.dashcards.flatMap((dashcard) =>
+    (dashcard.parameter_mappings ?? [])
+      .filter(
+        (mapping) => getTargetFieldName(mapping.target) === PRODUCTS.CATEGORY,
+      )
+      .map((mapping) => mapping.parameter_id),
+  );
+  return Object.fromEntries(
+    parameterIds.map((id) => [id, [createProductsCategoryField()]]),
+  );
+}
+
 function setupParameterValuesEndpoints(getDashboard: () => Dashboard) {
   fetchMock.get(PARAMETER_VALUES_URL, (call) => {
-    const parameterId = call.url.split("/params/")[1]?.split("/")[0];
+    const parameterId = call.url.split("/params/")[1]?.split("/")[0] ?? "";
     // Like the backend, only a filter mapped to the category column has values
-    const isMappedToCategory = getDashboard().dashcards.some((dashcard) =>
-      dashcard.parameter_mappings?.some(
-        (mapping) =>
-          mapping.parameter_id === parameterId &&
-          getTargetFieldName(mapping.target) === PRODUCTS.CATEGORY,
-      ),
-    );
+    const hasValues = getDashboard().param_fields?.[parameterId] != null;
     return {
-      values: isMappedToCategory
-        ? CATEGORIES.map((category) => [category])
-        : [],
+      values: hasValues ? CATEGORIES.map((category) => [category]) : [],
       has_more_values: false,
     };
   });
@@ -277,10 +331,14 @@ function getVirtualCard(dashcard: unknown): VirtualCard | undefined {
 
 /**
  * Like the real API, a PUT stores the dashboard with full dashcards and gives
- * new dashcards an id, and a later GET returns the stored dashboard.
+ * new dashcards an id, and a later GET returns the stored dashboard. Both come
+ * with the `param_fields` of the filters.
  */
 function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
-  let persistedDashboard = dashboard;
+  let persistedDashboard = {
+    ...dashboard,
+    param_fields: getParamFields(dashboard),
+  };
   let nextDashcardId = 100;
 
   fetchMock.get(
@@ -310,10 +368,10 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
           } as unknown as DashboardCard;
         })
       : persistedDashboard.dashcards;
+    const updatedDashboard = { ...persistedDashboard, ...body, dashcards };
     persistedDashboard = {
-      ...persistedDashboard,
-      ...body,
-      dashcards,
+      ...updatedDashboard,
+      param_fields: getParamFields(updatedDashboard),
     };
     return persistedDashboard;
   });
@@ -375,6 +433,7 @@ export async function setup({ dashboard: dashboardOpts }: SetupOpts) {
     }),
   );
   setupDashcardQueryEndpoint();
+  setupCardQueryEndpoint();
   setupParameterValuesEndpoints(getDashboard);
   setupCollectionsEndpoints({ collections: [] });
   setupSearchEndpoints([]);
@@ -487,7 +546,13 @@ export async function selectMappingColumn(
   dashcard: HTMLElement,
   columnName: string | RegExp,
 ) {
-  await userEvent.click(within(getMapper(dashcard)).getByRole("button"));
+  // a mapped mapper also has a Disconnect button inside its button
+  const button = checkNotNull(
+    within(getMapper(dashcard))
+      .getAllByRole("button")
+      .find((button) => button.getAttribute("aria-label") !== "Disconnect"),
+  );
+  await userEvent.click(button);
   await userEvent.click(
     await screen.findByRole("heading", { name: columnName }),
   );
@@ -513,4 +578,140 @@ export function getLastDashcardQueryBody(dashcardId: number) {
 
 export function getSearchParams(search: string) {
   return Object.fromEntries(new URLSearchParams(search));
+}
+
+export const TAB_1 = createMockDashboardTab({
+  id: 1,
+  dashboard_id: DASHBOARD_ID,
+  name: "Tab 1",
+});
+
+export const TAB_2 = createMockDashboardTab({
+  id: 2,
+  dashboard_id: DASHBOARD_ID,
+  name: "Tab 2",
+});
+
+const HEADING_CARD = createMockVirtualCard({ display: "heading" });
+
+export function createHeadingDashcard({
+  id,
+  text = "Heading Text",
+  inlineParameters = [],
+  ...opts
+}: Partial<VirtualDashboardCard> & {
+  id: number;
+  text?: string;
+  inlineParameters?: ParameterId[];
+}) {
+  return createMockVirtualDashCard({
+    dashboard_id: DASHBOARD_ID,
+    size_x: 24,
+    size_y: 1,
+    ...opts,
+    id,
+    card: HEADING_CARD,
+    inline_parameters: inlineParameters,
+    // the frontend sends the virtual card back when it saves the dashboard
+    visualization_settings: { text, virtual_card: HEADING_CARD },
+  });
+}
+
+type MappingOpts = { parameterId: ParameterId; target: ParameterTarget };
+
+export function createQuestionDashcard({
+  id,
+  card = ORDERS_COUNT_BY_CATEGORY_CARD,
+  inlineParameters = [],
+  mappings = [],
+  ...opts
+}: Partial<QuestionDashboardCard> & {
+  id: number;
+  card?: Card;
+  inlineParameters?: ParameterId[];
+  mappings?: MappingOpts[];
+}) {
+  return createMockDashboardCard({
+    dashboard_id: DASHBOARD_ID,
+    size_x: 24,
+    size_y: 6,
+    // like the backend, a dashcard without inline filters has an empty list
+    inline_parameters: inlineParameters,
+    parameter_mappings: mappings.map(({ parameterId, target }) =>
+      createMockParameterMapping({
+        parameter_id: parameterId,
+        card_id: card.id,
+        target,
+      }),
+    ),
+    ...opts,
+    id,
+    card_id: card.id,
+    card,
+  });
+}
+
+export function getHeaderFilters() {
+  return screen.getByTestId("dashboard-parameters-widget-container");
+}
+
+export function getEditingHeaderFilters() {
+  return screen.getByTestId("edit-dashboard-parameters-widget-container");
+}
+
+// The widgets of the hidden list that measures the filters have no test id
+export function getWidget(container: HTMLElement, name: string) {
+  return checkNotNull(
+    within(container)
+      .queryAllByTestId("parameter-widget")
+      .find(
+        (widget) =>
+          widget.textContent?.replace(/\s/g, " ").split(":")[0] === name,
+      ),
+  );
+}
+
+export function getWidgetTarget(container: HTMLElement, name: string) {
+  return within(getWidget(container, name)).getByTestId(
+    "parameter-value-widget-target",
+  );
+}
+
+/** Lists "Average total by category" in the questions sidebar. */
+export function setupAddableAverageTotalCard() {
+  const database = createSampleDatabase();
+  setupCollectionItemsEndpoint({
+    collection: ROOT_COLLECTION,
+    collectionItems: [
+      createMockCollectionItem({
+        id: AVERAGE_TOTAL_BY_CATEGORY_CARD.id,
+        model: "card",
+        name: AVERAGE_TOTAL_BY_CATEGORY_CARD.name,
+      }),
+    ],
+  });
+  setupCardQueryMetadataEndpoint(
+    AVERAGE_TOTAL_BY_CATEGORY_CARD,
+    createMockCardQueryMetadata({
+      databases: [database],
+      tables: database.tables,
+    }),
+  );
+}
+
+export async function addQuestion(name: string) {
+  await userEvent.click(screen.getByLabelText("Add questions"));
+  await userEvent.click(
+    await within(await screen.findByTestId("add-card-sidebar")).findByText(
+      name,
+    ),
+  );
+}
+
+export async function undo() {
+  await userEvent.click(
+    within(await screen.findByTestId("toast-undo")).getByRole("button", {
+      name: "Undo",
+    }),
+  );
 }
