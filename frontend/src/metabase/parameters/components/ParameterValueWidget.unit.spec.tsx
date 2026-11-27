@@ -458,9 +458,11 @@ describe("ParameterValueWidget", () => {
         );
 
         expect(onValueChange).toHaveBeenLastCalledWith(storedValue);
-        expect(
-          screen.getByRole("button", { name: FILTER_NAME }),
-        ).toHaveTextContent(pick);
+        await waitFor(() =>
+          expect(
+            screen.getByRole("button", { name: FILTER_NAME }),
+          ).toHaveTextContent(pick),
+        );
       },
     );
   });

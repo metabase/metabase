@@ -117,9 +117,12 @@ const TABLE_COLUMNS = [
   }),
 ];
 
+const TABLE_CARD_ID = 2;
+
 function setupTableDashcard() {
   const dashcard = createMockDashboardCard({
-    card: createMockCard({ display: "table" }),
+    card_id: TABLE_CARD_ID,
+    card: createMockCard({ id: TABLE_CARD_ID, display: "table" }),
   });
   const dashboard = createMockDashboard({
     id: 1,
@@ -141,7 +144,7 @@ function setupTableDashcard() {
           dashcards: { [dashcard.id]: dashcard },
           dashcardData: {
             [dashcard.id]: {
-              [dashcard.card_id]: createMockDataset({
+              [TABLE_CARD_ID]: createMockDataset({
                 data: createMockDatasetData({
                   cols: TABLE_COLUMNS,
                   rows: [[1, "4f01dcfd-13f7-430c-8e6f-e505c0851027", "a"]],
