@@ -384,22 +384,26 @@
                   :seen-while-installing @seen-while-installing
                   :after                 @#'prometheus/system})))))))
 
+;; a handle of its own, since the test runner has already started the real component, and stopping that in a test
+;; would leave it running but unregistered
+(def ^:private test-system-component
+  (global-system/mutable-component-handle ::test-system (constantly nil)))
+
 (deftest setup-starts-through-the-global-system-test
   (testing "setup! starts Prometheus through the global system, so a halt stops it, and shutdown! stops it"
-    (let [handle @#'prometheus/system-component
-          stops  (atom 0)
-          halts? #(global-system.tu/halts? handle)]
-      (with-redefs [prometheus/system nil]
-        (global-system.tu/with-root handle nil
-          (mt/with-dynamic-fn-redefs [prometheus/start-system! (constantly ::system)
-                                      prometheus/stop-system!  (fn [_] (swap! stops inc))]
-            (try
-              (prometheus/setup! 0)
-              (let [after-start {:halts? (halts?), :stops @stops}]
-                (prometheus/shutdown!)
-                (is (= {:after-start {:halts? true, :stops 0}
-                        :after-stop  {:halts? false, :stops 1}}
-                       {:after-start after-start
-                        :after-stop  {:halts? (halts?), :stops @stops}})))
-              (finally
-                (global-system/stop! handle)))))))))
+    (let [stops  (atom 0)
+          halts? #(global-system.tu/halts? test-system-component)]
+      (with-redefs [prometheus/system           nil
+                    prometheus/system-component test-system-component]
+        (mt/with-dynamic-fn-redefs [prometheus/start-system! (constantly ::system)
+                                    prometheus/stop-system!  (fn [_] (swap! stops inc))]
+          (try
+            (prometheus/setup! 0)
+            (let [after-start {:halts? (halts?), :stops @stops}]
+              (prometheus/shutdown!)
+              (is (= {:after-start {:halts? true, :stops 0}
+                      :after-stop  {:halts? false, :stops 1}}
+                     {:after-start after-start
+                      :after-stop  {:halts? (halts?), :stops @stops}})))
+            (finally
+              (global-system/stop! test-system-component))))))))
