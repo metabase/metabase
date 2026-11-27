@@ -330,9 +330,9 @@
                 (some-> (ast/arg select-expr "from_") ast/this vector))))
 
 (defn- process-ctes
-  "`withs` with the CTEs `select-expr` declares added, and the errors their bodies hold."
-  [select-expr outside-sources withs]
-  (let [with-clause (ast/arg select-expr "with_")
+  "`withs` with the CTEs the SELECT or UNION `query-expr` declares added, and the errors their bodies hold."
+  [query-expr outside-sources withs]
+  (let [with-clause (ast/arg query-expr "with_")
         recursive?  (some-> with-clause (ast/arg "recursive"))]
     (reduce (fn [[withs errors] cte]
               (let [cte-name         (ast/node-alias cte)
@@ -384,11 +384,12 @@
                           (into (mapcat :errors) used))}))
 
 (defn- process-union
-  "A UNION's fields: each returned field is the composite of the fields both sides return in its place.
-  Port of `FieldReferenceWalker._process_union`."
+  "A UNION's fields: each returned field is the composite of the fields both sides return in its place, with the CTEs
+  of its WITH clause in scope on both sides. Port of `FieldReferenceWalker._process_union`."
   [union-expr outside-sources withs]
-  (let [left  (process-query (ast/this union-expr) outside-sources withs)
-        right (process-query (ast/arg union-expr "expression") outside-sources withs)
+  (let [[local-withs cte-errors] (process-ctes union-expr outside-sources withs)
+        left  (process-query (ast/this union-expr) outside-sources local-withs)
+        right (process-query (ast/arg union-expr "expression") outside-sources local-withs)
         [left-fields right-fields] (map :returned_fields [left right])]
     {:used_fields     (into (set (:used_fields left)) (:used_fields right))
      :returned_fields (vec (for [i (range (max (count left-fields) (count right-fields)))
@@ -398,7 +399,9 @@
                              {:type          "composite_field"
                               :alias         (or (not-empty (:alias named)) (:column named))
                               :member_fields (vec (remove nil? [left-field right-field]))}))
-     :errors          (into (set (:errors left)) (:errors right))}))
+     :errors          (-> cte-errors
+                          (into (:errors left))
+                          (into (:errors right)))}))
 
 (defn- process-query
   "The fields of the query `expr`: a SELECT or a UNION. Anything else is a syntax error.

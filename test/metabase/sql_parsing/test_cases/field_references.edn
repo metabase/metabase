@@ -236,6 +236,17 @@
                                                  :source-columns [[{:type :all-columns :table {:table "vendors"}}]]}]}]
              :errors          #{}}}
 
+  {:name     "union arms read CTEs of its WITH clause"
+   :dialect  "postgres"
+   :sql      "WITH s AS (SELECT id FROM people) SELECT 0 AS id UNION ALL SELECT id FROM s"
+   :expected {:used-fields     #{{:type :single-column :column "id" :alias nil
+                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}}
+             :returned-fields [{:type :composite-field :alias "id"
+                                :member-fields [{:type :custom-field :alias "id"}
+                                                {:type :single-column :column "id" :alias nil
+                                                 :source-columns [[{:type :all-columns :table {:table "people"}}]]}]}]
+             :errors          #{}}}
+
   {:name     "a union column can be composed of a custom field and a column"
    :dialect  "postgres"
    :sql      "SELECT id, total * 2 AS dbl FROM orders UNION SELECT id, refund_amount FROM refunds"
