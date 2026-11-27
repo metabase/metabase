@@ -4,12 +4,18 @@ import { useState } from "react";
 
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { expectNoBadSchemaEvents } from "__support__/snowplow";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type * as Analytics from "metabase/analytics";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 
 import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover";
+
+// `metabase/analytics` is auto-mocked for every test (see `__support__/mocks`).
+const { trackSchemaEvent } =
+  jest.requireMock<typeof Analytics>("metabase/analytics");
 
 const SITE_URL = "http://metabase.test";
 const TEST_DASHBOARD_ID = 1;
@@ -70,6 +76,10 @@ const setup = ({
 };
 
 describe("DashboardPublicLinkPopover", () => {
+  beforeEach(() => {
+    jest.mocked(trackSchemaEvent).mockClear();
+  });
+
   it("should display a dashboard-specific public url", async () => {
     setup();
 
@@ -111,6 +121,36 @@ describe("DashboardPublicLinkPopover", () => {
         },
       ),
     ).toHaveLength(1);
+  });
+
+  it("should track copying and removing the public link", async () => {
+    setup({ hasPublicLink: true });
+    await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`);
+
+    await userEvent.click(screen.getByTestId("copy-button"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      `${SITE_URL}/public/dashboard/mock-uuid`,
+    );
+    expect(trackSchemaEvent).toHaveBeenCalledTimes(1);
+    expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
+      event: "public_link_copied",
+      artifact: "dashboard",
+      format: null,
+    });
+
+    await userEvent.click(screen.getByText("Remove public link"));
+    expect(trackSchemaEvent).toHaveBeenCalledTimes(2);
+    expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
+      event: "public_link_removed",
+      artifact: "dashboard",
+      source: "public-share",
+    });
+
+    expectNoBadSchemaEvents(
+      jest.mocked(trackSchemaEvent).mock.calls,
+      "embed_flow",
+      "1-0-3",
+    );
   });
 
   it("should not show non-admins the option to remove a public link", async () => {

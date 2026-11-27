@@ -5,13 +5,19 @@ import { useState } from "react";
 import { createMockMetadataFromState } from "__support__/metadata";
 import { setupCardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { expectNoBadSchemaEvents } from "__support__/snowplow";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import type * as Analytics from "metabase/analytics";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 
 import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover";
+
+// `metabase/analytics` is auto-mocked for every test (see `__support__/mocks`).
+const { trackSchemaEvent } =
+  jest.requireMock<typeof Analytics>("metabase/analytics");
 
 const SITE_URL = "http://metabase.test";
 const TEST_CARD_ID = 1;
@@ -77,6 +83,10 @@ const setup = async ({
 };
 
 describe("QuestionPublicLinkPopover", () => {
+  beforeEach(() => {
+    jest.mocked(trackSchemaEvent).mockClear();
+  });
+
   it("should display a question-specific public url", async () => {
     await setup();
 
@@ -122,6 +132,46 @@ describe("QuestionPublicLinkPopover", () => {
         },
       ),
     ).toHaveLength(1);
+  });
+
+  it("should track copying the public link in every format and removing it", async () => {
+    await setup({ hasPublicLink: true });
+    const publicUrl = `${SITE_URL}/public/question/mock-uuid`;
+
+    await userEvent.click(screen.getByTestId("copy-button"));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(publicUrl);
+    expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
+      event: "public_link_copied",
+      artifact: "question",
+      format: "html",
+    });
+
+    for (const format of ["csv", "xlsx", "json"]) {
+      await userEvent.click(screen.getByText(format));
+      await userEvent.click(screen.getByTestId("copy-button"));
+      expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+        `${publicUrl}.${format}`,
+      );
+      expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
+        event: "public_link_copied",
+        artifact: "question",
+        format,
+      });
+    }
+
+    await userEvent.click(screen.getByText("Remove public link"));
+    expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
+      event: "public_link_removed",
+      artifact: "question",
+      source: "public-share",
+    });
+    expect(trackSchemaEvent).toHaveBeenCalledTimes(5);
+
+    expectNoBadSchemaEvents(
+      jest.mocked(trackSchemaEvent).mock.calls,
+      "embed_flow",
+      "1-0-3",
+    );
   });
 
   it("should not show non-admins the option to remove a public link", async () => {

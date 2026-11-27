@@ -220,6 +220,25 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Public link")).toBeInTheDocument();
       });
 
+      it("should open the public link popover from the 'Public link' menu item", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Public link"));
+
+        expect(
+          await screen.findByTestId("public-link-popover-content"),
+        ).toBeInTheDocument();
+        await waitFor(() =>
+          expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+            "http://localhost:3000/public/dashboard/1337bad801",
+          ),
+        );
+      });
+
       it("should hide the public link option if public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: true,
@@ -360,6 +379,9 @@ describe("DashboardSharingMenu", () => {
         expect(
           await screen.findByText("Public link copied to clipboard"),
         ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("public-link-popover-content"),
+        ).not.toBeInTheDocument();
       });
 
       it("should hide 'Copy public link' when public sharing is disabled", async () => {
@@ -372,9 +394,8 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Copy link")).toBeInTheDocument();
         expect(screen.getByText("Export as PDF")).toBeInTheDocument();
         expect(screen.queryByText("Copy public link")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText("Ask your admin to create a public link"),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/public link/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/embed/i)).not.toBeInTheDocument();
       });
 
       it("should hide 'Copy public link' when there is no public link", async () => {
