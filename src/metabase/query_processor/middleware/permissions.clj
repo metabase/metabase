@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
+   [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
@@ -65,6 +66,17 @@
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
                   {:type qp.error-type/disabled-feature, :query query})))
 
+(defn- saved-question-perms
+  "`required-perms` with each `:unrestricted` view-data level lowered to `:legacy-no-self-service`, the deprecated level
+  that lets a user run saved questions but not ad-hoc queries."
+  [required-perms]
+  (m/update-existing required-perms :perms/view-data
+                     (fn [view-data]
+                       (let [lower #(if (= % :unrestricted) :legacy-no-self-service %)]
+                         (if (map? view-data)
+                           (update-vals view-data lower)
+                           (lower view-data))))))
+
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database :as query} :- ::qp.schema/any-query]
@@ -86,7 +98,7 @@
         *card-id*
         (do (query-perms/check-cards-read-perms database-id [*card-id*])
             (query-perms/check-card-result-metadata-data-perms database-id *card-id*)
-            (when-not (query-perms/has-perm-for-query? query :perms/view-data required-perms)
+            (when-not (query-perms/has-perm-for-query? query :perms/view-data (saved-question-perms required-perms))
               (throw (query-perms/perms-exception required-perms)))
             (let [other-card-ids (remove #{*card-id*} source-card-ids)]
               (query-perms/check-cards-read-perms database-id other-card-ids)
