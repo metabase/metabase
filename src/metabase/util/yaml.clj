@@ -27,10 +27,17 @@
   sanity guard against pathological/malicious input. Callers may override via the `:nesting-depth-limit` opt."
   10000)
 
+(def ^:const code-point-limit
+  "Maximum YAML document size in code points allowed when parsing, raised from SnakeYAML's 3 MiB so a serialized
+  `settings.yaml` holding every uploaded image setting can be imported; callers may override via `:code-point-limit`."
+  (* 64 1024 1024))
+
 (defn- with-parse-defaults
   "Merges Metabase's default parsing options into `opts`; preserving any values the caller supplied."
   [opts]
-  (merge {:nesting-depth-limit nesting-depth-limit} opts))
+  (merge {:nesting-depth-limit nesting-depth-limit
+          :code-point-limit    code-point-limit}
+         opts))
 
 (defn parse-stream
   "Returns Clojure data structures for a stream of YAML read from `reader`, with opts passed to

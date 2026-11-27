@@ -44,3 +44,13 @@
           s    (yaml/generate-string deep)]
       (with-open [r (StringReader. s)]
         (is (= deep (yaml/parse-stream r)))))))
+
+(deftest ^:parallel from-file-allows-large-documents-test
+  (testing "from-file reads documents larger than SnakeYAML's default code point limit, like settings with images"
+    (let [settings  {:login-page-illustration-custom (str "data:image/jpeg;base64," (apply str (repeat 4000000 \A)))}
+          ^File tmp (File/createTempFile "large-yaml" ".yaml")]
+      (try
+        (spit tmp (yaml/generate-string settings))
+        (is (= settings (yaml/from-file tmp)))
+        (finally
+          (.delete tmp))))))
