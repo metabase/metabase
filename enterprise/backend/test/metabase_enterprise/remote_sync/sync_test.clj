@@ -107,6 +107,21 @@
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id card))))
             (is (not (t2/exists? :model/Card :id (:id gone))))))))))
 
+(deftest pinned-positions-survive-push-and-pull-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced    {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       card      {:name "Pinned card" :collection_id (:id synced) :collection_position 1}
+                     :model/Card       model     {:name "Pinned model" :type :model :collection_id (:id synced) :collection_position 2}
+                     :model/Dashboard  dashboard {:name "Pinned dashboard" :collection_id (:id synced) :collection_position 3}]
+        (let [{v1 :version} (remote-sync.tu/push! url nil)]
+          (t2/update! :model/Card :id [:in [(:id card) (:id model)]] {:collection_position nil})
+          (t2/update! :model/Dashboard :id (:id dashboard) {:collection_position nil})
+          (testing "a forced pull pins again what a push had pinned"
+            (is (=? {:status :success} (remote-sync.tu/pull! url v1 {:force? true})))
+            (is (= [1 2] (mapv #(t2/select-one-fn :collection_position :model/Card :id (:id %)) [card model])))
+            (is (= 3 (t2/select-one-fn :collection_position :model/Dashboard :id (:id dashboard))))))))))
+
 (deftest pull-keeps-local-changes-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
