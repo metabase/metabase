@@ -60,38 +60,6 @@ const PRODUCT_ID_FIELD: ConcreteFieldReference = [
   },
 ];
 
-export const ORDERS_DATE_COLUMNS = ["Created At"];
-export const ORDERS_NUMBER_COLUMNS = [
-  "Subtotal",
-  "Tax",
-  "Total",
-  "Discount",
-  "Quantity",
-];
-
-export const PRODUCTS_DATE_COLUMNS = ["Created At"];
-export const PRODUCTS_TEXT_COLUMNS = ["Ean", "Title", "Category", "Vendor"];
-export const PRODUCTS_NUMBER_COLUMNS = ["Price", "Rating"];
-
-export const PEOPLE_DATE_COLUMNS = ["Birth Date", "Created At"];
-export const PEOPLE_TEXT_COLUMNS = [
-  "Address",
-  "Email",
-  "Password",
-  "Name",
-  "Source",
-];
-export const PEOPLE_NUMBER_COLUMNS = ["Longitude", "Latitude"];
-
-export const REVIEWS_DATE_COLUMNS = ["Created At"];
-export const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
-export const REVIEWS_NUMBER_COLUMNS = ["Rating"];
-
-export const QUESTION_BASED_QUESTION_INDEX = 0;
-export const MODEL_BASED_QUESTION_INDEX = 1;
-export const QUESTION_BASED_MODEL_INDEX = 2;
-export const MODEL_BASED_MODEL_INDEX = 3;
-
 export function createBaseQuestions() {
   H.createQuestion({
     type: "question",
@@ -122,7 +90,7 @@ export function createBaseQuestions() {
 }
 
 // Q1 - join, custom column, no aggregations, no breakouts
-export function createQ1Query(source: Card) {
+function createQ1Query(source: Card) {
   return {
     "source-table": `card__${source.id}`,
     expressions: {
@@ -322,7 +290,7 @@ export function createAndVisitDashboardWithCardMatrix(
   });
 }
 
-export function createAndVisitDashboard(cards: Card[]) {
+function createAndVisitDashboard(cards: Card[]) {
   let id = 0;
   const getNextId = () => --id;
 
@@ -659,10 +627,6 @@ export function getFilter(name: string) {
   return cy.findByTestId("fixed-width-filters").findByText(name);
 }
 
-function getPopoverItems() {
-  return cy.get("[data-element-id=list-section]");
-}
-
 /**
  * @param index if more than 1 item with the same name is visible, specify which one should be used
  */
@@ -673,10 +637,6 @@ function getPopoverItem(name: string, index = 0) {
    */
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByText(name).eq(index).scrollIntoView();
-}
-
-export function clickAway() {
-  cy.get("body").click(0, 0);
 }
 
 export function goBackToDashboard() {
@@ -694,75 +654,6 @@ export function waitForPublicDashboardData(requestCount: number) {
 
 export function waitForEmbeddedDashboardData(requestCount: number) {
   cy.wait(Array(requestCount).fill("@embeddedDashboardData"));
-}
-
-export function verifyDashcardMappingOptions(
-  dashcardIndex: number,
-  sections: MappingSection[],
-) {
-  H.getDashboardCard(dashcardIndex).findByText("Select…").click();
-  verifyPopoverMappingOptions(sections);
-  clickAway();
-}
-
-export function verifyNoDashcardMappingOptions(dashcardIndex: number) {
-  H.getDashboardCard(dashcardIndex)
-    .findByText("No valid fields")
-    .should("be.visible");
-
-  H.getDashboardCard(dashcardIndex)
-    .findByText("No valid fields")
-    .trigger("mouseenter");
-  H.tooltip()
-    .findByText(
-      "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
-    )
-    .should("be.visible");
-}
-
-type SectionName = string;
-type ColumnName = string;
-type MappingSection = [SectionName | null, ColumnName[]];
-
-function verifyPopoverMappingOptions(sections: MappingSection[]) {
-  const expectedItemsCount = sections.reduce(
-    (sum, [sectionName, columnNames]) =>
-      sum + (sectionName ? 1 : 0) + columnNames.length,
-    0,
-  );
-
-  H.popover().within(() => {
-    getPopoverItems().then(($items) => {
-      let index = 0;
-      let offsetForSearch = 0;
-
-      if (index === 0 && $items[index].querySelector("input")) {
-        // Skip search box if it is the first item
-        ++index;
-        offsetForSearch = 1;
-      }
-
-      for (const [sectionName, columnNames] of sections) {
-        if (sectionName) {
-          // the list is virtualized, we need to keep scrolling to see all the items
-          cy.wrap($items[index])
-            .scrollIntoView()
-            .should("have.text", sectionName);
-          ++index;
-        }
-
-        for (const columnName of columnNames) {
-          cy.wrap($items[index])
-            .scrollIntoView()
-            .findByLabelText(columnName)
-            .should("be.visible");
-          ++index;
-        }
-      }
-
-      expect($items.length).to.eq(expectedItemsCount + offsetForSearch);
-    });
-  });
 }
 
 export function verifyDashcardRowsCount({
