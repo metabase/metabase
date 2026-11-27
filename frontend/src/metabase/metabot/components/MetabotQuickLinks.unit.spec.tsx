@@ -27,6 +27,8 @@ import { getMetabotQuickLinks } from "./MetabotQuickLinks";
 
 const PROMPT = "Who is your favorite?";
 
+const LazyHome = () => <span data-testid="lazy-home">home</span>;
+
 interface SetupOpts {
   isMetabotEnabled: boolean;
 }
@@ -88,5 +90,47 @@ describe("MetabotQuickLinks > /metabot/new", () => {
     expect(router?.location.search).toBe("");
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
     expect(agentSpy).not.toHaveBeenCalled();
+  });
+
+  it("redirects once to lazily loaded home page when metabot is disabled", async () => {
+    setupEnterprisePlugins();
+    setupUserMetabotPermissionsEndpoint(createMockUserMetabotPermissions());
+    setupGetMetabotConversationTitleEndpoint({
+      status: "pending",
+      title: null,
+    });
+    const consoleErrorSpy = jest.spyOn(console, "error");
+
+    const { router } = renderWithProviders(
+      <>
+        <Route
+          path="/"
+          lazy={async () => {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            return { Component: LazyHome };
+          }}
+        />
+        {getMetabotQuickLinks()}
+      </>,
+      {
+        withRouter: true,
+        initialRoute: "/metabot/new",
+        storeInitialState: createMockState({
+          settings: mockSettings({ "metabot-enabled?": false }),
+        }),
+      },
+    );
+
+    expect(
+      await screen.findByTestId("lazy-home", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/");
+    const errors = consoleErrorSpy.mock.calls.map(([message]) =>
+      String(message),
+    );
+    consoleErrorSpy.mockRestore();
+    expect(
+      errors.filter((message) => message.includes("Maximum update depth")),
+    ).toEqual([]);
   });
 });
