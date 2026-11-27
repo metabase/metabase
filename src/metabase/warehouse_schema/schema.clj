@@ -228,6 +228,16 @@
    [:map
     [:field_id ::lib.schema.id/field]]])
 
+(mr/def ::event-settings
+  "Product analytics settings for an event table, as a user sets them: each role names a column, or nil when the user
+  says no column plays it."
+  [:map {:closed true}
+   [:columns.timestamp  {:optional true} [:maybe :string]]
+   [:columns.person     {:optional true} [:maybe :string]]
+   [:columns.session    {:optional true} [:maybe :string]]
+   [:columns.event_name {:optional true} [:maybe :string]]
+   [:columns.url_path   {:optional true} [:maybe :string]]])
+
 (mr/def ::table-user-settings
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
@@ -260,6 +270,7 @@
    [:data_authority          {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:event_settings          {:optional true} [:maybe ::event-settings]]
    [:description_set         {:optional true} :boolean]
    [:visibility_type_set     {:optional true} :boolean]
    [:caveats_set             {:optional true} :boolean]
@@ -325,7 +336,8 @@
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user-or-older-export-id]]
-   [:transform_target        {:optional true} [:maybe :boolean]]])
+   [:transform_target        {:optional true} [:maybe :boolean]]
+   [:event_settings          {:optional true} [:maybe ::event-settings]]])
 
 (mr/def ::table.create
   "What a caller gives to create a Table: the columns of an update without the `:id`, and its Database and name."
@@ -386,7 +398,7 @@
                                          :caveats :points_of_interest :show_in_getting_started :data_authority
                                          :data_source :owner_email :is_published :description_set
                                          :visibility_type_set :data_layer_set :data_source_set :collection_id
-                                         :owner_user_id :data_layer :table_id]]
+                                         :owner_user_id :data_layer :table_id :event_settings]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
@@ -398,7 +410,7 @@
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :data_layer :db_id
-                           :owner_user_id]]
+                           :owner_user_id :event_settings]]
     [:map {:closed true}
      [:serdes/meta    {:optional true} ::models.schema/external-meta]
      [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]

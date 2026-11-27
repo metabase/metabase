@@ -416,6 +416,27 @@
 (lib.common/defop integer [x])
 (lib.common/defop float [x])
 
+;;; window-only call constructors
+(lib.common/defop row-number [])
+(lib.common/defop rank [])
+(lib.common/defop dense-rank [])
+(lib.common/defop percent-rank [])
+(lib.common/defop cume-dist [])
+(lib.common/defop ntile [n])
+(lib.common/defop lag [x] [x n] [x n default])
+(lib.common/defop lead [x] [x n] [x n default])
+(lib.common/defop first-value [x])
+(lib.common/defop last-value [x])
+(lib.common/defop nth-value [x n])
+
+(mu/defn window :- :mbql.clause/window
+  "Wrap `inner-call` in a window expression described by `window-spec`. The inner call is either an
+   aggregate ([[sum]], [[count]], etc.) or a window-only call ([[row-number]], [[lag]], …). The spec may
+   carry `:partition-by`, `:order-by`, `:frame`, and `:exclude`."
+  [inner-call :- :metabase.lib.schema.expression.window/window-inner-call
+   window-spec :- :metabase.lib.schema.expression.window/window-spec]
+  [:window {:lib/uuid (str (random-uuid))} inner-call window-spec])
+
 (mu/defn datetime :- :mbql.clause/datetime
   "Create a standalone clause of type `datetime`."
   ([value :- ::lib.common/op-arg]

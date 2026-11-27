@@ -18,6 +18,15 @@ export function setupAdhocQueryEndpoint(
   fetchMock.post("path:/api/dataset", response, options);
 }
 
+export function setupNativeDatasetEndpoint(
+  response: MockResponse<NativeDatasetResponse | Response> = {
+    query: "SELECT 1",
+    params: null,
+  },
+) {
+  fetchMock.post("path:/api/dataset/native", response);
+}
+
 export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
   fetchMock.post(`path:/api/dataset/query_metadata`, metadata, {
     name: "dataset-query-metadata",
@@ -61,10 +70,4 @@ export function setupCardDataset(
       name: "dataset-post",
     },
   );
-}
-
-export function setupNativeDatasetEndpoint(
-  response: NativeDatasetResponse = { query: "SELECT 1", params: null },
-) {
-  fetchMock.post("path:/api/dataset/native", response);
 }

@@ -674,14 +674,14 @@
       (qp.store/with-metadata-provider mp
         (driver/with-driver :postgres
           (testing "without breakouts, a stage that selects the aggregation goes after it"
-            (is (=? [{:source-table (meta/id :venues)}
-                     {:aggregation [[:max {} [:field {} "ID"]]]}
-                     {:fields [[:field {} "max"]]}]
+            (is (=? {:stages [{:source-table (meta/id :venues)}
+                              {:aggregation [[:max {} [:field {} "ID"]]]}
+                              {:fields [[:field {} "max"]]}]}
                     (sql.qp/preprocess :postgres query))))
           (testing "with a breakout, no stage goes after the aggregation"
-            (is (=? [{:source-table (meta/id :venues)}
-                     {:aggregation [[:max {} [:field {} "ID"]]]
-                      :breakout    [some?]}]
+            (is (=? {:stages [{:source-table (meta/id :venues)}
+                              {:aggregation [[:max {} [:field {} "ID"]]]
+                               :breakout    [some?]}]}
                     (sql.qp/preprocess :postgres (lib/breakout query (m/find-first #(= (:name %) "NAME")
                                                                                    (lib/breakoutable-columns query))))))))))))
 

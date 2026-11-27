@@ -1074,6 +1074,34 @@ describe("DataModel", () => {
     });
   });
 
+  describe("events tab", () => {
+    it("keeps the tab after switching away from it on a table that isn't an event table", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          tab: "events",
+          fieldId: undefined,
+        },
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Set entity type to Event" }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Details/ }));
+      expect(
+        screen.queryByRole("button", { name: "Set entity type to Event" }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Events/ }));
+      expect(
+        screen.getByRole("button", { name: "Set entity type to Event" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("segments tab", () => {
     it("should show empty state when no segments exist", async () => {
       await setup();

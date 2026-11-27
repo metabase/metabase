@@ -367,12 +367,10 @@
      [:order-by           {:optional true} [:ref ::order-by/order-bys]]
      [:source-table       {:optional true} [:ref ::id/table]]
      [:source-card        {:optional true} [:ref ::id/card]]
+     [:source-cte         {:optional true} [:ref ::common/uuid]]
      [:page               {:optional true} [:ref ::page]]
      [:limit              {:optional true} nat-int?]
      [:pivot              {:optional true} [:ref ::pivot]]]]
-   [:fn
-    {:error/message "A query must have exactly one of :source-table or :source-card"}
-    (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
    [:ref ::stage.page-and-limit-are-mutually-exclusive]
    (common/disallowed-keys
@@ -401,7 +399,7 @@
         ((some-fn :lib/type #(get % "lib/type")) stage)
         stage
 
-        ((some-fn :source-table :source-card) stage)
+        ((some-fn :source-table :source-card :source-cte) stage)
         (assoc stage :lib/type :mbql.stage/mbql)
 
         (:native stage)
@@ -440,8 +438,10 @@
            :json-schema   {}}
    [:mbql.stage/native [:fn {:error/message "Initial native stage"} map?]]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
-                        (some-fn :source-table :source-card)]]])
+                        {:error/message "Initial MBQL stage must have exactly one of :source-table, :source-card, or :source-cte"}
+                        (fn [stage]
+                          (= 1 (count (filter #(contains? stage %)
+                                              [:source-table :source-card :source-cte]))))]]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
@@ -449,8 +449,8 @@
            :json-schema   {}}
    [:mbql.stage/native (mu/never {:error/message "Native stages are only allowed as the first stage of a query or join."})]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
-                        (complement (some-fn :source-table :source-card))]]])
+                        {:error/message "Only the initial stage of a query can have a :source-table, :source-card, or :source-cte"}
+                        (complement (some-fn :source-table :source-card :source-cte))]]])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
@@ -528,6 +528,24 @@
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])
 
+(mr/def ::cte-definition
+  "One named common table expression. `:cte-name` is the alias the compiler emits for this CTE."
+  [:map
+   {:closed true}
+   [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql/cte]]
+   [:lib/uuid [:ref ::common/uuid]]
+   [:cte-name [:ref ::common/non-blank-string]]
+   [:query    [:ref ::query.map]]])
+
+(mr/def ::ctes
+  [:and
+   [:sequential [:ref ::cte-definition]]
+   [:fn
+    {:error/message "`:cte-name` must be unique within one `:ctes` vector"}
+    (fn [ctes]
+      (or (empty? ctes)
+          (apply distinct? (map :cte-name ctes))))]])
+
 (defn- normalize-query [query]
   (when-let [query (common/normalize-map query)]
     (reduce-kv (fn [query k v]
@@ -536,6 +554,7 @@
                                    (nil? v) (dissoc k))
                    (:constraints
                     :create-row
+                    :ctes
                     :info
                     :middleware
                     :parameters
@@ -561,6 +580,7 @@
 
 (defn- encode-query-for-hashing [query]
   (let [keys-for-hashing #{:constraints
+                           :ctes
                            :database
                            :destination-database/id
                            :impersonation/role
@@ -698,6 +718,7 @@
    [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
                                 [true  ::id/saved-questions-virtual-database]
                                 [false ::id/database]]]
+   [:ctes {:optional true} [:ref ::ctes]]
    [:stages   [:ref ::stages]]
    [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
    ;;

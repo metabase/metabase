@@ -126,6 +126,7 @@
      :closed           true}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
     [:stages      [:ref :metabase.lib.schema/stages]]
+    [:ctes {:optional true} [:ref :metabase.lib.schema/ctes]]
     [:conditions  ::conditions]
     [:alias       ::alias]
     [:fields   {:optional true} ::fields]

@@ -66,6 +66,7 @@
    ;; the FE still hands this entry point legacy MBQL; it must normalize before converting to MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.analysis :as lib.analysis]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
@@ -87,12 +88,14 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
@@ -2781,6 +2784,25 @@
       lib.core/prepare-for-serialization
       mbql5->js))
 
+(defn ^:export to-js-filter-clause
+  "Serialize a filter clause to a plain JS value."
+  [a-filter-clause]
+  (->> a-filter-clause
+       (lib.core/prepare-for-serialization ::lib.schema.expression/boolean)
+       mbql5->js))
+
+(defn ^:export from-js-filter-clause
+  "Deserialize a filter clause from a plain JS value. Returns nil when the value isn't a filter clause."
+  [js-filter-clause]
+  (let [a-filter-clause (try
+                          (lib.normalize/normalize ::lib.schema.expression/boolean (js->clj js-filter-clause))
+                          (catch :default _
+                            nil))]
+    ;; The schema also accepts literals, which aren't filter clauses.
+    (when (and (lib.util/clause? a-filter-clause)
+               (mr/validate ::lib.schema.expression/boolean a-filter-clause))
+      a-filter-clause)))
+
 ;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
 ;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will
 ;;; work as expected.
@@ -2893,3 +2915,10 @@
   "Generates an expression name that's unique in the query."
   [the-query stage-number suggested-name]
   (lib.expression/unique-expression-name the-query stage-number suggested-name))
+
+(defn ^:export analysis-state-to-mbql
+  "Convert an analysis state to an MBQL query."
+  [analysis-state]
+  (-> (js->clj analysis-state)
+      (->> (lib.normalize/normalize :metabase.lib.analysis/analysis-state))
+      lib.analysis/->mbql))

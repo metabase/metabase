@@ -1,0 +1,9 @@
+.header {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.result {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}

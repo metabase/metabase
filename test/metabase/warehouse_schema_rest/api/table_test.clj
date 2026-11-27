@@ -1643,6 +1643,52 @@
                                                :from   [(t2/table-name :model/Card)]
                                                :where  [:= :id metric-id]}))))))))
 
+(deftest entity-type-filter-test
+  (testing "GET /api/table?entity-type="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {events-id :id} {:db_id db-id :name "events" :entity_type :entity/EventTable}
+                   :model/Table {users-id :id}  {:db_id db-id :name "users" :entity_type :entity/UserTable}]
+      (let [table-ids (fn [& params]
+                        (->> (apply mt/user-http-request :crowberto :get 200 "table" params)
+                             (filter #(= (:db_id %) db-id))
+                             (map :id)
+                             set))]
+        (is (= #{events-id users-id} (table-ids)))
+        (is (= #{events-id} (table-ids :entity-type "entity/EventTable")))
+        (testing "a user's entity type is the one filtered on"
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" users-id) {:entity_type "entity/EventTable"})
+          (is (= #{events-id users-id} (table-ids :entity-type "entity/EventTable")))))
+      (testing "an unknown entity type is a 400"
+        (mt/user-http-request :crowberto :get 400 "table" :entity-type "entity/NoSuchTable")))))
+
+(deftest event-settings-test
+  (testing "PUT /api/table/:id event_settings"
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (let [url (format "table/%d" table-id)
+            put (fn [status settings]
+                  (mt/user-http-request :crowberto :put status url {:event_settings settings}))]
+        (testing "none are set to begin with"
+          (is (nil? (:event_settings (mt/user-http-request :crowberto :get 200 url)))))
+        (testing "a user's settings are stored on the Table and its settings, and served as stored"
+          (is (= {:columns.timestamp "created_at" :columns.person "user_id" :columns.session nil}
+                 (:event_settings (put 200 {:columns.timestamp "created_at"
+                                            :columns.person    "user_id"
+                                            :columns.session   nil}))
+                 (:event_settings (mt/user-http-request :crowberto :get 200 url))
+                 (:event_settings (mt/user-http-request :crowberto :get 200 (str url "/query_metadata")))
+                 (t2/select-one-fn :event_settings :model/TableUserSettings :table_id table-id)
+                 (t2/select-one-fn :event_settings :model/Table :id table-id))))
+        (testing "a value that isn't a column name is a 400"
+          (put 400 {:columns.person 1}))
+        (testing "an unknown key is dropped, as defendpoint drops every undeclared key"
+          (put 200 {:columns.person "name" :columns.actor "user_id"})
+          (is (= {:columns.person "name"} (t2/select-one-fn :event_settings :model/Table :id table-id))))
+        (testing "an empty object clears them"
+          (is (nil? (:event_settings (put 200 {}))))
+          (is (nil? (t2/select-one-fn :event_settings :model/Table :id table-id))))
+        (testing "a user without table metadata permission gets a 403"
+          (mt/user-http-request :rasta :put 403 url {:event_settings {:columns.person "name"}}))))))
+
 (defn- insert-fk-star!
   "Inserts a Database with a center Table and `n` other Tables, each other Table with an FK Field to the center's PK
   and the center with an FK Field to each other Table's PK, gives All Users nothing on it and the group with

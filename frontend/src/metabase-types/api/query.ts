@@ -25,6 +25,12 @@ export interface InternalDatasetQuery {
   offset?: number;
 }
 
+declare const JsFilterClauseSymbol: unique symbol;
+/** A filter clause as JSON, from `Lib.toJsFilterClause`. */
+export type JsFilterClause = unknown & {
+  _opaque: typeof JsFilterClauseSymbol;
+};
+
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here

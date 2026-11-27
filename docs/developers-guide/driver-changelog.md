@@ -7,6 +7,20 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- Added six new feature flags for general window function handling:
+  - `:window-functions` — the base feature. Defaults to `true` for every `:sql` driver.
+  - `:window-functions/frames` — explicit `ROWS`/`RANGE`/`GROUPS` frames. Defaults to the value of
+    `:window-functions`.
+  - `:window-functions/ntile` — `NTILE(n)`. Defaults to the value of `:window-functions`.
+  - `:window-functions/nth-value` — `NTH_VALUE(col, n)`. Defaults to the value of `:window-functions`.
+  - `:window-functions/exclude` — `EXCLUDE { CURRENT ROW | GROUP | TIES | NO OTHERS }` on a frame. Defaults to `false`.
+  - `:window-functions/interval-frame-offsets` — an `:interval` MBQL clause as a `:range` frame-bound offset
+    (e.g. `RANGE BETWEEN INTERVAL '7' day PRECEDING AND CURRENT ROW`). Defaults to `false`.
+
+- `metabase.driver.sql.query-processor/window-frame-interval-honeysql` `[driver amount unit]` -- new multimethod that
+  returns a HoneySQL form for a standalone interval literal used as a `:range` window-frame offset. Default is the
+  SQL-standard `INTERVAL '<n>' <unit>`.
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as

@@ -1,0 +1,27 @@
+## Carry event_settings through v_worktree_table so a worktree sees it on metabase_table like other sync-provided
+## columns, with each worktree's own value from metabase_table_user_settings winning if the user set one.
+
+databaseChangeLog:
+  - changeSet:
+      id: kfvnod
+      author: metamben
+      comment: Drop v_worktree_table so the next changeset can recreate it with event_settings
+      changes:
+        - sql:
+            sql: DROP VIEW v_worktree_table
+      rollback:
+        - sqlFile:
+            path: ../worktree_views/table/v1/worktree_table.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: ev2tbl
+      author: metamben
+      comment: Recreate v_worktree_table with event_settings
+      changes:
+        - sqlFile:
+            path: ../worktree_views/table/v2/worktree_table.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_table

@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
@@ -23,6 +24,8 @@
    ;; the `:group-type/main` group includes all the columns from the source Table/Card/previous stage as well as ones
    ;; added in this stage.
    :group-type/main
+   ;; CTE columns a caller fetched via `(lib/returned-columns query cte-metadata)` grouped by CTE name.
+   :group-type/cte
    ;; the other two group types are for various types of joins.
    :group-type/join.explicit
    :group-type/join.implicit])
@@ -30,7 +33,8 @@
 (def ^:private group-type-ordering
   {:group-type/main          1
    :group-type/join.explicit 2
-   :group-type/join.implicit 3})
+   :group-type/join.implicit 3
+   :group-type/cte           4})
 
 (mr/def ::column-group
   "Schema for the metadata returned by [[group-columns]], and accepted by [[columns-group-columns]]."
@@ -42,6 +46,7 @@
     [:join-alias    {:optional true} [:ref ::lib.schema.common/non-blank-string]]
     [:table-id      {:optional true} [:ref ::lib.schema.id/table]]
     [:card-id       {:optional true} [:ref ::lib.schema.id/card]]
+    [:cte-name      {:optional true} [:ref ::lib.schema.common/non-blank-string]]
     [:fk-field-id   {:optional true} [:ref ::lib.schema.id/field]]
     [:fk-field-name {:optional true} [:maybe :string]]
     [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]
@@ -49,6 +54,10 @@
     {:dispatch ::group-type}
     [:group-type/main
      any?]
+    [:group-type/cte
+     [:fn
+      {:error/message ":group-type/cte requires :cte-name"}
+      (fn [m] (contains? m :cte-name))]]
     ;; if we're in the process of BUILDING a join and using this in combination
     ;; with [[metabase.lib.join/join-condition-rhs-columns]], the alias won't be present yet, so group things by the
     ;; joinable -- either the Card we're joining, or the Table we're joining. See #32493
@@ -81,6 +90,8 @@
         (lib.metadata.calculation/display-info query stage-number table))
       (when-let [card (some->> (:source-card stage) (lib.metadata/card query))]
         (lib.metadata.calculation/display-info query stage-number card))
+      (when-let [cte (some->> (:source-cte stage) (lib.cte/find-cte query))]
+        {:display-name (:cte-name cte)})
       ;; multi-stage queries (#30108)
       (when (next (:stages query))
         {:display-name (i18n/tru "Summaries")})
@@ -103,6 +114,13 @@
                   (= (lib.metadata.calculation/display-name query stage-number other-join)
                      this-name)))
            joins))))
+
+(defmethod display-info-for-group-method :group-type/cte
+  [_query _stage-number {:keys [cte-name], :as _column-group}]
+  {:display-name           cte-name
+   :is-main-group          false
+   :is-from-join           false
+   :is-implicitly-joinable false})
 
 (defmethod display-info-for-group-method :group-type/join.explicit
   [query stage-number {:keys [join-alias table-id card-id], :as _column-group}]
@@ -179,6 +197,11 @@
     (when table-id
       {:table-id table-id}))))
 
+(defmethod column-group-info-method :source/cte
+  [{cte-name :lib/cte-name, :as _col}]
+  {::group-type :group-type/cte
+   :cte-name    cte-name})
+
 (defmethod column-group-info-method :default
   [_column-metadata]
   {::group-type :group-type/main})
@@ -193,6 +216,7 @@
   (into [(group-type-ordering group-type)]
         (case group-type
           :group-type/main          ["main"] ; There's only ever one main group, so no need to sort them further.
+          :group-type/cte           [(:cte-name column-group)]
           :group-type/join.explicit [(:join-alias column-group)]
           :group-type/join.implicit [(or (:fk-join-alias column-group) "")
                                      (fk-field-names (:fk-field-id column-group) "")])))

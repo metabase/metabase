@@ -1,0 +1,11 @@
+/*
+ * A label column of the same width in every section, so the inputs line up
+ * across sections. A label wraps within it; only a single word wider than the
+ * column widens it.
+ */
+.container {
+  display: grid;
+  grid-template-columns: minmax(min-content, 8rem) minmax(min-content, 1fr);
+  gap: 1rem;
+  align-items: center;
+}

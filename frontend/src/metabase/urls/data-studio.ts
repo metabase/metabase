@@ -32,6 +32,7 @@ export const DATA_STUDIO_TABLE_METADATA_TABS = [
   "field",
   "segments",
   "measures",
+  "events",
 ] as const;
 export type DataStudioTableMetadataTab =
   (typeof DATA_STUDIO_TABLE_METADATA_TABS)[number];
@@ -128,6 +129,10 @@ export function dataStudioTable(tableId: TableId) {
 export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
   const baseUrl = `${dataStudioLibrary()}/tables/${tableId}/fields`;
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
+}
+
+export function dataStudioTableEvents(tableId: TableId) {
+  return `${dataStudioTable(tableId)}/events`;
 }
 
 export function dataStudioTableDependencies(tableId: TableId) {

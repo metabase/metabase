@@ -36,7 +36,8 @@
   "The Table columns users can set, whose values `metabase_table` holds, all but [[settings-only-table-columns]],
   while `metabase_table_user_settings` records which ones a user set."
   (into #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer
-          :data_source :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority}
+          :data_source :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority
+          :event_settings}
         settings-only-table-columns))
 
 (defn table-row-columns

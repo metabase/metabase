@@ -5,6 +5,7 @@ import {
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { isEventTable } from "metabase/product-analytics-core";
 import { type Location, useLocation } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
@@ -29,6 +30,14 @@ function getTabs(
     label: t`Overview`,
     to: Urls.dataStudioTable(table.id),
   });
+
+  const eventsUrl = Urls.dataStudioTableEvents(table.id);
+  if (isEventTable(table) || location.pathname === eventsUrl) {
+    tabs.push({
+      label: t`Events`,
+      to: eventsUrl,
+    });
+  }
 
   tabs.push({
     label: t`Fields`,

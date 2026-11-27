@@ -148,6 +148,7 @@
 
 (t2/deftransforms :model/Table
   {:entity_type             mi/transform-keyword
+   :event_settings          mi/transform-json
    :show_in_getting_started mi/transform-boolean
    :visibility_type         mi/transform-keyword
    :data_layer              (mi/transform-validator-with-fixes
@@ -660,7 +661,7 @@
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :transform_target]
+           :owner_user_id :transform_target :event_settings]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (defmethod serialization/spec :model/Table [_]
@@ -669,7 +670,7 @@
    :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
-                         :owner_email]
+                         :owner_email :event_settings]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
                          :is_defective_duplicate :unique_table_helper]
    :transform           {:archived_at    serialization/date-transform
@@ -688,7 +689,7 @@
   {:track          [:id :name :db_id]
    :track-redacted [:active :archived_at :caveats :data_authority :data_layer :data_source
                     :database_require_filter :deactivated_at :description :display_name :entity_type
-                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate
+                    :estimated_row_count :event_settings :field_order :initial_sync_status :is_defective_duplicate
                     :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
                     :show_in_getting_started :transform_target :unique_table_helper
                     :visibility_type]

@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
@@ -51,7 +52,7 @@
    ::joinable])
 
 (mr/def ::join-clause-source
-  [:or ::lib.join.util/partial-join ::lib.schema/query ::lib.schema/stage ::joinable])
+  [:or ::lib.join.util/partial-join ::lib.schema/query ::lib.schema/stage ::lib.schema/cte-definition ::joinable])
 
 (declare with-join-alias)
 
@@ -229,14 +230,16 @@
           (range stage-index -1 -1))))
 
 (defn- stage-source-display-name
-  [query {:keys [source-table source-card], :as _stage}]
+  [query {:keys [source-table source-card source-cte], :as _stage}]
   (or
    (when source-table
      ((some-fn :display-name :name) (lib.metadata/table query source-table)))
    (when source-card
      (if-let [card-metadata (lib.metadata/card query source-card)]
        (lib.metadata.calculation/display-name query 0 card-metadata)
-       (lib.card/fallback-display-name source-card)))))
+       (lib.card/fallback-display-name source-card)))
+   (when source-cte
+     (:cte-name (lib.cte/find-cte query source-cte)))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/join
   [query _stage-number {[first-stage] :stages, :as _join} _style]
@@ -312,12 +315,11 @@
 ;;; THEY WOULD APPEAR IN THE PARENT STAGE!!! USE [[join-returned-columns-relative-to-parent-stage]] if that's what you
 ;;; want instead.
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- ::lib.metadata.calculation/returned-columns
-  [query                       :- ::lib.schema/query
-   _stage-number               :- :int
-   {:keys [stages], :as _join} :- ::lib.schema.join/join
-   options                     :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-  (let [join-query (assoc query :stages stages)]
-    (lib.metadata.calculation/returned-columns join-query -1 -1 options)))
+  [query         :- ::lib.schema/query
+   _stage-number :- :int
+   join          :- ::lib.schema.join/join
+   options       :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
+  (lib.metadata.calculation/returned-columns (lib.util/query-for-join query join) -1 -1 options))
 
 ;;; TODO (Cam 9/5/25) -- rename this to `join-last-stage-returned-columns-relative-to-parent-stage` to make it's clear
 ;;; it's talking about the columns returned by the join's last stage and has nothing to do with the join's `:fields`
@@ -356,7 +358,7 @@
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
   [query                                                                    :- ::lib.schema/query
    stage-number                                                             :- :int
-   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
+   {:keys [fields], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
    options                                                                  :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-not (= fields :none)
     (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
@@ -374,7 +376,7 @@
                         ;; should disallow refs with `:source-field`/remove it automatically.
                         :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
                                    match (or (lib.equality/find-matching-column field-ref cols)
-                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (assoc query :stages (:stages join))
+                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (lib.util/query-for-join query join)
                                                                                                         lib.stage.util/append-stage)
                                                                                                     (with-join-alias field-ref nil))]
                                                (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
@@ -397,7 +399,7 @@
           cols' (concat
                  cols'
                  (lib.metadata.calculation/remapped-columns
-                  (assoc query :stages stages)
+                  (lib.util/query-for-join query join)
                   0
                   cols'
                   options))]
@@ -456,8 +458,10 @@
 ;;; TODO -- this probably ought to live in [[metabase.lib.query]]
 (defmethod join-clause-method :mbql/query
   [another-query]
-  {:lib/type :mbql/join
-   :stages   (:stages (lib.util/pipeline another-query))})
+  (m/assoc-some
+   {:lib/type :mbql/join
+    :stages   (:stages (lib.util/pipeline another-query))}
+   :ctes (not-empty (:ctes another-query))))
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
 (defmethod join-clause-method :mbql.stage/mbql
@@ -476,6 +480,12 @@
   (cond-> (join-clause-method {:lib/type     :mbql.stage/mbql
                                :source-table (:id table-metadata)})
     join-alias (with-join-alias join-alias)))
+
+(defmethod join-clause-method :mbql/cte
+  [cte]
+  (-> (join-clause-method {:lib/type   :mbql.stage/mbql
+                           :source-cte (:lib/uuid cte)})
+      (with-join-alias (:cte-name cte))))
 
 (defn- with-join-conditions-add-alias-to-rhses
   "Add `join-alias` to the RHS of all [[standard-join-condition?]] `conditions` that don't already have a `:join-alias`.

@@ -434,8 +434,8 @@
           query (lib/aggregate query (lib/count))]
       (qp.store/with-metadata-provider mp
         (driver/with-driver :redshift
-          (is (=? [{:source-table (meta/id :venues)}
-                   {:aggregation [[:count {}]]}]
+          (is (=? {:stages [{:source-table (meta/id :venues)}
+                            {:aggregation [[:count {}]]}]}
                   (sql.qp/preprocess :redshift query))))))))
 
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)

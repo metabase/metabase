@@ -9,6 +9,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.cte :as lib.cte]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
@@ -529,6 +530,23 @@
   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
     (resolve-in-card-returned-columns query source-card-id id-or-name)))
 
+(mu/defn- resolve-in-cte-returned-columns :- [:maybe ::lib.metadata.calculation/visible-column]
+  [query      :- ::lib.schema/query
+   cte-uuid   :- :string
+   id-or-name :- ::id-or-name]
+  (log/debugf "Resolving %s in source CTE %s metadata" (pr-str id-or-name) (pr-str cte-uuid))
+  (when-some [cte (lib.cte/find-cte query cte-uuid)]
+    (let [cte-cols (lib.metadata.calculation/returned-columns (lib.cte/query-for-cte-body query cte))]
+      (when-some [col (resolve-in-previous-stage-returned-columns-and-update-keys query cte-cols id-or-name)]
+        (assoc col :lib/source :source/previous-stage)))))
+
+(mu/defn- resolve-in-source-cte-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   id-or-name   :- ::id-or-name]
+  (when-some [cte-uuid (:source-cte (lib.util/query-stage query stage-number))]
+    (resolve-in-cte-returned-columns query cte-uuid id-or-name)))
+
 (defn- fallback-metadata [id-or-name]
   (log/debug (u/format-color :red
                              (str "We tried every trick we could think of and still failed to resolve a field"
@@ -581,6 +599,10 @@
 
     (:source-card stage)
     (when-some [col (resolve-in-source-card-metadata query stage-number id-or-name)]
+      (u/assoc-default col :lib/source-column-alias (:name col)))
+
+    (:source-cte stage)
+    (when-some [col (resolve-in-source-cte-metadata query stage-number id-or-name)]
       (u/assoc-default col :lib/source-column-alias (:name col)))
 
     (lib.util/previous-stage-number query stage-number)

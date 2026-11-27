@@ -60,6 +60,7 @@ export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
 export * from "./persist";
+export * from "./product-analytics";
 export * from "./public-link";
 export * from "./query";
 export * from "./remote-sync";

@@ -27,7 +27,8 @@
   [[sent-data-sources]]): it is a curation of the Table that Metabot reads, and a seeded Metabase should treat the
   Table as its sender does."
   [:schema :name :display_name :description :entity_type :visibility_type :data_layer :data_source :data_authority
-   :field_order :caveats :points_of_interest :show_in_getting_started :owner_email :database_require_filter])
+   :field_order :caveats :points_of_interest :show_in_getting_started :owner_email :database_require_filter
+   :event_settings])
 
 (def left-out-table-columns
   "The Table columns serialization copies that an entry does not carry, and why."

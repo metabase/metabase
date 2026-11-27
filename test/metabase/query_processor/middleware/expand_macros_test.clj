@@ -146,6 +146,25 @@
                 (-> (lib/query mock-metadata-provider (meta/table-metadata :venues))
                     (lib/expression "CC" (lib/case [[(lib/segment 1) "Segment"]] "Other"))))))))))
 
+(deftest ^:parallel segment-as-expression-test
+  (testing "a :segment reference that is a whole custom expression keeps the expression's name"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                             mock-metadata-provider
+                             {:segments [{:id         3
+                                          :name       "Segment 3"
+                                          :table-id   (meta/id :venues)
+                                          :definition (-> (lib.query/query meta/metadata-provider (meta/table-metadata :venues))
+                                                          (lib/filter (lib/> (meta/field-metadata :venues :price) 1))
+                                                          (lib/filter (lib/< (meta/field-metadata :venues :price) 4)))}]})
+          query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                                (lib/expression "one filter" (lib/segment 1))
+                                (lib/expression "two filters" (lib/segment 3)))]
+      (is (=? [[:= {:lib/expression-name "one filter"} [:field {} (meta/id :venues :name)] "abc"]
+               [:and {:lib/expression-name "two filters"}
+                [:> {} [:field {} (meta/id :venues :price)] 1]
+                [:< {} [:field {} (meta/id :venues :price)] 4]]]
+              (lib/expressions (expand-macros query)))))))
+
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
     (qp.store/with-metadata-provider mock-metadata-provider

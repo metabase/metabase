@@ -18,6 +18,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
@@ -1274,6 +1275,110 @@
      (-> [f expr-hsql [:inline n]]
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))))
 
+(defmulti window-frame-interval-honeysql
+  "Return a HoneySQL form for an interval literal used as a `:range` window-frame offset, e.g. the
+   interval in `RANGE BETWEEN INTERVAL '7' day PRECEDING AND CURRENT ROW`. Default emits the
+   SQL-standard `INTERVAL '<n>' <unit>` form."
+  {:added "0.66.0", :arglists '([driver amount unit])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod window-frame-interval-honeysql :sql
+  [_driver amount unit]
+  (check-interval-unit unit)
+  (when-not (number? amount)
+    (throw (ex-info (tru "Interval amount must be a number, got: {0}" (pr-str amount))
+                    {:type driver-api/qp.error-type.invalid-query
+                     :amount amount})))
+  [:raw (format "INTERVAL '%s' %s" amount (name unit))])
+
+(defn- frame-boundary->honeysql
+  "MBQL `[:preceding n]` -> HoneySQL `[<offset> :preceding]`. Numeric offsets are inlined; `:interval`
+   clauses (for `:range` frames over temporal order keys) emit an engine-specific interval literal."
+  [driver boundary]
+  (if (vector? boundary)
+    (let [[dir offset] boundary
+          offset-hsql  (cond
+                         (number? offset)
+                         [:inline offset]
+
+                         (driver-api/is-clause? :interval offset)
+                         (let [[_tag _opts n unit] offset]
+                           (window-frame-interval-honeysql driver n unit)))]
+      [offset-hsql dir])
+    boundary))
+
+(def ^:private exclude->honeysql
+  {:no-others   :exclude-no-others
+   :current-row :exclude-current-row
+   :group       :exclude-group
+   :ties        :exclude-ties})
+
+(defn- frame->honeysql
+  [driver {frame-type :type :keys [start end exclude]}]
+  (cond-> [frame-type :between
+           (frame-boundary->honeysql driver start)
+           (frame-boundary->honeysql driver end)]
+    exclude (conj (exclude->honeysql exclude))))
+
+(def ^:private window-only-honeysql-fn
+  "HoneySQL function keyword for each window-only MBQL tag."
+  {:row-number   :row_number
+   :rank         :rank
+   :dense-rank   :dense_rank
+   :percent-rank :percent_rank
+   :cume-dist    :cume_dist
+   :ntile        :ntile
+   :lag          :lag
+   :lead         :lead
+   :first-value  :first_value
+   :last-value   :last_value
+   :nth-value    :nth_value})
+
+(defn- compile-window-only-call [driver [tag _opts & args]]
+  (let [hsql-fn (window-only-honeysql-fn tag)]
+    (case tag
+      (:row-number :rank :dense-rank :percent-rank :cume-dist)
+      [hsql-fn]
+
+      :ntile
+      [hsql-fn [:inline (first args)]]
+
+      (:lag :lead)
+      (let [[expr n default] args]
+        (cond-> [hsql-fn (->honeysql driver expr)]
+          n       (conj [:inline n])
+          default (conj (->honeysql driver default))))
+
+      (:first-value :last-value)
+      [hsql-fn (->honeysql driver (first args))]
+
+      :nth-value
+      [hsql-fn (->honeysql driver (first args)) [:inline (second args)]])))
+
+(defn- window-only-call? [[tag]]
+  (contains? #{:row-number :rank :dense-rank :percent-rank :cume-dist
+               :ntile :lag :lead :first-value :last-value :nth-value}
+             tag))
+
+(defn- compile-window-inner [driver inner]
+  (if (window-only-call? inner)
+    (compile-window-only-call driver inner)
+    (->honeysql driver inner)))
+
+(defn- window-spec->honeysql [driver {:keys [partition-by order-by frame]}]
+  (cond-> {}
+    (seq partition-by) (assoc :partition-by (mapv (fn [expr] [(->honeysql driver expr)]) partition-by))
+    (seq order-by)     (assoc :order-by (mapv (fn [[expr dir]] [(->honeysql driver expr) dir]) order-by))
+    frame              (assoc :frame (frame->honeysql driver frame))))
+
+(defmethod ->honeysql [:sql :window]
+  [driver [_window _opts inner spec]]
+  (let [inner-hsql (compile-window-inner driver inner)
+        over-map   (window-spec->honeysql driver spec)]
+    (-> [:over [inner-hsql over-map]]
+        (h2x/with-database-type-info (h2x/database-type inner-hsql)))))
+
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 
@@ -2084,6 +2189,31 @@
         expr  (->honeysql driver table)]
     (sql.helpers/from honeysql-form [expr])))
 
+;;; --------------------------------------------------- source-cte ---------------------------------------------------
+
+(defn- cte-aliases
+  "UUID -> SQL alias map for user CTEs in the current top-level query compile, cached on the QP store's metadata
+  provider for the duration of the query."
+  []
+  (lib.metadata.protocols/cached-value (driver-api/metadata-provider) ::cte-aliases {}))
+
+(defn- set-cte-aliases!
+  "Store the UUID -> SQL alias map for the current compile on the QP store's metadata provider."
+  [aliases]
+  (lib.metadata.protocols/cache-value! (driver-api/metadata-provider) ::cte-aliases aliases))
+
+(defmethod apply-top-level-clause [:sql :source-cte]
+  [driver _top-level-clause honeysql-form {source-cte-uuid :source-cte}]
+  (let [aliases (cte-aliases)]
+    (if-let [cte-alias (get aliases source-cte-uuid)]
+      ;; A CTE alias is NOT a physical table — emit it as a `:table-alias` identifier so drivers that auto-qualify
+      ;; `:table` identifiers (e.g. BigQuery prepending a dataset) don't mangle it.
+      (let [cte-identifier (->honeysql driver (h2x/identifier :table-alias cte-alias))
+            source-alias   (->honeysql driver (h2x/identifier :table-alias source-query-alias))]
+        (update honeysql-form :from (fnil conj []) [cte-identifier [source-alias]]))
+      (throw (ex-info (tru "No CTE registered for UUID {0}" source-cte-uuid)
+                      {:uuid source-cte-uuid, :known (set (keys aliases))})))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Building the HoneySQL Form                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2099,7 +2229,7 @@
             #(vector %2 %1)
             ;; `:pivot` runs AFTER `:order-by` so it can prepend its `GROUPING(...) ASC` primary sort to the existing
             ;; ORDER BY entries.
-            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :pivot :page :limit])))
+            [:source-table :source-cte :breakout :aggregation :fields :filter :filters :joins :order-by :pivot :page :limit])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."
@@ -2247,7 +2377,8 @@
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
   same version of the query that we will ultimately be compiling.
 
-  Wants a `:lib/query` MBQL 5 query as input. Returns an MBQL 4 **inner query**, for historical reasons, or MBQL 5 **stages**."
+  Wants a `:lib/query` MBQL 5 query as input. Returns a `:lib/query` MBQL 5 query with any preprocessing
+  transforms applied."
   {:changelog-test/ignore true, :arglists '([driver mbql5-query]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -2273,8 +2404,7 @@
       driver-api/nest-expressions
       ;; Put a single-row aggregation in its own stage CTE, see [[driver-api/nest-single-row-aggregation]].
       (cond-> (nest-single-row-aggregation? driver mbql5-query) driver-api/nest-single-row-aggregation)
-      driver-api/add-alias-info
-      :stages))
+      driver-api/add-alias-info))
 
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
@@ -2419,20 +2549,73 @@
          (not (get-in query [:middleware :card-reference?]))
          (not-any? native-stage-has-cte? (all-stages stages)))))
 
+(defn- all-user-ctes
+  "Every user CTE reachable from `stages` and `ctes`: `ctes` themselves, any `:ctes` nested inside each CTE's body,
+  and any `:ctes` attached to joins anywhere in the tree (recursively). Ordered so that dependencies precede
+  dependents — body-nested CTEs come before their containing CTE. Deduplicated by `:lib/uuid` in case the same CTE
+  is reached through more than one path."
+  [ctes stages]
+  (m/distinct-by
+   :lib/uuid
+   (concat (mapcat (fn [{body :query}]
+                     (all-user-ctes (:ctes body) (:stages body)))
+                   ctes)
+           ctes
+           (mapcat (fn [stage]
+                     (mapcat (fn [join]
+                               (all-user-ctes (:ctes join) (:stages join)))
+                             (:joins stage)))
+                   stages))))
+
+(defn- build-cte-aliases
+  "UUID -> SQL alias map for `all-ctes`, with aliases suffixed to avoid name collisions."
+  [all-ctes stage-cte-names]
+  ;; Prime with `stage-cte-names` so that user CTE aliases don't collide with compiler-generated stage CTEs.
+  (let [gen (lib.util.unique-name-generator/unique-name-generator (vec stage-cte-names))]
+    (into {} (map (fn [{cte-uuid :lib/uuid, cte-name :cte-name}]
+                    [cte-uuid (gen cte-uuid cte-name)]))
+          all-ctes)))
+
+(defn- compile-user-ctes
+  "Compile each user CTE body once, returning HoneySQL `:with` tuples `[alias body-hsql]`."
+  [driver all-ctes]
+  (let [aliases (cte-aliases)]
+    (mapv (fn [{cte-uuid :lib/uuid, body-query :query}]
+            [(get aliases cte-uuid)
+             (stages->honeysql* driver (:stages body-query))])
+          all-ctes)))
+
 (defn- stages->honeysql
   [driver stages query]
-  (if (use-stage-ctes? driver stages query)
-    (hoist-ctes (stages->honeysql* driver (assign-cte-names stages)))
-    (stages->honeysql* driver stages)))
+  (let [all-ctes   (all-user-ctes (:ctes query) stages)
+        user-ctes? (seq all-ctes)
+        can-cte?   (use-stage-ctes? driver stages query)]
+    (cond
+      can-cte?
+      (let [tagged (assign-cte-names stages)]
+        (set-cte-aliases! (if user-ctes?
+                            (build-cte-aliases all-ctes (keep ::cte-name (all-stages tagged)))
+                            {}))
+        (let [main-hsql   (stages->honeysql* driver tagged)
+              user-tuples (when user-ctes? (compile-user-ctes driver all-ctes))]
+          (hoist-ctes (cond-> main-hsql
+                        user-ctes? (update :with #(into (vec user-tuples) %))))))
+
+      user-ctes?
+      (throw (ex-info (tru "Driver {0} does not support :ctes" driver)
+                      {:driver driver, :type driver-api/qp.error-type.driver}))
+
+      :else
+      (stages->honeysql* driver stages))))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (binding [driver/*driver* driver]
-    (let [stages (preprocess driver query)]
+    (let [preprocessed (preprocess driver query)]
       (log/trace "Compiling MBQL query")
-      (u/prog1 (stages->honeysql driver stages query)
+      (u/prog1 (stages->honeysql driver (:stages preprocessed) preprocessed)
         (log/debug "Compiled HoneySQL form")
         (driver-api/debug> (list '🍯 <>))))))
 

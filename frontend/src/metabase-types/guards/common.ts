@@ -18,6 +18,9 @@ export const isSet = (value: unknown): value is Set<unknown> => {
   return Object.prototype.toString.call(value) === "[object Set]";
 };
 
+export const isOneOf = <T>(values: readonly T[], value: unknown): value is T =>
+  values.some((item) => item === value);
+
 export const isDate = (value: unknown): value is Date => {
   return Object.prototype.toString.call(value) === "[object Date]";
 };

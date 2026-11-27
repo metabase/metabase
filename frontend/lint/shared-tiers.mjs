@@ -47,8 +47,14 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: the data grid, writeback actions and comments.
-  ["shared/data-grid", "shared/actions", "shared/comments"],
+  // P0 — independent peers: the data grid, writeback actions, comments and
+  // product analytics core.
+  [
+    "shared/data-grid",
+    "shared/actions",
+    "shared/comments",
+    "shared/product-analytics-core",
+  ],
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
   // P2 — independent peers with no edges between them.
