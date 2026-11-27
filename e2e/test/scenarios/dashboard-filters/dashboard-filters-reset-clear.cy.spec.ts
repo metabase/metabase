@@ -174,6 +174,8 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       id: "904aa8b7",
       type: "string/=",
       sectionId: "string",
+      // an input box, like the filter in metabase#59306, instead of the list of categories
+      values_query_type: "none",
     };
     const filterTwo = {
       name: "Filter Two",
