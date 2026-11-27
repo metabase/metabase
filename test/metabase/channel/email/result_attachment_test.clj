@@ -117,3 +117,13 @@
                   (email.result-attachment/download-levels parts user-id)))
            (is (= [:one-million-rows :no nil :one-million-rows]
                   (email.result-attachment/download-levels parts user-id)))))))))
+
+(deftest attachment-file-name-is-portable-test
+  (testing "Reserved characters in card name and timestamp are left out of attachment file name"
+    (let [file-name (:file-name (#'email.result-attachment/create-result-attachment-map
+                                 :xlsx "Q1/Q2 sales: \"EU\" <all>?" (java.io.File. "attachment.xlsx")))]
+      (is (re-matches #"Q1_Q2 sales_ _EU_ _all___\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.xlsx" file-name))))
+  (testing "Non-ASCII characters in card name are kept"
+    (let [file-name (:file-name (#'email.result-attachment/create-result-attachment-map
+                                 :csv "Type vente é" (java.io.File. "attachment.csv")))]
+      (is (str/starts-with? file-name "Type vente é_")))))

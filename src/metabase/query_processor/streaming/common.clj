@@ -22,14 +22,24 @@
 
 (set! *warn-on-reflection* true)
 
-(defn export-filename-timestamp
-  "Generates the current timestamp as a string to use in export filenames."
+(defn- export-filename-now
+  "The current time in the report timezone."
   []
   (let [timezone (or (driver/report-timezone)
                      (qp.timezone/system-timezone-id)
-                     "UTC")
-        zone-id (t/zone-id timezone)]
-    (u.date/format (t/zoned-date-time (t/instant) zone-id))))
+                     "UTC")]
+    (t/zoned-date-time (t/instant) (t/zone-id timezone))))
+
+(defn export-filename-timestamp
+  "Generates the current timestamp as a string to use in export filenames."
+  []
+  (u.date/format (export-filename-now)))
+
+(defn portable-export-filename-timestamp
+  "Generates the current local time in the report timezone as a string, to the second and without colons, to use in
+  filenames that must be valid on every operating system."
+  []
+  (t/format "yyyy-MM-dd'T'HH-mm-ss" (export-filename-now)))
 
 (defn in-result-time-zone
   "Set the time zone of a temporal value `t` to result timezone without changing the actual moment in time. e.g.
