@@ -639,7 +639,7 @@ describe("DataStep", () => {
         ).not.toBeInTheDocument(),
       );
       expect(
-        await within(screen.getByTestId("data-step-cell")).findByText(
+        await within(await screen.findByTestId("data-step-cell")).findByText(
           ORDERS_COUNT_QUESTION.name,
         ),
       ).toBeInTheDocument();
@@ -660,7 +660,7 @@ describe("DataStep", () => {
         await within(getModal()).findByText(ORDERS_MODEL.name),
       );
       expect(
-        await within(screen.getByTestId("data-step-cell")).findByText(
+        await within(await screen.findByTestId("data-step-cell")).findByText(
           ORDERS_MODEL.name,
         ),
       ).toBeInTheDocument();
@@ -697,7 +697,7 @@ describe("DataStep", () => {
 
       await waitFor(() => expect(getNextTableName()).toBe("Products"));
       expect(
-        await within(screen.getByTestId("data-step-cell")).findByText(
+        await within(await screen.findByTestId("data-step-cell")).findByText(
           "Products",
         ),
       ).toBeInTheDocument();
