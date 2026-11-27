@@ -44,8 +44,8 @@
    Put all messages into `inbox` instead of actually sending them."
   [_ email]
   (doseq [recipient (concat (:to email) (:bcc email))]
-    (swap! inbox assoc recipient (-> (get @inbox recipient [])
-                                     (conj email)))))
+    ;; Read inside the swap, so a retry after another thread's write adds to the fresh list.
+    (swap! inbox update recipient (fnil conj []) email)))
 
 (defn do-with-expected-messages
   "Invokes `thunk`, blocking until `n` messages are found in the inbox."
