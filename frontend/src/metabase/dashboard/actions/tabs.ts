@@ -415,7 +415,10 @@ export const tabsReducer = createReducer<DashboardState>(
         // 3. Mark dashcards on removed tab as removed
         const removedDashCardIds: DashCardId[] = [];
         prevDash.dashcards.forEach((id) => {
-          if (state.dashcards[id].dashboard_tab_id === tabToRemove.id) {
+          if (
+            state.dashcards[id].dashboard_tab_id === tabToRemove.id &&
+            !state.dashcards[id].isRemoved
+          ) {
             state.dashcards[id].isRemoved = true;
             removedDashCardIds.push(id);
           }
