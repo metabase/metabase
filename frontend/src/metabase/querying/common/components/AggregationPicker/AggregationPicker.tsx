@@ -432,7 +432,6 @@ export function AggregationPicker({
     return (
       <Box
         className={className}
-        mih="18.75rem"
         data-testid="aggregation-column-picker"
         c="core-summarize"
       >
