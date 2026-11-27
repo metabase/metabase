@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import { type FormEvent, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -55,12 +55,20 @@ export function CustomURLPicker({
     [],
   );
 
-  const handleSubmit = useCallback(() => {
-    updateSettings({
-      ...clickBehavior,
-      linkTemplate: url,
-    });
-  }, [clickBehavior, updateSettings, url]);
+  const handleSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!canSelect) {
+        return;
+      }
+      updateSettings({
+        ...clickBehavior,
+        linkTemplate: url,
+      });
+      closeModal();
+    },
+    [canSelect, clickBehavior, closeModal, updateSettings, url],
+  );
 
   const handleReset = useCallback(() => {
     updateSettings({
@@ -100,36 +108,37 @@ export function CustomURLPicker({
         title={t`Enter a URL to link to`}
         size="lg"
       >
-        <Stack gap="xl">
-          <Text>
-            {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
-          </Text>
-          <TextInputBlurChange
-            autoFocus
-            value={url}
-            placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
-            onChange={handleLinkTemplateChange}
-            className={cx(CS.block, CS.full)}
-          />
-          {hasColumnLevelClickBehavior(dashcard) && (
-            <CustomLinkText
-              updateSettings={updateSettings}
-              clickBehavior={clickBehavior}
+        <form onSubmit={handleSubmit}>
+          <Stack gap="xl">
+            <Text>
+              {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
+            </Text>
+            <TextInputBlurChange
+              data-autofocus
+              value={url}
+              placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
+              onChange={handleLinkTemplateChange}
+              className={cx(CS.block, CS.full)}
             />
-          )}
-          <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
-        </Stack>
-        <Modal.Footer>
-          <Button
-            variant="filled"
-            type="button"
-            onClick={() => {
-              handleSubmit();
-              closeModal();
-            }}
-            disabled={!canSelect}
-          >{t`Done`}</Button>
-        </Modal.Footer>
+            {hasColumnLevelClickBehavior(dashcard) && (
+              <CustomLinkText
+                updateSettings={updateSettings}
+                clickBehavior={clickBehavior}
+              />
+            )}
+            <ValuesYouCanReference
+              dashcard={dashcard}
+              parameters={parameters}
+            />
+          </Stack>
+          <Modal.Footer>
+            <Button
+              variant="filled"
+              type="submit"
+              disabled={!canSelect}
+            >{t`Done`}</Button>
+          </Modal.Footer>
+        </form>
       </Modal>
     </>
   );
