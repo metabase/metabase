@@ -1,6 +1,6 @@
 (ns metabase.queue-listener.core
   "Queue listeners: (possibly) multithreaded workers that process messages off a queue in batches.
-  Listeners should generally be managed with [[init-listener!]], which calls [[listen!]].
+  Listeners are usually started by an [[init-listener!]] method, which calls [[listen!]].
   [[start-listeners!]] and [[stop-listeners!]] start and stop them all, through the global system."
   (:require
    [com.climate.claypoole :as cp]
@@ -170,7 +170,8 @@
         (log/errorf "Error initializing listener %s: %s" k (ex-message e))))))
 
 (defn start-listeners!
-  "Call every implementation of [[init-listener!]], unless they were already started."
+  "Call every implementation of [[init-listener!]], unless they were already started.
+  Throws if they are not running and the global system has halted, until [[global-system/reopen!]]."
   []
   (global-system/start! listeners-component
                         (fn []
