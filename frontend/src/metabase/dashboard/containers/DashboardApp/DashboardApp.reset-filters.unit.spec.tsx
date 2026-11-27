@@ -36,6 +36,7 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
+  Field,
   FieldId,
   Parameter,
   RowValue,
@@ -83,6 +84,9 @@ type SetupOpts = {
   tableId: TableId;
   fieldId: FieldId;
   fieldValues?: FieldValueRow[];
+  fieldOverrides?: Partial<Field>;
+  /** Whether the values endpoint of the saved dashboard says that it truncated the values */
+  hasMoreDashboardValues?: boolean;
 };
 
 function getRequestBody(body: unknown): Record<string, unknown> {
@@ -94,10 +98,12 @@ function setupParameterValuesEndpoints({
   parameters,
   fieldId,
   fieldValues,
+  hasMoreDashboardValues = false,
 }: {
   parameters: Parameter[];
   fieldId: FieldId;
   fieldValues: FieldValueRow[];
+  hasMoreDashboardValues?: boolean;
 }) {
   const parameterIds = new Set(parameters.map(({ id }) => id));
   const isKnownParameter = (paramId: unknown) =>
@@ -124,7 +130,7 @@ function setupParameterValuesEndpoints({
     `express:/api/dashboard/${DASHBOARD_ID}/params/:paramId/values`,
     ({ expressParams }) => ({
       values: isKnownParameter(expressParams?.paramId) ? fieldValues : [],
-      has_more_values: false,
+      has_more_values: hasMoreDashboardValues,
     }),
   );
   fetchMock.get(
@@ -293,8 +299,13 @@ async function setup({
   tableId,
   fieldId,
   fieldValues = [],
+  fieldOverrides,
+  hasMoreDashboardValues = false,
 }: SetupOpts) {
-  const field = checkNotNull(SAMPLE_FIELDS.find(({ id }) => id === fieldId));
+  const field = {
+    ...checkNotNull(SAMPLE_FIELDS.find(({ id }) => id === fieldId)),
+    ...fieldOverrides,
+  };
   const card = createTableCard({ id: CARD_ID, name: "Question", tableId });
   const dashboard = createMockDashboard({
     id: DASHBOARD_ID,
@@ -319,7 +330,12 @@ async function setup({
     ],
   });
 
-  setupParameterValuesEndpoints({ parameters, fieldId, fieldValues });
+  setupParameterValuesEndpoints({
+    parameters,
+    fieldId,
+    fieldValues,
+    hasMoreDashboardValues,
+  });
   return renderDashboard({ dashboard });
 }
 
@@ -409,12 +425,16 @@ type Scenario = {
   defaultValueFormatted: string;
   otherValueFormatted: string;
   fieldValues?: FieldValueRow[];
+  fieldOverrides?: Partial<Field>;
+  hasMoreDashboardValues?: boolean;
   /** Sets the other value on a filter without a value */
   setValue: (label: string) => Promise<void>;
   /** Replaces the value of a filter with the other value */
   updateValue?: (label: string) => Promise<void>;
   /** For values whose formatted text does not tell them apart */
   assertValue?: (label: string, value: "default" | "other") => Promise<void>;
+  /** Sets or replaces the default value in the parameter sidebar with the other value */
+  setDefaultValue?: (label: string) => Promise<void>;
 };
 
 function createParameters({ parameter, defaultValue }: Scenario) {
@@ -601,6 +621,8 @@ async function clearDefaultValue() {
 
 async function assertParameterSidebarDefaultValue(scenario: Scenario) {
   const { setValue, updateValue = setValue } = scenario;
+  const setDefaultValue = scenario.setDefaultValue ?? setValue;
+  const updateDefaultValue = scenario.setDefaultValue ?? updateValue;
 
   await startEditing();
 
@@ -608,7 +630,7 @@ async function assertParameterSidebarDefaultValue(scenario: Scenario) {
   expect(defaultValueWidget()).toHaveTextContent("No default");
   expect(getDefaultValueStatus()).toBe("chevron");
 
-  await setValue("Default value");
+  await setDefaultValue("Default value");
   await waitFor(() =>
     expect(defaultValueWidget()).toHaveTextContent(
       scenario.otherValueFormatted,
@@ -632,7 +654,7 @@ async function assertParameterSidebarDefaultValue(scenario: Scenario) {
   expect(defaultValueWidget()).toHaveTextContent("No default");
   expect(getDefaultValueStatus()).toBe("chevron");
 
-  await setValue("Default value");
+  await setDefaultValue("Default value");
   await waitFor(() =>
     expect(defaultValueWidget()).toHaveTextContent(
       scenario.otherValueFormatted,
@@ -654,7 +676,7 @@ async function assertParameterSidebarDefaultValue(scenario: Scenario) {
   );
   expect(getDefaultValueStatus("Default value (required)")).toBe("chevron");
 
-  await updateValue("Default value (required)");
+  await updateDefaultValue("Default value (required)");
   await waitFor(() =>
     expect(defaultValueWidget()).toHaveTextContent(
       scenario.otherValueFormatted,
@@ -689,9 +711,16 @@ async function replaceText(input: HTMLElement, text: string) {
 }
 
 async function addTokens(popover: Popover, text: string) {
-  const input = within(popover).getByTestId("token-field");
+  const input = await within(popover).findByTestId("token-field");
   await userEvent.type(input, text);
   await userEvent.tab();
+}
+
+async function searchList(popover: Popover, text: string) {
+  await userEvent.type(
+    await within(popover).findByPlaceholderText("Search the list"),
+    text,
+  );
 }
 
 async function selectListItems(popover: Popover, items: string[]) {
@@ -744,9 +773,24 @@ const SCENARIOS: Scenario[] = [
     defaultValueFormatted: "Bassett",
     otherValueFormatted: "Dike",
     fieldValues: PEOPLE_CITY_VALUES,
+    // the dashboard gets too many cities to list them, the sidebar lists them
+    fieldOverrides: { has_field_values: "list" },
+    hasMoreDashboardValues: true,
     setValue: async (label) => {
       const popover = await openPopover(label);
       await addTokens(popover, "{backspace}Dike");
+      await submitPopover(popover, SUBMIT_BUTTON);
+    },
+    setDefaultValue: async (label) => {
+      const popover = await openPopover(label);
+      await searchList(popover, "Dike");
+      // the search leaves only the matching city
+      await waitFor(() =>
+        expect(within(popover).getAllByRole("listitem")).toHaveLength(1),
+      );
+      await userEvent.click(
+        within(within(popover).getByRole("listitem")).getByText("Dike"),
+      );
       await submitPopover(popover, SUBMIT_BUTTON);
     },
   },
@@ -759,9 +803,24 @@ const SCENARIOS: Scenario[] = [
     defaultValueFormatted: "2 selections",
     otherValueFormatted: "Dike",
     fieldValues: PEOPLE_CITY_VALUES,
+    // the dashboard gets too many cities to list them, the sidebar lists them
+    fieldOverrides: { has_field_values: "list" },
+    hasMoreDashboardValues: true,
     setValue: async (label) => {
       const popover = await openPopover(label);
       await addTokens(popover, "{backspace}{backspace}Dike");
+      await submitPopover(popover, SUBMIT_BUTTON);
+    },
+    setDefaultValue: async (label) => {
+      const popover = await openPopover(label);
+      await searchList(popover, "Dike");
+      // the search leaves "Select all" and the matching city
+      await waitFor(() =>
+        expect(within(popover).getAllByRole("checkbox")).toHaveLength(2),
+      );
+      await userEvent.click(
+        within(popover).getByRole("checkbox", { name: "Dike" }),
+      );
       await submitPopover(popover, SUBMIT_BUTTON);
     },
   },
@@ -881,6 +940,8 @@ describe("DashboardApp > reset and clear filters", () => {
         tableId: scenario.tableId,
         fieldId: scenario.fieldId,
         fieldValues: scenario.fieldValues,
+        fieldOverrides: scenario.fieldOverrides,
+        hasMoreDashboardValues: scenario.hasMoreDashboardValues,
       });
       await assertDashboardParameters(scenario);
     });
@@ -891,6 +952,8 @@ describe("DashboardApp > reset and clear filters", () => {
         tableId: scenario.tableId,
         fieldId: scenario.fieldId,
         fieldValues: scenario.fieldValues,
+        fieldOverrides: scenario.fieldOverrides,
+        hasMoreDashboardValues: scenario.hasMoreDashboardValues,
       });
       await assertParameterSidebarDefaultValue(scenario);
     });
@@ -907,6 +970,8 @@ describe("DashboardApp > reset and clear filters", () => {
       tableId: scenario.tableId,
       fieldId: scenario.fieldId,
       fieldValues: scenario.fieldValues,
+      fieldOverrides: scenario.fieldOverrides,
+      hasMoreDashboardValues: scenario.hasMoreDashboardValues,
     });
 
     let popover = await openPopover(DEFAULT_REQUIRED);
@@ -1273,7 +1338,7 @@ describe("DashboardApp > reset and clear filters", () => {
       );
       const popover = await openPopover("Default value");
       await userEvent.type(
-        within(popover).getByPlaceholderText("Enter some text"),
+        await within(popover).findByPlaceholderText("Enter some text"),
         value,
       );
       await submitPopover(popover, "Add filter");
