@@ -97,7 +97,9 @@
 (defn message-sources
   "The sources of the features whose calls count as messages under a message limit: those a user triggers."
   []
-  (into #{} (keep (fn [{:keys [source trigger]}] (when (= :user trigger) source))) (vals registry)))
+  (into #{} (for [{:keys [source trigger]} (vals registry)
+                  :when (= :user trigger)]
+              source)))
 
 ;;; ------------------------------------------------- Options --------------------------------------------------------
 
@@ -170,6 +172,15 @@
   (error :metabot/invalid-call 500 "ai_feature_invalid_call"
          (tru "This AI feature is set up wrong. Please contact your administrator.")
          (assoc data :feature-id feature-id :reason reason) nil))
+
+(defn- prompt-too-large-error
+  [data cause]
+  (error :metabot/prompt-too-large 400 "ai_prompt_too_large" (tru "The request is too large for the AI model.") data cause))
+
+(defn- invalid-answer-error
+  [data cause]
+  (error :metabot/structured-output-invalid 502 "structured-output-invalid"
+         (tru "The AI model gave an answer in the wrong shape. Please try again.") data cause))
 
 ;;; -------------------------------------------------- Checks --------------------------------------------------------
 
@@ -345,9 +356,7 @@
       answer
       (let [explanation (me/humanize (mr/explain schema answer))]
         (log/warnf "AI feature %s got an answer that doesn't match its schema: %s" feature-id (pr-str explanation))
-        (throw (error :metabot/structured-output-invalid 502 "structured-output-invalid"
-                      (tru "The AI model gave an answer in the wrong shape. Please try again.")
-                      {:feature-id feature-id :explanation explanation} nil))))))
+        (throw (invalid-answer-error {:feature-id feature-id, :explanation explanation} nil))))))
 
 ;;; ----------------------------------------------- Provider errors ---------------------------------------------------
 
@@ -376,42 +385,38 @@
 (defn- typed-call-error
   "The typed error of [[call-llm!]] for `e`, thrown by the structured call."
   [feature-id ^Throwable e]
-  (let [data (ex-data e)]
+  (let [data         (ex-data e)
+        call-failure (self/call-failure e)]
     (cond
       (typed-error? (:type data))
       e
 
       (self/context-overflow-error e)
-      (error :metabot/prompt-too-large 400 "ai_prompt_too_large"
-             (tru "The request is too large for the AI model.") {:feature-id feature-id} e)
+      (prompt-too-large-error {:feature-id feature-id} e)
 
-      (= :not-configured (self/call-failure e))
+      (= :not-configured call-failure)
       (error :metabot/llm-not-configured 503 :llm-not-configured
              (tru "AI isn''t set up yet. Please contact your administrator.") {:feature-id feature-id} e)
 
-      (self/call-failure e)
-      (provider-failure-error feature-id (self/call-failure e) e)
+      call-failure
+      (provider-failure-error feature-id call-failure e)
 
       (= "structured-output-incomplete" (:error-code data))
       (error :metabot/structured-output-incomplete 502 "structured-output-incomplete"
              (tru "The AI model stopped before it finished its answer. Please try again.")
-             {:feature-id feature-id :finish-reason (:finish-reason data)} e)
+             {:feature-id feature-id, :finish-reason (:finish-reason data)} e)
 
       ;; An error the provider streamed after its 200. Its kind is on the `:error` part, not on the `:error` map.
-      (and (= "llm-stream-error" (:error-code data))
-           (= self.core/context-full-error-code (:error-code (:error data))))
-      (error :metabot/prompt-too-large 400 "ai_prompt_too_large"
-             (tru "The request is too large for the AI model.") {:feature-id feature-id} e)
-
       (= "llm-stream-error" (:error-code data))
-      (provider-failure-error feature-id
-                              (some #(when (= :error (:type %)) (:provider-failure %)) (:parts data))
-                              e)
+      (if (= self.core/context-full-error-code (:error-code (:error data)))
+        (prompt-too-large-error {:feature-id feature-id} e)
+        (provider-failure-error feature-id
+                                (some #(when (= :error (:type %)) (:provider-failure %)) (:parts data))
+                                e))
 
       ;; Malformed JSON, a value that isn't an object, or no tool call and no matching JSON in the text.
       (contains? data :parts)
-      (error :metabot/structured-output-invalid 502 "structured-output-invalid"
-             (tru "The AI model gave an answer in the wrong shape. Please try again.") {:feature-id feature-id} e)
+      (invalid-answer-error {:feature-id feature-id} e)
 
       ;; A transport failure that outlasted the retries.
       (instance? java.io.IOException e)
@@ -437,9 +442,7 @@
   (let [chars (transduce (map (comp count :content)) + 0 messages)
         limit (long (get max-prompt-chars role))]
     (when (> chars limit)
-      (throw (error :metabot/prompt-too-large 400 "ai_prompt_too_large"
-                    (tru "The request is too large for the AI model.")
-                    {:feature-id feature-id :prompt-chars chars :max-prompt-chars limit} nil)))))
+      (throw (prompt-too-large-error {:feature-id feature-id, :prompt-chars chars, :max-prompt-chars limit} nil)))))
 
 (defn- timeout-error
   [feature-id timeout-ms cause]
@@ -456,10 +459,14 @@
   interrupted at the deadline. It doesn't start once the deadline has passed, and an interrupt of the caller cancels
   it."
   [feature-id timeout-ms deadline-nanos thunk]
-  (when (and timeout-ms (<= (long deadline-nanos) (System/nanoTime)))
-    (throw (timeout-error feature-id timeout-ms nil)))
-  (if-not timeout-ms
+  (cond
+    (nil? timeout-ms)
     (thunk)
+
+    (<= (long deadline-nanos) (System/nanoTime))
+    (throw (timeout-error feature-id timeout-ms nil))
+
+    :else
     (let [^Future fut (future-call
                        (fn []
                          (try
@@ -502,29 +509,30 @@
   `:metabot/usage-limit-reached` and `:metabot/prompt-too-large` (see [[max-prompt-chars]]). Then
   `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
   `:metabot/structured-output-incomplete` and `:metabot/structured-output-invalid`."
-  [feature-id opts]
-  (let [start-nanos                                   (System/nanoTime)
-        {:keys [entry model-ref]}                     (check-call! feature-id (:audience opts) opts)
-        {:keys [prompt response timeout-ms max-attempts
-                request-id conversation-id]}          opts
-        {:keys [schema max-tokens temperature]}       response
+  [feature-id {:keys [audience prompt timeout-ms max-attempts request-id conversation-id]
+               {:keys [schema max-tokens temperature]} :response
+               :as opts}]
+  (let [start-nanos               (System/nanoTime)
+        {:keys [entry model-ref]} (check-call! feature-id audience opts)
         ;; from entry, so the checks against the app DB count towards it
-        deadline-nanos                                (when timeout-ms
-                                                        (+ start-nanos (* (long timeout-ms) 1000000)))
-        json-schema                                   (response-json-schema schema)
-        messages                                      (render-prompt prompt (new-boundary (:untrusted prompt)))
-        _                                             (check-prompt-size! feature-id (:model entry) messages)
-        tracking-opts                                 (cond-> {:source     (:source entry)
-                                                               :tag        (:source entry)
-                                                               :request-id (or request-id (str (random-uuid)))}
-                                                        conversation-id (assoc :session-id conversation-id)
-                                                        max-attempts    (assoc :max-attempts max-attempts)
-                                                        deadline-nanos  (assoc :deadline-nanos deadline-nanos)
-                                                        ;; Fast mode costs more per token, so only a user waiting on
-                                                        ;; the answer gets it.
-                                                        (and (= :llm/default (:model entry))
-                                                             (= :user (:trigger entry)))
-                                                        (assoc :fast? (metabot.settings/llm-fast-mode)))]
+        deadline-nanos            (when timeout-ms
+                                    (+ start-nanos (* (long timeout-ms) 1000000)))
+        json-schema               (response-json-schema schema)
+        ;; encoded once, for both the boundary check and the blocks
+        prompt                    (cond-> prompt
+                                    (:untrusted prompt) (update :untrusted perf/update-vals value-text))
+        messages                  (render-prompt prompt (new-boundary (:untrusted prompt)))
+        _                         (check-prompt-size! feature-id (:model entry) messages)
+        tracking-opts             (cond-> {:source     (:source entry)
+                                           :tag        (:source entry)
+                                           :request-id (or request-id (str (random-uuid)))}
+                                    conversation-id (assoc :session-id conversation-id)
+                                    max-attempts    (assoc :max-attempts max-attempts)
+                                    deadline-nanos  (assoc :deadline-nanos deadline-nanos)
+                                    ;; Fast mode costs more per token, so only a user waiting on the answer gets it.
+                                    (and (= :llm/default (:model entry))
+                                         (= :user (:trigger entry)))
+                                    (assoc :fast? (metabot.settings/llm-fast-mode)))]
     (with-deadline feature-id timeout-ms deadline-nanos
       (fn []
         (let [answer (try
