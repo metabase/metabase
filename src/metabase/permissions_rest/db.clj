@@ -105,30 +105,32 @@
   "The reducible rows [[data-permissions-reducible]] gives for one partition of `group-ids`."
   [perm-type db-id group-id group-ids excluded-database-id]
   (t2/reducible-query
-   {:select   [[:perm_type :type]
-               [:group_id :group-id]
-               [:perm_value :value]
-               [:db_id :db-id]
-               [:schema_name :schema]
-               [:table_id :table-id]]
-    :from     [(t2/table-name :model/DataPermissions)]
-    :where    (conj (into [:and]
-                          (keep identity)
-                          [(when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                           (when db-id [:= :db_id db-id])
-                           (when group-id [:= :group_id group-id])
-                           (when group-ids [:in :group_id group-ids])
-                           (when excluded-database-id [:not= :db_id excluded-database-id])])
-                    [:not [:exists ^:allow-subquery {:select [1]
-                                                     :from   [[(t2/table-name :model/Database) :router_db]]
-                                                     :where  [:and
-                                                              [:not= :router_db.router_database_id nil]
-                                                              [:= :router_db.id :db_id]]}]])
-    :order-by [:group_id :db_id]}))
+   {:select    [[:p.perm_type :type]
+                [:p.group_id :group-id]
+                [:p.perm_value :value]
+                [:p.db_id :db-id]
+                [:p.schema_name :schema]
+                [:p.table_id :table-id]]
+    :from      [[(t2/table-name :model/DataPermissions) :p]]
+    :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :p.table_id]]
+    :where     (conj (into [:and]
+                           (keep identity)
+                           [(when perm-type [:= :p.perm_type (u/qualified-name perm-type)])
+                            (when db-id [:= :p.db_id db-id])
+                            (when group-id [:= :p.group_id group-id])
+                            (when group-ids [:in :p.group_id group-ids])
+                            (when excluded-database-id [:not= :p.db_id excluded-database-id])
+                            [:or [:= :p.table_id nil] [:= :mt.active true]]])
+                     [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [[(t2/table-name :model/Database) :router_db]]
+                                                      :where  [:and
+                                                               [:not= :router_db.router_database_id nil]
+                                                               [:= :router_db.id :p.db_id]]}]])
+    :order-by  [:p.group_id :p.db_id]}))
 
 (mu/defn data-permissions-reducible
   "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
-  non-destination Databases, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding
+  non-destination Databases and of their active Tables, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding
   `excluded-database-id` (nil for no restriction), ordered by group and database."
   [{:keys [perm-type db-id group-id group-ids excluded-database-id]}
    :- [:map {:closed true}
