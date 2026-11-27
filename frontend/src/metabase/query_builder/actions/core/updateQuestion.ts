@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { getVariableTemplateTags } from "metabase/querying/native";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
@@ -12,6 +14,7 @@ import type {
 } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
 import { UPDATE_QUESTION, onCloseQuestionInfo } from "../../store/actions";
 import {
@@ -192,16 +195,30 @@ export const updateQuestion = (
 export const SET_ARCHIVED_QUESTION = "metabase/question/SET_ARCHIVED_QUESTION";
 export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
-  function (question, archived = true) {
+  function (question: Question, archived = true) {
     return async function (dispatch) {
+      const card: Card = await runRtkEndpoint(
+        { id: question.id() },
+        dispatch,
+        cardApi.endpoints.getCard,
+      );
       await dispatch(
-        updateQuestion(question.setArchived(archived), {
-          shouldUpdateUrl: false,
-          shouldStartAdHocQuestion: false,
-          // results can change after entering/leaving the trash
-          // due to references to questions in the trash or, so rerun after change
-          run: true,
-        }),
+        updateQuestion(
+          question.setCard({
+            ...question.card(),
+            archived,
+            can_write: card.can_write,
+            can_restore: card.can_restore,
+            can_delete: card.can_delete,
+          }),
+          {
+            shouldUpdateUrl: false,
+            shouldStartAdHocQuestion: false,
+            // results can change after entering/leaving the trash
+            // due to references to questions in the trash or, so rerun after change
+            run: true,
+          },
+        ),
       );
 
       if (archived) {
