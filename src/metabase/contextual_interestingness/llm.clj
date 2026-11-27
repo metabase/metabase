@@ -16,12 +16,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- response-schema
+(def ^:private response-schema
   "The Malli schema of the answer.
-  The `metric_description` is required iff the caller signals the chart has no authored description (so we ask the
-  LLM to produce one), and optional otherwise, so an answer that adds one anyway is kept.
-  Only the chart description and the score must be there: [[parse-response]] decides what else is usable."
-  [generate-metric?]
+  Only the chart description and the score must be there: [[parse-response]] decides what else is usable.
+  The rubric asks for `metric_description` only when the chart has no authored description, and [[llm-call!]] drops
+  one the model writes anyway."
   [:map {:closed true}
    [:chart_description
     [:string {:description (str "One short sentence (≤ 25 words) describing WHAT THE CHART IS — the metric and the dimension it's broken out by, in the terms the user would use. "
@@ -30,7 +29,7 @@
                                 "Ground filters, joins, and aggregation in the COMPILED SQL block when one is provided — do not restate the title. "
                                 "Write this FIRST so the rest of the response is grounded in it.")}]]
    [:metric_description
-    {:optional (not generate-metric?)}
+    {:optional true}
     [:string {:description (str "One short sentence (≤ 25 words) describing the metric in business terms (what it measures, what's included/excluded). "
                                 "Read the aggregation, joins, and WHERE clause in the COMPILED SQL block (when provided) to identify what's being summed/counted/averaged and which subset of rows. "
                                 "Do not restate the chart name.")}]]
@@ -151,10 +150,12 @@ Always return a single object matching the supplied schema. Do not respond with 
     (let [response (metabot/call-llm! feature-id
                                       {:audience :internal
                                        :prompt   (build-prompt inputs)
-                                       :response {:schema      (response-schema (str/blank? card-description))
+                                       :response {:schema      response-schema
                                                   :max-tokens  max-tokens
                                                   :temperature temperature}})]
-      (or (parse-response response)
+      (or (cond-> (parse-response response)
+            ;; the authored description is the metric's description, not one the model wrote
+            (not (str/blank? card-description)) (some-> (assoc :metric-description nil)))
           (do (log/warnf "Contextual interestingness: malformed LLM response %s"
                          (pr-str response))
               nil)))

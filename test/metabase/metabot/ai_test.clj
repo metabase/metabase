@@ -201,6 +201,12 @@
              ["unregistered feature"
               {:type :metabot/invalid-call, :status-code 500, :reason "not registered"}
               #(metabot.ai/call-llm! :metabot/no-such-feature (opts))]
+             ["options as an even key-value seq"
+              {:type :metabot/invalid-call, :reason "invalid audience"}
+              #(metabot.ai/call-llm! :filters/ask-ai (apply list (mapcat identity (opts))))]
+             ["options as an odd key-value seq"
+              {:type :metabot/invalid-call}
+              #(metabot.ai/call-llm! :filters/ask-ai (list :audience))]
              ["misspelled option"
               {:type :metabot/invalid-call, :reason "invalid options", :invalid-paths [[:timeout]]}
               #(metabot.ai/call-llm! :filters/ask-ai (opts :timeout 4000))]
@@ -390,13 +396,15 @@
   (testing "the usual Malli schemas convert to a JSON Schema the adapters accept, and their answers decode"
     (let [id "6f1c4f39-0b5d-4d0f-9a3e-1f0c2b7a9d10"]
       (doseq [[schema answer expected]
-              ;; schema                           answer        decoded answer
-              [[[:map [:id :uuid]]                {:id id}      {:id (parse-uuid id)}]
-               [[:map [:k :keyword]]              {:k "plan"}   {:k :plan}]
-               [[:map [:code [:re #"^[A-Z]+$"]]]  {:code "AB"}  {:code "AB"}]
-               [[:map [:v [:or :string :int]]]    {:v "a"}      {:v "a"}]
-               [[:map [:v [:= "x"]]]              {:v "x"}      {:v "x"}]
-               [[:map [:v [:and :int [:> 0]]]]    {:v 3}        {:v 3}]]]
+              ;; schema                          answer           decoded answer
+              [[[:map [:id :uuid]]               {:id id}         {:id (parse-uuid id)}]
+               [[:map [:k :keyword]]             {:k "plan"}      {:k :plan}]
+               [[:map [:s [:= :approved]]]       {:s "approved"}  {:s :approved}]
+               [[:map [:e [:enum :x :y]]]        {:e "x"}         {:e :x}]
+               [[:map [:code [:re #"^[A-Z]+$"]]] {:code "AB"}     {:code "AB"}]
+               [[:map [:v [:or :string :int]]]   {:v "a"}         {:v "a"}]
+               [[:map [:v [:= "x"]]]             {:v "x"}         {:v "x"}]
+               [[:map [:v [:and :int [:> 0]]]]   {:v 3}           {:v 3}]]]
         (testing (pr-str schema)
           (is (mr/validate ::self.core/json-schema-node (metabot.ai/response-json-schema schema)))
           (mut/with-fake-llm! [_ answer]

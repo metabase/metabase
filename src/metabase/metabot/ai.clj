@@ -21,6 +21,7 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -345,16 +346,20 @@
 
 (defn response-json-schema
   "The JSON Schema the provider gets for the Malli `schema`, as agent tools convert theirs.
-  Its `:required` names are strings, as the text fallback of the structured call reads them, and a `:re` pattern is
-  its source string."
+  Its `:required` names are strings, as the text fallback of the structured call reads them, a `:re` pattern is its
+  source string, and a keyword in `:const` or `:enum` is its name, which the answer decoder turns back into the
+  keyword."
   [schema]
   (perf/postwalk (fn [node]
                    (cond
                      (instance? java.util.regex.Pattern node)
                      (str node)
 
-                     (and (map? node) (sequential? (:required node)))
-                     (update node :required #(mapv name %))
+                     (map? node)
+                     (cond-> node
+                       (sequential? (:required node)) (update :required #(mapv name %))
+                       (keyword? (:const node))       (update :const u/qualified-name)
+                       (sequential? (:enum node))     (update :enum (partial mapv #(cond-> % (keyword? %) u/qualified-name))))
 
                      :else
                      node))
@@ -531,11 +536,12 @@
   `:metabot/usage-limit-reached` and `:metabot/prompt-too-large` (see [[max-prompt-chars]]).
   Then `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
   `:metabot/structured-output-incomplete` and `:metabot/structured-output-invalid`."
-  [feature-id {:keys [audience prompt timeout-ms max-attempts request-id conversation-id]
-               {:keys [schema max-tokens temperature]} :response
-               :as opts}]
+  [feature-id opts]
   (let [start-nanos               (System/nanoTime)
-        {:keys [entry model-ref]} (check-call! feature-id audience opts)
+        ;; destructured only once checked, since a key-value seq would destructure as a map
+        {:keys [entry model-ref]} (check-call! feature-id (:audience opts) opts)
+        {:keys [prompt timeout-ms max-attempts request-id conversation-id]
+         {:keys [schema max-tokens temperature]} :response} opts
         ;; from entry, so the checks against the app DB count towards it
         deadline-nanos            (when timeout-ms
                                     (+ start-nanos (* (long timeout-ms) 1000000)))
