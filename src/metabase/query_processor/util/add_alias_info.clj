@@ -42,6 +42,7 @@
   this alias. This alias is guaranteed to be unique."
   (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -328,6 +329,18 @@
                         {:stage-path stage-path, :stage stage}
                         e))))))
 
+(defn- missing-join-column-exception
+  "Exception thrown when a join condition refers to a column that the joined source no longer returns."
+  [join column-alias available-aliases]
+  (ex-info
+   (tru "Column {0} in the condition of join {1} does not exist in the joined source. It may have been renamed or removed. Available columns: {2}."
+        (pr-str column-alias)
+        (pr-str (:alias join))
+        (str/join ", " (sort available-aliases)))
+   {:type         qp.error-type/invalid-query
+    :join-alias   (:alias join)
+    :column-alias column-alias}))
+
 (defn- update-ref-from-this-join [query
                                   join-path
                                   join
@@ -363,7 +376,10 @@
                                                    :join join
                                                    :ref  field-ref
                                                    :col  col})))
-        source-alias          (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias)
+        _                     (when-let [desired-alias->escaped (::desired-alias->escaped (get-in query join-last-stage-path))]
+                                (when-not (contains? desired-alias->escaped last-stage-alias)
+                                  (throw (missing-join-column-exception join last-stage-alias (keys desired-alias->escaped)))))
+        source-alias          (escaped-desired-alias query join-last-stage-path last-stage-alias)
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]
     ;; don't need to calculate `::desired-alias` because it may not be returned and even if it is it's not getting
     ;; returned in the join conditions

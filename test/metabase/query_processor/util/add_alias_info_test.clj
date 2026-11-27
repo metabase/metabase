@@ -1426,3 +1426,30 @@
               ;; Before the fix, ::add/desired-alias was nil because lib.equality/= failed
               ;; due to :inherited-temporal-unit mismatch (:minute vs :day).
               (is (some? (::add/desired-alias (second created-at-brk)))))))))))
+
+(deftest ^:parallel join-condition-on-removed-source-column-error-test
+  (testing "join condition referencing column no longer returned by joined card names column, join, and available columns (#78854)"
+    (let [card      (fn [column-name]
+                      {:id              1
+                       :dataset-query   {:type     :native
+                                         :database (meta/id)
+                                         :native   {:query (str "SELECT 1 AS " column-name)}}
+                       :result-metadata [{:base_type      :type/Integer
+                                          :database_type  "INTEGER"
+                                          :display_name   column-name
+                                          :effective_type :type/Integer
+                                          :name           column-name
+                                          :lib/source     :source/native}]})
+          mp-before (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [(card "foo")]})
+          mp-after  (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [(card "bar")]})
+          joined    (lib.metadata/card mp-before 1)
+          clause    (lib/join-clause joined [(lib/= (lib.metadata/field mp-before (meta/id :orders :id))
+                                                    (m/find-first #(= (:name %) "foo") (lib/join-condition-rhs-columns
+                                                                                        (lib/query mp-before (meta/table-metadata :orders))
+                                                                                        joined nil nil)))])
+          query     (-> (lib/query mp-before (meta/table-metadata :orders))
+                        (lib/join clause)
+                        (assoc :lib/metadata mp-after))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Column \"foo\" in the condition of join \"Card 1\" does not exist in the joined source\. It may have been renamed or removed\. Available columns: bar\."
+                            (add-alias-info query))))))
