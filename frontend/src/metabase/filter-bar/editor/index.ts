@@ -23,7 +23,13 @@ export { createDraftKeys } from "./draft/plugins/keys";
 export { createDraftLifecycle } from "./draft/plugins/lifecycle";
 export { createDraftPlaceholders } from "./draft/plugins/placeholders";
 export { findDraftStartingAt, findPartStep, readDraft } from "./draft/read";
-export type { DraftState, DraftStep, FilterEditorRequest } from "./draft/types";
+export type {
+  DraftPart,
+  DraftState,
+  DraftStep,
+  FilterEditorRequest,
+} from "./draft/types";
+export { isDraftNode } from "./nodes/types";
 export {
   createColumnNode,
   createConnectorNode,

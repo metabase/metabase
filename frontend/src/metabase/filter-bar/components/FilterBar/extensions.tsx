@@ -28,10 +28,9 @@ import {
   createValueNode,
 } from "../../editor";
 import { ConnectorNodeView } from "../ConnectorNodeView/ConnectorNodeView";
-import { DraftNodeView } from "../DraftNodeView/DraftNodeView";
-import DraftS from "../DraftNodeView/DraftNodeView.module.css";
-import { DraftPartNodeView } from "../DraftPartNodeView/DraftPartNodeView";
+import { PartNodeView } from "../PartNodeView/PartNodeView";
 import { PillNodeView } from "../PillNodeView/PillNodeView";
+import PillS from "../PillNodeView/PillNodeView.module.css";
 import { RangeAndNodeView } from "../RangeAndNodeView/RangeAndNodeView";
 import { ThenNodeView } from "../ThenNodeView/ThenNodeView";
 
@@ -72,22 +71,22 @@ export const createExtensions = <F,>({
         ReactNodeViewRenderer(ConnectorNodeView, withDecorations),
     }),
     createDraftNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(DraftNodeView),
+      addNodeView: () => ReactNodeViewRenderer(PillNodeView),
     }),
     createDraftInputNode().extend({
-      renderHTML: () => ["span", { class: DraftS.input }, 0],
+      renderHTML: () => ["span", { class: PillS.input }, 0],
     }),
     createColumnNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(DraftPartNodeView),
+      addNodeView: () => ReactNodeViewRenderer(PartNodeView),
     }),
     createOperatorNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(DraftPartNodeView),
+      addNodeView: () => ReactNodeViewRenderer(PartNodeView),
     }),
     createRangeAndNode().extend({
       addNodeView: () => ReactNodeViewRenderer(RangeAndNodeView),
     }),
     createValueNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(DraftPartNodeView),
+      addNodeView: () => ReactNodeViewRenderer(PartNodeView),
     }),
     createThenNode().extend({
       addNodeView: () => ReactNodeViewRenderer(ThenNodeView),
