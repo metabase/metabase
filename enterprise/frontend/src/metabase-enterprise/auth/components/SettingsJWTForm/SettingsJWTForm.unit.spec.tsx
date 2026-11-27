@@ -628,7 +628,11 @@ describe("SettingsJWTForm", () => {
       confirmation.getByRole("button", { name: "Delete key" }),
     );
     expect(await screen.findByText("Store your new key")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    // the key arrives after the modal opens, and Done stays disabled until then
+    expect(await screen.findByLabelText("New secret key")).toHaveValue(
+      GENERATED_TOKEN,
+    );
+    await clickWhenEnabled(screen.getByRole("button", { name: "Done" }));
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(

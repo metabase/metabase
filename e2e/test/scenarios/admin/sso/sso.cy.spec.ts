@@ -125,13 +125,21 @@ describe(
   "scenarios > admin > settings > SSO > LDAP",
   { tags: "@external" },
   () => {
+    const { groupMappingSwitch, mappingRow, toggleGroupMapping, addMapping } =
+      groupMappingCardHelpers({
+        sectionTestId: "ldap-group-mapping-section",
+        nameLabel: "LDAP group name",
+      });
+
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
+      cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
+      cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     });
 
-    it("should set up ldap with a valid port, even with a trailing space (metabase#13313, metabase#16173)", () => {
+    it("should set up ldap with a valid port, even with a trailing space, and keep its group mappings after a reload (metabase#13313, metabase#16173)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
       H.typeAndBlurUsingLabel(/LDAP Host/i, "localhost");
@@ -147,6 +155,14 @@ describe(
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
+
+      cy.log("Group mappings pass the backend's DN check and persist");
+      groupMappingSwitch().should("be.enabled");
+      toggleGroupMapping(true);
+      addMapping("cn=People1", ["data", "nosql"]);
+      cy.reload();
+      groupMappingSwitch().should("be.checked");
+      mappingRow("cn=People1").should("contain", "data, nosql");
 
       H.goToAuthOverviewPage();
       cy.findByTestId("ldap-setting").findByText("Active").should("exist");
