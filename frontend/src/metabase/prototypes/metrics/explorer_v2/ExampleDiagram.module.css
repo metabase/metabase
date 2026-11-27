@@ -37,8 +37,15 @@
 }
 
 /* The cylinder's second path is its open top edge: only the body is filled. */
-.diagram :global(.table) path:first-child {
+.diagram :global(.table) path:first-child,
+.diagram :global(.lookup) path:first-child {
   fill: var(--mb-color-background_surface-brand-subtle);
+}
+
+/* A table no measure is on, only joined in: dashed, like the joins. */
+.diagram :global(.lookup) path {
+  stroke: var(--mb-color-border-neutral-strong);
+  stroke-dasharray: 4 3;
 }
 
 .diagram :global(.metric) rect {

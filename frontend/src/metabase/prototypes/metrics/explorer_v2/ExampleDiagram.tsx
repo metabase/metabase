@@ -32,6 +32,8 @@ const quote = (label: string) => `"${label.replace(/"/g, "#quot;")}"`;
 
 const tableId = (table: string) => `table_${table}`;
 
+const joinId = ({ from, to }: TableLink) => `join_${from}_${to}`;
+
 type FilterTarget = {
   /** The node the filters point at. */
   target: string;
@@ -172,27 +174,36 @@ function diagramSource(example: MetricExample): string {
   const tables = [...new Set(graph.tables)];
   const links = TABLE_LINKS.filter(({ from }) => tables.includes(from));
   const directLinks = links.filter(({ to }) => tables.includes(to));
-  // A table none of the measures is on shows when two of them meet there.
-  const sharedLinks = links.filter(
-    ({ from, to }) =>
-      !tables.includes(to) &&
-      links.some((link) => link.from !== from && link.to === to),
+  // Tables no measure is on, reached through a key: dimensions come from them.
+  const lookupLinks = links.filter(({ to }) => !tables.includes(to));
+  const lookupTables = [...new Set(lookupLinks.map(({ to }) => to))];
+  // A table with no join would sit a column left of the joined ones: an
+  // invisible line from that column keeps the measures' tables lined up.
+  const leftmost = [
+    ...lookupTables.map(tableId),
+    ...directLinks.map(joinId),
+  ].at(0);
+  const unjoinedTables = tables.filter(
+    (table) => !links.some(({ from, to }) => from === table || to === table),
   );
-  const sharedTables = [...new Set(sharedLinks.map(({ to }) => to))];
 
   return [
     "flowchart LR",
-    ...[...sharedTables, ...tables].map(
-      (table) => `${tableId(table)}[(${quote(table)})]:::table`,
+    ...lookupTables.map(
+      (table) => `${tableId(table)}[(${quote(table)})]:::lookup`,
     ),
-    ...sharedLinks.map(
+    ...tables.map((table) => `${tableId(table)}[(${quote(table)})]:::table`),
+    ...lookupLinks.map(
       ({ from, to, key }) =>
         `${tableId(to)} ---|${quote(key)}| ${tableId(from)}`,
     ),
-    ...directLinks.flatMap(({ from, to, key }) => [
-      `join_${from}_${to}(${quote(`${from}.${key} → ${to}`)}):::join --- ${tableId(from)}`,
-      `join_${from}_${to} --- ${tableId(to)}`,
+    ...directLinks.flatMap((link) => [
+      `${joinId(link)}(${quote(`${link.from}.${link.key} → ${link.to}`)}):::join --- ${tableId(link.from)}`,
+      `${joinId(link)} --- ${tableId(link.to)}`,
     ]),
+    ...(leftmost === undefined
+      ? []
+      : unjoinedTables.map((table) => `${leftmost} ~~~ ${tableId(table)}`)),
     ...graph.lines,
   ].join("\n");
 }
@@ -209,7 +220,7 @@ export function ExampleDiagram({ example }: { example: MetricExample }) {
   );
 
   return (
-    <Stack gap="xs">
+    <Stack gap="md" w="100%">
       <Text c="text-secondary">
         Tables feed measures, measures feed the metric. Plain lines are how the
         tables join, dashed arrows are filters.

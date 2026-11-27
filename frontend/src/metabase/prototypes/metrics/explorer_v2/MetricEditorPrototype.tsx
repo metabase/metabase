@@ -367,11 +367,7 @@ export function MetricEditorPrototype() {
 
   return (
     <Stack gap="sm">
-      <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <ExamplesTable
-          activeId={example?.id}
-          onSelect={(id) => open(`${EXAMPLE}${id}`)}
-        />
+      <Group justify="flex-end" wrap="nowrap" align="flex-start">
         <Group gap="sm" wrap="nowrap" flex="none">
           <SegmentedControl
             value={pillActions}
@@ -393,7 +389,6 @@ export function MetricEditorPrototype() {
           />
         </Group>
       </Group>
-      {example && view === "metric" && <ExampleDiagram example={example} />}
       <Box
         bd="1px solid var(--mb-color-border-neutral)"
         style={{ borderRadius: 8, overflow: "hidden" }}
@@ -452,6 +447,13 @@ export function MetricEditorPrototype() {
           </Text>
         )}
       </Box>
+      <Stack gap="md" mt="lg" mb="xl" align="flex-start">
+        <ExamplesTable
+          activeId={example?.id}
+          onSelect={(id) => open(`${EXAMPLE}${id}`)}
+        />
+        {example && view === "metric" && <ExampleDiagram example={example} />}
+      </Stack>
     </Stack>
   );
 }
