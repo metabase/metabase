@@ -1068,9 +1068,10 @@
 
 (deftest shutdown-timeout-setting-test
   (testing "a shutdown timeout that does not parse, or is out of range, still gives a deadline shutdown can use"
-    (is (= {"30s"         20
-            "-5"          0
-            "99999999999" 86400}
-           (into {} (for [value ["30s" "-5" "99999999999"]]
-                      (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" value]
-                        [value (notification.settings/notification-shutdown-timeout-seconds)])))))))
+    (let [expected {"30s"         20
+                    "-5"          0
+                    "99999999999" 86400}]
+      (is (= expected
+             (u/for-map [value (keys expected)]
+               (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" value]
+                 [value (notification.settings/notification-shutdown-timeout-seconds)])))))))
