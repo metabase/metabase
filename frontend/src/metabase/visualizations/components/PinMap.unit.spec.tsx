@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
 import * as Lib from "metabase-lib";
@@ -396,5 +396,52 @@ describe("PinMap", () => {
     );
 
     expect(screen.queryByText("Draw box to filter")).not.toBeInTheDocument();
+  });
+
+  it("should keep the zoom and the center after a resize (metabase#11211)", async () => {
+    const clientWidth = jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(800);
+    jest
+      .spyOn(HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(600);
+    const { props, rerender } = setup({
+      data: createData(
+        ["lat", "lng"],
+        [
+          [40, -100],
+          [41, -98],
+          [39, -103],
+        ],
+      ),
+      settings: {
+        "map.type": "pin",
+        "map.pin_type": "markers",
+        "map.latitude_column": "lat",
+        "map.longitude_column": "lng",
+        "map.center_latitude": 40,
+        "map.center_longitude": -100,
+        "map.zoom": 4,
+      },
+    });
+    await screen.findByText("Draw box to filter");
+    const getMarkerPosition = () => {
+      // eslint-disable-next-line testing-library/no-node-access -- leaflet markers have no accessible name
+      const marker = document.querySelectorAll<HTMLElement>(
+        ".leaflet-marker-icon",
+      )[1];
+      return [marker.style.left, marker.style.top];
+    };
+    const positionAtSavedZoom = getMarkerPosition();
+
+    const zoomIn = screen.getByRole("button", { name: "Zoom in" });
+    Array.from({ length: 4 }).forEach(() => fireEvent.click(zoomIn));
+    const positionAfterZoom = getMarkerPosition();
+    expect(positionAfterZoom).not.toEqual(positionAtSavedZoom);
+
+    clientWidth.mockReturnValue(801);
+    rerender(<PinMap {...props} width={props.width + 1} />);
+
+    expect(getMarkerPosition()).toEqual(positionAfterZoom);
   });
 });

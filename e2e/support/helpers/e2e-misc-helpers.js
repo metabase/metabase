@@ -11,12 +11,6 @@ export function typeAndBlurUsingLabel(label, value) {
   cy.findByLabelText(label).clear().type(value).blur();
 }
 
-export function visitAlias(alias) {
-  cy.get(alias).then((url) => {
-    cy.visit(url);
-  });
-}
-
 /**
  * Executes native query and waits for the results to load.
  * Makes sure that the question is not "dirty" after the query successfully ran.
