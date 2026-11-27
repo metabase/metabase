@@ -247,6 +247,18 @@
                        (u/format-milliseconds server.settings/*thread-interrupt-escalation-timeout-ms*))
             (.cancel fut true)))))))
 
+(defn- close-output-stream!
+  "Close `os` unless the async context is already completed, when the response may be recycled. Logs errors instead of
+  throwing them."
+  [^OutputStream os ^AtomicBoolean completed?]
+  (when-not (.get completed?)
+    (try
+      (.close os)
+      (catch EofException _
+        (log/trace "Client went away before the streaming response output stream was closed"))
+      (catch Throwable e
+        (log/errorf "Error closing streaming response output stream: %s" (ex-message e))))))
+
 (defn- do-f-async
   "Runs `f` asynchronously on the `:executor` in `options` (the shared streaming response `thread-pool` when nil),
   returning immediately. When `f` finishes, completes (i.e., closes) Jetty `async-context`. `completed?` is an `AtomicBoolean`
@@ -268,6 +280,9 @@
                      ;; Clear the interrupted flag to prevent the thread from
                      ;; carrying stale interrupted state to the next task.
                      (Thread/interrupted)
+                     ;; Closing writes the trailer of the `GZIPOutputStream` from [[output-stream-delay]];
+                     ;; completing the async context only closes the servlet stream it wraps.
+                     (close-output-stream! os completed?)
                      (a/>!! finished-chan (if (a/poll! canceled-chan)
                                             :canceled
                                             :completed))
