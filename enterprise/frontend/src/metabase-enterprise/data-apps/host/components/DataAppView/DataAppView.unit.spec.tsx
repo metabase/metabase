@@ -1,4 +1,4 @@
-import { act } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockSettingsState, createMockState } from "__support__/state";
@@ -118,6 +118,12 @@ function setup({
 
 describe("DataAppView", () => {
   afterEach(() => jest.clearAllMocks());
+
+  it("sets browser tab title to app name", async () => {
+    setup({ data: createMockDataApp({ name: "Sales" }) });
+
+    await waitFor(() => expect(document.title).toContain("Sales"));
+  });
 
   it("shows a not-found screen when the slug is empty", () => {
     setup({ slug: "" });
