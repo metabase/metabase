@@ -706,6 +706,21 @@ describe("if printWidth = Infinity, it should return the same results as the sin
     // ],
   });
 
+  it("should format bucketed columns without the bucket", async () => {
+    const createdAt = fields.orders.CREATED_AT;
+    const buckets = Lib.availableTemporalBuckets(query, stageIndex, createdAt);
+    const week = buckets.find(
+      (bucket) =>
+        Lib.displayInfo(query, stageIndex, bucket).shortName === "week",
+    );
+    if (!week) {
+      throw new Error("Expected week bucket");
+    }
+    await all({
+      "Max([Created At])": op("max", Lib.withTemporalBucket(createdAt, week)),
+    });
+  });
+
   it("should format metrics", async () => {
     await all({
       "[Foo Metric]": metrics.FOO,

@@ -121,7 +121,11 @@ function formatColumn(
   assert(typeof stageIndex === "number", "Expected stageIndex");
   assert(Lib.isColumnMetadata(column), "Expected column");
 
-  const info = Lib.displayInfo(query, stageIndex, column);
+  const unbucketed = Lib.withBinning(
+    Lib.withTemporalBucket(column, null),
+    null,
+  );
+  const info = Lib.displayInfo(query, stageIndex, unbucketed);
   return formatDimensionName(info.longDisplayName);
 }
 
