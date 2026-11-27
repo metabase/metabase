@@ -145,12 +145,16 @@
    [:content :string]])
 
 (mr/def ::tool-message
-  "A tool result message, referencing a previous tool call by ID."
+  "A tool result message, referencing a previous tool call by ID. A failed result has `:is_error true`, and
+  `:error` when history has the class and code of the failure."
   [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
    [:content :string]
-   [:is_error {:optional true} :boolean]])
+   [:is_error {:optional true} :boolean]
+   [:error {:optional true} [:map {:closed true}
+                             [:class [:enum :validation :recoverable :unrecoverable]]
+                             [:code :keyword]]]])
 
 (mr/def ::message
   "A single message in the conversation history.

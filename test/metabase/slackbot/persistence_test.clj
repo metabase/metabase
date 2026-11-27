@@ -161,7 +161,9 @@
                                         :toolCallId   failed-id
                                         :state        "output-error"
                                         :input        {:query "boom"}
-                                        :errorText    "it broke"}]
+                                        :errorText    "it broke"
+                                        :errorClass   "recoverable"
+                                        :errorCode    "metabase.metabot.tools.recoverable.common/not-found"}]
                      :data_version    2})
         (let [result (slackbot.persistence/message-history conv-id #{slack-ts})
               msgs   (get result slack-ts)]
@@ -178,11 +180,13 @@
                     :tool_call_id search-id
                     :content      "<result>orders</result>"}
                    (second msgs))))
-          (testing "errored tool part replays its error text, marked as a failure"
+          (testing "errored tool part replays its error text, marked as a failure, with its class and code"
             (is (= {:role         :tool
                     :tool_call_id failed-id
                     :content      "it broke"
-                    :is_error     true}
+                    :is_error     true
+                    :error        {:class :recoverable
+                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}
                    (last msgs))))
           (testing "order is preserved — call/result pairs stay adjacent"
             (is (= [search-id search-id query-id query-id failed-id failed-id]

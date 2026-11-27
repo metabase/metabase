@@ -595,6 +595,9 @@
              (get-in (tool-output turn-2) [:result :output]))))
     (testing "turn 2 replays the result as a failure"
       (is (get-in (tool-output turn-2) [:result :error])))
+    (testing "turn 2 replays the class and the code of the failure in turn 1"
+      (is (= (select-keys (get-in (tool-output last-of-turn-1) [:result :error]) [:class :code])
+             (get-in (tool-output turn-2) [:result :error]))))
     ;; DeepSeek's thinking directive is left out, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
 

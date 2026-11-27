@@ -714,6 +714,52 @@
               (is (= :terminal-error (:finish-reason (last parts))))
               (is (some #(= "Something went wrong." (:text %)) parts)))))))))
 
+(deftest replayed-failures-end-no-turn-and-send-no-event-test
+  (testing (str "failures that history replays with their class and code end no later turn and are not reported "
+                "again, even in a profile that requires a tool call")
+    (let [requests (atom [])
+          history  [{:role :user :content "Which snippets can I use?"}
+                    {:role :assistant :tool_calls [{:id "old-1" :name "list_snippets" :arguments "{}"}]}
+                    {:role :tool :tool_call_id "old-1" :content "This call failed with an unexpected error."
+                     :is_error true :error {:class :unrecoverable :code :internal}}
+                    {:role :assistant :tool_calls [{:id "old-2" :name "list_snippets" :arguments "{}"}]}
+                    {:role :tool :tool_call_id "old-2" :content "The change may have been saved."
+                     :is_error true :error {:class :unrecoverable :code :unconfirmed-write}}
+                    {:role :user :content "And now?"}]]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [request]
+                                      (mut/mock-llm-response
+                                       (if (= 1 (count (swap! requests conj request)))
+                                         [{:type :start :id "msg-1"}
+                                          {:type :tool-input :id "new-1" :function "list_snippets" :arguments {}}]
+                                         [{:type :start :id "msg-2"}
+                                          {:type :text :text "There are no snippets."}])))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (snowplow-test/with-fake-snowplow-collector
+              (let [parts       (mt/as-admin
+                                  (into [] (run-agent-loop {:messages      history
+                                                            :state         {}
+                                                            :context       {}
+                                                            :profile-id    :sql
+                                                            :tracking-opts {:session-id
+                                                                            "00000000-0000-0000-0000-000000000001"}})))
+                    tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"]))
+                                        (snowplow-test/pop-event-data-and-user-id!))]
+                (testing "the history reaches the model with the class and the code of both failures"
+                  (is (=? [{:result {:error {:class :unrecoverable :code :internal}}}
+                           {:result {:error {:class :unrecoverable :code :unconfirmed-write}}}]
+                          (filter #(= :tool-output (:type %)) (:input (first @requests))))))
+                (testing "the turn makes its new call and answers"
+                  (is (= 2 (count @requests)))
+                  (is (not= :terminal-error (:finish-reason (last parts)))))
+                (testing "only the new call is reported"
+                  (is (=? [{:data {"event"         "agent_used_tool"
+                                   "result"        "success"
+                                   "event_details" {"tool_name" "list_snippets"}}}]
+                          tool-events)))))))))))
+
 (deftest a-jvm-error-or-an-interrupt-ends-the-turn-at-once-test
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [throwable [(StackOverflowError.) (InterruptedException.)]]

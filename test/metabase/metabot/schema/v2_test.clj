@@ -84,6 +84,29 @@
                           {:type "tool-search" :toolCallId "tc1" :state "input-available"
                            :input {} :approval {:id "a1"}})))))
 
+(deftest ^:parallel output-error-stores-the-failure-class-and-code-test
+  (let [tool-part    {:type "tool-search" :toolCallId "tc1" :state "output-error" :input {:q "x"}
+                      :errorText "failed"}
+        dynamic-part {:type "dynamic-tool" :toolName "mcp_tool" :toolCallId "tc1" :state "output-error"
+                      :input {:q "x"} :errorText "failed"}]
+    (testing "both output-error parts accept the class and the code of the failure"
+      (doseq [part        [tool-part dynamic-part]
+              error-class ["validation" "recoverable" "unrecoverable"]]
+        (testing (str (:type part) " " error-class)
+          (is (nil? (mr/explain ::schema.v2/ui-message-part
+                                (assoc part
+                                       :errorClass error-class
+                                       :errorCode  "metabase.metabot.tools.recoverable.common/not-found")))))))
+    (testing "a class outside the three classes is rejected"
+      (is (not (mr/validate ::schema.v2/ui-message-part (assoc tool-part :errorClass "fatal" :errorCode "x")))))
+    (testing "the other states reject the two keys"
+      (is (not (mr/validate ::schema.v2/ui-message-part
+                            {:type "tool-search" :toolCallId "tc1" :state "output-available"
+                             :output {:output "No rows."} :errorClass "recoverable"})))
+      (is (not (mr/validate ::schema.v2/ui-message-part
+                            {:type "tool-search" :toolCallId "tc1" :state "input-available"
+                             :input {} :errorCode "x"}))))))
+
 (deftest ^:parallel tool-approval-shape-test
   (testing "approval-requested approvals carry only an id"
     (let [part {:type "tool-search" :toolCallId "tc1" :state "approval-requested"
