@@ -652,30 +652,30 @@ describe("SmartScalar", () => {
       },
     );
 
-    it("should show the description for a single compact comparison", async () => {
-      setupCompactTrend({ comparisonCount: 1 });
-      await userEvent.hover(screen.getByLabelText("info icon"));
-      await waitFor(() =>
-        expect(screen.getByText("Monthly revenue")).toBeVisible(),
-      );
-    });
-
-    it.each([2, 3])(
-      "should show %s compact comparisons and hide the info icon",
+    it.each([1, 2, 3])(
+      "should show the description on title hover with %s compact comparisons",
       async (count) => {
         setupCompactTrend({ comparisonCount: count });
-        expect(screen.getByText("Revenue")).toBeVisible();
-        expect(screen.getByText("+20%")).toBeVisible();
         expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
-        expect(screen.getByText(`+${count - 1}`)).toBeVisible();
-        await userEvent.hover(screen.getByTestId("scalar-previous-value"));
-        const tooltip = await screen.findByRole("tooltip");
-        await waitFor(() =>
-          expect(within(tooltip).getByText("vs. previous month")).toBeVisible(),
+        await userEvent.hover(screen.getByText("Revenue"));
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          /^Monthly revenue$/,
         );
-        expect(within(tooltip).getByText("vs. Oct")).toBeVisible();
       },
     );
+
+    it.each([2, 3])("should show %s compact comparisons", async (count) => {
+      setupCompactTrend({ comparisonCount: count });
+      expect(screen.getByText("Revenue")).toBeVisible();
+      expect(screen.getByText("+20%")).toBeVisible();
+      expect(screen.getByText(`+${count - 1}`)).toBeVisible();
+      await userEvent.hover(screen.getByTestId("scalar-previous-value"));
+      const tooltip = await screen.findByRole("tooltip");
+      await waitFor(() =>
+        expect(within(tooltip).getByText("vs. previous month")).toBeVisible(),
+      );
+      expect(within(tooltip).getByText("vs. Oct")).toBeVisible();
+    });
 
     it("should not show a hover panel for a single fully-displayed comparison", async () => {
       const rows = [

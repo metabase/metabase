@@ -759,17 +759,18 @@ describe("scenarios > visualizations > trend chart on dashboards and public ques
       H.visitDashboard(dashboard_id);
     });
 
-    // the hover-hidden description icon is the next tab stop after the
-    // title link; focusing it reveals it and opens its tooltip
-    cy.findByTestId("scalar-title").findByTestId("legend-label").focus();
-    cy.realPress("Tab");
+    // keyboard focus on the title link opens the description tooltip
+    cy.findByTestId("scalar-previous-value").focus();
+    cy.realPress(["Shift", "Tab"]);
 
-    cy.focused().should("have.css", "opacity", "1");
+    cy.findByTestId("scalar-title")
+      .findByTestId("legend-label")
+      .should("have.focus");
     cy.findByRole("tooltip")
       .findByText("Trend keyboard description")
       .should("be.visible");
 
-    // the comparison row is the tab stop after the icon
+    // the comparison row is the tab stop after the title link
     cy.realPress("Tab");
 
     cy.findByTestId("scalar-previous-value").should("have.focus");
@@ -778,7 +779,6 @@ describe("scenarios > visualizations > trend chart on dashboards and public ques
       .should("be.visible");
 
     // moving keyboard focus back to the title link shows a visible ring
-    cy.realPress(["Shift", "Tab"]);
     cy.realPress(["Shift", "Tab"]);
     cy.findByTestId("scalar-title")
       .findByTestId("legend-label")

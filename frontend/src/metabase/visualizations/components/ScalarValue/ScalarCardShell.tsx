@@ -2,7 +2,7 @@
 import { Children, type ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { Center, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { getRootFontScale } from "metabase/visualizations/lib/scalar_utils";
 import type {
   VisualizationPassThroughProps,
@@ -18,7 +18,6 @@ type ScalarCardProps = VisualizationProps & VisualizationPassThroughProps;
 
 interface UseScalarCardShellOptions {
   hideTitle?: boolean;
-  shouldHideDescription?: (tier: ScalarSizeTier) => boolean;
 }
 
 export function useScalarCardShell(
@@ -37,7 +36,7 @@ export function useScalarCardShell(
     isDashboard,
     isEditing,
   }: ScalarCardProps,
-  { hideTitle = false, shouldHideDescription }: UseScalarCardShellOptions = {},
+  { hideTitle = false }: UseScalarCardShellOptions = {},
 ) {
   const tier = getScalarSizeTier(width, height);
   const rootFontScale = getRootFontScale();
@@ -46,9 +45,7 @@ export function useScalarCardShell(
   const tc = useTranslateContent();
   const title = showTitle && !hideTitle ? tc(settings["card.title"]) : null;
   const description =
-    shouldHideDescription?.(tier) || (isDashboard && isEditing)
-      ? null
-      : settings["card.description"];
+    isDashboard && isEditing ? null : tc(settings["card.description"]);
 
   const canSelectTitle =
     onChangeCardAndRun != null &&
@@ -61,6 +58,7 @@ export function useScalarCardShell(
   const titleElement = title ? (
     <ScalarTitle
       size={tier.size < 200 ? "sm" : "md"}
+      description={description}
       icon={headerIcon}
       getHref={canSelectTitle ? getHref : undefined}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
@@ -74,7 +72,6 @@ export function useScalarCardShell(
     rootFontScale,
     availableWidth,
     titleElement,
-    description: title ? description : null,
   };
 }
 
@@ -82,14 +79,12 @@ interface ScalarCardShellProps {
   tier: ScalarSizeTier;
   actionButtons: ReactNode;
   children: ReactNode;
-  footer?: ReactNode;
 }
 
 export function ScalarCardShell({
   tier,
   actionButtons,
   children,
-  footer,
 }: ScalarCardShellProps) {
   return (
     <ScalarWrapper xPadding={tier.xPadding}>
@@ -102,12 +97,6 @@ export function ScalarCardShell({
         data-testid="scalar-content"
       >
         {children}
-        {/* Keep the footer out of flow so it cannot shift the centered content. */}
-        {footer && (
-          <Center pos="absolute" top="100%" mt={2} w="100%">
-            {footer}
-          </Center>
-        )}
       </Stack>
     </ScalarWrapper>
   );

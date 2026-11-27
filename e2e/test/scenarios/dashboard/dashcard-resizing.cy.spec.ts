@@ -802,18 +802,15 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     ["smart7x3", "smart7x4"].forEach((key) => {
-      cy.log(`${key}: should truncate the inline title and show it on hover`);
+      cy.log(
+        `${key}: should truncate the inline title and show it with the description on hover`,
+      );
+      card(key).icon("info").should("not.exist");
       card(key).findByTestId("scalar-title").realHover();
-      cy.findByRole("tooltip")
-        .findByText(SMART_SCALAR_QUESTION.name)
-        .should("exist");
-      moveMouseAway();
-
-      cy.log(`${key}: should show description tooltip on hover`);
-      card(key).icon("info").realHover();
-      cy.findByRole("tooltip")
-        .findByText(SMART_SCALAR_QUESTION.description)
-        .should("exist");
+      cy.findByRole("tooltip").within(() => {
+        cy.findByText(SMART_SCALAR_QUESTION.name).should("exist");
+        cy.findByText(SMART_SCALAR_QUESTION.description).should("exist");
+      });
       moveMouseAway();
 
       cy.log(
