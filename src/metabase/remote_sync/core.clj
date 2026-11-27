@@ -22,6 +22,7 @@
   synced-name]
  [remote-sync.worktrees
   ensure-built-ins!
+  delete-checkouts!
   non-default-worktree-exists?
   worktree-ids
   user-worktree-id

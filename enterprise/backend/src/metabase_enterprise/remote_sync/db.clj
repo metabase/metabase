@@ -237,6 +237,14 @@
   [user-id :- ms/PositiveInt]
   (t2/delete! :model/RemoteSyncWorktreeUser :user_id user-id))
 
+(defenterprise delete-checkouts!
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree, with the `:remote-sync`
+  feature or without it."
+  :feature :none
+  [user-ids]
+  (t2/delete! :model/RemoteSyncWorktreeUser :user_id [:in user-ids])
+  nil)
+
 (mu/defn insert-checkout!
   "Record that the user with `user-id` checked out the worktree with `worktree-id`."
   [user-id     :- ms/PositiveInt

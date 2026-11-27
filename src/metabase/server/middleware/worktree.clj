@@ -19,15 +19,17 @@
    :body    body})
 
 (defn- header-scope
-  "The scope the `X-Metabase-Worktree-Id` header `value` names, `0` naming the main app, or an error response."
+  "The scope the `X-Metabase-Worktree-Id` header `value` names, `0` naming the default worktree, or an error response:
+  401 without a user, 403 for a user who is not an admin."
   [value]
-  (let [worktree (some-> value parse-long remote-sync/worktree-by-id)
-        worktree (when-not (:is_default worktree) worktree)]
-    (cond
-      (not api/*is-superuser?*) {:response (text-response 403 (tru "Only admins can choose a worktree."))}
-      (= "0" value)             {:scope {:type :main}}
-      worktree                  {:scope (mdb/worktree-id->scope (:id worktree))}
-      :else                     {:response (text-response 400 (tru "There is no worktree {0}." value))})))
+  (cond
+    (nil? api/*current-user-id*) {:response (text-response 401 (tru "Unauthenticated"))}
+    (not api/*is-superuser?*)    {:response (text-response 403 (tru "Only admins can choose a worktree."))}
+    (= "0" value)                {:scope {:type :main}}
+    :else                        (let [worktree (some-> value parse-long remote-sync/worktree-by-id)]
+                                   (if (and worktree (not (:is_default worktree)))
+                                     {:scope (mdb/worktree-id->scope (:id worktree))}
+                                     {:response (text-response 400 (tru "There is no worktree {0}." value))}))))
 
 (defn- request-scope
   "The scope a request with the `X-Metabase-Worktree-Id` header `value`, or none, runs in, or an error response."

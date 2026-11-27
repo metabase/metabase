@@ -3582,6 +3582,7 @@
            notification
            permissions
            premium-features
+           remote-sync
            serialization
            settings
            setup

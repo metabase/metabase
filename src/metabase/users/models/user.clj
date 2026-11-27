@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting :as settings.models]
@@ -643,11 +644,13 @@
      :id->updated (users.db/users-by-ids (mapv :id updates))}))
 
 (defn- cascade-user-updates!
-  "Keep the Administrators memberships and subscriptions of the Users of `updates` in step with them, one write per kind
-  for the whole call, with `admin-ids` the Administrators members among them, publishing the events of the writes with
-  `opts`."
+  "Keep the Administrators memberships, worktree checkouts and subscriptions of the Users of `updates` in step with
+  them, one write per kind for the whole call, with `admin-ids` the Administrators members among them, publishing the
+  events of the writes with `opts`; a demoted User works in the default worktree again."
   [updates admin-ids opts]
   (set-admin-memberships! updates admin-ids opts)
+  (when-let [demoted (not-empty (ids-of-rows #(false? (:is_superuser %)) updates))]
+    (remote-sync/delete-checkouts! demoted))
   (when-let [deactivated (not-empty (ids-of-rows #(false? (:is_active %)) updates))]
     (delete-subscriptions! deactivated opts)))
 

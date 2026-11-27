@@ -21,6 +21,13 @@
   []
   [mdb/default-worktree-id])
 
+(defenterprise delete-checkouts!
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree; there are none without the
+  enterprise code."
+  metabase-enterprise.remote-sync.db
+  [_user-ids]
+  nil)
+
 (defenterprise user-worktree-id
   "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
   metabase-enterprise.remote-sync.db

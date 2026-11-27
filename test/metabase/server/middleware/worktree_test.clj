@@ -46,6 +46,9 @@
                    (run-middleware admin-id true (str other-worktree-id)))))
           (testing "header 0 names default worktree"
             (is (= {:type :main} (run-middleware admin-id true "0"))))
+          (testing "header sent without user is unauthenticated"
+            (is (= 401 (run-middleware nil false (str worktree-id))))
+            (is (= 401 (run-middleware nil false "0"))))
           (testing "header sent by non-admin is refused"
             (is (= 403 (run-middleware user-id false (str worktree-id))))
             (is (= 403 (run-middleware user-id false "0"))))
