@@ -66,6 +66,11 @@ export const isBoolOpToken = <F>(
   token: Token<F> | undefined,
 ): token is BoolOpToken => isAndToken(token) || isOrToken(token);
 
+export const isConnectorToken = <F>(
+  token: Token<F> | undefined,
+): token is ConnectorToken =>
+  isBoolOpToken(token) || isOpenToken(token) || isCloseToken(token);
+
 export const pillToken = <F>(
   filter: F,
   content: PillContent,

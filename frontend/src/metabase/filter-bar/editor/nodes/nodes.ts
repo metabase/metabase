@@ -1,7 +1,7 @@
 import { type JSONContent, Node, type NodeConfig } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 
-import type { BoolOpToken, ParenToken, PillToken } from "../../model";
+import type { ConnectorToken, PillToken } from "../../model";
 import type {
   ColumnPart,
   DraftPart,
@@ -33,9 +33,12 @@ export const createPillNode = () =>
     }),
   });
 
-export const createBoolOpNode = (type: BoolOpToken["type"]) => createAtom(type);
-
-export const createParenNode = (type: ParenToken["type"]) => createAtom(type);
+export const createConnectorNode = () =>
+  createAtom("connector", {
+    addAttributes: () => ({
+      token: { default: null, rendered: false },
+    }),
+  });
 
 export const createThenNode = () =>
   createAtom("then", {
@@ -116,12 +119,9 @@ export const pillContent = <F>(
   attrs: { token, stage },
 });
 
-export const boolOpContent = (type: BoolOpToken["type"]): JSONContent => ({
-  type,
-});
-
-export const parenContent = (type: ParenToken["type"]): JSONContent => ({
-  type,
+export const connectorContent = (token: ConnectorToken): JSONContent => ({
+  type: "connector",
+  attrs: { token },
 });
 
 export const thenContent = (stage: number): JSONContent => ({
@@ -152,6 +152,19 @@ const isPillTokenValue = <F>(value: unknown): value is PillToken<F> =>
   value !== null &&
   "type" in value &&
   value.type === "pill";
+
+const CONNECTOR_TYPES = ["and", "or", "open", "close"];
+
+const isConnectorTokenValue = (value: unknown): value is ConnectorToken =>
+  typeof value === "object" &&
+  value !== null &&
+  "type" in value &&
+  CONNECTOR_TYPES.some((type) => type === value.type);
+
+export const getConnectorToken = (node: PmNode): ConnectorToken | null => {
+  const value: unknown = node.attrs.token;
+  return isConnectorTokenValue(value) ? value : null;
+};
 
 export const getPillToken = <F>(pill: PmNode): PillToken<F> | null => {
   const value: unknown = pill.attrs.token;

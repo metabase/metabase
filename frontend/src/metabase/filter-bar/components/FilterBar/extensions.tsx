@@ -7,9 +7,9 @@ import { type NodeViewProps, ReactNodeViewRenderer } from "@tiptap/react";
 import {
   type DraftActionsOptions,
   createBlankClick,
-  createBoolOpNode,
   createCaret,
   createColumnNode,
+  createConnectorNode,
   createDraftActionKeys,
   createDraftActions,
   createDraftInputNode,
@@ -21,14 +21,12 @@ import {
   createFilterBarKeys,
   createHiddenThen,
   createOperatorNode,
-  createParenNode,
   createParens,
   createPillNode,
   createRangeAndNode,
   createThenNode,
   createValueNode,
 } from "../../editor";
-import type { ConnectorToken } from "../../model";
 import { ConnectorNodeView } from "../ConnectorNodeView/ConnectorNodeView";
 import { DraftNodeView } from "../DraftNodeView/DraftNodeView";
 import DraftS from "../DraftNodeView/DraftNodeView.module.css";
@@ -62,15 +60,6 @@ export const createExtensions = <F,>({
     },
   };
 
-  const connectorView = (type: ConnectorToken["type"]) => {
-    const ConnectorView = (props: NodeViewProps) => (
-      <ConnectorNodeView {...props} type={type} />
-    );
-    return {
-      addNodeView: () => ReactNodeViewRenderer(ConnectorView, withDecorations),
-    };
-  };
-
   const PillView = (props: NodeViewProps) => (
     <PillNodeView {...props} adapter={getAdapter()} />
   );
@@ -92,10 +81,10 @@ export const createExtensions = <F,>({
     createPillNode().extend({
       addNodeView: () => ReactNodeViewRenderer(PillView, withDecorations),
     }),
-    createBoolOpNode("and").extend(connectorView("and")),
-    createBoolOpNode("or").extend(connectorView("or")),
-    createParenNode("open").extend(connectorView("open")),
-    createParenNode("close").extend(connectorView("close")),
+    createConnectorNode().extend({
+      addNodeView: () =>
+        ReactNodeViewRenderer(ConnectorNodeView, withDecorations),
+    }),
     createDraftNode().extend({
       addNodeView: () => ReactNodeViewRenderer(DraftNodeView),
     }),

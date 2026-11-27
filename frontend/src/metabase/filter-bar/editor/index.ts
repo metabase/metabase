@@ -25,15 +25,15 @@ export { findDraftStartingAt, findPartStep, readDraft } from "./draft/read";
 export type { DraftState, DraftStep, FilterEditorRequest } from "./draft/types";
 export {
   createColumnNode,
-  createBoolOpNode,
+  createConnectorNode,
   createDraftInputNode,
   createDraftNode,
   createOperatorNode,
-  createParenNode,
   createPillNode,
   createRangeAndNode,
   createThenNode,
   createValueNode,
+  getConnectorToken,
   getDraftPart,
   getPillToken,
   getStage,

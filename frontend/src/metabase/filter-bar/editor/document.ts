@@ -13,33 +13,25 @@ import {
   type Token,
   type TokenStages,
   applyImplicitAnds,
-  boolOpToken,
-  closeToken,
-  isBoolOpToken,
-  isCloseToken,
-  isOpenToken,
+  isConnectorToken,
   isPillToken,
   isSameStages,
   join,
   normalizeTokens,
-  openToken,
 } from "../model";
 
 import {
-  boolOpContent,
+  connectorContent,
+  getConnectorToken,
   getEditedPill,
   getPillToken,
   getStage,
-  parenContent,
   pillContent,
   thenContent,
 } from "./nodes/nodes";
 import {
-  isAndNode,
-  isCloseNode,
+  isConnectorNode,
   isDraftNode,
-  isOpenNode,
-  isOrNode,
   isPillNode,
   isThenNode,
 } from "./nodes/types";
@@ -48,9 +40,7 @@ type DocumentToken<F> = { token: Token<F>; pos: number };
 const tokenToNode = <F>(token: Token<F>, stage: number): JSONContent =>
   match(token)
     .with(P.when(isPillToken), (pill) => pillContent(pill, stage))
-    .with(P.when(isBoolOpToken), ({ type }) => boolOpContent(type))
-    .with(P.when(isOpenToken), () => parenContent("open"))
-    .with(P.when(isCloseToken), () => parenContent("close"))
+    .with(P.when(isConnectorToken), connectorContent)
     .exhaustive();
 
 export const tokensToContent = <F>(stages: TokenStages<F>): JSONContent => ({
@@ -72,10 +62,7 @@ const nodeToToken = <F>(node: PmNode): Token<F> | null =>
   match(node)
     .with(P.when(isPillNode), () => getPillToken<F>(node))
     .with(P.when(isDraftNode), () => getEditedPill<F>(node)?.token ?? null)
-    .with(P.when(isAndNode), () => boolOpToken("and"))
-    .with(P.when(isOrNode), () => boolOpToken("or"))
-    .with(P.when(isOpenNode), () => openToken())
-    .with(P.when(isCloseNode), () => closeToken())
+    .with(P.when(isConnectorNode), () => getConnectorToken(node))
     .otherwise(() => null);
 
 export const documentToTokensWithPositions = <F>(

@@ -15,12 +15,11 @@ import { createDraftKeys } from "./draft/plugins/keys";
 import { createDraftLifecycle } from "./draft/plugins/lifecycle";
 import { findDraftAt } from "./draft/read";
 import {
-  createBoolOpNode,
   createColumnNode,
+  createConnectorNode,
   createDraftInputNode,
   createDraftNode,
   createOperatorNode,
-  createParenNode,
   createPillNode,
   createRangeAndNode,
   createThenNode,
@@ -55,10 +54,7 @@ export const createTestEditorWith = <F = string>(
       Paragraph,
       Text,
       createPillNode(),
-      createBoolOpNode("and"),
-      createBoolOpNode("or"),
-      createParenNode("open"),
-      createParenNode("close"),
+      createConnectorNode(),
       createThenNode(),
       createDraftNode(),
       createDraftInputNode(),

@@ -11,6 +11,7 @@ export {
   type TokenStages,
   type TokenType,
   isBoolOpToken,
+  isConnectorToken,
   isCloseToken,
   isOpenToken,
   isPillToken,

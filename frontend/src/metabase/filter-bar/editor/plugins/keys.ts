@@ -1,6 +1,7 @@
 import { type Editor, Extension } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 
+import { boolOpToken } from "../../model";
 import { moveCaretPast } from "../commands";
 import {
   isAndNode,
@@ -50,10 +51,10 @@ const toggleBoolOp = (editor: Editor) => {
     return;
   }
   const type = isAndNode(selection.node) ? "or" : "and";
-  const { schema } = editor.state;
-  const transaction = editor.state.tr.setNodeMarkup(
+  const transaction = editor.state.tr.setNodeAttribute(
     selection.from,
-    schema.nodes[type],
+    "token",
+    boolOpToken(type),
   );
   editor.view.dispatch(
     transaction.setSelection(

@@ -294,6 +294,28 @@ describe("FilterBar", () => {
   });
 
   describe("editing", () => {
+    it("switches a selected or to and on Enter", async () => {
+      const { onChange } = await setup({
+        value: [or(leaf(mockSegment("A")), leaf(mockSegment("B")))],
+      });
+      act(() => {
+        const editor = getTiptapEditor();
+        editor?.commands.focus();
+        editor?.state.doc.descendants((node, pos) => {
+          if (node.type.name === "connector") {
+            editor.commands.setNodeSelection(pos);
+          }
+        });
+      });
+
+      await userEvent.keyboard("{Enter}");
+
+      expect(within(getEditor()).getByText("and")).toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith([
+        and(leaf(mockSegment("A")), leaf(mockSegment("B"))),
+      ]);
+    });
+
     it("calls onChange once with the rest when a pill is removed", async () => {
       const { onChange } = await setup({
         value: [

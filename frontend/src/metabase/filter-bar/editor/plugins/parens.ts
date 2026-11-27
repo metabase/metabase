@@ -1,9 +1,10 @@
 import { Extension, InputRule } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 
+import { closeToken, openToken } from "../../model";
 import type { InsertProps } from "../commands";
 import { findDraftAt } from "../draft/read";
-import { parenContent } from "../nodes/nodes";
+import { connectorContent } from "../nodes/nodes";
 import { isCloseNode, isOpenNode, isPillNode } from "../nodes/types";
 
 const isOperandStart = (node: PmNode | null | undefined) =>
@@ -11,10 +12,10 @@ const isOperandStart = (node: PmNode | null | undefined) =>
 
 const insertOpenParen = ({ chain, state, from, to }: InsertProps) => {
   const next = state.doc.resolve(to).nodeAfter;
-  const close = isOperandStart(next) ? [] : [parenContent("close")];
+  const close = isOperandStart(next) ? [] : [connectorContent(closeToken())];
   return chain()
     .deleteRange({ from, to })
-    .insertContentAt(from, [parenContent("open"), ...close])
+    .insertContentAt(from, [connectorContent(openToken()), ...close])
     .setTextSelection(from + 1)
     .run();
 };
@@ -24,7 +25,7 @@ const insertCloseParen = ({ chain, state, from, to }: InsertProps) => {
   const removed = chain().deleteRange({ from, to });
   const inserted = hasClose
     ? removed
-    : removed.insertContentAt(from, parenContent("close"));
+    : removed.insertContentAt(from, connectorContent(closeToken()));
   return inserted.setTextSelection(from + 1).run();
 };
 

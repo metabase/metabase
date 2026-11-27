@@ -1,9 +1,9 @@
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import { type EditorState, NodeSelection } from "@tiptap/pm/state";
 
-import type { BoolOpToken } from "../model";
+import { type BoolOpToken, boolOpToken } from "../model";
 
-import { boolOpContent } from "./nodes/nodes";
+import { connectorContent } from "./nodes/nodes";
 import { isBoolOpNode } from "./nodes/types";
 
 export type InsertProps = {
@@ -23,13 +23,13 @@ export const insertBoolOp = (
     return chain()
       .deleteRange({ from, to })
       .command(({ tr: transaction }) => {
-        transaction.setNodeMarkup(beforePos, state.schema.nodes[type]);
+        transaction.setNodeAttribute(beforePos, "token", boolOpToken(type));
         return true;
       })
       .setTextSelection(from)
       .run();
   }
-  const boolOp = state.schema.nodeFromJSON(boolOpContent(type));
+  const boolOp = state.schema.nodeFromJSON(connectorContent(boolOpToken(type)));
   return chain()
     .deleteRange({ from, to })
     .insertContentAt(from, boolOp)
