@@ -48,6 +48,7 @@ export const StaticIcon = forwardRef<SVGSVGElement, StaticIconProps>(
       name,
       component,
       className,
+      color,
       size = defaultSize,
       tooltip,
       tooltipPosition,
@@ -55,14 +56,6 @@ export const StaticIcon = forwardRef<SVGSVGElement, StaticIconProps>(
     }: StaticIconProps,
     ref,
   ) {
-    // Box forwards `color` as a raw SVG presentation attribute, so palette keys
-    // like "core-yellow-saturated" don't render — only valid CSS color strings do.
-    // Resolve known palette keys to their `--mb-color-*` CSS variables.
-    if ("color" in restProps) {
-      // Unjustified type cast. FIXME
-      restProps.color = resolveIconColor(restProps.color) as ColorName;
-    }
-
     const icon = (
       <Box
         component={component}
@@ -72,6 +65,7 @@ export const StaticIcon = forwardRef<SVGSVGElement, StaticIconProps>(
         className={cx("Icon", name && `Icon-${name}`, className)}
         width={size}
         height={size}
+        color={resolveIconColor(color)}
         {...restProps}
       />
     );
