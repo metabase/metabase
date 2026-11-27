@@ -1962,9 +1962,10 @@
           created  (lib.metadata/field mp (mt/id :orders :created_at))
           price    (lib/with-join-alias (lib.metadata/field mp (mt/id :products :price)) alias)
           query    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                       (lib/join (lib/join-clause products
-                                                  [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
-                                                          (lib/with-join-alias (lib.metadata/field mp (mt/id :products :id)) alias))]))
+                       (lib/join (-> (lib/join-clause products
+                                                       [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                               (lib/with-join-alias (lib.metadata/field mp (mt/id :products :id)) alias))])
+                                      (lib/with-join-alias alias)))
                        (lib/breakout (lib/with-temporal-bucket created :month))
                        (lib/aggregate (lib/offset (lib/sum price) -1))
                        (lib/order-by (lib/with-temporal-bucket created :month))
