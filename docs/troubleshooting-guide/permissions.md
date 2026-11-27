@@ -17,6 +17,7 @@ If you have a different issue, see [related problems](#do-you-have-a-different-p
 
 - [A user group can't access a dashboard in a collection that they have permissions for][troubleshooting-viewing-editing].
 - [A user group can view collections that contain restricted data][collections-restricted-data].
+- [Someone can't see a question's results](./cant-see-results.md).
 
 ## [Troubleshooting data permissions][troubleshooting-data-permissions]
 
