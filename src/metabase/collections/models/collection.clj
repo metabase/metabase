@@ -3124,16 +3124,13 @@
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   (when-not *allow-deleting-personal-collections*
     (when personal_owner_id
-      (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
-  (when (= tenant-specific-root-collection-type (:type collection))
-    (throw (ex-info (tru "You cannot delete the root collection of a tenant.") {:status-code 400}))))
+      (throw (Exception. (tru "You cannot delete a Personal Collection!"))))))
 
 (defn- check-collection-deletes
   "Throw unless every one of `collections` satisfies these rules:
 
   - it is not the Trash
-  - it is not a personal Collection, unless deleting those is allowed
-  - it is not the root Collection of a tenant"
+  - it is not a personal Collection, unless deleting those is allowed"
   [collections]
   (run! check-deletable collections))
 

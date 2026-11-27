@@ -11045,7 +11045,7 @@ databaseChangeLog:
   - changeSet:
       id: z7xuri
       author: ranquild
-      comment: Make the root collection of a tenant a foreign key to collection
+      comment: Make the root collection of a tenant a foreign key to collection, deleting the tenant with it
       changes:
         - addForeignKeyConstraint:
             baseTableName: tenant
@@ -11053,6 +11053,7 @@ databaseChangeLog:
             referencedTableName: collection
             referencedColumnNames: id
             constraintName: fk_tenant_tenant_collection_id
+            onDelete: CASCADE
 
   - changeSet:
       id: lcr61e
