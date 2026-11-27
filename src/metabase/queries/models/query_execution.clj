@@ -16,7 +16,6 @@
 (methodical/defmethod t2/table-name :model/QueryExecution [_model] :query_execution)
 
 (derive :model/QueryExecution :metabase/model)
-(derive :model/QueryExecution :hook/worktree-id)
 (derive :model/QueryExecution ::t2.disallow/update)
 
 (t2/deftransforms :model/QueryExecution

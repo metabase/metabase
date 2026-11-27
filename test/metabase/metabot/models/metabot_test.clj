@@ -1,6 +1,8 @@
 (ns metabase.metabot.models.metabot-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.events.test-util :as events.tu]
    [metabase.metabot.models.metabot :as metabot]
    [metabase.metabot.models.metabot-prompt]
@@ -65,3 +67,12 @@
         (is (= #{[true collection-id]}
                (set (map (juxt :use_verified_content :collection_id)
                          (t2/select :model/Metabot :id [:in [m1 m2 m3 m4 m5 m6 m7 m8]])))))))))
+
+(deftest update-metabots!-refuses-worktree-collection-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Metabot             {metabot-id :id}  {:name "Test Metabot"}
+                   :model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Metabot can only use a Collection of the main app"
+                                (metabot/update-metabots! [{:id metabot-id :collection_id collection-id}]))))))))

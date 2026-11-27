@@ -1,7 +1,8 @@
 (ns metabase.server.middleware.worktree
-  "Runs a request in a remote sync worktree: across every worktree while none but the default one exists, else in the
-  worktree its `X-Metabase-Worktree-Id` header names, which only superusers can send, else in the one a superuser
-  checked out, else in the main app."
+  "Runs a request in a remote sync worktree: in the main app without a user, so that a health check or a public link
+  reads no worktree row, across every worktree while none but the default one exists, else in the worktree its
+  `X-Metabase-Worktree-Id` header names, which only superusers can send, else in the one a superuser checked out, else
+  in the main app."
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -32,6 +33,7 @@
   "The scope a request with the `X-Metabase-Worktree-Id` header `value`, or none, runs in, or an error response."
   [value]
   (cond
+    (nil? api/*current-user-id*)                     (if value (header-scope value) {:scope {:type :main}})
     (not (remote-sync/non-default-worktree-exists?)) (if value (header-scope value) {:scope {:type :all}})
     value                                            (header-scope value)
     api/*is-superuser?*                              {:scope (mdb/worktree-id->scope (remote-sync/user-worktree-id

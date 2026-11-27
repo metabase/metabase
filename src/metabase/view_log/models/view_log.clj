@@ -18,7 +18,6 @@
 
 (doto :model/ViewLog
   (derive :metabase/model)
-  (derive :hook/worktree-id)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.always-allow))
 

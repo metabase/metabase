@@ -8,6 +8,7 @@
    [metabase-enterprise.sandbox.test-util :as sbx.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.test-util :as events.tu]
@@ -1036,3 +1037,14 @@
               (run 1)
               (is (= (run 2) (run 6)))
               (is (= #{db-id} @checked)))))))))
+
+(deftest create-sandboxes!-refuses-worktree-card-test
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-temp [:model/PermissionsGroup   {group-id :id}    {}
+                   :model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A sandbox can only use a Card of the main app"
+                                (sandboxes/create-sandboxes! [{:group_id group-id
+                                                               :table_id (mt/id :venues)
+                                                               :card_id  card-id}]))))))))

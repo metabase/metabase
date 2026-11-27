@@ -307,11 +307,22 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- check-sandbox-cards
+  "Throws a 400 unless every Sandbox of `rows` satisfies these rules:
+
+  - its Card is of the main app, since every worktree shares the Sandboxes"
+  [rows]
+  (when-let [card-ids (seq (keep :card_id rows))]
+    (when-not (sandbox.db/default-worktree-cards-exist? card-ids)
+      (throw (ex-info (tru "A sandbox can only use a Card of the main app.") {:status-code 400})))))
+
 (defn- check-new-sandboxes
   "Throws a 400 unless every row of `rows` satisfies these rules, with the refusal of the first row that breaks one:
 
+  - its Card is of the main app
   - its Card's columns match its Table"
   [rows]
+  (check-sandbox-cards rows)
   (let [inputs (columns-check-inputs rows)]
     (run! #(check-sandbox-columns inputs %) rows)))
 
@@ -346,9 +357,11 @@
   "Throws a 400 unless every row of `updates` whose Sandbox `id->stored` holds satisfies these rules, with the refusal
   of the first row that breaks one, in this order for each:
 
+  - a new Card is of the main app
   - a new Card's columns match the Table of the Sandbox
   - the Sandbox keeps its Table and its group"
   [updates id->stored]
+  (check-sandbox-cards updates)
   (let [card-changed? (fn [{id :id :as row}]
                         (when-let [before (id->stored id)]
                           (and (contains? row :card_id) (not= (:card_id row) (:card_id before)))))

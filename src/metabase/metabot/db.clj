@@ -1284,3 +1284,17 @@
   "The ids of the MetabotConversations created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
   (mapv :id (conversations-created-before cutoff)))
+
+(mu/defn default-worktree-cards-exist? :- :boolean
+  "Whether every one of `card-ids` names a Card of the default worktree, the main app."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (let [card-ids (distinct card-ids)]
+    (= (count card-ids)
+       (t2/count :model/Card :id [:in card-ids] :worktree_id mdb/default-worktree-id))))
+
+(mu/defn default-worktree-collections-exist? :- :boolean
+  "Whether every one of `collection-ids` names a Collection of the default worktree, the main app."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (let [collection-ids (distinct collection-ids)]
+    (= (count collection-ids)
+       (t2/count :model/Collection :id [:in collection-ids] :worktree_id mdb/default-worktree-id))))
