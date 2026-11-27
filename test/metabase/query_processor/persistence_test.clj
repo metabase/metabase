@@ -361,3 +361,27 @@
                     (is (str/includes? (compiled-sql query) persisted-schema))
                     (is (not (str/includes? (compiled-sql query) venues-table)))
                     (is (= expected (rows query)))))))))))))
+
+(deftest persisted-model-filtered-by-implicit-join-column-test
+  (testing "Question filtering a persisted model by a column the model itself was filtered on through an implicit join (#63438)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (let [category-id    (mt/id :products :category)
+                filter-widgets (fn [query]
+                                 (let [category (m/find-first #(= category-id (:id %)) (lib/filterable-columns query))]
+                                   (lib/filter query (lib/= category "Widget"))))
+                mp             (mt/metadata-provider)]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query (filter-widgets (lib/query mp (lib.metadata/table mp (mt/id :orders))))}]
+              (persist-models!)
+              (let [card-mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    query   (filter-widgets (lib/query card-mp (lib.metadata/card card-mp (:id model))))
+                    results (qp/process-query query)]
+                (testing "Was persisted"
+                  (is (str/includes? (-> results :data :native_form :query)
+                                     (ddl.i/schema-name (mt/db) (system/site-uuid)))))
+                (testing "Filter on the implicit join column runs and returns rows"
+                  (is (pos? (count (mt/rows results)))))))))))))

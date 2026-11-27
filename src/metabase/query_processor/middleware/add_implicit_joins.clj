@@ -145,6 +145,14 @@
                 (rename-join deduplicated-alias))))
           joins)))
 
+(mu/defn- previous-visible-path :- [:maybe ::lib.walk/path]
+  "Path of the stage before `path`, or nil when that stage reads a persisted model cache and so hides its joins."
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/path]
+  (when-let [previous-path (lib.walk/previous-path path)]
+    (when-not (:persisted-info/native (get-in query previous-path))
+      previous-path)))
+
 (mu/defn- visible-joins :- [:sequential ::lib.schema.join/join]
   "Set of all joins that are visible in the current level of the query or in a nested source query."
   [query                       :- ::lib.schema/query
@@ -154,7 +162,7 @@
         (comp cat
               (m/distinct-by :alias))
         [joins
-         (when-let [previous-path (lib.walk/previous-path path)]
+         (when-let [previous-path (previous-visible-path query path)]
            (let [previous-stage (get-in query previous-path)]
              (visible-joins query previous-path previous-stage)))]))
 
@@ -209,7 +217,7 @@
    join                        :- ::join]
   (or (some #(= (lib/current-join-alias %) (:alias join))
             joins)
-      (when-let [previous-path (lib.walk/previous-path path)]
+      (when-let [previous-path (previous-visible-path query path)]
         (let [previous-stage (get-in query previous-path)]
           (recur query previous-path previous-stage join)))))
 
