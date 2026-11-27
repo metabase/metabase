@@ -110,15 +110,14 @@
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
-                                 :id :name :rows :schema :updated_at :visibility_type :initial_sync_status
+                                 :id :name :rows :schema :updated_at :initial_sync_status
                                  :is_writable]))
       (update :entity_type #(when % (str "entity/" (name %))))
-      (update :visibility_type #(when % (name %)))
       (update :schema str)))
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select :model/Table
-                                :db_id (u/the-id db-or-id), :active true, :visibility_type nil
+                                :db_id (u/the-id db-or-id), :active true, :data_layer [:not= :hidden]
                                 {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
@@ -158,7 +157,7 @@
     (mt/with-temp [:model/Database db  {:name "My DB" :engine ::test-driver}
                    :model/Table    t1  {:name "Table 1" :db_id (:id db)}
                    :model/Table    t2  {:name "Table 2" :db_id (:id db)}
-                   :model/Table    _t3 {:name "Table 3" :db_id (:id db) :visibility_type "hidden"}
+                   :model/Table    _t3 {:name "Table 3" :db_id (:id db) :data_layer :hidden}
                    :model/Field    f1  {:name "Field 1.1" :table_id (:id t1)}
                    :model/Field    f2  {:name "Field 2.1" :table_id (:id t2)}
                    :model/Field    f3  {:name "Field 2.2" :table_id (:id t2)}]
@@ -1166,7 +1165,7 @@
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
-  (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden" :data_layer :hidden}
+  (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:data_layer :hidden}
     (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
       (let [metadata           (fn [user & params]
                                  (apply mt/user-http-request user :get 200 (format "database/%d/metadata" (mt/id)) params))
@@ -2253,9 +2252,9 @@
      :model/Table    _ {:db_id db-id :schema "schema_1a" :name "table_1"}
      :model/Table    _ {:db_id db-id :schema "schema_1c" :name "table_1"} ;; out of order for sorting
      :model/Table    _ {:db_id db-id :schema "schema_1b" :name "table_1"}
-     ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
-     :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2a" :visibility_type "hidden"}
-     :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2b" :visibility_type "cruft"}
+     ;; table is not visible. A hidden data_layer means Table shouldn't be visible
+     :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2a" :data_layer :hidden}
+     :model/Table    _ {:db_id db-id :schema "schema_2" :name "table_2b" :data_layer :hidden}
      ;; table is not active
      :model/Table    _ {:db_id db-id :schema "schema_3" :name "table_3" :active false}]
     (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
@@ -2343,7 +2342,7 @@
     (testing "should exclude hidden Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    _ {:db_id database-id :schema "public" :name "table"}
-                     :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
+                     :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :data_layer :hidden}]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))))
 
@@ -2352,7 +2351,7 @@
     (testing "should show hidden Tables when explicitly asked for"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    _ {:db_id database-id :schema "public" :name "table"}
-                     :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
+                     :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :data_layer :hidden}]
         (is (= #{"table" "hidden-table"}
                (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
                                                      :include_hidden true)))))))))

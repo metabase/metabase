@@ -794,34 +794,3 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
-
-(deftest insert-keeps-visibility-type-and-data-layer-in-step-test
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table {cruft :id}   {:db_id db-id :visibility_type :cruft}
-                 :model/Table {hidden :id}  {:db_id db-id :data_layer :hidden}
-                 :model/Table {final :id}   {:db_id db-id :data_layer :final}
-                 :model/Table {visible :id} {:db_id db-id}]
-    (is (= {cruft   [:cruft :hidden]
-            hidden  [:hidden :hidden]
-            final   [nil :final]
-            visible [nil :internal]}
-           (t2/select-pk->fn (juxt :visibility_type :data_layer) :model/Table
-                             :id [:in [cruft hidden final visible]])))))
-
-(deftest update-accepts-agreeing-visibility-type-and-data-layer-test
-  (mt/with-temp [:model/Table {hidden :id}   {}
-                 :model/Table {rejected :id} {}]
-    (testing "agreeing pair is stored"
-      (t2/update! :model/Table :id hidden {:visibility_type :hidden :data_layer :hidden})
-      (is (= [:hidden :hidden]
-             (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id hidden))))
-    (testing "disagreeing pair is rejected"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"visibility_type and data_layer must agree"
-                            (t2/update! :model/Table :id rejected {:visibility_type :hidden :data_layer :final}))))))
-
-(deftest update-of-both-columns-keeps-given-data-layer-test
-  (mt/with-temp [:model/Table {table-id :id} {:visibility_type :hidden}]
-    (testing "visible pair with final data_layer is stored as given"
-      (t2/update! :model/Table :id table-id {:visibility_type nil :data_layer :final})
-      (is (= [nil :final]
-             (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id table-id))))))

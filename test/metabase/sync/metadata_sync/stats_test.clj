@@ -97,12 +97,11 @@
       (is (= [{:table_id orders :field_values_count 1}] (sync.db/described-full-field-values-counts db-id))))))
 
 (deftest values-of-tables-that-sync-leaves-alone-are-not-sent-test
-  (doseq [visibility-type [:hidden :technical :cruft]]
-    (mt/with-temp [:model/Database    {db-id :id}  {}
-                   :model/Table       {orders :id} {:db_id db-id :name "orders" :visibility_type visibility-type}
-                   :model/Field       {status :id} {:table_id orders :name "status" :base_type :type/Text
-                                                    :has_field_values :list}
-                   :model/FieldValues _            {:field_id status :type :full :values ["left from before"]}]
-      (testing (str "a " (name visibility-type) " Table, which sync does not keep up to date, sends no values")
-        (is (= [] (get-in (stats/table-stats (tables db-id)) [orders :field_values] [])))
-        (is (= [] (sync.db/described-full-field-values-counts db-id)))))))
+  (mt/with-temp [:model/Database    {db-id :id}  {}
+                 :model/Table       {orders :id} {:db_id db-id :name "orders" :data_layer :hidden}
+                 :model/Field       {status :id} {:table_id orders :name "status" :base_type :type/Text
+                                                  :has_field_values :list}
+                 :model/FieldValues _            {:field_id status :type :full :values ["left from before"]}]
+    (testing "a hidden Table, which sync does not keep up to date, sends no values"
+      (is (= [] (get-in (stats/table-stats (tables db-id)) [orders :field_values] [])))
+      (is (= [] (sync.db/described-full-field-values-counts db-id))))))

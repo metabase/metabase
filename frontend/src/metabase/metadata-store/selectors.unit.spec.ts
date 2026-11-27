@@ -96,7 +96,6 @@ describe("table relations", () => {
       createMockTable({ id: CONNECTED_TABLE_ID, fks: undefined }),
       createMockTable({
         id: HIDDEN_TABLE_ID,
-        visibility_type: "hidden",
         data_layer: "hidden",
       }),
     ],

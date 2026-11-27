@@ -261,7 +261,7 @@
                    :model/Field    _          {:name "kind" :table_id (:id events) :base_type :type/Text}
                    :model/Table    _          {:name "items" :schema nil :db_id (:id db)}
                    :model/Table    _          {:name "items" :schema "clean" :db_id (:id db)}
-                   :model/Table    _          {:name "secrets" :schema "raw" :db_id (:id db) :visibility_type :hidden}]
+                   :model/Table    _          {:name "secrets" :schema "raw" :db_id (:id db) :data_layer :hidden}]
       (let [db-name   (:name db)
             construct (fn [source-table & [breakout-field]]
                         (try

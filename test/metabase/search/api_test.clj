@@ -1213,7 +1213,7 @@
   (testing "You should not see hidden tables"
     (mt/with-model-cleanup [:model/Table]
       (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "Foo Visible")
-                             (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "Foo Hidden", :visibility_type :hidden)])
+                             (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "Foo Hidden", :data_layer :hidden)])
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(assoc (default-table-search-row "Foo Visible") :can_write (= user :crowberto))]
                (search-request-data user :q "Foo")))))))

@@ -35,7 +35,7 @@
 (def user-settable-table-columns
   "The Table columns users can set, whose values `metabase_table` holds, all but [[settings-only-table-columns]],
   while `metabase_table_user_settings` records which ones a user set."
-  (into #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer
+  (into #{:display_name :description :entity_type :caveats :points_of_interest :data_layer
           :data_source :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority}
         settings-only-table-columns))
 
@@ -47,10 +47,9 @@
 (def table-set-flags
   "The user-settable Table columns something besides users also writes, mapped to the flag that says the user set the
   column, NULL included."
-  {:description     :description_set
-   :visibility_type :visibility_type_set
-   :data_layer      :data_layer_set
-   :data_source     :data_source_set})
+  {:description :description_set
+   :data_layer  :data_layer_set
+   :data_source :data_source_set})
 
 (mu/defn user-set-table-columns :- [:set (into [:enum] user-settable-table-columns)]
   "The columns the TableUserSettings row `settings` says a user set; `collection_id` follows `is_published`."

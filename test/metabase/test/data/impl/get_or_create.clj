@@ -223,7 +223,6 @@
                         :display_name        (warehouse-schema.humanization/name->human-readable-name :simple table-name)
                         :description         table-comment
                         :active              true
-                        :visibility_type     nil
                         :initial_sync_status "complete"
                         :field_order         "database"}
         ;; Build field rows: auto PK (if needed) + user-defined fields

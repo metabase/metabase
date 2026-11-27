@@ -292,7 +292,6 @@ describe("NewSegmentPage", () => {
     setup({
       table: {
         ...TEST_TABLE,
-        visibility_type: "hidden",
         data_layer: "hidden",
       },
     });

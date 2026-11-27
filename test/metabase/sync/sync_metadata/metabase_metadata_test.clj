@@ -64,14 +64,14 @@
             "engine"                         "postgres"
             "details"                        "{}"
             "movies.db_id"                   "13371337"
-            "movies.visibility_type"         "hidden"
+            "movies.data_layer"              "hidden"
             "movies.filming.visibility_type" "sensitive"
             "movies.filming.table_id"        "13371337"
             "movies.filming.field_type"      "type/Category")
           (let [db (t2/select-one :model/Database :id (u/the-id db))]
             (is (= ::moviedb/moviedb (:engine db)))
             (is (nil? (get-in db [:settings :database-enable-actions]))))
-          (is (=? {:db_id (u/the-id db), :visibility_type nil}
+          (is (=? {:db_id (u/the-id db), :data_layer :internal}
                   (t2/select-one :model/Table :id (u/the-id table))))
           (is (=? {:table_id (u/the-id table), :visibility_type :normal}
                   (t2/select-one :model/Field :id (u/the-id field)))))))))

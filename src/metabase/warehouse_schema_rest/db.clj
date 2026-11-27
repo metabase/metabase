@@ -33,15 +33,14 @@
 
 (mu/defn matching-tables
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
-  using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
+  using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to
   `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
   `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents,
   ordered by name."
-  [{:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only? published-only?
+  [{:keys [term data-layer data-source owner-user-id owner-email orphan-only? published-only?
            check-unused? include-transform-targets?]}
    :- [:map {:closed true}
        [:term                       {:optional true} [:maybe :string]]
-       [:visibility-type            {:optional true} [:maybe :string]]
        [:data-layer                 {:optional true} [:maybe [:or :keyword :string]]]
        [:data-source                {:optional true} [:maybe [:or :keyword :string]]]
        [:owner-user-id              {:optional true} [:maybe :int]]
@@ -72,7 +71,6 @@
                                                       (like (table-column :display_name) identity)
                                                       ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
                                                       (like (table-column :display_name) #(str "% " %))])
-                       visibility-type         (conj [:= (table-column :visibility_type) visibility-type])
                        data-layer              (conj [:= (table-column :data_layer)      (name data-layer)])
                        data-source             (conj [:= (table-column :data_source)     (name data-source)])
                        owner-user-id           (conj [:= (table-column :owner_user_id)   owner-user-id])

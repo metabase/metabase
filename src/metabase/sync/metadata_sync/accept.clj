@@ -92,8 +92,7 @@
   {:model/Field {:visibility_type  (set lib.schema.metadata/column-visibility-types)
                  :has_field_values (set lib.schema.metadata/column-has-field-values-options)
                  :data_sensitivity (set lib.schema.metadata/column-data-sensitivity-types)}
-   :model/Table {:visibility_type table/visibility-types
-                 :field_order     table/field-orderings
+   :model/Table {:field_order     table/field-orderings
                  ;; the model takes the others too, but they say how one instance made the Table
                  :data_source     (into #{} (map keyword) tables/sent-data-sources)}})
 
@@ -112,7 +111,7 @@
   model, on every kind of app DB: a Table name holds 256 on H2 and Postgres, and 254 on MySQL. A newer version can
   have a wider column."
   {:model/Database {:timezone 254}
-   :model/Table    {:schema 254 :name 254 :display_name 256 :entity_type 254 :visibility_type 254 :data_layer 254
+   :model/Table    {:schema 254 :name 254 :display_name 256 :entity_type 254 :data_layer 254
                     :data_source 254 :data_authority 20 :field_order 254}
    :model/Field    {:name 254 :display_name 254 :base_type 255 :effective_type 255 :semantic_type 255
                     :coercion_strategy 255 :visibility_type 32 :data_sensitivity 32 :nfc_path 254}})
@@ -166,11 +165,10 @@
       false)))
 
 (def ^:private table-column-groups
-  "The columns of a Table entry that are left out together when this Metabase does not take one of them. The
-  visibility type and the data layer say one thing two ways, and an insert does not make one from the other."
-  (into [[:visibility_type :data_layer]]
+  "The columns of a Table entry that are left out together when this Metabase does not take one of them."
+  (into []
         (map vector)
-        (remove #{:schema :name :visibility_type :data_layer} tables/table-columns)))
+        (remove #{:schema :name} tables/table-columns)))
 
 (def ^:private field-column-groups
   "The columns of a Field entry that are left out together when this Metabase does not take one of them. A coercion

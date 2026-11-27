@@ -62,7 +62,6 @@ const entities = createMockEntitiesState({
           id: HIDDEN_TABLE_ID,
           db_id: MULTI_SCHEMA_DB_ID,
           schema: "second",
-          visibility_type: "hidden",
           data_layer: "hidden",
         }),
       ],

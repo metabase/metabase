@@ -31,8 +31,7 @@
                                                           :name            n
                                                           :display_name    n
                                                           :schema          "public"
-                                                          :active          true
-                                                          :visibility_type nil})]))]
+                                                          :active          true})]))]
         (doseq [stored   names
                 spelling [stored (u/lower-case-en stored) (u/upper-case-en stored)]]
           (testing (format "stored %s, queried as %s" (pr-str stored) (pr-str spelling))
@@ -42,9 +41,9 @@
         (testing "inactive and hidden Tables are excluded, matching what an unfiltered provider fetch returns"
           (t2/insert! :model/Table
                       [{:db_id db-id :name "gone" :display_name "gone"
-                        :schema "public" :active false :visibility_type nil}
+                        :schema "public" :active false}
                        {:db_id db-id :name "shy" :display_name "shy"
-                        :schema "public" :active true :visibility_type "hidden"}])
+                        :schema "public" :active true :data_layer :hidden}])
           (is (= #{} (sql-tools.common/table-ids-by-name db-id ["gone" "shy"]))))
         (testing "a name that matches nothing returns empty rather than everything"
           (is (= #{} (sql-tools.common/table-ids-by-name db-id ["no_such_table"]))))

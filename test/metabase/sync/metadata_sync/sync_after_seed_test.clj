@@ -63,7 +63,7 @@
   counts, and the receiver's sync then sets them. `is_writable` depends on the login, so a seed does not copy it."
   [db-id]
   (into {}
-        (map (juxt :name #(select-keys % [:description :database_require_filter :visibility_type
+        (map (juxt :name #(select-keys % [:description :database_require_filter :data_layer
                                           :initial_sync_status])))
         (t2/select :model/Table :db_id db-id :active true)))
 

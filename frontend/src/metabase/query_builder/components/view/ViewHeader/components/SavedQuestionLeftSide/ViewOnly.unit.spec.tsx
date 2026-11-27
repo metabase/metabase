@@ -74,8 +74,6 @@ async function expectPopoverToHaveText(text: string) {
   expect(dialog).toHaveTextContent(text);
 }
 
-const HIDDEN_VISIBILITY_TYPES = ["hidden", "technical", "cruft"] as const;
-
 const ORDERS_QUERY = (function () {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const availableColumns = Lib.fieldableColumns(query, -1);
@@ -236,52 +234,48 @@ describe("ViewOnlyTag", () => {
   });
 
   describe("tables", () => {
-    for (const visibility_type of HIDDEN_VISIBILITY_TYPES) {
-      it(`should show the View-only badge when the source table is ${visibility_type}`, async () => {
-        setup({
-          card: createCardFromQuery({ query: ORDERS_JOIN_PRODUCTS_QUERY }),
-          tables: [
-            createOrdersTable({ visibility_type, data_layer: "hidden" }),
-            createProductsTable({ visibility_type: null }),
-          ],
-        });
-
-        expect(screen.getByText("View-only")).toBeInTheDocument();
-        await expectPopoverToHaveText(
-          "One of the administrators hid the source table “Orders”, making this question view-only.",
-        );
+    it("should show the View-only badge when the source table is hidden", async () => {
+      setup({
+        card: createCardFromQuery({ query: ORDERS_JOIN_PRODUCTS_QUERY }),
+        tables: [
+          createOrdersTable({ data_layer: "hidden" }),
+          createProductsTable(),
+        ],
       });
 
-      it(`should show the View-only badge when a joined table is ${visibility_type}`, async () => {
-        setup({
-          card: createCardFromQuery({ query: ORDERS_JOIN_PRODUCTS_QUERY }),
-          tables: [
-            createOrdersTable({ visibility_type: null }),
-            createProductsTable({ visibility_type, data_layer: "hidden" }),
-          ],
-        });
+      expect(screen.getByText("View-only")).toBeInTheDocument();
+      await expectPopoverToHaveText(
+        "One of the administrators hid the source table “Orders”, making this question view-only.",
+      );
+    });
 
-        expect(screen.getByText("View-only")).toBeInTheDocument();
-        await expectPopoverToHaveText(
-          "One of the administrators hid the source table “Products”, making this question view-only.",
-        );
+    it("should show the View-only badge when a joined table is hidden", async () => {
+      setup({
+        card: createCardFromQuery({ query: ORDERS_JOIN_PRODUCTS_QUERY }),
+        tables: [
+          createOrdersTable(),
+          createProductsTable({ data_layer: "hidden" }),
+        ],
       });
-    }
+
+      expect(screen.getByText("View-only")).toBeInTheDocument();
+      await expectPopoverToHaveText(
+        "One of the administrators hid the source table “Products”, making this question view-only.",
+      );
+    });
   });
 
   describe("implicit joins", () => {
-    for (const visibility_type of HIDDEN_VISIBILITY_TYPES) {
-      it(`should not show the View-only badge when an implicitly joined table is ${visibility_type}`, async () => {
-        setup({
-          card: createCardFromQuery({ query: ORDERS_QUERY }),
-          tables: [
-            createOrdersTable({ visibility_type: null }),
-            createProductsTable({ visibility_type, data_layer: "hidden" }),
-          ],
-        });
-
-        expect(screen.queryByText("View-only")).not.toBeInTheDocument();
+    it("should not show the View-only badge when an implicitly joined table is hidden", async () => {
+      setup({
+        card: createCardFromQuery({ query: ORDERS_QUERY }),
+        tables: [
+          createOrdersTable(),
+          createProductsTable({ data_layer: "hidden" }),
+        ],
       });
-    }
+
+      expect(screen.queryByText("View-only")).not.toBeInTheDocument();
+    });
   });
 });

@@ -94,7 +94,7 @@
                 (sync/update-field-values! (:id (data/db)))
                 (venues-price-field-values))]
         (is (= [1 2 3 4] (field-values-after-sync!)))
-        (mt/user-http-request :crowberto :put 200 (format "table/%d" (mt/id :venues)) {:visibility_type "hidden"})
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (mt/id :venues)) {:data_layer "hidden"})
         (is (= [10 20 30 40] (field-values-after-sync!)))))))
 
 (deftest sync-should-properly-handle-last-used-at

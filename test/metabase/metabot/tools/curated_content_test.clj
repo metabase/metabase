@@ -329,7 +329,7 @@
                      :model/Card {doc-card :id} {:collection_id official :document_id doc-id
                                                  :dataset_query (orders-query)}
                      :model/Table {hidden :id} {:db_id (mt/id) :name "hidden_authoritative" :active true
-                                                :visibility_type :hidden :data_authority :authoritative}
+                                                :data_layer :hidden :data_authority :authoritative}
                      :model/Table {live :id} {:db_id (mt/id) :name "live_authoritative" :active true
                                               :data_authority :authoritative}]
         (is (= #{["table" live]}

@@ -88,9 +88,9 @@
 (deftest database-tables-test
   (testing "database-tables function"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "products", :schema "private", :active true, :visibility_type nil}
+                   :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table    {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true}
+                   :model/Table    {} {:db_id db-id, :name "products", :schema "private", :active true}
                    :model/Field    {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
                    :model/Field    {} {:table_id table1-id, :name "name", :database_type "VARCHAR"}
                    :model/Field    {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
@@ -124,9 +124,9 @@
 (deftest find-matching-tables-test
   (testing "find-matching-tables function"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "user_profiles", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}]
+                   :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table    {} {:db_id db-id, :name "user_profiles", :schema "public", :active true}
+                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true}]
       (testing "finds tables with similar names"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [unrecognized [{:name "user" :schema "public"}]  ; similar to "users"
@@ -151,9 +151,9 @@
 (deftest used-tables-test
   (testing "used-tables function"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {inactive-id :id} {:db_id db-id, :name "inactive_users", :schema "public", :active false, :visibility_type nil}]
+                   :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true}
+                   :model/Table    {inactive-id :id} {:db_id db-id, :name "inactive_users", :schema "public", :active false}]
       (testing "handles query with recognized tables"
         (mt/with-current-user (mt/user->id :crowberto)
           ;; Mock query analyzer result with recognized table
@@ -207,12 +207,12 @@
   (testing "used-tables-from-ids function"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Database {other-db-id :id} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "inventory", :active true, :visibility_type nil}
-                   :model/Table {inactive-id :id} {:db_id db-id, :name "old_data", :schema "public", :active false, :visibility_type nil}
-                   :model/Table {hidden-id :id} {:db_id db-id, :name "sensitive", :schema "public", :active true, :visibility_type :hidden}
-                   :model/Table {other-db-table-id :id} {:db_id other-db-id, :name "other_table", :schema "public", :active true, :visibility_type nil}]
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "inventory", :active true}
+                   :model/Table {inactive-id :id} {:db_id db-id, :name "old_data", :schema "public", :active false}
+                   :model/Table {hidden-id :id} {:db_id db-id, :name "sensitive", :schema "public", :active true, :data_layer :hidden}
+                   :model/Table {other-db-table-id :id} {:db_id other-db-id, :name "other_table", :schema "public", :active true}]
       (testing "returns tables with correct structure for valid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= #{{:id table1-id :name "users" :schema "public" :description nil}
@@ -279,16 +279,16 @@
         (is (thrown? Exception (table-utils/used-tables query))))))
   (testing "database-tables with inactive tables"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}]
+                   :model/Table    {} {:db_id db-id, :name "active_table", :active true}
+                   :model/Table    {} {:db_id db-id, :name "inactive_table", :active false}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [tables (table-utils/database-tables db-id)]
           (is (every? #(not= "inactive_table" (:name %)) tables))
           (is (some #(= "active_table" (:name %)) tables))))))
   (testing "database-tables with hidden tables"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {} {:db_id db-id, :name "visible_table", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "hidden_table", :active true, :visibility_type "hidden"}]
+                   :model/Table    {} {:db_id db-id, :name "visible_table", :active true}
+                   :model/Table    {} {:db_id db-id, :name "hidden_table", :active true, :data_layer :hidden}]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [tables (table-utils/database-tables db-id)]
           (is (every? #(not= "hidden_table" (:name %)) tables))
@@ -304,8 +304,8 @@
 (deftest schema-sample-basic-functionality-test
   (testing "schema-sample with fewer tables than limit"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table1-id, :name "name", :database_type "VARCHAR(255)"}
                    :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
@@ -330,10 +330,10 @@
 (deftest schema-sample-query-based-selection-test
   (testing "schema-sample with more tables than limit - uses query-based selection"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table4-id :id} {:db_id db-id, :name "customers", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true}
+                   :model/Table {table4-id :id} {:db_id db-id, :name "customers", :schema "public", :active true}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}
@@ -357,7 +357,7 @@
 (deftest schema-sample-default-limit-test
   (testing "schema-sample with default all-tables-limit"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "table1", :schema nil, :active true, :visibility_type nil}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "table1", :schema nil, :active true}
                    :model/Field {} {:table_id table1-id, :name "col1", :database_type "TEXT"}]
       (let [query (mt/with-db db
                     (lib/native-query (mt/metadata-provider) "SELECT * FROM table1"))
@@ -372,7 +372,7 @@
 (deftest schema-sample-special-characters-test
   (testing "schema-sample handles tables with special characters in names"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "user-profiles", :schema "my schema", :active true, :visibility_type nil}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "user-profiles", :schema "my schema", :active true}
                    :model/Field {} {:table_id table1-id, :name "user id", :database_type "INTEGER"}]
       (let [query (mt/with-db db
                     (lib/native-query (mt/metadata-provider) "SELECT * FROM \"user-profiles\""))
@@ -395,9 +395,9 @@
 (deftest schema-sample-table-visibility-test
   (testing "schema-sample excludes inactive and hidden tables"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
-                   :model/Table {} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}
-                   :model/Table {} {:db_id db-id, :name "hidden_table", :active true, :visibility_type "hidden"}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "active_table", :active true}
+                   :model/Table {} {:db_id db-id, :name "inactive_table", :active false}
+                   :model/Table {} {:db_id db-id, :name "hidden_table", :active true, :data_layer :hidden}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}]
       (let [query (mt/with-db db
                     (lib/native-query (mt/metadata-provider) "SELECT * FROM active_table"))
@@ -410,7 +410,7 @@
 (deftest schema-sample-empty-tables-test
   (testing "schema-sample handles tables without fields"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {} {:db_id db-id, :name "empty_table", :schema "public", :active true, :visibility_type nil}]
+                   :model/Table {} {:db_id db-id, :name "empty_table", :schema "public", :active true}]
       (let [query (mt/with-db db
                     (lib/native-query (mt/metadata-provider) "SELECT * FROM empty_table"))
             ddl (table-utils/schema-sample query)]
@@ -420,10 +420,10 @@
 (deftest schema-sample-limit-exceeded-fuzzy-matching-test
   (testing "schema-sample when limit exceeded, uses fuzzy matching for query tables"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table2-id :id} {:db_id db-id, :name "user_profiles", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table4-id :id} {:db_id db-id, :name "customers", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "user_profiles", :schema "public", :active true}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "products", :schema "public", :active true}
+                   :model/Table {table4-id :id} {:db_id db-id, :name "customers", :schema "public", :active true}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}
@@ -445,9 +445,9 @@
   (testing "schema-sample fuzzy matching behavior with similar table names"
     ;; This test documents the fuzzy matching behavior when limit is exceeded
     (mt/with-temp [:model/Database {db-id :id :as db} {}
-                   :model/Table {table1-id :id} {:db_id db-id, :name "order", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
-                   :model/Table {table3-id :id} {:db_id db-id, :name "order_items", :schema "public", :active true, :visibility_type nil}
+                   :model/Table {table1-id :id} {:db_id db-id, :name "order", :schema "public", :active true}
+                   :model/Table {table2-id :id} {:db_id db-id, :name "orders", :schema "public", :active true}
+                   :model/Table {table3-id :id} {:db_id db-id, :name "order_items", :schema "public", :active true}
                    :model/Field {} {:table_id table1-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}]

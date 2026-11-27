@@ -303,7 +303,7 @@
 
 (deftest erd-endpoint-includes-hidden-tables-and-all-field-visibility-test
   (mt/with-premium-features #{:schema-viewer}
-    (testing "all tables (incl. hidden/technical/cruft) are surfaced; all field visibility types are included"
+    (testing "all tables (incl. hidden and final) are surfaced; all field visibility types are included"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {visible-table-id :id} {:db_id db-id :name "visible"
                                                           :display_name "visible" :schema "PUBLIC"}
@@ -319,25 +319,21 @@
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :visibility_type "retired"}
                      :model/Table _ {:db_id db-id :name "hidden_table" :display_name "hidden_table" :schema "PUBLIC"
-                                     :visibility_type "hidden"}
-                     :model/Table _ {:db_id db-id :name "technical_table"
-                                     :display_name "technical_table" :schema "PUBLIC"
-                                     :visibility_type "technical"}
-                     :model/Table _ {:db_id db-id :name "cruft_table" :display_name "cruft_table" :schema "PUBLIC"
-                                     :visibility_type "cruft"}]
+                                     :data_layer :hidden}
+                     :model/Table _ {:db_id db-id :name "final_table" :display_name "final_table" :schema "PUBLIC"
+                                     :data_layer :final}]
         (let [response       (mt/user-http-request :rasta :get 200 "ee/erd"
                                                    :database-id db-id
                                                    :schema "PUBLIC")
               node-names     (set (map :name (:nodes response)))
               field-names    (set (map :name (mapcat :fields (:nodes response))))
-              visibility-by-name (into {} (map (juxt :name :visibility_type)) (:nodes response))]
-          (is (= #{"visible" "hidden_table" "technical_table" "cruft_table"} node-names))
+              data-layer-by-name (into {} (map (juxt :name :data_layer)) (:nodes response))]
+          (is (= #{"visible" "hidden_table" "final_table"} node-names))
           (is (= #{"visible_id" "hidden_field" "secret" "retired_field"} field-names))
-          (is (= {"visible"         nil
-                  "hidden_table"    "hidden"
-                  "technical_table" "technical"
-                  "cruft_table"     "cruft"}
-                 visibility-by-name)))))))
+          (is (= {"visible"      "internal"
+                  "hidden_table" "hidden"
+                  "final_table"  "final"}
+                 data-layer-by-name)))))))
 
 (deftest erd-endpoint-resolves-hidden-fk-targets-test
   (mt/with-premium-features #{:schema-viewer}
@@ -345,7 +341,7 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {hidden-target-table-id :id} {:db_id db-id :name "hidden_target"
                                                                 :display_name "hidden_target" :schema "PUBLIC"
-                                                                :visibility_type "hidden"}
+                                                                :data_layer :hidden}
                      :model/Field {hidden-target-field-id :id} {:table_id hidden-target-table-id :name "id"
                                                                 :display_name "id"
                                                                 :database_type "INTEGER" :base_type :type/Integer

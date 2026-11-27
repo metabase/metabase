@@ -104,7 +104,6 @@ const ORDERS_TABLE = createOrdersTable({
     ORDERS_DISCOUNT_FIELD,
     ORDERS_QUANTITY_FIELD,
   ],
-  visibility_type: "technical",
   data_layer: "hidden",
 });
 

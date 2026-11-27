@@ -1548,7 +1548,7 @@
                                                          :display_name "Hidden Unreferenced Table - archivedtest"
                                                          :db_id (mt/id)
                                                          :active true
-                                                         :visibility_type "hidden"}]
+                                                         :data_layer :hidden}]
         (deps.test/synchronously-run-dependency-job!)
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest")
               table-ids (set (map :id (:data response)))]

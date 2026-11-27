@@ -13,14 +13,6 @@ export type TableEntityType = string;
 export type TableId = number;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
-export type TableVisibilityType =
-  | null
-  | "hidden"
-  | "retired"
-  | "sensitive"
-  | "technical"
-  | "cruft";
-
 export type TableDataLayer = "hidden" | "internal" | "final";
 
 export type TableDataSource =
@@ -53,7 +45,6 @@ export type Table = {
   field_order: TableFieldOrder;
 
   active: boolean;
-  visibility_type: TableVisibilityType;
   initial_sync_status: InitialSyncStatus;
   is_upload: boolean;
   is_writable?: boolean;
@@ -146,7 +137,6 @@ export interface GetTableQueryMetadataRequest {
 export interface UpdateTableRequest {
   id: TableId;
   display_name?: string;
-  visibility_type?: TableVisibilityType;
   description?: string | null;
   caveats?: string;
   points_of_interest?: string;
@@ -164,7 +154,6 @@ export interface UpdateTableRequest {
 export interface UpdateTableListRequest {
   ids: TableId[];
   display_name?: string;
-  visibility_type?: TableVisibilityType;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
@@ -186,7 +175,6 @@ export interface EditTablesRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
-  visibility_type?: TableVisibilityType;
   data_authority?: string;
   data_source?: TableDataSource | null;
   data_layer?: TableDataLayer;

@@ -281,8 +281,8 @@
 (deftest get-table-filters-inactive-test
   (testing "get-table only returns active tables"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
-                   :model/Table {inactive-table-id :id} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}]
+                   :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true}
+                   :model/Table {inactive-table-id :id} {:db_id db-id, :name "inactive_table", :active false}]
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id :db_id))))
         (is (thrown? clojure.lang.ExceptionInfo

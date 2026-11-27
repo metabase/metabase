@@ -314,7 +314,7 @@ describe("snapshots", () => {
   }) {
     [ACCOUNTS_ID, ANALYTIC_EVENTS_ID, FEEDBACK_ID, INVOICES_ID].forEach(
       (id) => {
-        cy.request("PUT", `/api/table/${id}`, { visibility_type: "hidden" });
+        cy.request("PUT", `/api/table/${id}`, { data_layer: "hidden" });
       },
     );
   }

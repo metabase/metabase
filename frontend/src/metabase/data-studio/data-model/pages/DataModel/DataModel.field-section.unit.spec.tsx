@@ -297,10 +297,6 @@ function setupBackend({
   const updateTable = (tableId: TableId, body: Partial<Table>) => {
     const index = tables.findIndex((table) => table.id === tableId);
     const table = { ...tables[index], ...body };
-    // the backend keeps visibility_type in sync with data_layer
-    if (body.data_layer === "hidden") {
-      table.visibility_type = "hidden";
-    }
     tables[index] = table;
     if (body.field_order != null) {
       getFieldsInOrder(getTableFields(tableId), body.field_order).forEach(

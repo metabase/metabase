@@ -384,8 +384,8 @@
 (defn- in-sync-tables? [table-id]
   (contains? (into #{} (map :id) (sync-util/reducible-sync-tables (driver.u/lib-database (mt/id)))) table-id))
 
-(defn- set-visibility-type-via-api! [table-id visibility-type]
-  (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id) {:visibility_type visibility-type}))
+(defn- set-data-layer-via-api! [table-id data-layer]
+  (mt/user-http-request :crowberto :put 200 (format "table/%d" table-id) {:data_layer data-layer}))
 
 (deftest reducible-sync-tables-follows-user-visibility-test
   (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_task])]
@@ -393,11 +393,11 @@
       (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES"}]
         (is (in-sync-tables? table-id))))
     (testing "a table sync recorded as hidden is left out"
-      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES" :visibility_type :hidden}]
+      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES" :data_layer :hidden}]
         (is (not (in-sync-tables? table-id)))))
     (testing "a table hidden through PUT /api/table/:id is left out"
       (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES"}]
-        (set-visibility-type-via-api! table-id "hidden")
+        (set-data-layer-via-api! table-id "hidden")
         (is (not (in-sync-tables? table-id)))))
     (testing "a table hidden through the Data Studio data layer is left out"
       (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES"}]
@@ -405,13 +405,13 @@
         (is (not (in-sync-tables? table-id)))))
     (testing "a hidden table takes part in sync again once the user un-hides it"
       (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES"}]
-        (set-visibility-type-via-api! table-id "hidden")
-        (set-visibility-type-via-api! table-id nil)
+        (set-data-layer-via-api! table-id "hidden")
+        (set-data-layer-via-api! table-id "internal")
         (is (in-sync-tables? table-id))))
-    (testing "a cruft table takes part in sync once the user sets its visibility_type to NULL"
-      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES" :visibility_type :cruft}]
+    (testing "a hidden table takes part in sync once the user sets its data_layer to internal"
+      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "VENUES" :data_layer :hidden}]
         (is (not (in-sync-tables? table-id)))
-        (set-visibility-type-via-api! table-id nil)
-        (is (= {:visibility_type nil :visibility_type_set true}
-               (t2/select-one [:model/TableUserSettings :visibility_type :visibility_type_set] :table_id table-id)))
+        (set-data-layer-via-api! table-id "internal")
+        (is (= {:data_layer :internal :data_layer_set true}
+               (t2/select-one [:model/TableUserSettings :data_layer :data_layer_set] :table_id table-id)))
         (is (in-sync-tables? table-id))))))

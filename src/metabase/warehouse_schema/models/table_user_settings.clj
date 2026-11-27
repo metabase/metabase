@@ -35,7 +35,6 @@
 
 (t2/deftransforms :model/TableUserSettings
   {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
    :field_order     mi/transform-keyword
    :data_layer      (mi/transform-validator-with-fixes
                      mi/transform-keyword
@@ -56,25 +55,12 @@
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- complete-pairs
-  "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, derived from a
-  changing half or else kept from `table`, and `is_published`/`collection_id`, kept from `row`, the settings as
-  stored, if any."
-  [settings table row]
-  (let [changing? (fn [k] (not= (some-> (get settings k) keyword)
-                                (some-> (get table k) keyword)))]
-    (cond-> settings
-      (and (contains? settings :visibility_type) (not (contains? settings :data_layer)))
-      (assoc :data_layer (if (changing? :visibility_type)
-                           (table/visibility-type->data-layer (some-> (:visibility_type settings) keyword))
-                           (:data_layer table)))
-
-      (and (contains? settings :data_layer) (not (contains? settings :visibility_type)))
-      (assoc :visibility_type (if (changing? :data_layer)
-                                (table/data-layer->visibility-type (some-> (:data_layer settings) keyword))
-                                (:visibility_type table)))
-
-      (and (contains? settings :collection_id) (not (contains? settings :is_published)))
-      (assoc :is_published (boolean (:is_published row))))))
+  "Fill in the other half of the two-column choice in `settings`: `is_published`/`collection_id`, kept from `row`, the
+  settings as stored, if any."
+  [settings _table row]
+  (cond-> settings
+    (and (contains? settings :collection_id) (not (contains? settings :is_published)))
+    (assoc :is_published (boolean (:is_published row)))))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column in `effective`, unless `explicit` sets the flag itself."
@@ -89,7 +75,7 @@
 (defn- pair-columns-written?
   "Whether `explicit` writes a column whose pair [[complete-pairs]] completes."
   [explicit]
-  (boolean (some #(contains? explicit %) [:visibility_type :data_layer :collection_id])))
+  (contains? explicit :collection_id))
 
 (defn- check-publication
   "Throws a 400 when `settings` put a Table in a Collection without publishing it."
@@ -149,15 +135,6 @@
    :empty-settings         warehouse-schema.db/empty-table-user-settings
    :delete-empty-settings! warehouse-schema.db/delete-empty-table-user-settings!})
 
-(defn- without-derived-half
-  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
-  [{:keys [visibility_type data_layer] :as changes}]
-  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
-    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
-      (dissoc changes :data_layer)
-      (dissoc changes :visibility_type))
-    changes))
-
 (defn- write-tables!
   "Write each of `table-rows`, the `:id` of a Table and the columns to change, onto its Table with `opts` for the
   events; in a remote sync worktree, which leaves the main app's Tables as they are, only check the changes."
@@ -183,9 +160,8 @@
                          (into []
                                (keep (fn [{:keys [table_id] :as settings}]
                                        (when-let [changes (not-empty
-                                                           (without-derived-half
-                                                            (user-settings/table-row-columns
-                                                             (select-keys settings (user-settings/user-set-table-columns settings)))))]
+                                                           (user-settings/table-row-columns
+                                                            (select-keys settings (user-settings/user-set-table-columns settings))))]
                                          (assoc changes :id table_id))))
                                rows))]
     (write-tables! table-rows opts)))
@@ -404,7 +380,7 @@
    :track-redacted [:caveats :caveats_set :collection_id :data_authority :data_layer :data_layer_set :data_source
                     :data_source_set :description :description_set :display_name :entity_type :field_order
                     :is_published :owner_email :owner_user_id :points_of_interest :points_of_interest_set
-                    :show_in_getting_started :visibility_type :visibility_type_set]
+                    :show_in_getting_started]
    :skip           []
    :topics         {}
    :subject        (fn [{:keys [object previous-object]}]
@@ -417,13 +393,12 @@
 (defmethod serialization/spec :model/TableUserSettings [_]
   {:schema              ::warehouse-schema.schema/external-table-user-settings
    :identity            [:table_id]
-   :copy                [:display_name :description :entity_type :visibility_type :field_order :caveats
+   :copy                [:display_name :description :entity_type :field_order :caveats
                          :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
-                         :owner_email :is_published :description_set :visibility_type_set :data_layer_set
+                         :owner_email :is_published :description_set :data_layer_set
                          :data_source_set]
    :skip                [:caveats_set :points_of_interest_set]
    :defaults            {:description_set     false
-                         :visibility_type_set false
                          :data_layer_set      false
                          :data_source_set     false}
    :transform           {:collection_id (serialization/fk-transform :model/Collection)
@@ -445,4 +420,4 @@
 
 (defmethod dependencies/spec :model/TableUserSettings [_model]
   {:part-of      {:type :table :key :table_id}
-   :part-columns #{:display_name :visibility_type :data_layer :field_order}})
+   :part-columns #{:display_name :data_layer :field_order}})

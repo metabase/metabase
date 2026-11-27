@@ -450,7 +450,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
   it("should apply correct filter when drilling through an 'empty' slice (VIZ-210)", () => {
     cy.signInAsAdmin();
-    cy.request("PUT", `/api/table/${ACCOUNTS_ID}`, { visibility_type: null });
+    cy.request("PUT", `/api/table/${ACCOUNTS_ID}`, { data_layer: "internal" });
     cy.signInAsNormalUser();
 
     H.visitQuestionAdhoc({

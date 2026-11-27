@@ -49,7 +49,6 @@ describe("NewMeasurePage", () => {
   it("shows aggregation function picker even if table is hidden (UXW-2889)", async () => {
     setup({
       table: createMockTable({
-        visibility_type: "hidden",
         data_layer: "hidden",
       }),
     });

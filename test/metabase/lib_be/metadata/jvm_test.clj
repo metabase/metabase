@@ -15,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -221,24 +220,22 @@
     (let [mp (mt/metadata-provider)
           display-names ["Checkins" "Categories" "Orders" "People" "Products" "Reviews" "Users" "Venues"]
           metadata-fns (for [expected-display-name display-names]
-                         (fn [{:keys [id display-name active visibility-type] :as _metadata}]
+                         (fn [{:keys [id display-name active data-layer] :as _metadata}]
                            (and (= display-name expected-display-name)
                                 (true? active)
-                                (nil? visibility-type)
+                                (not= :hidden data-layer)
                                 (pos-int? id))))
           result (lib.metadata/tables mp)]
       (is (every? #(some % result) metadata-fns)))))
 
 (deftest ^:synchronized tables-not-present-test
   (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
-    (doseq [visibility-type table/visibility-types]
-      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type :data_layer :hidden}
-        (let [mp (mt/metadata-provider)]
-          (testing visibility-type
-            (is (not-any? (fn [{:keys [display-name] :as metadata}]
-                            (when (= "Orders" display-name)
-                              metadata))
-                          (lib.metadata/tables mp)))))))))
+    (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:data_layer :hidden}
+      (let [mp (mt/metadata-provider)]
+        (is (not-any? (fn [{:keys [display-name] :as metadata}]
+                        (when (= "Orders" display-name)
+                          metadata))
+                      (lib.metadata/tables mp)))))))
 
 (deftest ^:parallel metadatas-sanity-check-test
   (testing "Make sure various supported metadata specs compile to valid SQL and we are able to run a query against the app DB with them"
