@@ -112,6 +112,26 @@ function configFromSettings(
   };
 }
 
+function removeInactiveUserRecipients(
+  config: NotificationConfig,
+  activeUsers: User[],
+): NotificationConfig {
+  const activeUserIds = new Set(activeUsers.map((user) => user.id));
+  const recipients = config.email.handler.recipients.filter(
+    (recipient) =>
+      recipient.type !== "notification-recipient/user" ||
+      activeUserIds.has(recipient.user_id),
+  );
+
+  return {
+    ...config,
+    email: {
+      ...config.email,
+      handler: { ...config.email.handler, recipients },
+    },
+  };
+}
+
 type NotificationConfigValue = {
   config: NotificationConfig;
   users: User[];
@@ -158,7 +178,8 @@ export function useNotificationConfigState(): NotificationConfigValue {
     [savedEmailRecipients, savedSlackChannel],
   );
 
-  const [config, setConfig] = useState<NotificationConfig>(initialConfig);
+  const [editedConfig, setEditedConfig] =
+    useState<NotificationConfig>(initialConfig);
 
   const { data: userRecipients } = useListUserRecipientsQuery();
   const { data: channelInfo } = useGetChannelInfoQuery();
@@ -171,9 +192,17 @@ export function useNotificationConfigState(): NotificationConfigValue {
   const channels: ChannelApiResponse["channels"] | undefined =
     channelInfo?.channels;
 
+  const config = useMemo(
+    () =>
+      userRecipients
+        ? removeInactiveUserRecipients(editedConfig, userRecipients.data)
+        : editedConfig,
+    [editedConfig, userRecipients],
+  );
+
   const updateEmailHandler = useCallback(
     (handler: NotificationHandlerEmail) => {
-      setConfig((prev) => ({
+      setEditedConfig((prev) => ({
         ...prev,
         email: { ...prev.email, handler },
       }));
@@ -182,7 +211,7 @@ export function useNotificationConfigState(): NotificationConfigValue {
   );
 
   const toggleSendToAllAdmins = useCallback((sendToAllAdmins: boolean) => {
-    setConfig((prev) => ({
+    setEditedConfig((prev) => ({
       ...prev,
       email: { ...prev.email, sendToAllAdmins },
     }));
@@ -190,7 +219,7 @@ export function useNotificationConfigState(): NotificationConfigValue {
 
   const updateSlackHandler = useCallback(
     (handler: NotificationHandlerSlack) => {
-      setConfig((prev) => ({
+      setEditedConfig((prev) => ({
         ...prev,
         slack: { ...prev.slack, handler },
       }));
@@ -199,7 +228,7 @@ export function useNotificationConfigState(): NotificationConfigValue {
   );
 
   const toggleSlack = useCallback((enabled: boolean) => {
-    setConfig((prev) => ({
+    setEditedConfig((prev) => ({
       ...prev,
       slack: { ...prev.slack, enabled },
     }));
@@ -215,7 +244,7 @@ export function useNotificationConfigState(): NotificationConfigValue {
   }, [config, updateSettings]);
 
   const resetConfig = useCallback(() => {
-    setConfig(initialConfig);
+    setEditedConfig(initialConfig);
   }, [initialConfig]);
 
   return {

@@ -457,6 +457,38 @@ describe("NotificationChannelConfigModal — save payload", () => {
       });
     });
 
+    it("disables save when only recipient is inactive user", async () => {
+      setupWithRealHook({
+        emailConfigured: true,
+        emailRecipients: [{ type: "notification-recipient/user", user_id: 99 }],
+      });
+
+      expect(screen.getByTestId("send-to-admins-toggle")).not.toBeChecked();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      });
+    });
+
+    it("drops inactive user recipients on save", async () => {
+      setupWithRealHook({
+        emailConfigured: true,
+        emailRecipients: [
+          { type: "notification-recipient/user", user_id: 1 },
+          { type: "notification-recipient/user", user_id: 99 },
+        ],
+      });
+
+      expect(await screen.findByText("Alice")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(async () => {
+        const body = await getSavedSettings();
+        expect(body["security-center-email-recipients"]).toEqual([
+          { type: "notification-recipient/user", user_id: 1 },
+        ]);
+      });
+    });
+
     it("saves both email and slack settings in a single request", async () => {
       setupWithRealHook({ slackConfigured: true, slackChannel: "#general" });
 
