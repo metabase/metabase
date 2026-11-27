@@ -260,7 +260,7 @@
       (is (= :set-null (edge "report_card" "report_card" :source_card_id)))
       (testing "including those that reference a table that is not tracked"
         (is (= :cascade (edge "report_dashboardcard" "pulse_card" :dashboard_card_id)))
-        (is (= :set-null (edge "collection" "report_card" :collection_id))))
+        (is (= :cascade (edge "collection" "report_card" :collection_id))))
       (testing "including a cascade to a table that is not tracked, when one of these references that table"
         (is (= :cascade (edge "report_dashboard" "report_dashboardcard" :dashboard_id))))
       (testing "and none to a table that is not tracked and that none of these references"

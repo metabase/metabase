@@ -5,7 +5,6 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
@@ -13,23 +12,20 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defenterprise non-default-worktree-exists?
-  "Whether any worktree other than the default one exists."
-  :feature :remote-sync
-  []
-  (t2/exists? :model/RemoteSyncWorktree :is_default false))
-
-(defenterprise user-worktree-id
-  "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
-  :feature :remote-sync
-  [user-id]
+(mu/defn checkout-worktree-id :- [:maybe ms/PositiveInt]
+  "The id of the worktree the user with `user-id` checked out, or nil."
+  [user-id :- ms/PositiveInt]
   (t2/select-one-fn :worktree_id :model/RemoteSyncWorktreeUser :user_id user-id))
 
-(defenterprise worktree-by-id
+(mu/defn worktree-by-id :- [:maybe ::remote-sync.schema/worktree]
   "The worktree with `worktree-id`, or nil."
-  :feature :remote-sync
-  [worktree-id]
+  [worktree-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncWorktree :id worktree-id))
+
+(mu/defn non-default-worktree :- [:maybe ::remote-sync.schema/worktree]
+  "The worktree other than the default one with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/RemoteSyncWorktree :id worktree-id :is_default false))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
@@ -200,14 +196,9 @@
                 :order-by [[(col :id) :asc]]})))
 
 (mu/defn worktrees :- [:sequential ::remote-sync.schema/worktree]
-  "Every worktree but the default one, the main app, by branch."
+  "Every worktree but the default one, by branch."
   []
   (t2/select :model/RemoteSyncWorktree :is_default false {:order-by [[:branch :asc] [:id :asc]]}))
-
-(mu/defn worktree :- [:maybe ::remote-sync.schema/worktree]
-  "The worktree with `worktree-id`, or nil."
-  [worktree-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncWorktree :id worktree-id))
 
 (mu/defn worktree-branch :- [:maybe :string]
   "The branch of the worktree with `worktree-id`, or nil."
@@ -234,6 +225,12 @@
   "Delete the checkout of the user with `user-id`, who then works in the main app."
   [user-id :- ms/PositiveInt]
   (t2/delete! :model/RemoteSyncWorktreeUser :user_id user-id))
+
+(mu/defn delete-checkouts! :- :nil
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree."
+  [user-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/RemoteSyncWorktreeUser :user_id [:in user-ids])
+  nil)
 
 (mu/defn insert-checkout!
   "Record that the user with `user-id` checked out the worktree with `worktree-id`."

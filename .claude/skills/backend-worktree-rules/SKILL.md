@@ -16,44 +16,37 @@ the same on H2, PostgreSQL and MySQL/MariaDB.
 1. the tables of synced models (`remote-sync/synced-models`) have `worktree_id` and their models derive
    `:hook/worktree-id`;
 2. every other table that reaches one of them through a chain of foreign keys does too, but for its allowlist
-   (`metabot_prompt`: Metabot tables stay unscoped);
+   (`metabot`, `metabot_prompt`, `permissions`, `sandboxes` and `tenant`, which are of the main app only, shared
+   across worktrees like data permissions);
 3. every remaining table has an explicit decision: `:scoped` (column and hook, e.g. logs and polymorphic references
    to content such as `revision` or `view_log`), `:unscoped` (neither, e.g. warehouse metadata, users, groups,
-   settings, Metabot, tenants, transform jobs), or `:worktree-reference` (the column without the hook,
+   settings, Metabot, transform jobs), or `:worktree-reference` (the column without the hook,
    `remote_sync_worktree_user`, where it is the user's checkout).
 
 A new table fails the test until it lands in one of these, so decide in the same change.
 
 ## Adding the column
 
-Follow `resources/migrations/2026/20261126_remote_sync_worktrees.yaml`, which works on every app DB:
+Follow `resources/migrations/2026/20261128_remote_sync_worktrees.yaml`, which works on every app DB:
 
 - `worktree_id INTEGER DEFAULT 1 NOT NULL`;
 - `idx_<table>_worktree_id`, created before the foreign key so that MySQL makes no index of its own;
-- `fk_<table>_worktree_id` → `remote_sync_worktree (id)` `ON DELETE CASCADE`; logs whose rows outlive the worktree
-  (`audit_log`, `data_test_run`, `query_execution`, `source_replacement_run`, `task_history`, `task_run`,
-  `test_suite_run`, `transform_dag_run`, `transform_run`, `view_log`) get no foreign key;
+- `fk_<table>_worktree_id` → `remote_sync_worktree (id)` `ON DELETE CASCADE`, logs included, which a deleted worktree
+  takes with it; a job that sweeps such rows by age, a cleanup or a run timeout, takes `:worktree-scope :each`;
 - every constraint and index named explicitly (`uq_`, `fk_`, `idx_`), at most 63 characters.
 
 ## Keys
 
-A `NOT NULL` reference between two worktree tables keeps its plain foreign key and adds a composite one, with the same
-delete action, `worktree_id` first (InnoDB drops a foreign key's own index when another index starts with its column):
-
-```sql
-ALTER TABLE report_dashboard ADD CONSTRAINT uq_report_dashboard_worktree_id_id UNIQUE (worktree_id, id);
-CREATE INDEX idx_dashboard_tab_dashboard_wt ON dashboard_tab (worktree_id, dashboard_id);
-ALTER TABLE dashboard_tab ADD CONSTRAINT fk_dashboard_tab_dashboard_wt
-  FOREIGN KEY (worktree_id, dashboard_id) REFERENCES report_dashboard (worktree_id, id) ON DELETE CASCADE;
-```
-
-A nullable reference, or one to a table without `worktree_id`, keeps only its plain foreign key.
+A reference between two worktree tables is a plain foreign key, with no composite one on `worktree_id`, which could not
+hold the same way for nullable references; an index on `(worktree_id, <column>)` serves the queries that keep to a
+worktree. That a row references only rows of its own worktree is the write
+function's check: it reads the referenced rows through its `db.clj`, in the worktree it writes in, before the statement.
 
 Every unique key but the primary key ends with `worktree_id`, since a worktree's copy repeats `entity_id`, names and
 paths. Every app DB constraint has a name, on H2 too. On H2, dropping a unique key hands its index to a foreign key on
 the same leading column, which keeps the old uniqueness: drop that foreign key first and add it again after the new key.
-`metabase.app-db.worktree-test` checks these rules, and that `v_worktree_table`/`v_worktree_field` have the columns of
-their tables plus `worktree_id`.
+`metabase.app-db.schema-worktrees-test` checks these rules, and that `v_worktree_table`/`v_worktree_field` have the
+columns of their tables plus `worktree_id`.
 
 ## Models and upserts
 

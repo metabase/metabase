@@ -25,6 +25,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -1015,6 +1016,8 @@
   templates) it has, in batches with one insert for each kind of row across a batch, in one transaction, publishing one
   create event for all, and return them in order."
   [rows :- [:sequential ::notification-with-parts.create]]
+  (when (some #(= :notification/system-event (keyword (:payload_type %))) rows)
+    (mdb/check-default-worktree (tru "System event notifications can only be created in the default worktree.")))
   (doseq [{:keys [handlers]} rows]
     (validate-email-handlers! handlers)
     (check-template-maps handlers))

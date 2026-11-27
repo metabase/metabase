@@ -62,20 +62,21 @@
                             (/ (double (- (System/nanoTime) start)) 1e6))))))
 
 (defn tag-worktree
-  "`messages` tagged with the remote sync worktree this thread works in, when it works in one, so that [[deliver!]]
-  runs their listener there."
+  "`messages` tagged with the worktree scope this thread works in, unless it is the default worktree's, so that
+  [[deliver!]] runs their listener in it."
   [messages]
-  (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
-    (mapv (fn [message] {::worktree-id worktree-id ::message message}) messages)
-    messages))
+  (let [scope (mdb/worktree-scope)]
+    (if (= mdb/default-worktree-scope scope)
+      messages
+      (mapv (fn [message] {::scope scope ::message message}) messages))))
 
 (defn- run-listener-in-worktrees!
-  "Invokes `listener` once with the `messages` of each remote sync worktree they were published in, in that worktree,
-  for every worktree even when one throws. Returns nil on success, or the first `Throwable` a listener threw."
+  "Invokes `listener` once with the `messages` of each worktree scope they were published in, in that scope, for every
+  scope even when one throws. Returns nil on success, or the first `Throwable` a listener threw."
   [channel listener messages]
-  (->> (group-by #(get % ::worktree-id) messages)
-       (mapv (fn [[worktree-id tagged]]
-               (mdb/with-worktree-scope (if worktree-id {:type :worktree :worktree-id worktree-id} {:type :main})
+  (->> (group-by #(get % ::scope mdb/default-worktree-scope) messages)
+       (mapv (fn [[scope tagged]]
+               (mdb/with-worktree-scope scope
                  (run-listener! channel listener (mapv #(get % ::message %) tagged)))))
        (some identity)))
 

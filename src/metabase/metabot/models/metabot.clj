@@ -7,6 +7,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -43,10 +44,19 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- check-metabot-collections
+  "Throws a 400 unless every Metabot change of `rows` satisfies these rules:
+
+  - its Collection is of the default worktree, since every worktree shares the Metabots"
+  [rows]
+  (when-let [collection-ids (seq (keep :collection_id rows))]
+    (when-not (metabot.db/default-worktree-collections-exist? collection-ids)
+      (throw (ex-info (tru "A Metabot can only use a Collection of the default worktree.") {:status-code 400})))))
+
 (mu/defn update-metabots! :- :nil
   "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in one transaction."
   [rows :- [:sequential (mut/select-keys ::metabot.schema/metabot.update [:id :use_verified_content :collection_id])]]
-  (mdb/update-batched! :model/Metabot rows {}))
+  (mdb/update-batched! :model/Metabot rows {:before-update (fn [rows _id->stored] (check-metabot-collections rows))}))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

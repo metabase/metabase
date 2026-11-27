@@ -199,3 +199,10 @@
     (let [id-text [:cast (u/qualified-key (t2/table-name :model/Sandbox) :id) (if (= :mysql (mdb/db-type)) :char :text)]]
       {:select [[(u/qualified-key (t2/table-name :model/Sandbox) :id) :entity_id] [id-text :name] [id-text :location]]
        :from   [(t2/table-name :model/Sandbox)]})))
+
+(mu/defn default-worktree-cards-exist? :- :boolean
+  "Whether every one of `card-ids` names a Card of the default worktree."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (let [card-ids (distinct card-ids)]
+    (= (count card-ids)
+       (t2/count :model/Card :id [:in card-ids] :worktree_id mdb/default-worktree-id))))

@@ -1081,3 +1081,18 @@
                     object)]
       (is (seq objects))
       (is (every? #(empty? (select-keys % [:password :password_salt :reset_token :reset_triggered :settings])) objects)))))
+
+(deftest users-are-not-added-in-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Users can only be added in the default worktree"
+                              (mt/with-temp [:model/User _ {}])))))))
+
+(deftest demoted-admin-loses-worktree-checkout-test
+  (when config/ee-available?
+    (mt/with-temp [:model/User                   {user-id :id}     {:is_superuser true}
+                   :model/RemoteSyncWorktree     {worktree-id :id} {:branch "test-branch"}
+                   :model/RemoteSyncWorktreeUser _                 {:user_id user-id :worktree_id worktree-id}]
+      (user/update-users! [{:id user-id :is_superuser false}])
+      (is (not (t2/exists? :model/RemoteSyncWorktreeUser :user_id user-id))))))

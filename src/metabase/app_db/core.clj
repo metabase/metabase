@@ -59,9 +59,14 @@
  [mdb.env
   db-file]
  [mdb.worktree
+  check-default-worktree
   default-worktree-id
+  default-worktree-scope
   do-with-worktree-scope
   with-worktree-scope
+  worktree-id
+  non-default-worktree?
+  worktree-id->scope
   worktree-scope]
  [mdb.jdbc-protocols
   clob->str]
@@ -128,6 +133,18 @@
   "Mark the bound Metabase DB as set up and ready."
   []
   (reset! (:status (mdb.connection/current-application-db)) ::setup-finished))
+
+(defn recompile-h2-views!
+  "Recompile every view of the H2 app DB on `conn`, which H2 leaves invalid when a script restore creates a view before
+  a table it reads (https://github.com/h2database/h2database/issues/3942)."
+  [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (let [view-names (with-open [rs (.executeQuery stmt (str "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS "
+                                                             "WHERE TABLE_SCHEMA = 'PUBLIC'"))]
+                       (loop [acc []]
+                         (if (.next rs) (recur (conj acc (.getString rs 1))) acc)))]
+      (doseq [view-name view-names]
+        (.execute stmt (format "ALTER VIEW \"%s\" RECOMPILE" view-name))))))
 
 (defn verify-application-db-connection!
   "Open a connection to the bound application DB and check its server version. Throws on failure.

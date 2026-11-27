@@ -503,7 +503,7 @@
                                                    (log/with-restored-context-from-meta notification
                                                      (task-history/with-restored-run-id notification
                                                        (mdb/with-worktree-scope
-                                                         (::worktree-scope (meta notification) {:type :main})
+                                                         (::worktree-scope (meta notification) mdb/default-worktree-scope)
                                                          (send-notification-sync! notification)))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")

@@ -3,7 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
@@ -668,3 +670,13 @@
             (update-call-count (subvec readable 0 2))
             (is (= (update-call-count (subvec readable 0 10))
                    (update-call-count readable)))))))))
+
+(deftest system-event-notifications-are-not-created-in-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"System event notifications can only be created in the default worktree"
+                              (models.notification/create-notifications!
+                               [(assoc default-system-event-notification
+                                       :subscriptions [default-user-invited-subscription])])))))))

@@ -3206,6 +3206,7 @@
    :api  #{metabase.task.core}
    :uses #{app-db
            global-system
+           remote-sync
            tracing
            util
            util.classloader}}
@@ -3578,6 +3579,7 @@
            notification
            permissions
            premium-features
+           remote-sync
            serialization
            settings
            setup

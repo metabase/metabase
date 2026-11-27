@@ -47,8 +47,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -126,23 +125,7 @@
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
       (jdbc/execute! {:connection conn} sql-args))
-    ;; We've found a delightful bug in H2 where if you:
-    ;; - create a table, then
-    ;; - create a view based on the table, then
-    ;; - modify the original table, then
-    ;; - generate a snapshot
-
-    ;; the generated snapshot has the `CREATE VIEW` *before* the `CREATE TABLE`. This results in a view that can't be
-    ;; queried successfully until it is recompiled. Our workaround is to recompile ALL views immediately after we
-    ;; restore the app DB from a snapshot. Bug report is here: https://github.com/h2database/h2database/issues/3942
-    (doseq [table-name
-            (map :table_name (t2/query conn {:select [:table_name]
-                                             :from   [:information_schema.views]
-                                             :where  [:= :table_schema "PUBLIC"]}))]
-      ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
-      ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
-      ;; table, so this is probably safe enough.
-      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name)))))
+    (mdb/recompile-h2-views! conn)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 (mdb/app-db))

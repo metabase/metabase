@@ -1,6 +1,8 @@
 (ns metabase.metabot.models.metabot-prompt-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.events.test-util :as events.tu]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.metabot-prompt :as metabot-prompt]
@@ -64,3 +66,14 @@
                                                  {:id b :prompt "other"}])
         (is (= [[:model "same"] [:metric "other"]]
                (mapv (comp (juxt :model :prompt) #(t2/select-one :model/MetabotPrompt :id %)) [a b])))))))
+
+(deftest create-metabot-prompts!-refuses-worktree-card-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Metabot             {metabot-id :id}  {:name "Test Metabot"}
+                   :model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only use a Card of the default worktree"
+                                (metabot-prompt/create-metabot-prompts! [{:metabot_id metabot-id
+                                                                          :card_id    card-id
+                                                                          :prompt     "Test prompt"}]))))))))

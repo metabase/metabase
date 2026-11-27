@@ -320,14 +320,21 @@
 
 (defmethod disable-db-constraints! :postgres
   [_ conn]
-  ;; make all of our FK constraints deferrable. This only works on Postgres 9.4+ (December 2014)! (There's no pressing
+  ;; make all of our FK constraints deferrable, on the partitioned tables rather than their partitions, which inherit
+  ;; theirs. This only works on Postgres 9.4+ (December 2014)! (There's no pressing
   ;; reason to turn these back on at the conclusion of this script. It makes things more complicated since it doesn't
   ;; work if done inside the same transaction.)
   (doseq [{constraint :constraint_name, table :table_name} (jdbc/query
                                                             conn
-                                                            (sql/format {:select [:constraint_name :table_name]
-                                                                         :from   [:information_schema.table_constraints]
-                                                                         :where  [:= :constraint_type "FOREIGN KEY"]}
+                                                            (sql/format {:select [:tc.constraint_name :tc.table_name]
+                                                                         :from   [[:information_schema.table_constraints :tc]]
+                                                                         :where  [:and
+                                                                                  [:= :tc.constraint_type "FOREIGN KEY"]
+                                                                                  [:not [:exists {:select [1]
+                                                                                                  :from   [[:pg_class :c]]
+                                                                                                  :where  [:and
+                                                                                                           [:= :c.relname :tc.table_name]
+                                                                                                           :c.relispartition]}]]]}
                                                                         {:quoted false}))]
     (jdbc/execute! conn [(format "ALTER TABLE \"%s\" ALTER CONSTRAINT \"%s\" DEFERRABLE" table constraint)]))
   ;; now enable constraint deferring for the duration of the transaction

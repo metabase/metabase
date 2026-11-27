@@ -40,9 +40,19 @@
   (let [card-ids (into [] (comp (map :card_id) (distinct)) rows)]
     (if (seq card-ids) (metabot.db/card-types card-ids) {})))
 
-(defn- add-prompt-models
-  "The MetabotPrompt `rows`, each with the type of its Card as its model."
+(defn- check-prompt-cards
+  "Throws a 400 unless every MetabotPrompt of `rows` satisfies these rules:
+
+  - its Card is of the default worktree, since every worktree shares the prompts"
   [rows]
+  (when-let [card-ids (seq (keep :card_id rows))]
+    (when-not (metabot.db/default-worktree-cards-exist? card-ids)
+      (throw (ex-info (tru "A suggested prompt can only use a Card of the default worktree.") {:status-code 400})))))
+
+(defn- add-prompt-models
+  "The MetabotPrompt `rows`, each with the type of its Card as its model, after [[check-prompt-cards]]."
+  [rows]
+  (check-prompt-cards rows)
   (let [card-types (card-types-of rows)]
     (mapv #(assoc % :model (card-types (:card_id %))) rows)))
 
@@ -56,6 +66,7 @@
   "The `rows` of the prompts of `id->stored`, the id of a MetabotPrompt and the columns to set, the model of a prompt
   whose Card changes set to the type of the new Card."
   [rows id->stored]
+  (check-prompt-cards rows)
   (let [card-types (card-types-of (filter #(contains? % :card_id) rows))]
     (into []
           (comp (filter (comp id->stored :id))

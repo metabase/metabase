@@ -228,7 +228,7 @@
   "The engine that serves a search asking for `value`: in-place in a worktree, whose rows no index holds, else `value`
   when it names a supported engine, else the default one."
   [value]
-  (or (when (:worktree-id (mdb/worktree-scope))
+  (or (when (mdb/non-default-worktree?)
         :search.engine/in-place)
       (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]

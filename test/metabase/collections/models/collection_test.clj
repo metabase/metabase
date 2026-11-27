@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
@@ -19,6 +20,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -2460,3 +2462,11 @@
                                      (#'collection/root-collection-permission-at-least? root :read-and-write)])
                          roots)
                    (:values (hydrate 6))))))))))
+
+(deftest worktree-collections-get-no-permissions-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (remote-sync/ensure-built-ins!)
+        (let [[{collection-id :id}] (collection/create-collections! [{:name "Test Collection"}])]
+          (is (not (t2/exists? :model/Permissions :collection_id collection-id))))))))

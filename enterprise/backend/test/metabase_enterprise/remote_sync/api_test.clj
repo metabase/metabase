@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -450,3 +451,83 @@
             (testing "a branch other than the synced one is refused"
               (is (=? {:branch_mismatch true :current_branch "main"}
                       (mt/user-http-request :crowberto :get 409 "ee/remote-sync/export-preflight" :branch "other"))))))))))
+
+(defn- checked-out-worktree-id
+  "The id of the worktree the user `user` checked out, as the `:worktree` hydration of the user reads it, or nil."
+  [user]
+  (:id (:worktree (t2/hydrate (t2/select-one :model/User :id (mt/user->id user)) :worktree))))
+
+(deftest worktree-endpoints-require-superuser-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+    (doseq [[method path body] [[:get "ee/remote-sync/worktree" nil]
+                                [:get (str "ee/remote-sync/worktree/" worktree-id) nil]
+                                [:post "ee/remote-sync/worktree" {:branch "main"}]
+                                [:delete (str "ee/remote-sync/worktree/" worktree-id) nil]
+                                [:put "ee/remote-sync/checkout" {:worktree_id worktree-id}]]]
+      (testing (str method " " path)
+        (apply mt/user-http-request :rasta method 403 path (when body [body]))))
+    (testing "refused requests change nothing"
+      (is (t2/exists? :model/RemoteSyncWorktree :id worktree-id))
+      (is (nil? (checked-out-worktree-id :rasta))))))
+
+(deftest worktree-list-and-get-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+    (testing "list has worktree and not default worktree"
+      (let [worktrees (mt/user-http-request :crowberto :get 200 "ee/remote-sync/worktree")]
+        (is (=? [{:id worktree-id :branch "test-branch"}] (filter (comp #{worktree-id} :id) worktrees)))
+        (is (not-any? (comp #{mdb/default-worktree-id} :id) worktrees))))
+    (testing "worktree is read by id"
+      (is (=? {:id worktree-id :branch "test-branch" :users []}
+              (mt/user-http-request :crowberto :get 200 (str "ee/remote-sync/worktree/" worktree-id)))))
+    (testing "unknown worktree is not found"
+      (mt/user-http-request :crowberto :get 404 (str "ee/remote-sync/worktree/" (+ worktree-id 1000))))))
+
+(deftest create-worktree-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncWorktree]
+        (testing "branch repository lacks is refused"
+          (mt/user-http-request :crowberto :post 400 "ee/remote-sync/worktree" {:branch "missing"}))
+        (let [worktree (mt/user-http-request :crowberto :post 200 "ee/remote-sync/worktree" {:branch "main"})]
+          (testing "created worktree checks out branch"
+            (is (=? {:branch "main" :creator {:id (mt/user->id :crowberto)} :users []} worktree)))
+          (testing "created worktree has built-in rows"
+            (mdb/with-worktree-scope {:type :worktree :worktree-id (:id worktree)}
+              (is (t2/exists? :model/Collection :entity_id "trashtrashtrashtrasht"))
+              (is (= (mdb/with-worktree-scope mdb/default-worktree-scope
+                       (t2/select-fn-set :entity_id :model/TransformTag :built_in_type [:not= nil]))
+                     (t2/select-fn-set :entity_id :model/TransformTag :built_in_type [:not= nil]))))))))))
+
+(deftest checkout-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+    (testing "checkout makes user work in worktree"
+      (mt/user-http-request :crowberto :put 204 "ee/remote-sync/checkout" {:worktree_id worktree-id})
+      (is (= worktree-id (checked-out-worktree-id :crowberto)))
+      (is (=? {:users [{:id (mt/user->id :crowberto)}]}
+              (mt/user-http-request :crowberto :get 200 (str "ee/remote-sync/worktree/" worktree-id)))))
+    (testing "checkout of nothing moves user to default worktree"
+      (mt/user-http-request :crowberto :put 204 "ee/remote-sync/checkout" {:worktree_id nil})
+      (is (nil? (checked-out-worktree-id :crowberto))))
+    (testing "default worktree and unknown worktree cannot be checked out"
+      (mt/user-http-request :crowberto :put 400 "ee/remote-sync/checkout" {:worktree_id mdb/default-worktree-id})
+      (mt/user-http-request :crowberto :put 404 "ee/remote-sync/checkout" {:worktree_id (+ worktree-id 1000)})
+      (is (nil? (checked-out-worktree-id :crowberto))))))
+
+(deftest delete-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}        {:branch "test-branch"}
+                 :model/Collection         {main-collection-id :id} {}
+                 :model/Card               {main-card-id :id}       {:collection_id main-collection-id}]
+    (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:collection_id collection-id}]
+        (mt/user-http-request :crowberto :put 204 "ee/remote-sync/checkout" {:worktree_id worktree-id})
+        (mt/user-http-request :crowberto :delete 204 (str "ee/remote-sync/worktree/" worktree-id))
+        (mdb/with-worktree-scope {:type :all}
+          (testing "deleted worktree is gone with its content and checkouts"
+            (is (not (t2/exists? :model/RemoteSyncWorktree :id worktree-id)))
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (is (not (t2/exists? :model/Collection :id collection-id)))
+            (is (nil? (checked-out-worktree-id :crowberto))))
+          (testing "default worktree content is untouched"
+            (is (t2/exists? :model/Card :id main-card-id))
+            (is (t2/exists? :model/Collection :id main-collection-id))))))))

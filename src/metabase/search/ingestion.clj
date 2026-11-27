@@ -517,7 +517,7 @@
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
-   (when-not (or *disable-updates* (:worktree-id (mdb/worktree-scope)))
+   (when-not (or *disable-updates* (mdb/non-default-worktree?))
      (if sync?
        (bulk-ingest! updates)
        (do

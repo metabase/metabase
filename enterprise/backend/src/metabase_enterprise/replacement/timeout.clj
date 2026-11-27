@@ -21,7 +21,8 @@
 (task/defjob TimeoutReplacementRuns
   "Timeout long-running source replacement runs."
   {:saved-class "metabase_enterprise.replacement.timeout.TimeoutReplacementRuns"
-   :concurrent? false}
+   :concurrent? false
+   :worktree-scope :each}
   [ctx]
   (timeout-replacement-runs! ctx))
 

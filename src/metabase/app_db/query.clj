@@ -108,7 +108,7 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honeysql]
-  (funnysql/format honeysql (mdb.connection/db-type)))
+  (funnysql/format (mdb.worktree/sandbox-worktree-query honeysql) (mdb.connection/db-type)))
 
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.

@@ -632,6 +632,13 @@
                       [:= :db_id database-id]
                       [:not= :table_id nil]]}))
 
+(mu/defn default-worktree-collections-exist? :- :boolean
+  "Whether every one of `collection-ids` names a Collection of the default worktree."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (let [collection-ids (distinct collection-ids)]
+    (= (count collection-ids)
+       (t2/count :model/Collection :id [:in collection-ids] :worktree_id mdb/default-worktree-id))))
+
 (mu/defn insert-permissions!
   "Insert the Permissions `rows`."
   [rows :- [:sequential ::permissions.schema/permissions.create]]
