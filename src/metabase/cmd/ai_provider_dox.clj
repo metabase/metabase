@@ -9,7 +9,7 @@
    [metabase.cmd.common :as cmd.common]
    [metabase.cmd.markdown :as md]
    [metabase.llm.provider :as llm.provider]
-   [metabase.metabot.self :as metabot.self]))
+   [metabase.metabot.core :as metabot]))
 
 (set! *warn-on-reflection* true)
 
@@ -188,7 +188,7 @@
   registry-pinned catalog, deployments the admin names, or a catalog only the running server knows. Throws when the
   type matches none of them."
   [{:keys [type models model-fields fields] :as provider}]
-  (let [known          (metabot.self/known-models type)
+  (let [known          (metabot/known-models type)
         provider-label (label provider)]
     (cond
       (seq known)

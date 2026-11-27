@@ -2,10 +2,15 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -160,6 +165,61 @@
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (reduce rf init chunks)))))
+
+(def fake-llm-model
+  "The model reference both model roles resolve to under [[with-fake-llm!]]."
+  "openrouter/anthropic/claude-haiku-4-5")
+
+(defn- fake-llm-reply
+  [answer]
+  (mock-llm-response
+   [{:type :start :id "msg-1"}
+    (if (string? answer)
+      {:type :text :id "t1" :text answer}
+      {:type :tool-input :id "call-1" :function "json" :arguments answer})
+    {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2}}]))
+
+(defn do-with-fake-llm!
+  "Impl of [[with-fake-llm!]]."
+  [answer thunk]
+  (let [sent (atom [])]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider fake-llm-model
+                                       llm-mini-model       fake-llm-model]
+      (binding [scope/*current-user-metabot-permissions* (or scope/*current-user-metabot-permissions*
+                                                             scope/all-yes-permissions)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [opts]
+                                      (swap! sent conj opts)
+                                      (let [answer (if (fn? answer) (answer opts) answer)]
+                                        (if (instance? Throwable answer)
+                                          (throw answer)
+                                          (fake-llm-reply answer))))]
+          (if api/*current-user-id*
+            (thunk sent)
+            (mt/with-current-user (mt/user->id :rasta)
+              (thunk sent))))))))
+
+(defmacro with-fake-llm!
+  "Run `body` with the LLM provider faked, so a test of a one-call feature runs the real checks, prompt rendering and
+  answer validation of [[metabase.metabot.ai/call-llm!]].
+
+  The `answer` is what the model sends back: a map is the arguments of its structured-output tool call, a string is
+  a text reply, and a Throwable is thrown by the provider, such as the ex-info of a provider API error.
+  A function of the request gives one of those per request.
+  Both model roles resolve to [[fake-llm-model]].
+  The current user holds every Metabot permission unless `scope/*current-user-metabot-permissions*` is bound already.
+  Rasta is the current user unless one is bound already, since a `:trigger :user` feature refuses to run without one.
+
+  The `sent` symbol is bound to an atom of the requests the provider got, as the provider adapter sees them, so a
+  test can assert on the prompt.
+
+    (with-fake-llm! [sent {:title \"Orders by month\"}]
+      (metabot.ai/call-llm! :metabot/conversation-title opts)
+      (:system (first @sent)))"
+  {:style/indent 1}
+  [[sent answer] & body]
+  `(do-with-fake-llm! ~answer (fn [~sent] ~@body)))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Test tools

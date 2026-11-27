@@ -37,7 +37,7 @@
       {:score :chart-description :metric-description :reasoning}
 
   or nil when the call can't or shouldn't run (blank context, nil chart-config, or a closed
-  [[metabase.metabot.core/llm-call-available?]] gate) and on any failure. Never throws.
+  [[metabase.metabot.core/ai-feature-available?]] gate) and on any failure. Never throws.
 
   Inputs:
     `:chart-config`     — same shape as `chart-interestingness` consumes. Required.
@@ -57,9 +57,9 @@
       (nil? chart-config)              nil
       (or (nil? context-string)
           (str/blank? context-string)) nil
-      ;; `llm-call-available?` reaches `check-usage-limits!` / `resolve-user-permissions`, which
-      ;; hit the DB and can throw; keep the whole body inside the try so we honor "Never throws".
-      (not (metabot/llm-call-available? :permission/metabot-other-tools)) nil
+      ;; the gate reaches `check-usage-limits!` / `resolve-user-permissions`, which hit the DB and can
+      ;; throw; keep the whole body inside the try so we honor "Never throws".
+      (not (metabot/ai-feature-available? llm/feature-id :internal)) nil
       :else                            (llm/llm-call! inputs))
     (catch Throwable e
       (log/warn e "Contextual interestingness: scoring failed")

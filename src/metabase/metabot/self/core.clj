@@ -210,31 +210,36 @@
    [:type    :string]
    [:display {:optional true} [:maybe :string]]])
 
-(def ^:private JSONSchemaLeaf
-  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
-  an array-typed leaf."
-  [:map {:closed true}
-   [:type        {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:items       {:optional true} [:map {:closed true}
-                                   [:type        {:optional true} [:maybe :string]]
-                                   [:description {:optional true} [:maybe :string]]]]
-   [:minimum     {:optional true} number?]
-   [:maximum     {:optional true} number?]])
+(mr/def ::json-schema-node
+  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema, or one of its children.
 
-(def ^:private JSONSchemaProperties
-  "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
-  string keys off the wire, keyword keys when built in Clojure."
-  [:map-of [:or :string :keyword] JSONSchemaLeaf])
-
-(def ^:private JSONSchemaNode
-  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
-  `:properties` keys are the field names the schema itself declares, not ours to enumerate."
+  Recursive, so a schema can hold arrays of objects and objects nested in objects. Closed to the keywords
+  [[metabase.metabot.ai]] gets from `malli.json-schema/transform` for the usual Malli schemas (maps, sequences,
+  enums, strings with a pattern or format, unions, intersections and constants), so a keyword an adapter would pass on
+  without understanding fails here. `:properties` keys are the field names the schema itself declares: string keys
+  off the wire, keyword keys when built in Clojure."
   [:map {:closed true}
-   [:type                 {:optional true} [:maybe :string]]
-   [:properties           {:optional true} JSONSchemaProperties]
-   [:required             {:optional true} [:vector :string]]
-   [:additionalProperties {:optional true} :boolean]])
+   [:type                 {:optional true} [:maybe [:or :string [:sequential :string]]]]
+   [:description          {:optional true} [:maybe :string]]
+   [:title                {:optional true} [:maybe :string]]
+   [:properties           {:optional true} [:map-of [:or :string :keyword] [:ref ::json-schema-node]]]
+   [:required             {:optional true} [:sequential :string]]
+   [:additionalProperties {:optional true} [:or :boolean [:ref ::json-schema-node]]]
+   [:items                {:optional true} [:ref ::json-schema-node]]
+   [:enum                 {:optional true} [:sequential [:or :string number? :boolean :nil]]]
+   [:minimum              {:optional true} number?]
+   [:maximum              {:optional true} number?]
+   [:minItems             {:optional true} :int]
+   [:maxItems             {:optional true} :int]
+   [:minLength            {:optional true} :int]
+   [:maxLength            {:optional true} :int]
+   [:exclusiveMinimum     {:optional true} number?]
+   [:exclusiveMaximum     {:optional true} number?]
+   [:pattern              {:optional true} :string]
+   [:format               {:optional true} :string]
+   [:const                {:optional true} [:or :string number? :boolean :nil]]
+   [:anyOf                {:optional true} [:sequential [:ref ::json-schema-node]]]
+   [:allOf                {:optional true} [:sequential [:ref ::json-schema-node]]]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -265,7 +270,9 @@
                         supports it (Anthropic Opus fast mode); adapters without one
                         ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
-                        provider caches opt-in per key forward it (Mistral), others ignore it"
+                        provider caches opt-in per key forward it (Mistral), others ignore it
+    :deadline-nanos   - `System/nanoTime` by which the call must finish; the request's
+                        timeouts are clamped to the time left (see [[clamp-to-deadline]])"
   [:map {:closed true}
    [:model            {:optional true} :string]
    [:system           {:optional true} [:maybe :string]]
@@ -274,13 +281,14 @@
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required" "none"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
-   [:schema           {:optional true} [:maybe JSONSchemaNode]]
+   [:schema           {:optional true} [:maybe ::json-schema-node]]
    [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
-   [:prompt-cache-key {:optional true} [:maybe :string]]])
+   [:prompt-cache-key {:optional true} [:maybe :string]]
+   [:deadline-nanos   {:optional true} [:maybe :int]]])
 
 (def chat-max-output-tokens
   "The output-token cap for Metabot chat, sent when the caller passes no `:max-tokens` — only the agent loop does.
@@ -1493,6 +1501,26 @@
                            :error-code :proxy-not-configured})))
       (or auth
           (throw (missing-api-key-ex llm-type))))))
+
+(defn deadline-remaining-ms
+  "The milliseconds left before `deadline-nanos`, a `System/nanoTime` value, at least 0, or nil when it is nil."
+  [deadline-nanos]
+  (when deadline-nanos
+    (max 0 (quot (- (long deadline-nanos) (System/nanoTime)) 1000000))))
+
+(defn clamp-to-deadline
+  "`request-options`, the [[request]] opts of one request, with its connection and socket timeouts no longer than the
+  time left before `deadline-nanos`. Unchanged when `deadline-nanos` is nil. Throws once the deadline has passed, so
+  no request is sent after it."
+  [request-options deadline-nanos]
+  (if-let [left (deadline-remaining-ms deadline-nanos)]
+    (do
+      (when-not (pos? (long left))
+        (throw (ex-info "The deadline of this LLM call has passed" {:error-code :deadline-passed})))
+      (assoc request-options
+             :connection-timeout (min (long (or (:connection-timeout request-options) (llm/llm-connection-timeout-ms))) left)
+             :socket-timeout     (min (long (or (:socket-timeout request-options) (llm/llm-request-timeout-ms))) left)))
+    request-options))
 
 (defn request
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).

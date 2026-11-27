@@ -14,6 +14,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.ai :as metabot.ai]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
@@ -421,12 +422,12 @@
 
 (deftest conversation-title-generation-persists-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
-    (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
+    (let [generate-title! #(#'conversation-title/generate! conversation-id :internal "Show orders by month")
           stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
-      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
+      (mt/with-dynamic-fn-redefs [metabot.ai/call-llm! (constantly {:title "\"Orders by Month!\""})]
         (is (= "Orders by Month" (generate-title!)))
         (is (= "Orders by Month" (stored-title))))
-      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
+      (mt/with-dynamic-fn-redefs [metabot.ai/call-llm! (constantly {:title "Different title"})]
         (is (nil? (generate-title!)))
         (is (= "Orders by Month" (stored-title)))))))
 
@@ -434,10 +435,10 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)
                                                                    :title   "Existing Title"}]
     (mt/with-dynamic-fn-redefs
-      [metabot.self/call-llm-structured (fn [& _]
-                                          (throw (ex-info "should not generate" {})))]
+      [metabot.ai/call-llm! (fn [& _]
+                              (throw (ex-info "should not generate" {})))]
       (is (= {:status :ready :title "Existing Title"}
-             (conversation-title/ensure-title! conversation-id "default" "Show orders by month")))
+             (conversation-title/ensure-title! conversation-id :internal "Show orders by month")))
       (is (= {:status "ready" :title "Existing Title"}
              (conversation-title/title-status conversation-id))))))
 
@@ -446,12 +447,12 @@
     (let [gate       (promise)
           call-count (atom 0)]
       (mt/with-dynamic-fn-redefs
-        [metabot.self/call-llm-structured (fn [& _]
-                                            (swap! call-count inc)
-                                            @gate
-                                            {:title "Recovered Title"})]
-        (let [future-1 (conversation-title/submit! conversation-id "default" "Show orders by month")
-              future-2 (conversation-title/submit! conversation-id "default" "Use a different prompt")]
+        [metabot.ai/call-llm! (fn [& _]
+                                (swap! call-count inc)
+                                @gate
+                                {:title "Recovered Title"})]
+        (let [future-1 (conversation-title/submit! conversation-id :internal "Show orders by month")
+              future-2 (conversation-title/submit! conversation-id :internal "Use a different prompt")]
           (is (some? future-1))
           (is (identical? future-1 future-2))
           (is (= {:status "pending" :title nil}
@@ -1259,7 +1260,7 @@
                                                    :parent_message_id parent-id))
               (is (= [[conversation-id "first prompt"]
                       [conversation-id "first prompt"]]
-                     (mapv (fn [[conversation-id _profile-id message]]
+                     (mapv (fn [[conversation-id _audience message]]
                              [conversation-id message])
                            @title-requests))))))))))
 
