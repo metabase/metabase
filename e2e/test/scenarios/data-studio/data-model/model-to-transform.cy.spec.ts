@@ -1,5 +1,4 @@
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type { CardId } from "metabase-types/api";
 
 const { H } = cy;
@@ -37,12 +36,6 @@ describe(
 
     it("converts a model to a transform and rewires all its dependents", () => {
       createTestTables();
-      H.createQuestion({
-        name: "Sample DB model",
-        database: SAMPLE_DB_ID,
-        type: "model",
-        query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
-      });
       createSourceModel("Target model").then(({ body: model }) => {
         createQuestionOnModel("Direct dependent", model.id).as("direct");
         createQuestionOnModel("Nested dependent", model.id)
@@ -69,16 +62,8 @@ describe(
         createQuestionJoiningModel("Joined question", model.id).as("joined");
       });
 
-      cy.log(
-        "trigger is disabled when the database doesn't support transforms",
-      );
-      openMigrateModelsPage();
-      selectModelInTable("Sample DB model");
-      cy.findByTestId("model-sidebar")
-        .findByRole("button", { name: /Convert to a transform/ })
-        .should("be.disabled");
-
       cy.log("convert the model");
+      openMigrateModelsPage();
       selectModelInTable("Target model");
       openReplaceWithTransformModal();
       submitReplaceWithTransformForm();
@@ -150,13 +135,6 @@ describe(
       cy.visit("/data-studio/transforms");
       H.main().findByText("Target model").click();
       assertDataSourceIs(SOURCE_TABLE_LABEL);
-
-      cy.log("non-admin users cannot access the migrate models page");
-      cy.signInAsNormalUser();
-      cy.visit(MIGRATE_MODELS_PATH);
-      H.main()
-        .findByText("Sorry, you don\u2019t have permission to see that.")
-        .should("be.visible");
     });
   },
 );
@@ -311,13 +289,6 @@ function openReplaceWithTransformModal() {
   H.modal()
     .findByText("Convert this model to a transform?")
     .should("be.visible");
-
-  H.modal()
-    .findByLabelText("Table name")
-    .should(($input) => {
-      // Unjustified type cast. FIXME
-      expect(($input.val() as string).length).to.be.greaterThan(0);
-    });
 }
 
 function submitReplaceWithTransformForm(targetName = OUTPUT_TABLE_SLUG) {

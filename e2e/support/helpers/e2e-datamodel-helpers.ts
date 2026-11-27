@@ -142,8 +142,6 @@ export const DataModel = {
   SourceReplacement: {
     getModal: getSourceReplacementModal,
     getConfirmationModal: getSourceReplacementConfirmationModal,
-    getReplaceButton: getSourceReplacementReplaceButton,
-    getCancelButton: getSourceReplacementCancelButton,
     getTargetPickerButton: getSourceReplacementTargetPickerButton,
     getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
@@ -906,16 +904,6 @@ function getSourceReplacementModal() {
 
 function getSourceReplacementConfirmationModal() {
   return modal().should("have.length", 2).last();
-}
-
-function getSourceReplacementReplaceButton() {
-  return getSourceReplacementModal().findByRole("button", {
-    name: /Replace data source/,
-  });
-}
-
-function getSourceReplacementCancelButton() {
-  return getSourceReplacementModal().findByRole("button", { name: "Cancel" });
 }
 
 function getSourceReplacementTargetPickerButton() {

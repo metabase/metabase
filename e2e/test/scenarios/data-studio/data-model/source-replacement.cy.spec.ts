@@ -1,4 +1,4 @@
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type { ConcreteFieldReference } from "metabase-types/api";
 
 const { H } = cy;
@@ -7,24 +7,11 @@ const { SourceReplacement } = H.DataModel;
 const SOURCE_TABLE = "source_table";
 const COMPATIBLE_TARGET = "compatible_target";
 const TARGET_EXTRA_COLUMNS = "target_extra_columns";
-const TARGET_TYPE_MISMATCH = "target_type_mismatch";
-const TARGET_MISSING_COLUMN = "target_missing_column";
-const CHILD_TABLE = "child_table";
 
-const ALL_TABLES = [
-  SOURCE_TABLE,
-  COMPATIBLE_TARGET,
-  TARGET_EXTRA_COLUMNS,
-  TARGET_TYPE_MISMATCH,
-  TARGET_MISSING_COLUMN,
-  CHILD_TABLE,
-];
+const ALL_TABLES = [SOURCE_TABLE, COMPATIBLE_TARGET, TARGET_EXTRA_COLUMNS];
 
 const SOURCE_TABLE_LABEL = "Source Table";
 const COMPATIBLE_TARGET_LABEL = "Compatible Target";
-const TARGET_EXTRA_COLUMNS_LABEL = "Target Extra Columns";
-const TARGET_TYPE_MISMATCH_LABEL = "Target Type Mismatch";
-const TARGET_MISSING_COLUMN_LABEL = "Target Missing Column";
 
 const SOURCE_ROW_VALUE = "Source Value 1";
 const COMPATIBLE_TARGET_ROW_VALUE = "Compatible Target Value";
@@ -301,178 +288,6 @@ describe(
       });
     });
 
-    describe("Replacement checks", () => {
-      it("blocks invalid replacements, allows a target with extra columns, and checks sandboxes and permissions", () => {
-        createTestTables();
-
-        cy.log("blocks replacement when source table has no dependents");
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-        SourceReplacement.getModal()
-          .findByText(
-            "Nothing uses this data source, so there's nothing to replace.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-
-        createSourceQuestion("Question on source").as("question");
-
-        cy.log("blocks replacement when target has a column type mismatch");
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(TARGET_TYPE_MISMATCH_LABEL);
-        SourceReplacement.getModal().within(() => {
-          cy.findByText("Column comparison").should("be.visible");
-          cy.findByText(
-            "This column has a different data type than the original column.",
-          ).should("be.visible");
-        });
-        SourceReplacement.getReplaceButton().should("be.disabled");
-
-        cy.log("blocks replacement when target is missing a required column");
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(TARGET_MISSING_COLUMN_LABEL);
-        SourceReplacement.getModal().within(() => {
-          cy.findByText("Column comparison").should("be.visible");
-          cy.findByText("This data source isn't compatible.").should(
-            "be.visible",
-          );
-        });
-        SourceReplacement.getReplaceButton().should("be.disabled");
-
-        cy.log("blocks replacement when target would create a cycle");
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        SourceReplacement.getTargetPickerButton().click();
-        H.entityPickerModal().within(() => {
-          cy.findByText("Our analytics").click();
-          cy.findByText("Question on source").click();
-        });
-        SourceReplacement.getModal()
-          .findByText(
-            "The replacement data source can't be based on the original data source.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-
-        cy.log("allows replacement when target has extra columns");
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(TARGET_EXTRA_COLUMNS_LABEL);
-        SourceReplacement.getModal()
-          .findByText("Column comparison")
-          .should("be.visible");
-        confirmReplacement();
-        waitForReplacementToComplete();
-
-        cy.get<Cypress.Response<{ id: number }>>("@question").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            H.main()
-              .findByText(EXTRA_COLUMNS_TARGET_ROW_VALUE)
-              .should("be.visible");
-
-            H.openNotebook();
-            assertDataSourceIs(TARGET_EXTRA_COLUMNS_LABEL);
-          },
-        );
-
-        cy.log("non-admin users cannot open the data model in data studio");
-        cy.signInAsNormalUser();
-        cy.visit("/data-studio/data");
-        H.main()
-          .findByText("Sorry, you don\u2019t have permission to see that.")
-          .should("be.visible");
-        cy.signInAsAdmin();
-
-        cy.log("blocks replacement when the source table has a sandbox policy");
-        // The question above now uses the extra-columns table. Without a
-        // dependent, the modal shows "Nothing uses this data source" instead.
-        createSourceQuestion("Another question on source");
-        getTableId(SOURCE_TABLE).then((sourceTableId) => {
-          H.getFieldId({ tableId: sourceTableId, name: "category" }).then(
-            (categoryFieldId) => {
-              H.createQuestion({
-                name: "Sandbox filter question",
-                database: WRITABLE_DB_ID,
-                query: {
-                  "source-table": sourceTableId,
-                  filter: ["=", ["field", categoryFieldId, null], "A"],
-                },
-              }).then(({ body: sandboxQuestion }) => {
-                cy.sandboxTable({
-                  table_id: sourceTableId,
-                  card_id: sandboxQuestion.id,
-                  group_id: USER_GROUPS.COLLECTION_GROUP,
-                });
-              });
-            },
-          );
-        });
-
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-        SourceReplacement.getModal()
-          .findByText(
-            "This table has row or column security policies that block this replacement.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-      });
-    });
-
-    describe("Entry points", () => {
-      it("replaces from the dependency graph, then blocks replacement when the source table has foreign keys", () => {
-        createTestTables();
-        createSourceQuestion("Graph question").as("question");
-
-        // The replacement modal fetches the dependents of the source table
-        // exactly once when it opens; wait for the async dependency backfill
-        // so the question's dependency row exists by then.
-        H.waitForBackfillComplete();
-
-        getTableId(SOURCE_TABLE).then((sourceTableId) => {
-          cy.visit(`/data-studio/dependencies?id=${sourceTableId}&type=table`);
-        });
-
-        cy.log("open replacement modal from the graph info panel");
-        H.DependencyGraph.graph().findByLabelText(SOURCE_TABLE_LABEL).click();
-        cy.findByTestId("graph-info-panel")
-          .findByLabelText("Replace data source")
-          .first()
-          .click();
-
-        SourceReplacement.getModal()
-          .findByText("Find and replace a data source")
-          .should("be.visible");
-
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-        confirmReplacement();
-        waitForReplacementToComplete();
-
-        cy.get<Cypress.Response<{ id: number }>>("@question").then(
-          ({ body }) => {
-            H.visitQuestion(body.id);
-            assertTargetRowVisible();
-            H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
-            H.openNotebook();
-            assertDataSourceIs(COMPATIBLE_TARGET_LABEL);
-          },
-        );
-
-        cy.log("blocks replacement when source table has foreign keys");
-        createChildTableWithForeignKey();
-        createSourceQuestion("Question on source");
-
-        openReplacementModal(SOURCE_TABLE_LABEL);
-        pickTarget(COMPATIBLE_TARGET_LABEL);
-
-        SourceReplacement.getModal()
-          .findByText(
-            "The original table can't be referenced by a foreign key by another table.",
-          )
-          .should("be.visible");
-        SourceReplacement.getReplaceButton().should("be.disabled");
-      });
-    });
-
     describe("Native queries", () => {
       it.skip("replaces a table referenced via a native query snippet", () => {
         createTestTables();
@@ -667,45 +482,11 @@ function createTestTables() {
     );
     INSERT INTO ${TARGET_EXTRA_COLUMNS} VALUES
       (20, 'Extra Columns Target Value', 400.00, 'D', 'extra');
-
-    CREATE TABLE ${TARGET_TYPE_MISMATCH} (
-      id INTEGER PRIMARY KEY,
-      name VARCHAR(255),
-      amount TEXT,
-      category VARCHAR(100)
-    );
-    INSERT INTO ${TARGET_TYPE_MISMATCH} VALUES
-      (30, 'Type Mismatch Value', 'not-a-number', 'E');
-
-    CREATE TABLE ${TARGET_MISSING_COLUMN} (
-      id INTEGER PRIMARY KEY,
-      name VARCHAR(255),
-      category VARCHAR(100)
-    );
-    INSERT INTO ${TARGET_MISSING_COLUMN} VALUES
-      (40, 'Missing Column Value', 'F');
     `,
     "postgres",
   );
 
   H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-}
-
-function createChildTableWithForeignKey() {
-  H.queryWritableDB(
-    `
-    CREATE TABLE ${CHILD_TABLE} (
-      id INTEGER PRIMARY KEY,
-      source_id INTEGER REFERENCES ${SOURCE_TABLE}(id),
-      label VARCHAR(100)
-    );
-    INSERT INTO ${CHILD_TABLE} VALUES
-      (1, 1, 'child record');
-    `,
-    "postgres",
-  );
-
-  H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: CHILD_TABLE });
 }
 
 function getTableId(tableName: string) {

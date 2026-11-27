@@ -1,14 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
   setupDependencyGraphEndpoint,
   setupListDataAppsEndpoint,
+  setupListSourceReplacementRunsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   act,
   fireEvent,
@@ -19,6 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
@@ -35,13 +41,16 @@ import {
   createMockActionParameter,
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
+  createMockCheckReplaceSourceInfo,
   createMockCollection,
   createMockCollectionItem,
+  createMockDatabase,
   createMockDependencyGraph,
   createMockMeasureDependencyNode,
   createMockMeasureDependencyNodeData,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
+  createMockReplaceSourceColumnInfo,
   createMockSearchResult,
   createMockSegmentDependencyNode,
   createMockSegmentDependencyNodeData,
@@ -50,8 +59,10 @@ import {
   createMockTable,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
+  createMockTokenFeatures,
   createMockTransformDependencyNode,
   createMockTransformDependencyNodeData,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { DependencyGraphPage } from "./DependencyGraphPage";
@@ -95,6 +106,15 @@ const SCOREBOARD_TABLE = createMockTable({
   schema: "public",
   name: "scoreboard_actions",
   display_name: "Scoreboard Actions",
+});
+
+// A table that can replace the scoreboard table in source replacement
+const SCOREBOARD_TARGET_TABLE = createMockTable({
+  id: 14,
+  db_id: 2,
+  schema: "public",
+  name: "scoreboard_actions_v2",
+  display_name: "Scoreboard Actions V2",
 });
 
 function tableNode(
@@ -473,6 +493,19 @@ const SEARCH_RESULTS: SearchResult[] = [
   }),
 ];
 
+// Search results of the entity picker in the source replacement modal
+const PICKER_SEARCH_RESULTS: SearchResult[] = [
+  createMockSearchResult({
+    id: SCOREBOARD_TARGET_TABLE.id,
+    name: SCOREBOARD_TARGET_TABLE.display_name,
+    model: "table",
+    table_id: Number(SCOREBOARD_TARGET_TABLE.id),
+    table_schema: "public",
+    database_id: 2,
+    collection: ROOT_COLLECTION,
+  }),
+];
+
 function getRecentItem(model: string, id: number): RecentItem | undefined {
   const result = SEARCH_RESULTS.find(
     (result) => result.model === model && result.id === id,
@@ -527,10 +560,13 @@ function setupGraphEndpoints() {
       params.get("include-personal-collections") === "true";
     const dependents = node != null ? (DEPENDENTS.get(node) ?? []) : [];
 
+    // Without `dependent-types`, as in source replacement, every type is returned
     return dependents.filter(
       (dependent) =>
-        dependentTypes.includes(dependent.type) &&
+        (dependentTypes.length === 0 ||
+          dependentTypes.includes(dependent.type)) &&
         (dependent.type !== "card" ||
+          dependentCardTypes.length === 0 ||
           dependentCardTypes.includes(dependent.data.type)) &&
         (includePersonal || !isInPersonalCollection(dependent)),
     );
@@ -544,14 +580,18 @@ function setupSearchAndRecentsEndpoints() {
     const params = new URL(call.url).searchParams;
     const query = params.get("q")?.toLowerCase() ?? "";
     const models = params.getAll("models");
-    const isDependencySearch = params.get("context") === "dependencies";
-    const data = isDependencySearch
-      ? SEARCH_RESULTS.filter(
-          (result) =>
-            models.includes(result.model) &&
-            result.name.toLowerCase().includes(query),
-        )
-      : [];
+    const context = params.get("context");
+    const results =
+      context === "dependencies"
+        ? SEARCH_RESULTS
+        : context === "entity-picker"
+          ? PICKER_SEARCH_RESULTS
+          : [];
+    const data = results.filter(
+      (result) =>
+        models.includes(result.model) &&
+        result.name.toLowerCase().includes(query),
+    );
     return { data, total: data.length, models, available_models: models };
   });
 
@@ -571,7 +611,12 @@ function setupSearchAndRecentsEndpoints() {
   });
 }
 
-function setup({ entry }: { entry?: DependencyNode } = {}) {
+type SetupOpts = {
+  entry?: DependencyNode;
+  storeInitialState?: Partial<State>;
+};
+
+function setup({ entry, storeInitialState }: SetupOpts = {}) {
   setupGraphEndpoints();
   setupSearchAndRecentsEndpoints();
 
@@ -579,7 +624,7 @@ function setup({ entry }: { entry?: DependencyNode } = {}) {
     entry != null ? `${BASE_URL}?id=${entry.id}&type=${entry.type}` : BASE_URL;
   const { router } = renderWithProviders(
     <Route path={BASE_URL} element={<DependencyGraphPage />} />,
-    { withRouter: true, initialRoute },
+    { withRouter: true, initialRoute, storeInitialState },
   );
 
   if (router == null) {
@@ -1304,6 +1349,147 @@ describe("DependencyGraphPage", () => {
       ).toBeInTheDocument();
       expect(within(infoPanel).getByText("Parameters")).toBeInTheDocument();
       expect(within(infoPanel).getByText("Team ID")).toBeInTheDocument();
+    });
+  });
+
+  // Initializes the enterprise plugins. The other tests in this file pass with
+  // or without them, so the order of the tests does not matter.
+  describe("source replacement", () => {
+    function setupReplacementEndpoints() {
+      mockGetBoundingClientRect();
+      setupListSourceReplacementRunsEndpoint([]);
+      setupDatabasesEndpoints([createMockDatabase({ id: 2 })]);
+      setupListDataAppsEndpoint([]);
+      setupTableEndpoints(SCOREBOARD_TABLE);
+      setupTableEndpoints(SCOREBOARD_TARGET_TABLE);
+      fetchMock.get("path:/api/collection/root", ROOT_COLLECTION);
+      setupCollectionByIdEndpoint({ collections: [PERSONAL_COLLECTION] });
+      setupCollectionItemsEndpoint({
+        collection: PERSONAL_COLLECTION,
+        collectionItems: [],
+      });
+
+      const idColumn = createMockReplaceSourceColumnInfo({
+        name: "id",
+        display_name: "ID",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+      });
+      fetchMock.post(
+        "path:/api/ee/replacement/check-replace-source",
+        async (call) => {
+          const body = JSON.parse(String(call.options.body));
+          const isMatch =
+            body.source_entity_id === TABLE.id &&
+            body.source_entity_type === "table" &&
+            body.target_entity_id === SCOREBOARD_TARGET_TABLE.id &&
+            body.target_entity_type === "table";
+          if (!isMatch) {
+            return { status: 404 };
+          }
+          return createMockCheckReplaceSourceInfo({
+            success: true,
+            column_mappings: [{ source: idColumn, target: idColumn }],
+          });
+        },
+      );
+      fetchMock.post("path:/api/ee/replacement/replace-source", {
+        run_id: 1,
+      });
+    }
+
+    function getReplacementState() {
+      const state = createMockState({
+        currentUser: createMockUser({
+          is_superuser: true,
+          personal_collection_id: Number(PERSONAL_COLLECTION.id),
+        }),
+        settings: mockSettings({
+          "token-features": createMockTokenFeatures({ dependencies: true }),
+        }),
+      });
+      setupEnterprisePlugins();
+      return state;
+    }
+
+    it("should replace the data source of the selected graph node from its info panel", async () => {
+      setupReplacementEndpoints();
+      setup({ entry: TABLE, storeInitialState: getReplacementState() });
+
+      const tableNode = await findGraphNode("Scoreboard Actions");
+      // xyflow's drag handler on nodes needs a pointer event `view`, which
+      // user-event does not provide in jsdom
+      fireEvent.click(within(tableNode).getByText("Scoreboard Actions"));
+      const infoPanel = await screen.findByTestId("graph-info-panel");
+      const replaceButton = await within(infoPanel).findByRole("button", {
+        name: "Replace data source",
+      });
+      // disabled until the list of active replacement runs loads
+      await waitFor(() => expect(replaceButton).toBeEnabled());
+      await userEvent.click(replaceButton);
+
+      const modal = await screen.findByRole("dialog");
+      expect(
+        within(modal).getByText("Find and replace a data source"),
+      ).toBeInTheDocument();
+      // the selected node is the source
+      expect(
+        await within(modal).findByText("Scoreboard Actions"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(modal).getByRole("button", {
+          name: /Pick a table, model, or saved question/,
+        }),
+      );
+      const picker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.type(
+        await within(picker).findByPlaceholderText("Search…"),
+        "Scoreboard Actions V2",
+      );
+      const result = await within(picker).findByTestId("result-item");
+      await userEvent.click(within(result).getByText("Scoreboard Actions V2"));
+
+      // the dependents of the personal collection are not included by default
+      await userEvent.click(
+        await within(modal).findByRole("button", {
+          name: "Replace data source in 11 items",
+        }),
+      );
+      const confirmation = await screen.findByRole("dialog", {
+        name: "Really replace the data sources in these 11 items?",
+      });
+      await userEvent.click(
+        within(confirmation).getByRole("button", {
+          name: "Replace data source in 11 items",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(
+            "path:/api/ee/replacement/replace-source",
+          ),
+        ).toHaveLength(1);
+      });
+      const call = fetchMock.callHistory.lastCall(
+        "path:/api/ee/replacement/replace-source",
+      );
+      expect(JSON.parse(String(call?.options.body))).toEqual({
+        source_entity_id: TABLE.id,
+        source_entity_type: "table",
+        target_entity_id: SCOREBOARD_TARGET_TABLE.id,
+        target_entity_type: "table",
+      });
+      expect(getLastDependentsRequestParams()).toMatchObject({
+        id: String(TABLE.id),
+        type: "table",
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Find and replace a data source"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 });
