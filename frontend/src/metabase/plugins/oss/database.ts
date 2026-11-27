@@ -17,7 +17,7 @@ const getDefaultPluginDbRouting = () => ({
     database: Database;
   }>,
   getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
-  getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+  getDestinationDatabaseRoutes: (_IsAdmin: ComponentType) =>
     // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   useRedirectDestinationDatabase: (

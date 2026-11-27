@@ -1,6 +1,8 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { PluginPlaceholderModal } from "metabase/plugins/components/PluginPlaceholder";
 import { Route } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
@@ -14,23 +16,26 @@ import { useRedirectDestinationDatabase } from "./hooks";
 const GatedDestinationDatabasesModal = featureGatedComponent(
   "database_routing",
   DestinationDatabasesModal,
+  PluginPlaceholderModal,
 );
 
 const GatedDestinationDatabaseConnectionModal = featureGatedComponent(
   "database_routing",
   DestinationDatabaseConnectionModal,
+  PluginPlaceholderModal,
 );
 
 const GatedRemoveDestinationDatabaseModal = featureGatedComponent(
   "database_routing",
   RemoveDestinationDatabaseModal,
+  PluginPlaceholderModal,
 );
 
 /**
  * Initialize database_routing plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
-  PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: any) => (
+  PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: ComponentType) => (
     <Route path="destination-databases">
       <Route index element={<GatedDestinationDatabasesModal />} />
       <Route element={<IsAdmin />}>

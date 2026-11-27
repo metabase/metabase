@@ -8,6 +8,7 @@ import {
 } from "metabase/common/components/ModalRoute";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PluginPlaceholderModal } from "metabase/plugins/components/PluginPlaceholder";
 import { Badge, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
@@ -27,6 +28,7 @@ export function initializePlugin() {
     featureGatedComponent<ModalComponentProps>(
       "collection_cleanup",
       CleanupCollectionModal,
+      PluginPlaceholderModal,
     ),
   );
 

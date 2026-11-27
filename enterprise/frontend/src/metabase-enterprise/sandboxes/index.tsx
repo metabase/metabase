@@ -19,6 +19,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
+import { PluginPlaceholderModal } from "metabase/plugins/components/PluginPlaceholder";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
@@ -90,6 +91,7 @@ export function initializePlugin() {
   const GatedSandboxingModal = featureGatedComponent(
     "sandboxes",
     EditSandboxingModal,
+    PluginPlaceholderModal,
   );
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
     modalRoute(":tableId/segmented", GatedSandboxingModal),

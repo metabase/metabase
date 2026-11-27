@@ -98,7 +98,7 @@ const groupDetail = () =>
     /* webpackChunkName: "admin" */ "metabase/admin/people/containers/GroupDetailApp"
   ).then(({ GroupDetailApp }) => ({ Component: GroupDetailApp }));
 
-const upsellTenants = () =>
+export const upsellTenants = () =>
   import(/* webpackChunkName: "admin" */ "./upsells/UpsellTenants").then(
     ({ UpsellTenants }) => ({
       Component: UpsellTenants,

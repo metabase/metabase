@@ -6,6 +6,7 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
+import { upsellTenants } from "metabase/admin/routes";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
@@ -26,7 +27,10 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { outletRoute } from "metabase/plugins/components/PluginPlaceholder";
+import {
+  PluginPlaceholderModal,
+  outletRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -129,22 +133,18 @@ const tenantUsersPersonalCollectionList = () =>
     Component: TenantUsersPersonalCollectionList,
   }));
 
-const tenantsUpsellPage = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/upsells/UpsellTenants"
-  ).then(({ UpsellTenants }) => ({ Component: UpsellTenants }));
-
 export function initializePlugin() {
   PLUGIN_TENANTS.userStrategyRoute = modalRoute(
     "user-strategy",
     featureGatedComponent<ModalComponentProps>(
       "tenants",
       EditUserStrategyModal,
+      PluginPlaceholderModal,
     ),
   );
 
   PLUGIN_TENANTS.tenantsRoutes = (
-    <Route lazy={featureGatedRoute("tenants", outletRoute, tenantsUpsellPage)}>
+    <Route lazy={featureGatedRoute("tenants", outletRoute, upsellTenants)}>
       <Route index element={<TenantsListingApp />} />
       <Route path="" element={<TenantsListingApp />}>
         {modalRoute("new", NewTenantModal)}

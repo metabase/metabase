@@ -1,9 +1,8 @@
 import type { JSX } from "react";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy } from "react";
 
-import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import type { PluginRoute } from "metabase/plugins/types";
-import { Outlet, redirect } from "metabase/router";
+import { Navigate, Outlet, redirect } from "metabase/router";
 
 interface Props {
   [key: string]: any;
@@ -22,7 +21,8 @@ export const pluginPlaceholderRoute: PluginRoute = async () => ({
 });
 
 /**
- * A pathless layout's off state: render the children without the chrome.
+ * A route that renders only its `Outlet`: a layout slot's stand-in, whichever
+ * branch of a gate it fills.
  */
 export const outletRoute: PluginRoute = async () => ({ Component: Outlet });
 
@@ -46,21 +46,20 @@ export function NotFoundPlaceholder() {
 }
 
 /**
- * A gated route's off state when there is nothing to upsell: the same page an
- * unknown URL gets.
+ * The not-found page as a route: what an unknown URL gets, wherever a gate or
+ * a slot needs that page as a branch.
  */
 export const notFoundRoute: PluginRoute = async () => ({
   Component: NotFoundPlaceholder,
 });
 
 /**
- * A modal route slot's off state: close at once, so the URL falls back to the
- * page the modal would have opened over.
+ * A modal route slot's off state: leave for the page the modal would have
+ * opened over. `replace` keeps the modal's URL out of the history, so the Back
+ * button does not return to a URL that only leaves again.
  */
-export function PluginPlaceholderModal({ onClose }: ModalComponentProps) {
-  useEffect(() => onClose(), [onClose]);
-
-  return null;
+export function PluginPlaceholderModal() {
+  return <Navigate to=".." replace relative="route" />;
 }
 
 /**
