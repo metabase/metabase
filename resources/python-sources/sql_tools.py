@@ -717,13 +717,13 @@ class FieldReferenceWalker:
                 "errors": {self._syntax_error()}
             }
 
-    def _process_select(self, select_expr, outside_sources, withs):
-        """Process a SELECT statement."""
+    def _process_ctes(self, query_expr, outside_sources, withs):
+        """Return withs with the CTEs of query_expr (a SELECT or UNION) added, and the frozen errors of their bodies."""
         errors = set()  # Set of frozen errors for deduplication
 
         # Handle CTEs (WITH clause)
         local_withs = dict(withs)
-        with_clause = select_expr.args.get("with_")
+        with_clause = query_expr.args.get("with_")
         if with_clause:
             is_recursive = with_clause.args.get("recursive")
             for cte in with_clause.expressions:
@@ -771,6 +771,12 @@ class FieldReferenceWalker:
                 # cte_result["errors"] is a list of dicts, freeze them for set membership
                 for e in cte_result["errors"]:
                     errors.add(self._freeze_field(e) if isinstance(e, dict) else e)
+
+        return local_withs, errors
+
+    def _process_select(self, select_expr, outside_sources, withs):
+        """Process a SELECT statement."""
+        local_withs, errors = self._process_ctes(select_expr, outside_sources, withs)
 
         # Build local sources from FROM + JOINs
         local_sources = self._build_sources(select_expr, outside_sources, local_withs)
@@ -878,8 +884,9 @@ class FieldReferenceWalker:
 
     def _process_union(self, union_expr, outside_sources, withs):
         """Process UNION/INTERSECT/EXCEPT - creates composite_field for returned columns."""
-        left_result = self._process_query(union_expr.left, outside_sources, withs)
-        right_result = self._process_query(union_expr.right, outside_sources, withs)
+        local_withs, all_errors = self._process_ctes(union_expr, outside_sources, withs)
+        left_result = self._process_query(union_expr.left, outside_sources, local_withs)
+        right_result = self._process_query(union_expr.right, outside_sources, local_withs)
 
         # Combine used_fields
         used_fields = set()
@@ -916,7 +923,6 @@ class FieldReferenceWalker:
                 "member_fields": member_fields
             })
 
-        all_errors = set()
         for e in left_result["errors"]:
             if isinstance(e, dict):
                 all_errors.add(self._freeze_field(e))

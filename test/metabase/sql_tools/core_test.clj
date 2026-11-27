@@ -714,3 +714,19 @@
 (deftest ^:parallel read-only-select?-druid-test
   (testing "a Druid SELECT is read in the dialect sqlglot registers for Druid"
     (is (true? (sql-tools/read-only-select? :druid-jdbc "SELECT __time, COUNT(*) FROM wikipedia GROUP BY 1")))))
+
+(deftest ^:parallel validate-query-union-reads-cte-of-its-with-clause-test
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools/sqlglot-backend)]
+    (mt/test-driver :h2
+      (let [sql   "WITH date_spine AS (
+    SELECT generate_series(
+        DATE_TRUNC('year', (SELECT MIN(created_at) FROM orders)) - INTERVAL '1 year',
+        DATE_TRUNC('year', (SELECT MAX(created_at) FROM orders)) + INTERVAL '1 year',
+        INTERVAL '1 day')::date AS date_day)
+SELECT 0 AS date_key, NULL::date AS date_day
+UNION ALL
+SELECT TO_CHAR(date_day, 'YYYYMMDD')::int AS date_key, date_day FROM date_spine ORDER BY date_key"
+            query (lib/native-query (mt/metadata-provider) sql)]
+        (testing "columns that UNION branch reads from CTE declared before UNION are not missing"
+          (is (= #{}
+                 (sql-tools/validate-query :postgres query))))))))
