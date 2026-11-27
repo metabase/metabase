@@ -50,6 +50,7 @@ import type {
   Collection,
   Database,
   Dataset,
+  Settings,
   Timeline,
   TokenFeatures,
   UnsavedCard,
@@ -246,6 +247,11 @@ interface SetupOpts {
   withUndos?: boolean;
   currentUser?: User;
   /**
+   * Overrides of the instance settings, in the store and in
+   * GET /api/session/properties.
+   */
+  settings?: Partial<Settings>;
+  /**
    * Set to false to look at the page while the question is still loading.
    */
   waitForLoad?: boolean;
@@ -286,6 +292,7 @@ export const setup = async ({
       can_create_native_queries: true,
     }),
   }),
+  settings = {},
   waitForLoad = true,
   hasAcknowledgedModelModal = false,
   collections = [TEST_COLLECTION],
@@ -293,11 +300,12 @@ export const setup = async ({
   syncWindowLocation = false,
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
-  const settings = mockSettings({
+  const instanceSettings = mockSettings({
     "site-url": "http://localhost:3000",
     ...(tokenFeatures && {
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
+    ...settings,
   });
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
@@ -307,7 +315,7 @@ export const setup = async ({
   setupDatabasesEndpoints([database]);
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
-  setupPropertiesEndpoints(createMockSettings());
+  setupPropertiesEndpoints(createMockSettings(settings));
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints(bookmarks);
   setupTimelinesEndpoints(timelinesResponse ?? timelines);
@@ -376,7 +384,7 @@ export const setup = async ({
       initialRoute,
       storeInitialState: createMockState({
         currentUser,
-        settings,
+        settings: instanceSettings,
       }),
     },
   );
