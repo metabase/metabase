@@ -7,7 +7,6 @@
   [[unavailable-reason]] runs the same checks, so it says what [[call!]] would do."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.error :as me]
    [malli.json-schema :as mjs]
    [metabase.api.common :as api]
@@ -22,7 +21,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.json-schema :as mu.json-schema]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf])
   (:import
    (java.util.concurrent ExecutionException Future TimeoutException TimeUnit)))
 
@@ -315,7 +315,7 @@
   "The JSON Schema the provider gets for the Malli `schema`, as agent tools convert theirs, with `:required` names as
   strings, as the text fallback of the structured call reads them."
   [schema]
-  (walk/postwalk (fn [node]
+  (perf/postwalk (fn [node]
                    (cond-> node
                      (and (map? node) (sequential? (:required node))) (update :required #(mapv name %))))
                  (mu.json-schema/without-one-of
@@ -325,7 +325,7 @@
   "`answer` with keyword keys at every level, once it matches `schema`. Throws `:metabot/structured-output-invalid`
   when it doesn't."
   [feature-id schema answer]
-  (let [answer (walk/keywordize-keys answer)]
+  (let [answer (perf/keywordize-keys answer)]
     (if (mr/validate schema answer)
       answer
       (let [explanation (me/humanize (mr/explain schema answer))]
@@ -337,9 +337,18 @@
 ;;; ----------------------------------------------- Provider errors ---------------------------------------------------
 
 (def ^:private typed-error?
-  #{:metabot/ai-disabled :metabot/metabot-disabled :metabot/invalid-call :metabot/permission-denied :metabot/llm-not-configured
-    :metabot/managed-limit-reached :metabot/usage-limit-reached :metabot/prompt-too-large :metabot/provider-failure
-    :metabot/timeout :metabot/structured-output-incomplete :metabot/structured-output-invalid})
+  #{:metabot/ai-disabled
+    :metabot/metabot-disabled
+    :metabot/invalid-call
+    :metabot/permission-denied
+    :metabot/llm-not-configured
+    :metabot/managed-limit-reached
+    :metabot/usage-limit-reached
+    :metabot/prompt-too-large
+    :metabot/provider-failure
+    :metabot/timeout
+    :metabot/structured-output-incomplete
+    :metabot/structured-output-invalid})
 
 (defn- provider-failure-error
   [feature-id kind e]
