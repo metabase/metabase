@@ -1,6 +1,7 @@
 (ns metabase.notification.api.notification-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.api.notification-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -8,6 +9,8 @@
    [metabase.channel.email.messages :as messages]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.send :as notification.send]
@@ -672,6 +675,31 @@
             (is (t2/exists? :model/Notification :id existing-id))
             (is (t2/exists? :model/NotificationCard :id existing-payload-id))
             (is (= 1 (t2/count :model/NotificationSubscription :notification_id existing-id)))))))))
+
+(deftest send-unsaved-card-notification-omits-management-links-test
+  (testing "POST /api/notification/send emails from unsaved alert have no manage or unsubscribe link"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
+        (notification.tu/with-channel-fixtures [:channel/email]
+          (let [emails (:channel/email
+                        (notification.tu/with-captured-channel-send!
+                          (mt/user-http-request :crowberto :post 200 "notification/send"
+                                                {:payload_type :notification/card
+                                                 :payload      {:card_id        card-id
+                                                                :send_condition :has_result
+                                                                :send_once      false}
+                                                 :handlers     [{:channel_type :channel/email
+                                                                 :recipients   [{:type    :notification-recipient/user
+                                                                                 :user_id (mt/user->id :crowberto)}
+                                                                                {:type    :notification-recipient/raw-value
+                                                                                 :details {:value "user@example.com"}}]}]})))]
+            (is (= 2 (count emails)))
+            (doseq [email emails
+                    :let [content (-> email :message first :content)]]
+              (testing (str/join ", " (:recipients email))
+                (is (str/includes? content "Sent from"))
+                (is (not (str/includes? content "Manage your subscriptions")))
+                (is (not (str/includes? content "Unsubscribe")))))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp
