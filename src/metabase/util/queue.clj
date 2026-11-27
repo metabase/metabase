@@ -101,9 +101,9 @@
         (not-empty acc)))))
 
 (defn take-batch!
-  "Get a batch of messages off the given queue.
-  Will wait max-first-ms for the first message to be available, then will collect up to max-message, waiting up to max-next-ms for each additional message, whichever comes first.
-  For convenience, if the queue is a DelayQueue, the returned values will be the actual values, not the Delay objects."
-  ([^BlockingQueue queue ^long max-first-ms ^long max-batch-messages ^long max-next-ms]
-   (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
-     (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)]))))
+  "Take a batch of messages off `queue`, or return nil if none arrives within `max-first-ms`.
+  After the first message, collect up to `max-batch-messages` in all, waiting up to `max-next-ms` for each further one.
+  Messages taken off a DelayQueue come back as their values, not as their delay wrappers."
+  [^BlockingQueue queue ^long max-first-ms ^long max-batch-messages ^long max-next-ms]
+  (when-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
+    (take-batch* queue max-batch-messages max-next-ms [(if (instance? DelayQueue queue) (:value fst) fst)])))
