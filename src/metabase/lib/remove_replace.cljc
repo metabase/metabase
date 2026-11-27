@@ -139,9 +139,10 @@
   (let [result (lib.util/update-query-stage query stage-number
                                             remove-replace-fn location target-clause)
         target-uuid (lib.options/uuid target-clause)]
+    ;; For expressions and aggregations, remove the references before the clause, so that each intermediate query
+    ;; stays valid.
     (if (not= query result)
       (match/match-one location
-        ;; Remove the references before the expression, so that each intermediate query stays valid.
         [:expressions]
         (-> query
             (remove-local-references
@@ -155,13 +156,14 @@
             (update-stale-references stage-number unmodified-query-for-stage))
 
         [:aggregation]
-        (-> result
+        (-> query
             (remove-local-references
              stage-number
              unmodified-query-for-stage
              :aggregation
              {}
              target-uuid)
+            (lib.util/update-query-stage stage-number remove-replace-fn location target-clause)
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 

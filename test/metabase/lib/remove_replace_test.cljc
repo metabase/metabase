@@ -363,6 +363,18 @@
                        :breakout    (symbol "nil #_\"key is not present.\"")}]}
             (lib/remove-clause query 0 (first (lib/expressions query 0)))))))
 
+(deftest ^:parallel remove-clause-aggregation-used-in-other-aggregations-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                (lib/aggregate q (lib/sum (meta/field-metadata :orders :total)))
+                (lib/aggregate q (lib/+ (lib/aggregation-ref q 0) 1))
+                (lib/aggregate q (lib/* (lib/aggregation-ref q 0) 2))
+                (lib/breakout q (meta/field-metadata :orders :product-id))
+                (lib/append-stage q))]
+    (is (=? {:stages [{:aggregation (symbol "nil #_\"key is not present.\"")
+                       :breakout    [[:field {} (meta/id :orders :product-id)]]}
+                      {}]}
+            (lib/remove-clause query 0 (first (lib/aggregations query 0)))))))
+
 (deftest ^:parallel replace-clause-order-by-test
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (let [query (-> (lib.tu/venues-query)
