@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-import { MetricDimensionSelect } from "metabase/metrics-viewer/components/DimensionPickerSidebar/components/MetricDimensionSelect";
+import SelectS from "metabase/metrics-viewer/components/DimensionPickerSidebar/components/MetricDimensionSelect.module.css";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { DimensionBreakoutInfo } from "metabase/metrics-viewer/types/viewer-state";
 import {
@@ -21,6 +21,7 @@ import {
   Icon,
   Input,
   ScrollArea,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -64,6 +65,8 @@ export type ColumnMapping = {
   /** Dimensions the author created. */
   custom: PanelDimension[];
   defaultId?: string;
+  /** Ids of the dimensions in the metric, in the order the author dragged them. */
+  order?: string[];
 };
 
 export const EMPTY_COLUMN_MAPPING: ColumnMapping = { edits: {}, custom: [] };
@@ -79,13 +82,6 @@ const KIND_ICONS: Record<Kind, IconName> = {
   boolean: "io",
   date: "calendar",
 };
-
-const PILL_COLORS = [
-  "var(--mb-color-accent0)",
-  "var(--mb-color-accent1)",
-  "var(--mb-color-accent2)",
-  "var(--mb-color-accent3)",
-];
 
 /** "Orders → User → Source" */
 const columnLabel = (dimension: Dimension) => {
@@ -206,7 +202,7 @@ export function DimensionsSidePanel({
     metricSlots,
   } = useMetricsViewerContext();
 
-  const inMetric: PanelDimension[] = [
+  const unordered: PanelDimension[] = [
     ...dimensions.mapped.map((dimension) => {
       const base = fromDimension(pills, dimension);
       const edit = columns.edits[dimension.id];
@@ -218,6 +214,30 @@ export function DimensionsSidePanel({
     }),
     ...columns.custom,
   ];
+  // Dragged dimensions keep their place; new ones go last.
+  const rank = (id: string) => {
+    const index = columns.order?.indexOf(id) ?? -1;
+    return index === -1 ? Infinity : index;
+  };
+  const inMetric = [...unordered].sort((a, b) => rank(a.id) - rank(b.id));
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropId, setDropId] = useState<string | null>(null);
+  const [isOverOut, setIsOverOut] = useState(false);
+  const endDrag = () => {
+    setDragId(null);
+    setDropId(null);
+    setIsOverOut(false);
+  };
+  /** Moves the dragged dimension before the one it's dropped on, or last. */
+  const dropBefore = (targetId: string | null) => {
+    if (dragId != null && dragId !== targetId) {
+      const ids = inMetric.map(({ id }) => id).filter((id) => id !== dragId);
+      const index = targetId == null ? ids.length : ids.indexOf(targetId);
+      ids.splice(index, 0, dragId);
+      onChangeColumns({ ...columns, order: ids });
+    }
+    endDrag();
+  };
   const notInMetric = [
     ...dimensions.suggested.map((dimension) => ({
       dimension,
@@ -516,14 +536,58 @@ export function DimensionsSidePanel({
                   onRemoveBreakout={() => toggleBreakout(dimension, true)}
                   onEdit={() => setView({ type: "edit", id: dimension.id })}
                   onMove={() => remove(dimension.id)}
+                  drag={
+                    search === ""
+                      ? {
+                          isDragging: dimension.id === dragId,
+                          isOver: dragId != null && dimension.id === dropId,
+                          onStart: () => setDragId(dimension.id),
+                          onOver: () => setDropId(dimension.id),
+                          onDrop: () => dropBefore(dimension.id),
+                          onEnd: endDrag,
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </Section>
-            {visibleNotInMetric.length > 0 && (
+            {(visibleNotInMetric.length > 0 || dragId != null) && (
               <Section
                 title="Dimensions not in this metric"
                 count={notInMetric.length}
+                className={cx(S.zone, {
+                  [S.zoneOver]: dragId != null && isOverOut,
+                })}
+                onDragOver={(event) => {
+                  if (dragId != null) {
+                    event.preventDefault();
+                    setIsOverOut(true);
+                  }
+                }}
+                onDragLeave={(event) => {
+                  if (
+                    !event.currentTarget.contains(
+                      event.relatedTarget instanceof Node
+                        ? event.relatedTarget
+                        : null,
+                    )
+                  ) {
+                    setIsOverOut(false);
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (dragId != null) {
+                    remove(dragId);
+                  }
+                  endDrag();
+                }}
               >
+                {visibleNotInMetric.length === 0 && (
+                  <Text className={S.emptyZone} c="text-secondary" size="sm">
+                    Drop here to remove it from the metric
+                  </Text>
+                )}
                 {visibleNotInMetric.map(
                   ({ dimension, isComplete: hasEveryColumn }) => {
                     const panelDimension = fromDimension(pills, dimension);
@@ -587,14 +651,18 @@ function Section({
   count,
   action,
   children,
+  ...zone
 }: {
   title: string;
   count: number;
   action?: ReactNode;
   children: ReactNode;
-}) {
+} & Pick<
+  React.HTMLAttributes<HTMLDivElement>,
+  "className" | "onDragOver" | "onDragLeave" | "onDrop"
+>) {
   return (
-    <Box>
+    <Box {...zone}>
       <Group gap="xs" mb="sm">
         <Title order={5}>{title}</Title>
         <Text c="text-secondary" size="sm" flex={1}>
@@ -620,6 +688,7 @@ function Row({
   onRemoveBreakout,
   onEdit,
   onMove,
+  drag,
 }: {
   kind: Kind | null;
   name: string;
@@ -635,6 +704,15 @@ function Row({
   onRemoveBreakout: () => void;
   onEdit: () => void;
   onMove: () => void;
+  /** Dimensions in the metric are dragged into order. */
+  drag?: {
+    isDragging: boolean;
+    isOver: boolean;
+    onStart: () => void;
+    onOver: () => void;
+    onDrop: () => void;
+    onEnd: () => void;
+  };
 }) {
   const action =
     (handler: () => void) => (event: React.MouseEvent<HTMLElement>) => {
@@ -652,8 +730,26 @@ function Row({
         [PanelS.validRow]: isValid && !isActive,
         [PanelS.invalidRow]: !isValid,
         [S.availableRow]: isAvailable,
+        [S.dragging]: drag?.isDragging,
+        [S.dropBefore]: drag?.isOver,
       })}
       onClick={onClick}
+      draggable={drag != null}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        drag?.onStart();
+      }}
+      onDragOver={(event) => {
+        if (drag) {
+          event.preventDefault();
+          drag.onOver();
+        }
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        drag?.onDrop();
+      }}
+      onDragEnd={drag?.onEnd}
     >
       {/* The name keeps its width; the tables take the rest and truncate. */}
       <Group
@@ -734,6 +830,9 @@ function Row({
               <Icon name="pencil" size={16} />
             </ActionIcon>
           </Tooltip>
+          {drag && (
+            <Icon name="grabber" c="text-secondary" className={S.grab} />
+          )}
         </Group>
       </Box>
     </Group>
@@ -757,20 +856,33 @@ function DimensionForm({
   onChange: (change: Partial<PanelDimension>) => void;
   footer?: ReactNode;
 }) {
-  /** The first column picked sets the kind and fills in the other measures. */
+  /**
+   * The first column picked sets the kind and fills in the other measures. A
+   * column of another kind switches the kind: picks that no longer match are
+   * swapped for the closest column of the new kind, or cleared.
+   */
   const pick = (pill: Pill, id: string) => {
     const picked = ownDimension(pill, id);
     if (!picked) {
       return;
     }
-    if (dimension.kind != null) {
+    if (dimension.kind === picked.kind) {
       onChange({ picks: { ...dimension.picks, [pill.id]: id } });
       return;
     }
+    const keeps = (other: Pill) => {
+      const current = dimension.picks[other.id];
+      return current != null &&
+        ownDimension(other, current)?.kind === picked.kind
+        ? current
+        : undefined;
+    };
     const filled = Object.fromEntries(
       pills.map((other) => [
         other.id,
-        other.id === pill.id ? id : closestColumn(other, picked)?.id,
+        other.id === pill.id
+          ? id
+          : (keeps(other) ?? closestColumn(other, picked)?.id),
       ]),
     );
     onChange({
@@ -812,30 +924,26 @@ function DimensionForm({
           onChange({ description: event.currentTarget.value })
         }
       />
-      <Input.Wrapper label="Columns">
+      <Input.Wrapper
+        label="Columns"
+        mt="md"
+        labelProps={{ fz: "md", c: "text-secondary", mb: "xs" }}
+      >
         <Stack gap="xxs">
-          {pills.map((pill, slotIndex) => (
-            <MetricDimensionSelect
+          {pills.map((pill) => (
+            <ColumnSelect
               key={pill.id}
-              row={{
-                slotIndex,
-                sourceId: `metric:${slotIndex}`,
-                metricName: pill.name,
-                colors: [PILL_COLORS[slotIndex % PILL_COLORS.length]],
-                isExpressionToken: false,
-                value: dimension.picks[pill.id] ?? null,
-                options: pill.dimensions
-                  .filter(
-                    (candidate) =>
-                      dimension.kind == null ||
-                      candidate.kind === dimension.kind,
-                  )
-                  .map((candidate) => ({
-                    value: candidate.id,
-                    label: columnLabel(candidate),
-                    icon: KIND_ICONS[candidate.kind],
-                  })),
-              }}
+              measureName={pill.name}
+              value={dimension.picks[pill.id] ?? null}
+              options={pill.dimensions}
+              kind={
+                pills.some(
+                  (other) =>
+                    other.id !== pill.id && dimension.picks[other.id] != null,
+                )
+                  ? dimension.kind
+                  : null
+              }
               onChange={(id) => pick(pill, id)}
             />
           ))}
@@ -843,5 +951,79 @@ function DimensionForm({
       </Input.Wrapper>
       {footer}
     </>
+  );
+}
+
+const KIND_LABELS: Record<Kind, string> = {
+  string: "Text",
+  number: "Number",
+  boolean: "Boolean",
+  date: "Date",
+};
+
+function columnOptions(options: Dimension[], kind: Kind | null) {
+  const toItem = (candidate: Dimension) => ({
+    value: candidate.id,
+    label: columnLabel(candidate),
+    icon: KIND_ICONS[candidate.kind],
+  });
+  if (kind == null) {
+    return options.map(toItem);
+  }
+  const matching = options.filter((candidate) => candidate.kind === kind);
+  const others = options.filter((candidate) => candidate.kind !== kind);
+  return [
+    { group: `${KIND_LABELS[kind]} columns`, items: matching.map(toItem) },
+    {
+      group: "Other types — picking one changes the dimension's type",
+      items: others.map(toItem),
+    },
+  ].filter((group) => group.items.length > 0);
+}
+
+/** One measure's column: the icon is the picked column's type, not the measure. */
+function ColumnSelect({
+  measureName,
+  value,
+  options,
+  kind,
+  onChange,
+}: {
+  measureName: string;
+  value: string | null;
+  options: Dimension[];
+  /** Splits the columns into those matching this kind and the rest. */
+  kind: Kind | null;
+  onChange: (id: string) => void;
+}) {
+  const picked = options.find((candidate) => candidate.id === value);
+  return (
+    <Select
+      label={
+        <Text fz="md" lh="md" component="span" pt="0.5rem" display="block">
+          {measureName}
+        </Text>
+      }
+      classNames={{ input: SelectS.metricSelectInput }}
+      aria-label={`Select dimension for ${measureName}`}
+      data={columnOptions(options, kind)}
+      value={value}
+      searchable
+      nothingFoundMessage="No fields found"
+      leftSection={
+        <Icon
+          name={picked ? KIND_ICONS[picked.kind] : "string"}
+          size={14}
+          c="text-secondary"
+        />
+      }
+      placeholder="Select a dimension"
+      size="sm"
+      onChange={(id) => {
+        if (id) {
+          onChange(id);
+        }
+      }}
+    />
   );
 }
