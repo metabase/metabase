@@ -194,7 +194,7 @@
    [:field_order             {:optional true} [:maybe FieldOrder]]
    [:data_authority          {:optional true} ::data-authority-write]
    [:data_source             {:optional true} [:maybe ::data-source-write]]
-   [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:data_layer              {:optional true} ::lib.schema.common/keyword]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])

@@ -5657,7 +5657,7 @@
                                  :id [:in [published unpublished plain]])))))))
 
 (deftest backfill-table-data-layer-from-visibility-type-test
-  (impl/test-migrations ["i1e0dd" "q7m2tb"] [migrate!]
+  (impl/test-migrations ["i1e0dd" "b9k3yf"] [migrate!]
     (let [db-id  (t2/insert-returning-pk! :metabase_database {:name       "Data Layer DB"
                                                               :engine     "h2"
                                                               :created_at :%now
@@ -5680,4 +5680,9 @@
                   (table! {:visibility_type nil :data_layer "final"})           "final"}]
       (migrate!)
       (is (= rows
-             (t2/select-pk->fn :data_layer :metabase_table :id [:in (keys rows)]))))))
+             (t2/select-pk->fn :data_layer :metabase_table :id [:in (keys rows)])))
+      (testing "new row without data_layer gets internal"
+        (is (= "internal"
+               (t2/select-one-fn :data_layer :metabase_table :id (table! {})))))
+      (testing "null data_layer is rejected"
+        (is (thrown? Exception (table! {:data_layer nil})))))))

@@ -29,3 +29,36 @@ databaseChangeLog:
               WHERE visibility_type IS NULL
                 AND (data_layer IS NULL OR data_layer = 'hidden')
       rollback:
+
+  - changeSet:
+      id: w4h8zc
+      author: ranquild
+      comment: Make metabase_table.data_layer NOT NULL now that every row has one
+      changes:
+        - addNotNullConstraint:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultNullValue: internal
+      rollback:
+        - dropNotNullConstraint:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+        - addDefaultValue:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultValue: internal
+
+  - changeSet:
+      id: b9k3yf
+      author: ranquild
+      comment: Reassert the internal default of metabase_table.data_layer, which MySQL drops with the NOT NULL change
+      changes:
+        - addDefaultValue:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultValue: internal
+      rollback:
