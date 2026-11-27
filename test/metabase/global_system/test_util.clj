@@ -43,7 +43,7 @@
   `(do-with-root ~handle ~value (^:once fn* [] ~@body)))
 
 (defn halt-order
-  "The components a halt of the global system would stop now, in the order it would stop them."
+  "The handles of the running components, in the order a halt with no dependencies would stop them."
   []
   (#'system/halt-order (#'system/dependency-graph {})))
 
