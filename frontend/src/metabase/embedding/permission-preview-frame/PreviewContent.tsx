@@ -72,7 +72,7 @@ export function PreviewContent({
       </Box>
       {openItem != null && (
         <Stack h="100vh" gap={0}>
-          <Box px="lg" pt="md" bg="background_page-primary">
+          <Box px="lg" pt="md">
             <Button
               variant="subtle"
               leftSection={<Icon name="chevronleft" />}

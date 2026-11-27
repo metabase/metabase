@@ -8,12 +8,16 @@ import {
   createReadyMessage,
   isTokenMessage,
 } from "metabase/embedding/permission-preview/messages";
+import { colors } from "metabase/ui/colors";
 
 import { PreviewContent } from "./PreviewContent";
 import { ReadOnlyToast } from "./ReadOnlyToast";
 import { installPreviewFetch, setPreviewToken } from "./preview-requests";
 
 const TOAST_DURATION_MS = 4000;
+const PREVIEW_THEME = {
+  colors: { background: colors["background_page-primary"] },
+};
 
 export function PermissionPreviewFrame() {
   const [hasToken, setHasToken] = useState(false);
@@ -75,6 +79,7 @@ export function PermissionPreviewFrame() {
     <ComponentProvider
       authConfig={{ metabaseInstanceUrl: window.location.origin }}
       allowConsoleLog={false}
+      theme={PREVIEW_THEME}
     >
       <PreviewContent
         initialItem={getItemFromContentPath(window.location.pathname)}
