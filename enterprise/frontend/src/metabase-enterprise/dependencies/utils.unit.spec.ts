@@ -471,6 +471,19 @@ describe("getParameterIcon", () => {
 });
 
 describe("getNodeLocationInfo", () => {
+  it("should link only database for table without schema", () => {
+    const node = createMockTableDependencyNode({
+      data: createMockTableDependencyNodeData({
+        db_id: 1,
+        schema: "",
+        db: createMockDatabase({ id: 1, name: "Sample Database" }),
+      }),
+    });
+    expect(getNodeLocationInfo(node)?.links).toEqual([
+      { label: "Sample Database", url: expect.any(String) },
+    ]);
+  });
+
   it("should return dashboard location for card in dashboard", () => {
     const node = createMockCardDependencyNode({
       data: createMockCardDependencyNodeData({

@@ -292,13 +292,17 @@ export function getNodeLocationInfo(
               label: node.data.db.name,
               url: Urls.dataStudioData({ databaseId: node.data.db_id }),
             },
-            {
-              label: node.data.schema,
-              url: Urls.dataStudioData({
-                databaseId: node.data.db_id,
-                schemaName: node.data.schema,
-              }),
-            },
+            ...(node.data.schema
+              ? [
+                  {
+                    label: node.data.schema,
+                    url: Urls.dataStudioData({
+                      databaseId: node.data.db_id,
+                      schemaName: node.data.schema,
+                    }),
+                  },
+                ]
+              : []),
           ],
         };
       }
