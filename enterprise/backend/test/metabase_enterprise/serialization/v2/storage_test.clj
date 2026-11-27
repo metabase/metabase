@@ -200,6 +200,17 @@
                      [(str slug "___fieldvalues.yaml")]}
                    (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields"))))))))))
 
+(deftest field-name-with-spaces-file-name-test
+  (testing "A Field name with inner and trailing spaces exports to a file name without spaces (#38319)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Database db    {:name "My Company Data"}
+                           :model/Table    table {:name "Table2" :db_id (:id db)}
+                           :model/Field    _     {:name "A Description in a database    " :table_id (:id table)}]
+          (storage/store! (into [] (extract/extract {:include-h2? true})) (storage.files/file-writer dump-dir))
+          (is (= #{["a_description_in_a_database____.yaml"]}
+                 (file-set (io/file dump-dir "databases" "my_company_data" "tables" "table2" "fields")))))))))
+
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
