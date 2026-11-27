@@ -774,6 +774,16 @@
   [name]
   (truncate name max-dashboard-filter-name-length))
 
+(defn- truncate-json
+  "`json` as [[truncate]] cuts it, without the half of an escape that the cut left before the ellipsis."
+  [json max-len]
+  (let [cut (truncate json max-len)]
+    (if (= cut json)
+      json
+      ;; A last backslash that starts an escape, alone or with part of a `\uXXXX`
+      (str (str/replace (subs cut 0 (- (count cut) 3)) #"(?<!\\)((?:\\\\)*)\\(?:u[0-9a-fA-F]{0,3})?$" "$1")
+           "..."))))
+
 (defn dashboard-filter-value
   "The text of a dashboard filter's default or current `value` as an XML attribute value on one line, with at most
   [[max-dashboard-filter-values]] of its values and [[max-dashboard-filter-value-length]] characters, and a note of
@@ -784,8 +794,8 @@
         more  (when (sequential? value) (- (count value) (count shown)))]
     (str (if (string? shown)
            (escape-xml-attr-line (truncate shown max-dashboard-filter-value-length))
-           ;; JSON already escapes backslashes and line breaks, and a `\\uXXXX` escape keeps it valid JSON
-           (-> (truncate (json/encode shown) max-dashboard-filter-value-length)
+           ;; JSON already escapes backslashes and line breaks, and a `\uXXXX` escape keeps it valid JSON
+           (-> (truncate-json (json/encode shown) max-dashboard-filter-value-length)
                (quoting/escape-code-points quoting/invisible-code-point?)
                escape-xml))
          (when (pos-int? more) (str " (+" more " more)")))))

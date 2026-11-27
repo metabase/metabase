@@ -623,7 +623,12 @@
       (is (= (str (apply str (repeat 500 "x")) "...") (default-attr (apply str (repeat 5000 "x"))))))
     (testing "a list of long values is cut as well as capped"
       (is (= (str (subs (str "[&quot;" (apply str (repeat 600 "y"))) 0 505) "... (+1 more)")
-             (default-attr (repeat 11 (apply str (repeat 600 "y")))))))))
+             (default-attr (repeat 11 (apply str (repeat 600 "y")))))))
+    (testing "a cut list doesn't end in half an escape"
+      (is (= (str "[&quot;" (apply str (repeat 497 "x")) "...")
+             (default-attr [(str (apply str (repeat 497 "x")) "\\y")])))
+      (is (= (str "[&quot;" (apply str (repeat 497 "x")) "...")
+             (default-attr [(str (apply str (repeat 497 "x")) "\u0001")]))))))
 
 (deftest ^:parallel user->xml-test
   (testing "formats user matching Python"
