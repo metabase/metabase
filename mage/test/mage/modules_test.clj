@@ -736,6 +736,7 @@
              :team      "Querying Platform"
              :handle    "@metabase/querying-platform"
              :opted-in? true
+             :declined? false
              :patterns  ["src/metabase/lib" "src/metabase/lib.*" "test/metabase/lib" "test/metabase/lib_test.*"]}]
            (entries '{lib             {:team "Querying Platform", :codeowners true}
                       query-processor {:team "Querying Platform"}}))))
@@ -794,7 +795,19 @@
                      lib.schema {:codeowners false}}))))
   (testing "a module that sets false with no owner around it needs no entry"
     (is (= []
-           (owners '{lib {:team "Querying Platform", :codeowners false}})))))
+           (owners '{lib {:team "Querying Platform", :codeowners false}}))))
+  (testing "a same-team descendant inside a declined module's directory stays unowned"
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema nil]]
+           (owners '{lib             {:team "Querying Platform", :codeowners true}
+                     lib.schema      {:codeowners false}
+                     lib.schema.util {}}))))
+  (testing "the block names a declined module as such"
+    (is (= ["# lib.schema (Querying Platform, declined)"
+            "src/metabase/lib/schema"]
+           (take 2 (#'mage.modules/codeowners-stanza-lines
+                    (second (entries '{lib        {:team "Querying Platform", :codeowners true}
+                                       lib.schema {:codeowners false}}))))))))
 
 (deftest codeowners-entries-deep-nesting-test
   (testing "a grandchild that inherits the team of an opted-in nested module needs no entry"

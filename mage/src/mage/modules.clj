@@ -387,12 +387,29 @@
   [modules-config module]
   (true? (get-in modules-config [module :codeowners])))
 
+(defn- deciding-ancestor
+  "The nearest ancestor of `module` of the same team that sets `:codeowners`, or nil."
+  [modules-config module]
+  (let [team (modules/module-team modules-config module)]
+    (->> (rest (modules/lineage modules-config module))
+         (filter #(and (contains? (get modules-config %) :codeowners)
+                       (= team (modules/module-team modules-config %))))
+         first)))
+
+(defn- declines?
+  "Whether `module` sets `:codeowners false`, or leaves it unset under a [[deciding-ancestor]] that does."
+  [modules-config module]
+  (let [cfg (get modules-config module)]
+    (if (contains? cfg :codeowners)
+      (false? (:codeowners cfg))
+      (false? (get-in modules-config [(deciding-ancestor modules-config module) :codeowners])))))
+
 (defn- codeowners-entries
   "One entry per module the block must name, in block order.
-  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :patterns}`.
+  Each is `{:module, :src-dir, :team, :handle, :opted-in?, :declined?, :patterns}`.
   A module's src and test code go to its team's handle when it, or an opted-in module around it, belongs to that team.
   Inside an opted-in module's directory, a nested module of another team is otherwise unowned, with a `nil` handle,
-  and so is one that sets `:codeowners false`.
+  and so is one that [[declines?]].
   An opted-in module always gets an entry.
   Another module gets one only where the nearest entry around it would give its code a different owner.
   Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any value but `true` or `false`."
@@ -406,7 +423,7 @@
            around    (filter #(path-within? (:src-dir %) src-dir) entries)
            owners    (filter :opted-in? around)
            opted-in? (opts-in? modules-config module)
-           declined? (false? (get-in modules-config [module :codeowners]))
+           declined? (declines? modules-config module)
            handle    (when (and (not declined?)
                                 (or opted-in? (some #(= team (:team %)) owners)))
                        (get team->codeowner team))]
@@ -418,6 +435,7 @@
                 :team      team
                 :handle    handle
                 :opted-in? opted-in?
+                :declined? declined?
                 :patterns  (for [[tree suffix] tree->root-file-suffix
                                  :let          [dir (modules/module-dir modules-config module tree)]
                                  pattern       [dir (str dir suffix)]]
@@ -436,12 +454,8 @@
         :when        (not (contains? cfg :codeowners))
         :let         [team     (modules/module-team modules-config module)
                       src-dir  (modules/module-dir modules-config module "src")
-                      ;; An ancestor that declines settles its descendants too, so the walk stops at the first one that
-                      ;; decides either way.
-                      decider  (->> (rest (modules/lineage modules-config module))
-                                    (filter #(and (contains? (get modules-config %) :codeowners)
-                                                  (= team (modules/module-team modules-config %))))
-                                    first)
+                      ;; An ancestor that declines settles its descendants too.
+                      decider  (deciding-ancestor modules-config module)
                       ;; Entries come parent first, so the last one around `src-dir` is the nearest.
                       owner    (:handle (last (filter #(path-within? (:src-dir %) src-dir) entries)))]
         :when        (and (opts-in? modules-config decider)
@@ -562,10 +576,13 @@
                          " marker, in that order. Fix the markers by hand.")))
 
 (defn- codeowners-stanza-lines
-  "Lines for one entry: a `# module (team)` header, with `, not opted in` after the team when it did not opt in.
+  "Lines for one entry: a `# module (team)` header, the team followed by `, declined` when the module declines.
+  Otherwise the team is followed by `, not opted in` when the module did not opt in.
   Then one `pattern handle` line per pattern, or the bare pattern when the entry is unowned."
-  [{:keys [module team handle opted-in? patterns]}]
-  (into [(format "# %s (%s%s)" module team (if opted-in? "" ", not opted in"))]
+  [{:keys [module team handle opted-in? declined? patterns]}]
+  (into [(format "# %s (%s%s)" module team (cond opted-in? ""
+                                                 declined? ", declined"
+                                                 :else     ", not opted in"))]
         (map #(cond-> % handle (str " " handle)))
         patterns))
 
