@@ -107,20 +107,18 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
 
         onClose();
-      })
-      .catch((e) => {
-        setErrorMessage(getErrorMessage(e));
-        if (destination.model !== "dashboard") {
-          // we want this error to bubble up to the modal if we're not
-          // showing the dashboard confirm modal
-          throw new Error(getErrorMessage(e));
-        }
       });
   };
 
-  const handleMoveConfirm = async () => {
-    if (confirmMoveState?.destination) {
-      await handleMove(confirmMoveState?.destination, true);
+  const handleMoveConfirm = async (deleteOldDashcards?: boolean) => {
+    if (!confirmMoveState) {
+      return;
+    }
+    setErrorMessage(undefined);
+    try {
+      await handleMove(confirmMoveState.destination, deleteOldDashcards);
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
     }
   };
 
@@ -149,11 +147,9 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       <ConfirmModal
         data-testid="dashboard-to-collection-move-confirmation"
         opened
-        onConfirm={() => {
-          handleMove(confirmMoveState?.destination, deleteOldDashcardsState);
-          onClose();
-        }}
+        onConfirm={() => handleMoveConfirm(deleteOldDashcardsState)}
         onClose={onClose}
+        errorMessage={errorMessage}
         title={
           <Title order={3}>
             {c(
@@ -204,8 +200,9 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       <ConfirmModal
         opened
         data-testid="dashboard-to-dashboard-move-confirmation"
-        onConfirm={() => handleMove(confirmMoveState.destination, true)}
+        onConfirm={() => handleMoveConfirm(true)}
         onClose={onClose}
+        errorMessage={errorMessage}
         title={
           <Title fz="1.25rem" lh={1.5}>
             {c("{0} is the name of a dashboard")
@@ -239,7 +236,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
             model: "card",
           },
         ]}
-        onConfirm={handleMoveConfirm}
+        onConfirm={() => handleMoveConfirm(true)}
         onClose={onClose}
         destination={confirmMoveState?.destination}
         errorMessage={errorMessage}

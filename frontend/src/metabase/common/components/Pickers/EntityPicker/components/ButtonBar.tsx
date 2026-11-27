@@ -35,9 +35,18 @@ export const ButtonBar = ({
 
   const handleConfirm = useCallback(async () => {
     const selectedItem = path[path.length - 1];
-    if (canConfirm) {
-      await onConfirm(selectedItem);
+    if (!canConfirm) {
+      return;
     }
+    try {
+      setError(null);
+      setLoading(true);
+      await onConfirm(selectedItem);
+    } catch (e) {
+      console.error(e);
+      setError(getErrorMessage(e));
+    }
+    setLoading(false);
   }, [canConfirm, onConfirm, path]);
 
   useEffect(() => {
@@ -87,17 +96,7 @@ export const ButtonBar = ({
         <Button
           ml={1}
           variant="filled"
-          onClick={async () => {
-            try {
-              setError(null);
-              setLoading(true);
-              await handleConfirm();
-            } catch (e: any) {
-              console.error(e);
-              setError(getErrorMessage(e));
-            }
-            setLoading(false);
-          }}
+          onClick={handleConfirm}
           disabled={!canConfirm || loading}
           data-testid="entity-picker-select-button"
         >

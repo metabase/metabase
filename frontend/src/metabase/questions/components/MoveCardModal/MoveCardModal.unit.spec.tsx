@@ -144,7 +144,7 @@ const setup = ({
   return { onClose };
 };
 
-async function chooseDestination(name: string) {
+async function selectDestination(name: string) {
   await waitForLoaderToBeRemoved();
   await userEvent.click(await screen.findByText("Our analytics"));
   await userEvent.click(await screen.findByText(name));
@@ -153,7 +153,11 @@ async function chooseDestination(name: string) {
     name: "Move",
   });
   await waitFor(() => expect(moveButton).toBeEnabled());
-  await userEvent.click(moveButton);
+  return moveButton;
+}
+
+async function chooseDestination(name: string) {
+  await userEvent.click(await selectDestination(name));
 }
 
 function getCardPutCalls() {
@@ -262,9 +266,58 @@ describe("MoveCardModal", () => {
       expect(request.deleteOldDashcards).not.toBe("true");
       expect(onClose).toHaveBeenCalled();
     });
+
+    it("shows failed move's error and keeps confirmation open", async () => {
+      const { onClose } = setup({
+        card: createDashboardQuestion(BLUE_DASHBOARD),
+        updateCardError: { status: 400, body: { message: "Move failed" } },
+      });
+
+      await chooseDestination(DESTINATION_COLLECTION.name);
+      const confirmModal = await screen.findByTestId(
+        "dashboard-to-collection-move-confirmation",
+      );
+      await userEvent.click(
+        within(confirmModal).getByRole("button", { name: "Done" }),
+      );
+
+      expect(
+        await within(confirmModal).findByText("Move failed"),
+      ).toBeInTheDocument();
+      expect(getCardPutCalls()).toHaveLength(1);
+      expect(onClose).not.toHaveBeenCalled();
+
+      await userEvent.click(
+        within(confirmModal).getByRole("button", { name: "Done" }),
+      );
+
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(getCardPutCalls()).toHaveLength(2);
+    });
   });
 
   describe("moving a dashboard question to another dashboard", () => {
+    it("shows failed move's error and keeps confirmation open", async () => {
+      const { onClose } = setup({
+        card: createDashboardQuestion(BLUE_DASHBOARD),
+        updateCardError: { status: 400, body: { message: "Move failed" } },
+      });
+
+      await chooseDestination(PURPLE_DASHBOARD.name);
+      const confirmModal = await screen.findByTestId(
+        "dashboard-to-dashboard-move-confirmation",
+      );
+      await userEvent.click(
+        within(confirmModal).getByRole("button", { name: "Okay" }),
+      );
+
+      expect(
+        await within(confirmModal).findByText("Move failed"),
+      ).toBeInTheDocument();
+      expect(getCardPutCalls()).toHaveLength(1);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
     it("warns that the question will be removed from its current dashboard and moves it on confirm", async () => {
       const { onClose } = setup({
         card: createDashboardQuestion(BLUE_DASHBOARD),
@@ -302,6 +355,31 @@ describe("MoveCardModal", () => {
           "Question moved to Purple Dashboard",
         ),
       );
+    });
+  });
+
+  describe("moving a collection question to a collection", () => {
+    it("shows failed move's error when confirming with Enter", async () => {
+      const { onClose } = setup({
+        card: createMockCard({
+          id: CARD_ID,
+          name: "Blue Question",
+          type: "question",
+          collection_id: null,
+          dashboard_id: null,
+          dashboard_count: 0,
+        }),
+        updateCardError: { status: 400, body: { message: "Move failed" } },
+      });
+
+      await selectDestination(DESTINATION_COLLECTION.name);
+      await userEvent.keyboard("{Enter}");
+
+      expect(
+        await within(screen.getByRole("dialog")).findByText("Move failed"),
+      ).toBeInTheDocument();
+      expect(getCardPutCalls()).toHaveLength(1);
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 
