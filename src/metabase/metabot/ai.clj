@@ -93,18 +93,6 @@
   [feature-id]
   (get registry feature-id))
 
-(defn sources
-  "The `ai_usage_log.source` of every registered feature."
-  []
-  (into #{} (map :source) (vals registry)))
-
-(defn message-sources
-  "The sources of the features whose calls count as messages under a message limit: those a user triggers."
-  []
-  (into #{} (for [{:keys [source trigger]} (vals registry)
-                  :when (= :user trigger)]
-              source)))
-
 ;;; ------------------------------------------------- Options --------------------------------------------------------
 
 (mr/def ::untrusted-tag
@@ -258,32 +246,6 @@
       (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
         (throw (error :metabot/usage-limit-reached 429 "ai_usage_limit_reached" limit-msg)))
       {:entry entry, :model-ref model-ref})))
-
-(defn check!
-  "Throw the typed error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the
-  provider, or return nil when the call would go ahead.
-  Call it first in an endpoint, before reading any data for the prompt.
-  Runs the same checks as [[call-llm!]], except the options and the prompt size.
-  Resolves against the current user."
-  [feature-id audience]
-  (check-call! feature-id audience nil)
-  nil)
-
-(defn unavailable-reason
-  "The `:type` of the error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the
-  provider, or nil when the call would go ahead.
-  Runs the same checks as [[check!]], so a feature can hide its AI options when the call would refuse."
-  [feature-id audience]
-  (try
-    (check! feature-id audience)
-    (catch clojure.lang.ExceptionInfo e
-      (or (:type (ex-data e)) (throw e)))))
-
-(defn available?
-  "Whether [[call-llm!]] for `feature-id` serving `audience` would go ahead now for the current user.
-  See [[unavailable-reason]]."
-  [feature-id audience]
-  (nil? (unavailable-reason feature-id audience)))
 
 ;;; -------------------------------------------------- Prompt --------------------------------------------------------
 
@@ -525,6 +487,46 @@
           (.cancel fut true)
           (.interrupt (Thread/currentThread))
           (throw e))))))
+
+;;; ------------------------------------------------------ API -------------------------------------------------------
+
+(defn sources
+  "The `ai_usage_log.source` of every registered feature."
+  []
+  (into #{} (map :source) (vals registry)))
+
+(defn message-sources
+  "The sources of the features whose calls count as messages under a message limit: those a user triggers."
+  []
+  (into #{} (for [{:keys [source trigger]} (vals registry)
+                  :when (= :user trigger)]
+              source)))
+
+(defn check!
+  "Throw the typed error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the
+  provider, or return nil when the call would go ahead.
+  Call it first in an endpoint, before reading any data for the prompt.
+  Runs the same checks as [[call-llm!]], except the options and the prompt size.
+  Resolves against the current user."
+  [feature-id audience]
+  (check-call! feature-id audience nil)
+  nil)
+
+(defn unavailable-reason
+  "The `:type` of the error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the
+  provider, or nil when the call would go ahead.
+  Runs the same checks as [[check!]], so a feature can hide its AI options when the call would refuse."
+  [feature-id audience]
+  (try
+    (check! feature-id audience)
+    (catch clojure.lang.ExceptionInfo e
+      (or (:type (ex-data e)) (throw e)))))
+
+(defn available?
+  "Whether [[call-llm!]] for `feature-id` serving `audience` would go ahead now for the current user.
+  See [[unavailable-reason]]."
+  [feature-id audience]
+  (nil? (unavailable-reason feature-id audience)))
 
 (defn call-llm!
   "The LLM facade: the one way a feature calls its model.
