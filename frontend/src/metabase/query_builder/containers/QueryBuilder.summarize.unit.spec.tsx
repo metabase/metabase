@@ -134,15 +134,15 @@ function removeUuids(value: unknown): unknown {
 
 function getRequestStage(call: CallLog): unknown {
   const body = removeUuids(JSON.parse(String(call.options.body)));
-  const hasStages =
+  if (
     typeof body === "object" &&
     body !== null &&
     "stages" in body &&
-    Array.isArray(body.stages);
-  if (!hasStages) {
-    throw new Error("No stages in the request");
+    Array.isArray(body.stages)
+  ) {
+    return body.stages[0];
   }
-  return body.stages[0];
+  throw new Error("No stages in the request");
 }
 
 function getDatasetCalls() {
