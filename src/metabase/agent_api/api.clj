@@ -1602,7 +1602,7 @@
                          ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
                          ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
                          (when (or (seq (:added changes)) (seq (:removed changes)))
-                           (let [saved (agent-api.db/dashcards id)]
+                           (let [saved (t2/hydrate (agent-api.db/dashcards id) :series)]
                              (dashboard-card/check-unarchive-internal-dashboard-questions id saved)
                              (dashboard-card/unarchive-internal-dashboard-questions! id saved)
                              (dashboard-card/check-archive-internal-dashboard-questions id saved)
