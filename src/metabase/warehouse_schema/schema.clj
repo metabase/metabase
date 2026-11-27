@@ -315,6 +315,7 @@
    [:is_upload               {:optional true} [:maybe :boolean]]
    [:database_require_filter {:optional true} [:maybe :boolean]]
    [:estimated_row_count     {:optional true} [:maybe :int]]
+   [:last_empty_sample_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:view_count              {:optional true} [:maybe :int]]
    [:is_defective_duplicate  {:optional true} [:maybe :boolean]]
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]

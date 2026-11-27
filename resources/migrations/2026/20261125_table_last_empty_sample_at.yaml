@@ -1,0 +1,18 @@
+## When the last fingerprint sample of a Table returned no rows, so that an empty Table is not sampled again on every
+## sync.
+
+databaseChangeLog:
+  - changeSet:
+      id: mf6ypa
+      author: nvoxland
+      comment: Add metabase_table.last_empty_sample_at
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: last_empty_sample_at
+                  type: ${timestamp_type}
+                  remarks: When the last fingerprint sample of the table returned no rows; null when it had rows
+                  constraints:
+                    nullable: true

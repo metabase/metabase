@@ -69,6 +69,12 @@
   (table/update-tables! (vec rows))
   (count rows))
 
+(defn update-tables!
+  "Apply the Table update `rows`, sync's own columns that no user sets, in one call."
+  [rows]
+  (when (seq rows)
+    (table/update-tables! (vec rows))))
+
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already set,
   returning the number of Tables updated."

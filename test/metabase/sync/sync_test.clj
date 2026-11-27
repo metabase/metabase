@@ -132,6 +132,7 @@
     :id          true
     :archived_at false
     :deactivated_at false
+    :last_empty_sample_at false
     :updated_at  true
     :owner_user_id false}))
 

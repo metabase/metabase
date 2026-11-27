@@ -2,6 +2,7 @@
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
+   [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -11,6 +12,7 @@
    [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -195,6 +197,51 @@
     results
     (mapv save-table-fingerprints! results)))
 
+(def ^:private empty-sample-retry-period
+  "How long after a sample of a Table returned no rows sync waits before it samples the Table again, unless the Table's
+  row count estimate shows it has rows."
+  (t/days 1))
+
+(defn- empty-sample?
+  "Whether `result`, the fingerprints of one Table, comes from a sample that returned no rows: each of its Fields got
+  no data."
+  [{:keys [fields stats]}]
+  (and (seq fields)
+       (nil? (:throwable stats))
+       (= (count fields) (:no-data-fingerprints stats))))
+
+(defn- empty-sample-mark
+  "The update of the Table of `result` that records whether its sample returned no rows, or nil when the mark does not
+  change. A failed sample changes nothing."
+  [{:keys [table fields stats] :as result}]
+  (cond
+    (empty-sample? result)
+    {:id (:id table) :last_empty_sample_at (t/offset-date-time)}
+
+    ;; a Table given without the column, as [[fingerprint-table!]] can be, may carry a mark too
+    (and (or (:last_empty_sample_at table)
+             (not (contains? table :last_empty_sample_at)))
+         (seq fields)
+         (nil? (:throwable stats)))
+    {:id (:id table) :last_empty_sample_at nil}))
+
+(defn- save-empty-sample-marks!
+  "Record for each Table of `results` whether its sample returned no rows, returning `results`. A failure to record it
+  is logged: at worst the Table is sampled again at the next sync, as before."
+  [results]
+  (sync-util/with-error-handling "Error recording the Tables whose sample returned no rows"
+    (sync.updates/update-tables! (keep empty-sample-mark results)))
+  results)
+
+(defn- recently-empty?
+  "Whether the last sample of `table` returned no rows less than [[empty-sample-retry-period]] ago, and its row count
+  estimate does not show rows since."
+  [{:keys [last_empty_sample_at estimated_row_count]}]
+  (boolean
+   (and last_empty_sample_at
+        (not (pos? (or estimated_row_count 0)))
+        (not (u.date/older-than? last_empty_sample_at empty-sample-retry-period)))))
+
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for the Fields in `table` that have not been previously analyzed. At most
   [[metabase.sync.settings/fingerprint-max-fields-per-table]] fields are processed; if the table has more eligible
@@ -202,7 +249,7 @@
   [table :- i/TableInstance]
   (let [limit  (sync.settings/fingerprint-max-fields-per-table)
         fields (get (fields-to-fingerprint [table] (inc limit)) (:id table))]
-    (:stats (first (save-fingerprints-of-tables! [(table-fingerprints table fields limit)])))))
+    (:stats (first (save-empty-sample-marks! (save-fingerprints-of-tables! [(table-fingerprints table fields limit)]))))))
 
 (defn- add-table-stats
   "`acc` with the `stats` of one Table added, a failure of the Table counting as one failed fingerprint."
@@ -234,7 +281,7 @@
                                          {:results [] :running acc}
                                          group)
         acc                      (transduce (map :stats) (completing add-table-stats) acc
-                                            (save-fingerprints-of-tables! results))]
+                                            (save-empty-sample-marks! (save-fingerprints-of-tables! results)))]
     (cond-> acc
       stop? reduced)))
 
@@ -249,7 +296,8 @@
     continue?       :- [:=> [:cat ::FingerprintStats] :boolean]]
    (let [tables (if *refingerprint?*
                   (sync-util/refingerprint-reducible-sync-tables database)
-                  (sync-util/reducible-sync-tables database))
+                  ;; an empty Table is sampled again once a day, not on every sync
+                  (eduction (remove recently-empty?) (sync-util/reducible-sync-tables database)))
          groups (table-chunks/groups tables
                                      #(analyze/fingerprint-field-counts
                                        % *refingerprint?* i/*fingerprint-version->types-that-should-be-re-fingerprinted*)
