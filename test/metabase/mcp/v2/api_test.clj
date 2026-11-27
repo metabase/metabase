@@ -638,16 +638,21 @@
 (deftest tools-list-input-schemas-follow-the-client-test
   ;; Copilot Studio asks the user for every required argument it can't fill, while OpenAI's strict tool rules need
   ;; every argument listed.
-  (testing "input schemas list only the required arguments, except for OpenAI clients"
-    (v2.tu/do-with-bearer-token!
-     v2.tu/all-scopes
-     (fn [auth]
-       (is (=? {:required   ["id"]
-                :properties {:row_limit {:type "integer"}}}
-               (listed-input-schema auth "claude-code" "run_saved_question")))
-       (is (=? {:required   ["id" "parameters" "row_limit"]
-                :properties {:row_limit {:type ["integer" "null"]}}}
-               (listed-input-schema auth "openai-mcp" "run_saved_question")))))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing "clients known to read standard schemas are sent only the required arguments"
+       (doseq [client-name ["mcs" "claude-code" "codex-mcp-client" "Visual Studio Code"]]
+         (testing client-name
+           (is (=? {:required   ["id"]
+                    :properties {:row_limit {:type "integer"}}}
+                   (listed-input-schema auth client-name "run_saved_question"))))))
+     (testing "every other client is sent the strict schemas"
+       (doseq [client-name ["openai-mcp" "ChatGPT" "mcp" "some-new-client"]]
+         (testing client-name
+           (is (=? {:required   ["id" "parameters" "row_limit"]
+                    :properties {:row_limit {:type ["integer" "null"]}}}
+                   (listed-input-schema auth client-name "run_saved_question")))))))))
 
 (deftest tools-list-descriptions-fit-client-truncation-test
   (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping

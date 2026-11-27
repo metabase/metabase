@@ -79,6 +79,20 @@
   (message/msg [(str "MCP access is not enabled for your account. "
                      "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
+(def ^:private standard-input-schema-client-names
+  "Substrings of a lowercased `clientInfo.name` that mark a client known to read the standard MCP input schemas."
+  ["claude" "codex" "cursor" "visual studio code" "vscode" "zed"])
+
+(defn- standard-input-schemas?
+  "True when `client-name`, from the `initialize` handshake, names a client known to read the standard input schemas.
+  Every other client gets the OpenAI strict ones."
+  [client-name]
+  ;; Copilot Studio initializes as "mcs" and asks the user for every required argument it can't fill.
+  (boolean (when (string? client-name)
+             (let [client-name (u/lower-case-en client-name)]
+               (or (= "mcs" client-name)
+                   (some #(str/includes? client-name %) standard-input-schema-client-names))))))
+
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
@@ -385,10 +399,7 @@
                                   (mcp/inline-ui-enabled-for-client? client-name))
             session-id       (mcp.session/create! user-id
                                                   {:supports-mcp-ui?      supports-mcp-ui?
-                                                   ;; OpenAI's strict-tool rules need every argument listed,
-                                                   ;; which other clients read as required
-                                                   :strict-input-schemas? (= "chatgpt"
-                                                                             (mcp.usage/detect-client client-name))})
+                                                   :strict-input-schemas? (not (standard-input-schemas? client-name))})
             init-response (handle-initialize (:id body) params capabilities instructions)]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.

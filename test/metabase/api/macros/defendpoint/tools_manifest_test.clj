@@ -153,7 +153,15 @@
   (testing "a required argument named by a string keeps its `null`"
     (is (= {"id" {:type ["integer" "null"]}}
            (:properties (tools-manifest/standard-tool-input-schema
-                         {:type "object", :properties {"id" {:type ["integer" "null"]}}, :required ["id"]}))))))
+                         {:type "object", :properties {"id" {:type ["integer" "null"]}}, :required ["id"]})))))
+  (testing "qualified arguments that share a name are told apart"
+    (is (= {:source/id {:type ["integer" "null"]}
+            :target/id {:type "integer"}}
+           (:properties (tools-manifest/standard-tool-input-schema
+                         (tools-manifest/malli->json-schema
+                          [:map
+                           [:source/id                 [:maybe :int]]
+                           [:target/id {:optional true} [:maybe :int]]])))))))
 
 (deftest ^:parallel localized-description-test
   (testing "a localized description stays a localized string, which is translated for each caller when serialized"

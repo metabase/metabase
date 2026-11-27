@@ -249,10 +249,11 @@
   ;; Copilot Studio asks the user for every required argument it can't fill, and truncates a schema at a type array.
   ;; Only arguments lose their `null`: the registry drops a `nil` argument, so `null` and absent mean the same there,
   ;; while a nested `null` can clear a value, as in `question_write`'s `column_metadata`.
-  (let [required? (set (map name (:required schema)))]
+  (let [required? (set (map u/qualified-name (:required schema)))
+        optional? (fn [k] (not (required? (u/qualified-name k))))]
     (cond-> schema
       (map? properties) (assoc :properties (u/for-map [[k v] properties]
-                                             [k (cond-> v (not (required? (name k))) mu.json-schema/non-nullable)])))))
+                                             [k (cond-> v (optional? k) mu.json-schema/non-nullable)])))))
 
 (defn- nullable-malli?
   "True when `schema` accepts `nil` (e.g. `[:maybe X]`, `:any`, `:nil`)."
