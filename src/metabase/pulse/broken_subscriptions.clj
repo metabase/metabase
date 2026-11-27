@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -185,7 +186,8 @@
   Must run after the update: it compares the dashboard's current resolved params against each pulse's stored params.
   Takes the dashboard's `:resolved-params` from before the update as `original-dashboard-params`.
   Sends the emails on a background thread once the surrounding transaction commits, or at once outside a
-  transaction, so an update that rolls back sends none.
+  transaction, so an update that rolls back sends none. A notification that fails is logged, not thrown, and the
+  others still go out.
   Returns what [[archived-subscription]] describes for each archived subscription, in archive order."
   [dashboard-id original-dashboard-params]
   ;; Realized here, so every query it runs is part of the update, not of the background send.
@@ -203,5 +205,13 @@
       ;; thread or its connection.
       (app-db/do-after-commit
        #(send-in-background!
-         (fn [] (run! messages/send-broken-subscription-notification! broken)))))
+         (fn []
+           (doseq [{:keys [pulse-id] :as broken-subscription} broken]
+             ;; `send-message!` logs SMTP failures, but the email is built before it is called, and nothing would see
+             ;; a throw from this thread. Logging it here also lets the remaining notifications go out.
+             (try
+               (messages/send-broken-subscription-notification! broken-subscription)
+               (catch Throwable e
+                 (log/errorf e "Failed to notify the owners of broken subscription %d on dashboard %d"
+                             pulse-id dashboard-id))))))))
     archived))
