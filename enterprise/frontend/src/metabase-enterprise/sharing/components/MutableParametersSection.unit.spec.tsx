@@ -90,6 +90,28 @@ describe("MutableParametersSection", () => {
     ]);
   });
 
+  it("should drop cleared parameter from subscription when its reset-to-default icon is clicked", async () => {
+    const parameter = createMockUiParameter({
+      id: "text-param",
+      name: "Text",
+      type: "string/=",
+      default: ["abc"],
+    });
+    const { setPulseParameters } = setup({
+      parameters: [parameter],
+      dashboard: createMockDashboard(),
+      pulse: createMockDashboardSubscription({
+        parameters: [{ ...parameter, value: null }],
+      }),
+    });
+
+    await userEvent.click(
+      screen.getByLabelText("Reset filter to default state"),
+    );
+
+    expect(setPulseParameters).toHaveBeenCalledWith([]);
+  });
+
   describe("parameter ordering", () => {
     it("should display dashboard-level parameters before inline parameters", () => {
       const dashboardParam = createMockUiParameter({

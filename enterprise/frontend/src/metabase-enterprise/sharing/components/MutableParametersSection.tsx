@@ -98,6 +98,9 @@ export const MutableParametersSection = ({
         parameters={valuePopulatedParameters}
         hideParameters={hiddenParameters}
         setParameterValue={setParameterValue}
+        setParameterValueToDefault={(id) =>
+          setParameterValue(id, PULSE_PARAM_USE_DEFAULT)
+        }
       />
     </CollapseSection>
   );
