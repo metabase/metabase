@@ -40,8 +40,6 @@
              (.getContextClassLoader (Thread/currentThread)))))))
 
 (deftest compile-to-temp-dir!-test
-  ;; A fixed, shared dir let a stale `__init.class` from another checkout stop the compile, so the gen-class file was
-  ;; never written again.
   (let [compile! #(classloader/compile-to-temp-dir! "mb-classloader-test" 'metabase.classloader.gen-class-fixture)
         dir      (compile!)]
     (testing "the gen-class then loads by name"

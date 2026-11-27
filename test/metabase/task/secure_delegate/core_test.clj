@@ -83,7 +83,7 @@
 
 (deftest install!-throws-when-the-compiled-class-will-not-load-test
   (testing "a compile that leaves the class unloadable throws instead of installing a class Quartz cannot load"
-    (mt/with-dynamic-fn-redefs [secure-delegate/class-loadable?        (constantly false)
+    (mt/with-dynamic-fn-redefs [secure-delegate/class-loadable?       (constantly false)
                                 secure-delegate/dev-compile-delegate! (fn [_ns-sym])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SecurePostgresDelegate still cannot be loaded"
                             (secure-delegate/install! :postgres))))))

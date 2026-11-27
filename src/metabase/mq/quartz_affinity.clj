@@ -131,8 +131,7 @@
 
 (defn ensure-delegate-loadable!
   "Ensure the affinity `DriverDelegate` subclass for `db-type` is loadable, and return its class name.
-  The uberjar has it AOT-compiled; in dev it is compiled at runtime into a temp dir on the classpath, deleted when the
-  JVM exits.
+  The uberjar has it AOT-compiled; in dev it is compiled at runtime into a temp dir on the classpath.
   Throws when the class still cannot be loaded after compiling."
   [db-type]
   (let [class-name (get delegate-class-name db-type default-delegate-class-name)]

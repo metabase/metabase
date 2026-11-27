@@ -78,8 +78,7 @@
 (defn install!
   "Set Quartz's `driverDelegateClass` to the secure delegate for `db-type`, and return its class name.
   Must run before the scheduler initializes.
-  From a jar (prod, e2e) the class is AOT-compiled and already present; from source (dev, test) it is compiled on
-  demand ([[dev-compile-delegate!]]).
+  From a jar the class is AOT-compiled; from source it is compiled on demand ([[dev-compile-delegate!]]).
   Throws when the class is missing from a jar, or still cannot be loaded after compiling from source."
   [db-type]
   (let [{:keys [class ns]} (get delegate db-type (:default delegate))]
