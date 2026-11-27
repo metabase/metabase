@@ -102,7 +102,10 @@ type SentParameter = {
 };
 
 type ResultRule = {
-  parameterId: string;
+  /** Omitted for a filter created in the test, whose id is generated */
+  parameterId?: string;
+  /** Defaults to the type of the fixture parameter with `parameterId` */
+  type?: string;
   value: unknown;
   total: string;
 };
@@ -133,9 +136,10 @@ function setupFilteredDashcardQueryEndpoint(rules: ResultRule[]) {
       ({ value }) => value != null,
     );
     const rule = rules.find(
-      ({ parameterId, value }) =>
+      ({ parameterId, type, value }) =>
         sent.length === 1 &&
-        sent[0].id === parameterId &&
+        (parameterId == null || sent[0].id === parameterId) &&
+        sent[0].type === type &&
         isSameValue(sent[0].value, value),
     );
     const total =
@@ -168,8 +172,24 @@ function getLastSentValues() {
   );
 }
 
-// Like the real API, a GET after a PUT returns the updated dashboard
-function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
+function getMappedFieldId(mapping: unknown): [string, number] | undefined {
+  if (!isObject(mapping) || typeof mapping.parameter_id !== "string") {
+    return undefined;
+  }
+  const target: unknown = mapping.target;
+  const fieldRef: unknown = Array.isArray(target) ? target[1] : undefined;
+  const fieldId: unknown = Array.isArray(fieldRef) ? fieldRef[1] : undefined;
+  return typeof fieldId === "number"
+    ? [mapping.parameter_id, fieldId]
+    : undefined;
+}
+
+// Like the real API, a GET after a PUT returns the updated dashboard, with the
+// fields of the saved parameter mappings in `param_fields`
+function setupPersistedDashboardEndpoints(
+  dashboard: Dashboard,
+  fieldsById: Record<number, Field>,
+) {
   let persistedDashboard = dashboard;
   fetchMock.get(
     `path:/api/dashboard/${dashboard.id}`,
@@ -183,6 +203,17 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
     const savedDashcards: unknown[] = Array.isArray(body.dashcards)
       ? body.dashcards
       : [];
+    const savedParamFields = Object.fromEntries(
+      savedDashcards
+        .flatMap((item) =>
+          isObject(item) && Array.isArray(item.parameter_mappings)
+            ? item.parameter_mappings.map(getMappedFieldId)
+            : [],
+        )
+        .filter((entry): entry is [string, number] => entry != null)
+        .filter(([, fieldId]) => fieldsById[fieldId] != null)
+        .map(([parameterId, fieldId]) => [parameterId, [fieldsById[fieldId]]]),
+    );
     persistedDashboard = {
       ...persistedDashboard,
       ...body,
@@ -195,6 +226,7 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
           ? { ...dashcard, parameter_mappings: saved.parameter_mappings }
           : dashcard;
       }),
+      param_fields: { ...persistedDashboard.param_fields, ...savedParamFields },
     };
     return persistedDashboard;
   });
@@ -253,12 +285,22 @@ async function setup({
   setupNotificationChannelsEndpoints({});
   setupSubscriptionsEndpoint([]);
   setupDatabasesEndpoints([database]);
-  setupPersistedDashboardEndpoints(dashboard);
+  setupPersistedDashboardEndpoints(dashboard, {
+    [PEOPLE.CITY]: createPeopleCityField(),
+    [PEOPLE.SOURCE]: createPeopleSourceField(),
+  });
   setupDashboardQueryMetadataEndpoint(
     dashboard,
     createMockDashboardQueryMetadata({ databases: [database] }),
   );
-  setupFilteredDashcardQueryEndpoint(rules);
+  setupFilteredDashcardQueryEndpoint(
+    rules.map((rule) => ({
+      ...rule,
+      type:
+        rule.type ??
+        checkNotNull(parameters.find(({ id }) => id === rule.parameterId)).type,
+    })),
+  );
   setupCollectionsEndpoints({ collections: [] });
   setupSearchEndpoints([]);
   setupCardsEndpoints([ORDERS_CARD]);
@@ -373,13 +415,145 @@ async function openDefaultValuePicker(sidebar: HTMLElement) {
 }
 
 type OperatorCase = {
-  name: string;
-  parameterId: string;
+  /** The operator name in the sidebar */
+  operator: string;
+  single?: boolean;
+  /** The parameter type that the operator stands for */
+  type: string;
   value: unknown[];
   total: string;
-  widgetText?: string | RegExp;
+  widgetText: string;
   pickValue: (dropdown: HTMLElement) => Promise<void>;
 };
+
+type CreatedParameter = { id: string; name: string; type: string };
+
+function getCreatedParameter(existingIds: string[]): CreatedParameter {
+  const saved = getSavedParameters();
+  const created = (Array.isArray(saved) ? saved : []).find(
+    (parameter: unknown) =>
+      isObject(parameter) &&
+      typeof parameter.id === "string" &&
+      !existingIds.includes(parameter.id),
+  );
+  if (
+    !isObject(created) ||
+    typeof created.id !== "string" ||
+    typeof created.name !== "string" ||
+    typeof created.type !== "string"
+  ) {
+    throw new Error("Expected the saved dashboard to have a new parameter");
+  }
+  return { id: created.id, name: created.name, type: created.type };
+}
+
+async function chooseOperator(
+  sidebar: HTMLElement,
+  sectionName: string,
+  operator: string,
+) {
+  const operatorInput = checkNotNull(
+    within(sidebar)
+      .getAllByRole("textbox")
+      .find(
+        (input) =>
+          input.getAttribute("aria-haspopup") === "listbox" &&
+          input instanceof HTMLInputElement &&
+          input.value !== sectionName,
+      ),
+  );
+  if (
+    operatorInput instanceof HTMLInputElement &&
+    operatorInput.value === operator
+  ) {
+    return;
+  }
+  await userEvent.click(operatorInput);
+  await userEvent.click(await screen.findByRole("option", { name: operator }));
+}
+
+async function mapDashcardTo(columnName: string) {
+  await userEvent.click(
+    within(screen.getByTestId("dashcard")).getByText("Select…"),
+  );
+  const option = await screen.findByRole("option", { name: columnName });
+  await userEvent.click(within(option).getByText(columnName));
+}
+
+interface CreatedOperatorCaseOpts {
+  sectionName: string;
+  columnName: string;
+  target: ParameterTarget;
+  existing: Parameter;
+  existingTarget: ParameterTarget;
+  /** Text filters offer single and multiple values, multiple by default */
+  hasMultipleValuesByDefault?: boolean;
+}
+
+// Adds the filter through the sidebar like a user, next to an existing filter
+// of the same section, then sets its value through its widget
+async function expectCreatedOperatorCase(
+  { operator, single, type, value, total, widgetText, pickValue }: OperatorCase,
+  {
+    sectionName,
+    columnName,
+    target,
+    existing,
+    existingTarget,
+    hasMultipleValuesByDefault = false,
+  }: CreatedOperatorCaseOpts,
+) {
+  await setup({
+    parameters: [existing],
+    targets: { [existing.id]: existingTarget },
+    rules: [{ type, value, total }],
+  });
+  await startEditing();
+  await userEvent.click(screen.getByLabelText("Add a filter or parameter"));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: sectionName }),
+  );
+  const sidebar = await screen.findByTestId("dashboard-parameter-sidebar");
+  await chooseOperator(sidebar, sectionName, operator);
+  if (hasMultipleValuesByDefault) {
+    expect(
+      within(sidebar).getByRole("radio", { name: "Multiple values" }),
+    ).toBeChecked();
+  }
+  if (single) {
+    await userEvent.click(
+      within(sidebar).getByRole("radio", { name: "A single value" }),
+    );
+    expect(
+      within(sidebar).getByRole("radio", { name: "A single value" }),
+    ).toBeChecked();
+  }
+  await mapDashcardTo(columnName);
+  await saveDashboard();
+
+  const created = getCreatedParameter([existing.id]);
+  expect(getSavedParameters()).toContainEqual(
+    expect.objectContaining({
+      id: created.id,
+      type,
+      ...(single ? { isMultiSelect: false } : {}),
+    }),
+  );
+  await expectDashcardTotal(UNFILTERED_TOTAL);
+
+  await pickValue(await openFilterWidget(created.name));
+
+  await expectDashcardTotal(total);
+  expect(getLastSentValues()).toEqual({ [created.id]: value });
+  expect(
+    getLastSentParameters().find(({ id }) => id === created.id),
+  ).toMatchObject({ type, value, target });
+  expect(getFilterWidget(created.name)).toHaveTextContent(widgetText);
+
+  await clearFilterWidget(created.name);
+  await expectDashcardTotal(UNFILTERED_TOTAL);
+  expect(getLastSentValues()).toEqual({});
+}
 
 function typeAndAdd(text: string) {
   return async (dropdown: HTMLElement) => {
@@ -406,28 +580,6 @@ function pickFromListAndAdd(label: string) {
       within(dropdown).getByRole("button", { name: "Add filter" }),
     );
   };
-}
-
-async function expectOperatorCase(
-  { name, parameterId, value, total, widgetText, pickValue }: OperatorCase,
-  target: ParameterTarget,
-) {
-  await expectDashcardTotal(UNFILTERED_TOTAL);
-
-  await pickValue(await openFilterWidget(name));
-
-  await expectDashcardTotal(total);
-  expect(getLastSentValues()).toEqual({ [parameterId]: value });
-  expect(
-    getLastSentParameters().find(({ id }) => id === parameterId),
-  ).toMatchObject({ target });
-  if (widgetText) {
-    expect(getFilterWidget(name)).toHaveTextContent(widgetText);
-  }
-
-  await clearFilterWidget(name);
-  await expectDashcardTotal(UNFILTERED_TOTAL);
-  expect(getLastSentValues()).toEqual({});
 }
 
 const CREATED_AT_TARGET: ParameterTarget = [
@@ -656,7 +808,12 @@ describe("DashboardApp > filters", () => {
         expect(getLastSentValues()).toEqual({ [parameterId]: value });
         expect(
           getLastSentParameters().find(({ id }) => id === parameterId),
-        ).toMatchObject({ target: CREATED_AT_TARGET });
+        ).toMatchObject({
+          type: checkNotNull(
+            DATE_PARAMETERS.find(({ id }) => id === parameterId),
+          ).type,
+          target: CREATED_AT_TARGET,
+        });
 
         await clearFilterWidget(name);
         await expectDashcardTotal(UNFILTERED_TOTAL);
@@ -1005,61 +1162,75 @@ describe("DashboardApp > filters", () => {
 
     const NUMBER_CASES: OperatorCase[] = [
       {
-        name: "Equal to",
-        parameterId: "equal",
+        operator: "Equal to",
+        type: "number/=",
         value: [2.07],
         total: "37.65",
+        widgetText: "2.07",
         pickValue: typeInComboboxAndAdd("2.07"),
       },
       {
-        name: "Equal to single",
-        parameterId: "equal-single",
+        operator: "Equal to",
+        single: true,
+        type: "number/=",
         value: [2.07],
         total: "37.65",
+        widgetText: "2.07",
         pickValue: typeAndAdd("2.07"),
       },
       {
-        name: "Not equal to",
-        parameterId: "not-equal",
+        operator: "Not equal to",
+        type: "number/!=",
         value: [2.07],
         total: "110.93",
+        widgetText: "2.07",
         pickValue: typeInComboboxAndAdd("2.07"),
       },
       {
-        name: "Not equal to single",
-        parameterId: "not-equal-single",
+        operator: "Not equal to",
+        single: true,
+        type: "number/!=",
         value: [2.07],
         total: "110.93",
+        widgetText: "2.07",
         pickValue: typeAndAdd("2.07"),
       },
       {
-        name: "Greater than or equal to",
-        parameterId: "greater",
+        operator: "Greater than or equal to",
+        type: "number/>=",
         value: [6.01],
         total: "110.93",
+        widgetText: "6.01",
         pickValue: typeAndAdd("6.01"),
       },
       {
-        name: "Less than or equal to",
-        parameterId: "less",
+        operator: "Less than or equal to",
+        type: "number/<=",
         value: [2],
         total: "29.8",
+        widgetText: "2",
         pickValue: typeAndAdd("2"),
       },
     ];
 
-    it.each(NUMBER_CASES)(
-      "should filter the card by a $name filter set through its widget, and clear it",
+    it.each(
+      NUMBER_CASES.map((operatorCase) => ({ single: false, ...operatorCase })),
+    )(
+      "should filter the card by a $operator filter (single: $single) added through the sidebar and set through its widget, and clear it",
       async (operatorCase) => {
-        await setup({
-          parameters: NUMBER_PARAMETERS,
-          targets: NUMBER_TARGETS,
-          rules: [operatorCase],
+        await expectCreatedOperatorCase(operatorCase, {
+          sectionName: "Number",
+          columnName: "Tax",
+          target: TAX_TARGET,
+          existing: createMockParameter({
+            id: "existing-number",
+            name: "Existing number",
+            slug: "existing_number",
+            type: "number/between",
+            sectionId: "number",
+          }),
+          existingTarget: TOTAL_TARGET,
         });
-        await expectOperatorCase(
-          operatorCase,
-          NUMBER_TARGETS[operatorCase.parameterId],
-        );
       },
     );
 
@@ -1114,187 +1285,138 @@ describe("DashboardApp > filters", () => {
   });
 
   describe("location", () => {
-    const LOCATION_OPERATORS = [
+    const LOCATION_CASES: OperatorCase[] = [
       ["Is", "string/=", "Abbeville", "1510"],
       ["Is not", "string/!=", "Wood River", "148.23"],
       ["Contains", "string/contains", "bbev", "1510"],
       ["Does not contain", "string/does-not-contain", "d", "47.68"],
       ["Starts with", "string/starts-with", "Lake", "122.37"],
       ["Ends with", "string/ends-with", "y", "115.24"],
-    ] as const;
+    ].map(([operator, type, text, total]) => ({
+      operator,
+      type,
+      value: [text],
+      total,
+      widgetText: text,
+      pickValue: typeInComboboxAndAdd(text),
+    }));
 
-    const LOCATION_PARAMETERS = LOCATION_OPERATORS.map(([name, type]) =>
-      createMockParameter({
-        id: type,
-        name,
-        slug: type.replace(/\W/g, "_"),
-        type,
-        sectionId: "location",
-      }),
-    );
-
-    const LOCATION_TARGETS = Object.fromEntries(
-      LOCATION_PARAMETERS.map(({ id }) => [id, CITY_TARGET]),
-    );
-
-    const LOCATION_CASES: OperatorCase[] = LOCATION_OPERATORS.map(
-      ([name, type, text, total]) => ({
-        name,
-        parameterId: type,
-        value: [text],
-        total,
-        widgetText: text,
-        pickValue: typeInComboboxAndAdd(text),
-      }),
-    );
-
-    function setupCityValues() {
-      LOCATION_PARAMETERS.forEach(({ id }) => {
+    it.each(LOCATION_CASES)(
+      "should filter the card by an $operator location filter added through the sidebar and set through its widget, and clear it",
+      async (operatorCase) => {
         const parameterValues: ParameterValues = {
           values: [["Abbeville"], ["Lake Ann"], ["Wood River"]],
           has_more_values: true,
         };
         setupDashboardParameterValuesEndpoint({
           dashboardId: DASHBOARD_ID,
-          parameterId: id,
           parameterValues,
         });
         setupDashboardParameterSearchEndpoint({
           dashboardId: DASHBOARD_ID,
-          parameterId: id,
           parameterValues,
         });
-      });
-    }
-
-    it.each(LOCATION_CASES)(
-      "should filter the card by an $name location filter set through its widget, and clear it",
-      async (operatorCase) => {
-        setupCityValues();
-        await setup({
-          parameters: LOCATION_PARAMETERS,
-          targets: LOCATION_TARGETS,
-          paramFields: Object.fromEntries(
-            LOCATION_PARAMETERS.map(({ id }) => [
-              id,
-              [createPeopleCityField()],
-            ]),
-          ),
-          rules: [operatorCase],
+        setupParameterValuesEndpoints(parameterValues);
+        await expectCreatedOperatorCase(operatorCase, {
+          sectionName: "Location",
+          columnName: "City",
+          target: CITY_TARGET,
+          existing: createMockParameter({
+            id: "existing-location",
+            name: "Existing location",
+            slug: "existing_location",
+            type: "string/ends-with",
+            sectionId: "location",
+          }),
+          existingTarget: CITY_TARGET,
         });
-        await expectOperatorCase(
-          operatorCase,
-          LOCATION_TARGETS[operatorCase.parameterId],
-        );
       },
     );
   });
 
   describe("text", () => {
-    const TEXT_OPERATORS = [
-      ["Is", "string/=", false],
-      ["Is not", "string/!=", false],
-      ["Contains", "string/contains", true],
-      ["Contains single", "string/contains", false],
-      ["Does not contain", "string/does-not-contain", true],
-      ["Does not contain single", "string/does-not-contain", false],
-      ["Starts with", "string/starts-with", true],
-      ["Starts with single", "string/starts-with", false],
-      ["Ends with", "string/ends-with", true],
-      ["Ends with single", "string/ends-with", false],
-    ] as const;
-
-    const TEXT_PARAMETERS = TEXT_OPERATORS.map(([name, type, isMultiSelect]) =>
-      createMockParameter({
-        id: name.replace(/\W/g, "-").toLowerCase(),
-        name,
-        slug: name.replace(/\W/g, "_").toLowerCase(),
-        type,
-        sectionId: "string",
-        isMultiSelect,
-      }),
-    );
-
-    const TEXT_TARGETS = Object.fromEntries(
-      TEXT_PARAMETERS.map(({ id }) => [id, SOURCE_TARGET]),
-    );
-
     const TEXT_CASES: OperatorCase[] = [
       {
-        name: "Is",
-        parameterId: "is",
+        operator: "Is",
+        single: true,
+        type: "string/=",
         value: ["Organic"],
         total: "39.58",
         widgetText: "Organic",
         pickValue: pickFromListAndAdd("Organic"),
       },
       {
-        name: "Is not",
-        parameterId: "is-not",
+        operator: "Is not",
+        single: true,
+        type: "string/!=",
         value: ["Twitter"],
         total: "148.23",
         widgetText: "Twitter",
         pickValue: pickFromListAndAdd("Twitter"),
       },
       {
-        name: "Contains",
-        parameterId: "contains",
+        operator: "Contains",
+        type: "string/contains",
         value: ["oo", "aa"],
         total: "148.23",
         widgetText: "2 selections",
         pickValue: typeInComboboxAndAdd("oo,aa"),
       },
       {
-        name: "Contains single",
-        parameterId: "contains-single",
+        operator: "Contains",
+        single: true,
+        type: "string/contains",
         value: ['"oo,aa"'],
         total: "No results",
         widgetText: "oo,aa",
         pickValue: typeAndAdd('"oo,aa"'),
       },
       {
-        name: "Does not contain",
-        parameterId: "does-not-contain",
+        operator: "Does not contain",
+        type: "string/does-not-contain",
         value: ["oo", "tt"],
         total: "39.58",
         widgetText: "2 selections",
         pickValue: typeInComboboxAndAdd("oo,tt"),
       },
       {
-        name: "Does not contain single",
-        parameterId: "does-not-contain-single",
+        operator: "Does not contain",
+        single: true,
+        type: "string/does-not-contain",
         value: ['"oo,tt"'],
         total: "37.65",
         widgetText: "oo,tt",
         pickValue: typeAndAdd('"oo,tt"'),
       },
       {
-        name: "Starts with",
-        parameterId: "starts-with",
+        operator: "Starts with",
+        type: "string/starts-with",
         value: ["A", "b"],
         total: "85.72",
         widgetText: "2 selections",
         pickValue: typeInComboboxAndAdd("A,b"),
       },
       {
-        name: "Starts with single",
-        parameterId: "starts-with-single",
+        operator: "Starts with",
+        single: true,
+        type: "string/starts-with",
         value: ['"A,b"'],
         total: "No results",
         widgetText: "A,b",
         pickValue: typeAndAdd('"A,b"'),
       },
       {
-        name: "Ends with",
-        parameterId: "ends-with",
+        operator: "Ends with",
+        type: "string/ends-with",
         value: ["e", "s"],
         total: "47.68",
         widgetText: "2 selections",
         pickValue: typeInComboboxAndAdd("e,s"),
       },
       {
-        name: "Ends with single",
-        parameterId: "ends-with-single",
+        operator: "Ends with",
+        single: true,
+        type: "string/ends-with",
         value: ['"e,s"'],
         total: "No results",
         widgetText: "e,s",
@@ -1302,32 +1424,30 @@ describe("DashboardApp > filters", () => {
       },
     ];
 
-    function setupSourceValues() {
-      TEXT_PARAMETERS.forEach(({ id }) => {
+    it.each(
+      TEXT_CASES.map((operatorCase) => ({ single: false, ...operatorCase })),
+    )(
+      "should filter the card by a $operator text filter (single: $single) added through the sidebar and set through its widget, and clear it",
+      async (operatorCase) => {
         setupDashboardParameterValuesEndpoint({
           dashboardId: DASHBOARD_ID,
-          parameterId: id,
           parameterValues: SOURCE_VALUES,
         });
-      });
-    }
-
-    it.each(TEXT_CASES)(
-      "should filter the card by a $name text filter set through its widget, and clear it",
-      async (operatorCase) => {
-        setupSourceValues();
-        await setup({
-          parameters: TEXT_PARAMETERS,
-          targets: TEXT_TARGETS,
-          paramFields: Object.fromEntries(
-            TEXT_PARAMETERS.map(({ id }) => [id, [createPeopleSourceField()]]),
-          ),
-          rules: [operatorCase],
+        setupParameterValuesEndpoints(SOURCE_VALUES);
+        await expectCreatedOperatorCase(operatorCase, {
+          sectionName: "Text or Category",
+          columnName: "Source",
+          target: SOURCE_TARGET,
+          existing: createMockParameter({
+            id: "existing-text",
+            name: "Existing text",
+            slug: "existing_text",
+            type: "string/contains",
+            sectionId: "string",
+          }),
+          existingTarget: SOURCE_TARGET,
+          hasMultipleValuesByDefault: true,
         });
-        await expectOperatorCase(
-          operatorCase,
-          TEXT_TARGETS[operatorCase.parameterId],
-        );
       },
     );
   });
@@ -1675,7 +1795,7 @@ describe("DashboardApp > filters", () => {
         });
         expect(
           getLastSentParameters().find(({ id }) => id === filter.parameter.id),
-        ).toMatchObject({ target: filter.target });
+        ).toMatchObject({ type: "id", target: filter.target });
         expect(getFilterWidget(filter.parameter.name)).toHaveTextContent(
           filter.widgetText,
         );

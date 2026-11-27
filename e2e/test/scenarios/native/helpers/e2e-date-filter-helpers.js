@@ -10,32 +10,8 @@ export function setMonthAndYear({ month, year } = {}) {
   });
 }
 
-export function setQuarterAndYear({ quarter, year } = {}) {
-  popover().within(() => {
-    cy.findByText(currentYearString).click();
-    cy.findByText(year).click();
-    cy.findByText(quarter).click();
-  });
-}
-
 export function setSingleDate(date) {
   popover().findByLabelText("Date").clear().type(date).blur();
-}
-
-export function setTime({ hours, minutes }) {
-  popover().within(() => {
-    cy.findByText("Add time").click();
-    cy.findByLabelText("Time")
-      .clear()
-      .type(
-        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`,
-      );
-  });
-}
-
-export function setDateRange({ startDate, endDate } = {}) {
-  cy.findByLabelText("Start date").clear().type(startDate).blur();
-  cy.findByLabelText("End date").clear().type(endDate).blur();
 }
 
 export function setRelativeDate(term) {

@@ -97,23 +97,29 @@ export function setupValidFilterFieldsEndpoint(
   );
 }
 
+/**
+ * Without `parameterId`, answers for every parameter of the dashboard, such as one created in the test.
+ */
 export function setupDashboardParameterValuesEndpoint({
   dashboardId,
   parameterId,
   parameterValues,
 }: {
   dashboardId: DashboardId;
-  parameterId: ParameterId;
+  parameterId?: ParameterId;
   parameterValues: ParameterValues;
 }) {
   fetchMock.get(
-    `path:/api/dashboard/${dashboardId}/params/${parameterId}/values`,
+    parameterId != null
+      ? `path:/api/dashboard/${dashboardId}/params/${parameterId}/values`
+      : `express:/api/dashboard/${dashboardId}/params/:parameterId/values`,
     parameterValues,
   );
 }
 
 /**
  * Like the real API, returns the values that contain the search query, ignoring case.
+ * Without `parameterId`, answers for every parameter of the dashboard.
  */
 export function setupDashboardParameterSearchEndpoint({
   dashboardId,
@@ -121,11 +127,13 @@ export function setupDashboardParameterSearchEndpoint({
   parameterValues,
 }: {
   dashboardId: DashboardId;
-  parameterId: ParameterId;
+  parameterId?: ParameterId;
   parameterValues: ParameterValues;
 }) {
   fetchMock.get(
-    `begin:http://localhost/api/dashboard/${dashboardId}/params/${parameterId}/search/`,
+    parameterId != null
+      ? `begin:http://localhost/api/dashboard/${dashboardId}/params/${parameterId}/search/`
+      : `express:/api/dashboard/${dashboardId}/params/:parameterId/search/:query`,
     ({ url }) => {
       const query = decodeURIComponent(
         new URL(url).pathname.split("/").pop() ?? "",
