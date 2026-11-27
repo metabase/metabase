@@ -147,6 +147,18 @@
                     (map (partial lib/display-info query')
                          (lib/filters query'))))))))))
 
+(deftest ^:parallel filterable-columns-with-negated-segment-filter-test
+  (testing "filterable columns of query filtered by negated segment (metabase#71317)"
+    (let [query  (lib/query metadata-provider (meta/table-metadata :venues))
+          query' (-> query
+                     (lib/filter (lib/not (first (lib/available-segments query))))
+                     (lib/filter (lib/= (meta/field-metadata :venues :price) 2)))]
+      (is (= [["PRICE" [1]]]
+             (keep (fn [{column-name :name, :keys [filter-positions]}]
+                     (when filter-positions
+                       [column-name filter-positions]))
+                   (lib/filterable-columns query')))))))
+
 (defn- segment-definition-with-filter
   "Create an MBQL5 segment definition with the given filter clause and metadata provider."
   [mp filter-clause]

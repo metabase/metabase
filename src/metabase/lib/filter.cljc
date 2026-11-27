@@ -503,11 +503,11 @@
    (perf/not-empty (into [] (mapcat flatten-and-clause) (filters query stage-number)))))
 
 (defn- leading-ref
-  "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
+  "Returns the first argument of `a-filter` if it is a reference to a column, nil otherwise."
   [a-filter]
   (when-let [leading-arg (clojure.core/and (lib.util/clause? a-filter)
                                            (get a-filter 2))]
-    (when (lib.util/ref-clause? leading-arg)
+    (when (lib.util/clause-of-type? leading-arg #{:field :expression :aggregation})
       leading-arg)))
 
 (mu/defn filterable-columns :- [:maybe [:sequential [:ref ::lib.schema.metadata/column]]]
