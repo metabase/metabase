@@ -326,11 +326,6 @@
   [_driver _feature _database]
   true)
 
-;;; the native get week of sqlite is not iso, and it's not easy to implement in raw sql, so skips it for now
-(defmethod driver/database-supports? [:sqlite ::extract-week-test]
-  [_driver _feature _database]
-  false)
-
 (deftest extract-week-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract ::extract-week-test)
