@@ -423,6 +423,20 @@
            (is (contains? (names {:supports-mcp-ui? true}) "ui_probe"))
            (is (not (contains? (names {:supports-mcp-ui? false}) "ui_probe")))))))))
 
+(deftest descriptions-only-reference-listed-tools-test
+  (testing "a client without MCP Apps UI support is shown no tool description naming a tool stripped from its list (#82383)"
+    (let [all-names (set (map :name (registry/list-tools {:supports-mcp-ui? true})))
+          shown     (registry/list-tools {:supports-mcp-ui? false})
+          listed    (set (map :name shown))
+          stripped  (set/difference all-names listed)
+          mentions  (fn [tool]
+                      (let [text (json/encode (select-keys tool [:description :inputSchema :outputSchema]))]
+                        (into #{} (filter #(re-find (re-pattern (str "\\b" % "\\b")) text)) stripped)))]
+      (is (seq stripped))
+      (doseq [tool shown]
+        (testing (:name tool)
+          (is (empty? (mentions tool))))))))
+
 (deftest write-tools-are-annotated-as-mutating-test
   (testing "a tool named `*_write` declares `:readOnlyHint false`. This guards the enumeration the
             two tests below depend on: a write tool that omitted the annotation would drop out of

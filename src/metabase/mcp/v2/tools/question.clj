@@ -487,7 +487,7 @@
    [:card_type {:optional true}
     [:maybe [:enum {:description "\"question\" (default) or \"model\"."} "question" "model"]]]
    [:query_handle {:optional true}
-    [:maybe [:string {:description (str "A handle returned by execute_query, execute_sql, or visualize_query. The "
+    [:maybe [:string {:description (str "A handle returned by execute_query, execute_sql, or a visualization tool. The "
                                         "preferred query source on create: it saves exactly the query that tool "
                                         "validated.")}]]]
    [:query {:optional true}
