@@ -10,6 +10,7 @@
    [clojure.walk :as walk]
    [malli.error :as me]
    [malli.json-schema :as mjs]
+   [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.config :as metabot.config]
@@ -30,17 +31,24 @@
 ;;; ------------------------------------------------- Registry -------------------------------------------------------
 
 (mr/def ::feature-id
-  "A feature id. It is also the `ai_usage_log.source` of the feature's calls, so it can't change once stored."
+  "A feature id: a qualified keyword named for the module that owns the feature, such as `:filters/ask-ai`."
+  qualified-keyword?)
+
+(mr/def ::source
+  "The `ai_usage_log.source` of a feature's calls. It is stored, so it can't change once a feature ships."
   [:re #"^[a-z][a-z0-9_]*$"])
 
 (mr/def ::registry-entry
   "What stays the same for every call a feature makes.
 
+  - `:source`: the [[::source]] its calls are logged under.
   - `:model`: the role whose model the feature calls, named after the admin's model pickers. Never a model string,
     so a feature can reach only the models the admin chose.
   - `:permission`: the Metabot permission the user needs, on top of the base `:permission/metabot`.
-  - `:trigger`: `:user` when a user asks for the call, so it counts as a message, or `:background`."
+  - `:trigger`: `:user` when a user asks for the call, so it counts as a message and needs a bound user, or
+    `:background` for a job, which may act for the instance with no user."
   [:map {:closed true}
+   [:source     ::source]
    [:model      [:enum :llm/mini :llm/default]]
    [:permission (into [:enum] (keys scope/metabot-permissions))]
    [:trigger    [:enum :user :background]]])
@@ -48,24 +56,28 @@
 (def registry
   "Every one-call feature, by feature id. Metabot reviews each entry. Agent sources such as `metabot_agent` are not
   one-call features and stay out of this map."
-  {"conversation_title"
-   {:model      :llm/mini
+  {:metabot/conversation-title
+   {:source     "conversation_title"
+    :model      :llm/mini
     :permission :permission/metabot
     :trigger    :background}
 
-   "example_question_generation_batch"
-   {:model      :llm/default
+   :metabot/example-questions
+   {:source     "example_question_generation_batch"
+    :model      :llm/default
     :permission :permission/metabot-other-tools
     :trigger    :background}
 
-   "contextual_interestingness"
-   {:model      :llm/mini
+   :contextual-interestingness/score
+   {:source     "contextual_interestingness"
+    :model      :llm/mini
     :permission :permission/metabot-other-tools
     :trigger    :background}
 
    ;; Better Filters, not built yet: here to show what a feature outside Metabot registers.
-   "filters_ask_ai"
-   {:model      :llm/mini
+   :filters/ask-ai
+   {:source     "filters_ask_ai"
+    :model      :llm/mini
     :permission :permission/metabot-nlq
     :trigger    :user}})
 
@@ -74,10 +86,15 @@
   [feature-id]
   (get registry feature-id))
 
-(defn message-feature-ids
-  "The ids of the features whose calls count as messages under a message limit: those a user triggers."
+(defn sources
+  "The `ai_usage_log.source` of every registered feature."
   []
-  (into #{} (keep (fn [[id {:keys [trigger]}]] (when (= :user trigger) id))) registry))
+  (into #{} (map :source) (vals registry)))
+
+(defn message-sources
+  "The sources of the features whose calls count as messages under a message limit: those a user triggers."
+  []
+  (into #{} (keep (fn [{:keys [source trigger]}] (when (= :user trigger) source))) (vals registry)))
 
 ;;; ------------------------------------------------- Options --------------------------------------------------------
 
@@ -137,7 +154,14 @@
   ([type status-code error-code message data cause]
    (ex-info message (merge data {:type type :status-code status-code :error-code error-code}) cause)))
 
+(defn- explanation-paths
+  "Where `value` fails `schema`, as the paths of the failing parts, with none of their values. An invalid call is a 500,
+  whose ex-data can reach the client and the logs, so it must not carry option or prompt values."
+  [schema value]
+  (into [] (comp (map (comp vec :in)) (distinct)) (:errors (mr/explain schema value))))
+
 (defn- invalid-call-error
+  "The error of a call that is set up wrong. `data` must hold no option or prompt values: see [[explanation-paths]]."
   [feature-id reason data]
   (log/errorf "Invalid AI feature call for %s: %s %s" (pr-str feature-id) reason (pr-str data))
   (error :metabot/invalid-call 500 "ai_feature_invalid_call"
@@ -179,10 +203,13 @@
       (throw (invalid-call-error feature-id "invalid registry entry"
                                  {:explanation (me/humanize (mr/explain ::registry-entry entry))})))
     (when-not (mr/validate ::audience audience)
-      (throw (invalid-call-error feature-id "invalid audience" {:audience audience})))
+      (throw (invalid-call-error feature-id "invalid audience" {})))
+    ;; A missing user never grants the instance's authority: a job declares that it acts for the instance with
+    ;; `:trigger :background`.
+    (when (and (= :user (:trigger entry)) (nil? api/*current-user-id*))
+      (throw (invalid-call-error feature-id "no user" {})))
     (when (and opts (not (mr/validate ::options opts)))
-      (throw (invalid-call-error feature-id "invalid options"
-                                 {:explanation (me/humanize (mr/explain ::options opts))})))
+      (throw (invalid-call-error feature-id "invalid options" {:invalid-paths (explanation-paths ::options opts)})))
     (when-let [missing (self/missing-required-permission (:permission entry))]
       (throw (error :metabot/permission-denied 403 "permission_denied"
                     (tru "You don''t have permission to use this AI feature.")
@@ -199,14 +226,21 @@
         (throw (error :metabot/usage-limit-reached 429 "ai_usage_limit_reached" limit-msg)))
       {:entry entry :model-ref model-ref})))
 
+(defn check!
+  "Throw the typed error [[call!]] would throw for `feature-id` serving `audience` before it contacts the provider, or
+  return nil when the call would go ahead. Call it first in an endpoint, before reading any data for the prompt.
+  Runs the same checks as [[call!]], except the options and the prompt size. Resolves against the current user."
+  [feature-id audience]
+  (check-call! feature-id audience nil)
+  nil)
+
 (defn unavailable-reason
   "The `:type` of the error [[call!]] would throw for `feature-id` serving `audience` before it contacts the provider,
   or nil when the call would go ahead. Runs the same checks as [[call!]], except the options, so a feature can hide
   its AI options when the call would refuse. Resolves against the current user."
   [feature-id audience]
   (try
-    (check-call! feature-id audience nil)
-    nil
+    (check! feature-id audience)
     (catch clojure.lang.ExceptionInfo e
       (or (:type (ex-data e)) (throw e)))))
 
@@ -356,24 +390,51 @@
 
 ;;; --------------------------------------------------- Call ---------------------------------------------------------
 
-(defn- with-deadline
-  "Run `thunk` and return its value, or throw `:metabot/timeout` once `timeout-ms` passes. Runs `thunk` on another
-  thread, which carries this thread's bindings.
+(def max-prompt-chars
+  "The longest prompt, in characters over all its messages, that a call to each model role may send. A longer one
+  throws `:metabot/prompt-too-large` before the provider is called, as a provider's context-overflow error does."
+  {:llm/mini    100000
+   :llm/default 400000})
 
-  At the deadline the thread is interrupted, which ends a retry's backoff sleep. A blocking socket read ignores the
-  interrupt, so the provider request runs on until the request timeout ends it: true transport cancellation is still
-  missing."
-  [feature-id timeout-ms thunk]
+(defn- check-prompt-size!
+  [feature-id role messages]
+  (let [chars (transduce (map (comp count :content)) + 0 messages)
+        limit (long (get max-prompt-chars role))]
+    (when (> chars limit)
+      (throw (error :metabot/prompt-too-large 400 "ai_prompt_too_large"
+                    (tru "The request is too large for the AI model.")
+                    {:feature-id feature-id :prompt-chars chars :max-prompt-chars limit} nil)))))
+
+(defn- timeout-error
+  [feature-id timeout-ms cause]
+  (error :metabot/timeout 504 "ai_timeout"
+         (tru "The AI model took too long to answer. Please try again.")
+         {:feature-id feature-id :timeout-ms timeout-ms} cause))
+
+(defn- with-deadline
+  "Run `thunk` and return its value, or throw `:metabot/timeout` once `timeout-ms` passes.
+
+  `deadline-nanos` is the `System/nanoTime` of the deadline, which the call also hands the provider layer, so each
+  request's socket timeout is the time left and no retry waits past it. A failure after the deadline has passed is
+  a timeout. `thunk` runs on another thread, which carries this thread's bindings, and as a backstop that thread is
+  interrupted at the deadline."
+  [feature-id timeout-ms deadline-nanos thunk]
   (if-not timeout-ms
     (thunk)
-    (let [^Future fut (future-call thunk)]
+    (let [^Future fut (future-call
+                       (fn []
+                         (try
+                           (thunk)
+                           (catch Exception e
+                             (throw (if (and (<= (long deadline-nanos) (System/nanoTime))
+                                             (not= :metabot/structured-output-invalid (:type (ex-data e))))
+                                      (timeout-error feature-id timeout-ms e)
+                                      e))))))]
       (try
-        (.get fut (long timeout-ms) TimeUnit/MILLISECONDS)
+        (.get fut (max 0 (quot (- (long deadline-nanos) (System/nanoTime)) 1000000)) TimeUnit/MILLISECONDS)
         (catch TimeoutException _
           (.cancel fut true)
-          (throw (error :metabot/timeout 504 "ai_timeout"
-                        (tru "The AI model took too long to answer. Please try again.")
-                        {:feature-id feature-id :timeout-ms timeout-ms} nil)))
+          (throw (timeout-error feature-id timeout-ms nil)))
         (catch ExecutionException e
           (throw (or (.getCause e) e)))))))
 
@@ -393,25 +454,33 @@
 
   Throws `ex-info` with `:type`, `:status-code` and `:error-code`, whose message is translated and safe to show any
   user. Checked in this order before the provider is called: `:metabot/ai-disabled`, `:metabot/metabot-disabled`
-  (the Metabot setting of `:audience`), `:metabot/invalid-call`,
-  `:metabot/permission-denied`, `:metabot/llm-not-configured`, `:metabot/managed-limit-reached` and
-  `:metabot/usage-limit-reached`. Then `:metabot/prompt-too-large`, `:metabot/provider-failure` (with its
-  `:provider-failure` kind), `:metabot/timeout`, `:metabot/structured-output-incomplete` and
-  `:metabot/structured-output-invalid`."
+  (the Metabot setting of `:audience`), `:metabot/invalid-call` (including a `:trigger :user` feature with no bound
+  user), `:metabot/permission-denied`, `:metabot/llm-not-configured`, `:metabot/managed-limit-reached`,
+  `:metabot/usage-limit-reached` and `:metabot/prompt-too-large` (see [[max-prompt-chars]]). Then
+  `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
+  `:metabot/structured-output-incomplete` and `:metabot/structured-output-invalid`."
   [feature-id opts]
   (let [{:keys [entry model-ref]}                     (check-call! feature-id (:audience opts) opts)
         {:keys [prompt response timeout-ms max-attempts
                 request-id conversation-id]}          opts
         {:keys [schema max-tokens temperature]}       response
+        deadline-nanos                                (when timeout-ms
+                                                        (+ (System/nanoTime) (* (long timeout-ms) 1000000)))
         json-schema                                   (response-json-schema schema)
         messages                                      (render-prompt prompt (new-boundary (:untrusted prompt)))
-        tracking-opts                                 (cond-> {:source     feature-id
-                                                               :tag        feature-id
+        _                                             (check-prompt-size! feature-id (:model entry) messages)
+        tracking-opts                                 (cond-> {:source     (:source entry)
+                                                               :tag        (:source entry)
                                                                :request-id (or request-id (str (random-uuid)))}
-                                                        conversation-id                (assoc :session-id conversation-id)
-                                                        max-attempts                   (assoc :max-attempts max-attempts)
-                                                        (= :llm/default (:model entry)) (assoc :fast? (metabot.settings/llm-fast-mode)))]
-    (with-deadline feature-id timeout-ms
+                                                        conversation-id (assoc :session-id conversation-id)
+                                                        max-attempts    (assoc :max-attempts max-attempts)
+                                                        deadline-nanos  (assoc :deadline-nanos deadline-nanos)
+                                                        ;; Fast mode costs more per token, so only a user waiting on
+                                                        ;; the answer gets it.
+                                                        (and (= :llm/default (:model entry))
+                                                             (= :user (:trigger entry)))
+                                                        (assoc :fast? (metabot.settings/llm-fast-mode)))]
+    (with-deadline feature-id timeout-ms deadline-nanos
       (fn []
         (let [answer (try
                        (:result (self/call-llm-structured-unchecked

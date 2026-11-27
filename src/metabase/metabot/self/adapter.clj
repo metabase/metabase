@@ -409,10 +409,13 @@
                         so a mid-stream failure is translated by [[core/reducible-with-api-errors]]
                         instead, which no adapter overrides."
   [{:keys [slug display-name span] :as p}            :- Provider
-   {:keys [model input tools credentials ai-proxy?]} :- core/LLMRequestOpts
+   {:keys [model input tools credentials ai-proxy?
+           deadline-nanos]}                          :- core/LLMRequestOpts
    {:keys [path body headers request-options span-attrs read-stream wrap-stream on-request-error error-msg]
     :or   {wrap-stream identity}}                    :- StreamOpts]
-  (let [msg-count   (count input)
+  (let [request-options (cond-> request-options
+                          deadline-nanos (core/clamp-to-deadline deadline-nanos))
+        msg-count   (count input)
         tool-count  (count tools)
         res->msg    (or error-msg (:error-msg p))
         read-stream (or read-stream core/sse-reducible)]

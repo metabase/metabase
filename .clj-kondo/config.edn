@@ -339,7 +339,8 @@
     metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {metabase-enterprise.search.entity-retrieval.core/search-unfiltered        {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+  {metabase.metabot.self/call-llm-structured                                {:message "Outside the metabot module, call an LLM through metabase.metabot.core/call!, which runs the AI-off, audience, permission and usage checks"}
+   metabase-enterprise.search.entity-retrieval.core/search-unfiltered        {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.search.entity-retrieval.core/search-unfiltered                   {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase.search.entity-retrieval.mirror/search-unfiltered                 {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
    metabase-enterprise.data-testing.expectations.equals/->EqualsRows         {:message "Build an expectation with metabase-enterprise.data-testing.expectations.protocol/build, over a value the schema has passed — the generated constructors skip validation"}
@@ -932,6 +933,9 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
+  ;; the metabot module's own namespaces, which may call its internal LLM functions
+  {:pattern "^metabase(?:-enterprise)?\\.metabot(?:\\..*)?$"
+   :name    metabot-namespaces}
   ;;
   ;; namespaces that may use raw JDBC: drivers and warehouse connections, the app DB's H2 upgrade and result-set
   ;; protocols, commands, the semantic search DB, partition DDL, the testing API, and the exception middleware's SQL chain.
@@ -1019,9 +1023,17 @@
                                                           next.jdbc         {:level :off}}
 
     :discouraged-var
-    {metabase.driver/database-supports? {:level :off}
-     metabase.lib.convert/->legacy-MBQL {:level :off}
-     metabase.lib.core/->legacy-MBQL    {:level :off}}}}
+    {metabase.driver/database-supports?                   {:level :off}
+     metabase.lib.convert/->legacy-MBQL                   {:level :off}
+     metabase.lib.core/->legacy-MBQL                      {:level :off}
+     metabase.metabot.self/call-llm-structured            {:level :off}}}}
+
+  metabot-namespaces
+  {:linters {:discouraged-var {metabase.metabot.self/call-llm-structured {:level :off}}}}
+
+  ;; Calls the structured LLM call directly until it moves onto `metabase.metabot.core/call!`.
+  metabase.contextual-interestingness.llm
+  {:linters {:discouraged-var {metabase.metabot.self/call-llm-structured {:level :off}}}}
 
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}

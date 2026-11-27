@@ -260,7 +260,7 @@
                                                                                  :completionTokens 30}}]))]
           (try
             (is (= "Orders by month"
-                   (#'conversation-title/generate! conversation-id "internal" "Show orders by month")))
+                   (#'conversation-title/generate! conversation-id :internal "Show orders by month")))
             (is (= ["conversation_title"]
                    (t2/select-fn-vec :source :model/AiUsageLog :conversation_id conversation-id)))
             (finally

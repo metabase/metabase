@@ -114,7 +114,7 @@
   been reached."
   [conversation-id audience message]
   (try
-    (:title (ai-features/call! "conversation_title"
+    (:title (ai-features/call! :metabot/conversation-title
                                {:audience        audience
                                 :prompt          {:system    title-system-prompt
                                                   :user      "Write a title for this conversation."

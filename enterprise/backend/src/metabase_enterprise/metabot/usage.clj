@@ -65,9 +65,9 @@
   :feature :none
   [{:keys [source model provider model-name prompt-tokens completion-tokens cache-creation-tokens
            cache-read-tokens user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
-  ;; A registered one-call feature is checked before its call, and analytics show it under its raw id.
+  ;; A registered one-call feature is checked before its call, and analytics show it under its raw source.
   (when-not (or (contains? known-sources source)
-                (contains? metabot/ai-feature-registry source))
+                (contains? (metabot/ai-feature-sources) source))
     (throw (ex-info (str "Unknown ai_usage_log source " (pr-str source))
                     {:source source})))
   (when-let [pid (some-> profile-id name)]
@@ -126,7 +126,7 @@
             1000000)
 
       :messages
-      (:cnt (metabot.db/usage-message-count start (into message-sources (metabot/message-ai-feature-ids))
+      (:cnt (metabot.db/usage-message-count start (into message-sources (metabot/ai-feature-message-sources))
                                             request-id user-id tenant-id)))))
 
 (defn- check-instance-limit

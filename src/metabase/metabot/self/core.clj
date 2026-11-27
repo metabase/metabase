@@ -262,7 +262,9 @@
                         supports it (Anthropic Opus fast mode); adapters without one
                         ignore it
     :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
-                        provider caches opt-in per key forward it (Mistral), others ignore it"
+                        provider caches opt-in per key forward it (Mistral), others ignore it
+    :deadline-nanos   - `System/nanoTime` by which the call must finish; the request's
+                        timeouts are clamped to the time left (see [[clamp-to-deadline]])"
   [:map {:closed true}
    [:model            {:optional true} :string]
    [:system           {:optional true} [:maybe :string]]
@@ -277,7 +279,8 @@
    [:reasoning?       {:optional true} [:maybe :boolean]]
    [:reasoning-config {:optional true} [:maybe ReasoningConfig]]
    [:fast?            {:optional true} [:maybe :boolean]]
-   [:prompt-cache-key {:optional true} [:maybe :string]]])
+   [:prompt-cache-key {:optional true} [:maybe :string]]
+   [:deadline-nanos   {:optional true} [:maybe :int]]])
 
 (def chat-max-output-tokens
   "The output-token cap for Metabot chat, sent when the caller passes no `:max-tokens` — only the agent loop does.
@@ -1490,6 +1493,23 @@
                            :error-code :proxy-not-configured})))
       (or auth
           (throw (missing-api-key-ex llm-type))))))
+
+(defn deadline-remaining-ms
+  "The milliseconds left before `deadline-nanos`, a `System/nanoTime` value, at least 0, or nil when it is nil."
+  [deadline-nanos]
+  (when deadline-nanos
+    (max 0 (quot (- (long deadline-nanos) (System/nanoTime)) 1000000))))
+
+(defn clamp-to-deadline
+  "`request-options`, the [[request]] opts of one request, with its connection and socket timeouts no longer than the
+  time left before `deadline-nanos`. Unchanged when `deadline-nanos` is nil."
+  [request-options deadline-nanos]
+  (if-let [left (deadline-remaining-ms deadline-nanos)]
+    (let [left (max 1 (long left))]
+      (assoc request-options
+             :connection-timeout (min (long (or (:connection-timeout request-options) (llm/llm-connection-timeout-ms))) left)
+             :socket-timeout     (min (long (or (:socket-timeout request-options) (llm/llm-request-timeout-ms))) left)))
+    request-options))
 
 (defn request
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).

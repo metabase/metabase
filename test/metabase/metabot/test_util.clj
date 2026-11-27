@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as self.core]
@@ -194,7 +195,10 @@
                                         (if (instance? Throwable answer)
                                           (throw answer)
                                           (fake-llm-reply answer))))]
-          (thunk sent))))))
+          (if api/*current-user-id*
+            (thunk sent)
+            (mt/with-current-user (mt/user->id :rasta)
+              (thunk sent))))))))
 
 (defmacro with-fake-llm!
   "Run `body` with the LLM provider faked, so a test of a one-call feature runs the real checks, prompt rendering and
@@ -203,13 +207,14 @@
   `answer` is what the model sends back: a map is the arguments of its structured-output tool call, a string is a text
   reply, and a Throwable is thrown by the provider, such as the ex-info of a provider API error. A function of the
   request gives one of those per request. Both model roles resolve to [[fake-llm-model]], and the current user holds
-  every Metabot permission unless `scope/*current-user-metabot-permissions*` is bound already.
+  every Metabot permission unless `scope/*current-user-metabot-permissions*` is bound already. Rasta is the current
+  user unless one is bound already, since a `:trigger :user` feature refuses to run without one.
 
   `sent` is bound to an atom of the requests the provider got, as the provider adapter sees them, so a test can
   assert on the prompt.
 
     (with-fake-llm! [sent {:title \"Orders by month\"}]
-      (ai-features/call! \"conversation_title\" opts)
+      (ai-features/call! :metabot/conversation-title opts)
       (:system (first @sent)))"
   {:style/indent 1}
   [[sent answer] & body]

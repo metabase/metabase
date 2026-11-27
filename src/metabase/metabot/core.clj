@@ -58,7 +58,9 @@
   render-untrusted])
 
 (p/import-fn metabase.metabot.ai-features/available? ai-feature-available?)
+(p/import-fn metabase.metabot.ai-features/check! check-ai-feature!)
 (p/import-fn metabase.metabot.config/request-audience ai-feature-request-audience)
 (p/import-fn metabase.metabot.ai-features/unavailable-reason ai-feature-unavailable-reason)
-(p/import-fn metabase.metabot.ai-features/message-feature-ids message-ai-feature-ids)
+(p/import-fn metabase.metabot.ai-features/sources ai-feature-sources)
+(p/import-fn metabase.metabot.ai-features/message-sources ai-feature-message-sources)
 (p/import-def metabase.metabot.ai-features/registry ai-feature-registry)
