@@ -1,4 +1,4 @@
-import type { ChainedCommands, Editor } from "@tiptap/core";
+import type { ChainedCommands, Editor, Range } from "@tiptap/core";
 import { type EditorState, NodeSelection } from "@tiptap/pm/state";
 
 import { type BoolOpToken, boolOpToken } from "../model";
@@ -9,12 +9,11 @@ import { isBoolOpNode } from "./nodes/types";
 export type InsertProps = {
   chain: () => ChainedCommands;
   state: EditorState;
-  from: number;
-  to: number;
+  range: Range;
 };
 
 export const insertBoolOp = (
-  { chain, state, from, to }: InsertProps,
+  { chain, state, range: { from, to } }: InsertProps,
   type: BoolOpToken["type"],
 ) => {
   const before = state.doc.resolve(from).nodeBefore;

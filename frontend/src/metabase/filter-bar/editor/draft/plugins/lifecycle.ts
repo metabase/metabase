@@ -39,7 +39,7 @@ const createBoolOpRule = () =>
         return null;
       }
       const type = match[1].toLowerCase() === "or" ? "or" : "and";
-      insertBoolOp({ chain, state, ...getDraftRange(draft) }, type);
+      insertBoolOp({ chain, state, range: getDraftRange(draft) }, type);
     },
   });
 

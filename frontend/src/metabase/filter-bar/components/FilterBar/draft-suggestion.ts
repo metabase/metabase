@@ -51,7 +51,7 @@ export const createDraftSuggestion = <F>({
       )
       .with({ type: "boolOp" }, ({ boolOp }) =>
         insertBoolOp(
-          { chain: () => editor.chain(), state: editor.state, ...range },
+          { chain: () => editor.chain(), state: editor.state, range },
           boolOp,
         ),
       )

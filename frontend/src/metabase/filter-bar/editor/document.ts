@@ -137,14 +137,6 @@ export const placePill = <F>(
   return true;
 };
 
-const getPillRangeAt = (editor: Editor, pos: number): Range => {
-  const node = editor.state.doc.nodeAt(pos);
-  return { from: pos, to: isPillNode(node) ? pos + node.nodeSize : pos };
-};
-
-export const hasLooseContent = (doc: PmNode) =>
-  findChildren(doc, (node) => node.isText || isDraftNode(node)).length > 0;
-
 export const replacePillTokens = <F>(editor: Editor, next: TokenStages<F>) => {
   const pills = documentToTokensWithPositions<F>(editor.state.doc)
     .flat()
@@ -180,6 +172,9 @@ export const replaceDocument = <F>(
   });
 };
 
+const hasLooseContent = (doc: PmNode) =>
+  findChildren(doc, (node) => node.isText || isDraftNode(node)).length > 0;
+
 export const normalizeDocument = <F>(editor: Editor) => {
   const tokens = documentToTokens<F>(editor.state.doc);
   const normalized = normalizeTokens(tokens);
@@ -197,6 +192,11 @@ const getRangeRect = (editor: Editor, range: Range) => {
   }
   const { top, bottom, left } = editor.view.coordsAtPos(range.from);
   return new DOMRect(left, top, 0, bottom - top);
+};
+
+const getPillRangeAt = (editor: Editor, pos: number): Range => {
+  const node = editor.state.doc.nodeAt(pos);
+  return { from: pos, to: isPillNode(node) ? pos + node.nodeSize : pos };
 };
 
 export const getPillRectAt = (editor: Editor, pos: number) =>

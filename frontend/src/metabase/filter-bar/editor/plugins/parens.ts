@@ -10,7 +10,11 @@ import { isCloseNode, isOpenNode, isPillNode } from "../nodes/types";
 const isOperandStart = (node: PmNode | null | undefined) =>
   isPillNode(node) || isOpenNode(node);
 
-const insertOpenParen = ({ chain, state, from, to }: InsertProps) => {
+const insertOpenParen = ({
+  chain,
+  state,
+  range: { from, to },
+}: InsertProps) => {
   const next = state.doc.resolve(to).nodeAfter;
   const close = isOperandStart(next) ? [] : [connectorContent(closeToken())];
   return chain()
@@ -20,7 +24,11 @@ const insertOpenParen = ({ chain, state, from, to }: InsertProps) => {
     .run();
 };
 
-const insertCloseParen = ({ chain, state, from, to }: InsertProps) => {
+const insertCloseParen = ({
+  chain,
+  state,
+  range: { from, to },
+}: InsertProps) => {
   const hasClose = isCloseNode(state.doc.resolve(to).nodeAfter);
   const removed = chain().deleteRange({ from, to });
   const inserted = hasClose
@@ -36,7 +44,7 @@ const createOpenParenRule = () =>
       if (findDraftAt(state.selection.$from)) {
         return null;
       }
-      insertOpenParen({ chain, state, ...range });
+      insertOpenParen({ chain, state, range });
     },
   });
 
@@ -47,7 +55,7 @@ const createCloseParenRule = () =>
       if (findDraftAt(state.selection.$from)) {
         return null;
       }
-      insertCloseParen({ chain, state, ...range });
+      insertCloseParen({ chain, state, range });
     },
   });
 
