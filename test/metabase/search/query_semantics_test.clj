@@ -6,10 +6,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.search.appdb.index :as search.index]
-   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.engine :as search.engine]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.query-semantics :as fixtures]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
@@ -36,14 +33,8 @@
 (defn- index-documents!
   "Insert this case's documents into the temporary app-db search index."
   [docs]
-  (let [label->id (zipmap (keys docs) (iterate inc 1))
-        documents (for [[label attrs] docs]
-                    (merge {:model "card", :id (label->id label)} attrs))]
-    (#'specialization/batch-upsert!
-     (search.index/active-table)
-     (map (comp #'search.index/document->entry
-                #'search.ingestion/->document)
-          documents))
+  (let [label->id (zipmap (keys docs) (iterate inc 1))]
+    (search.tu/index-labelled-documents! docs label->id)
     (set/map-invert label->id)))
 
 (defn- check-appdb-query!
