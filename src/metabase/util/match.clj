@@ -84,16 +84,16 @@
       false)))
 
 (defn- colls-only-clauses?
-  "Return true if no pattern in `pairs` can match anything but a collection.
-  A recursive walk can then skip every value it doesn't look inside, such as map keys and the keywords, strings and
-  numbers in clauses, without calling the match function on it."
+  "Return true if no pattern in `pairs` can match anything but a collection."
   [pairs]
   (every? (comp colls-only-pattern? first) pairs))
 
 (defn- skip-non-colls
-  "Return `step`, the code a walk runs on each value `&match`, made to return `skipped` instead for a value the walk
-  doesn't look inside (see [[metabase.util.match.impl/walkable?]]) when `colls-only?` is true."
+  "Wrap `step`, the code a walk runs on each value `&match`, so it returns `skipped` for a value that
+  [[metabase.util.match.impl/walkable?]] rejects, when `colls-only?` is true."
   [colls-only? step skipped]
+  ;; When no pattern can match anything but a collection, map keys and the keywords, strings and numbers in clauses
+  ;; can't match, so the walk skips them without calling the match function.
   (if colls-only?
     `(if (metabase.util.match.impl/walkable? ~'&match) ~step ~skipped)
     step))
@@ -401,18 +401,16 @@
         value (if (nil? value) `(identity nil) value)
         value-binding (when-not (or recursive? contains-&recur?) value)
         acc (gensym "acc_")
-        body (process-clauses pairs '&match value-binding)
+        result-expr (expand-or-some
+                     (cond-> [(process-clauses pairs '&match value-binding)]
+                       (some? default) (conj default)))
         step (if all?
-               `(do (when-some [result# ~(expand-or-some
-                                          (cond-> [body]
-                                            (some? default) (conj default)))]
+               `(do (when-some [result# ~result-expr]
                       ;; See note below. For [[match-all]] it makes less sense because we always continue the
                       ;; recursion anyway, but we still don't want to collect nils.
                       (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj)))
                     (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))
-               `(if-some [result# ~(expand-or-some
-                                    (cond-> [body]
-                                      (some? default) (conj default)))]
+               `(if-some [result# ~result-expr]
                   ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that
                   ;; nil to wind up in results.
                   (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj))
@@ -509,12 +507,10 @@
   "Like [[replace]], but walks the `form` from the inside outwards, thus applying the transform multiple times (in a
   \"postwalk\" fashion). Doesn't support `&parents` anaphora yet."
   [form & clauses]
-  (let [replace-fn-symb (gensym "replace-")
-        walk-fn-symb (gensym "replace-all-")
-        contains-&parents? (contains-symbol? clauses '&parents)]
-    (when contains-&parents?
-      (throw (ex-info "&parents is not supported by replace-all." {})))
-    (if (colls-only-clauses? (partition 2 clauses))
+  (when (contains-symbol? clauses '&parents)
+    (throw (ex-info "&parents is not supported by replace-all." {})))
+  (if (colls-only-clauses? (partition 2 clauses))
+    (let [walk-fn-symb (gensym "replace-all-")]
       ;; Like `perf/postwalk`, but returns a value that isn't a collection as is, without a call.
       `((fn ~walk-fn-symb [~'&match]
           (if (coll? ~'&match)
@@ -523,12 +519,12 @@
                 ~@clauses
                 ~'_ ~'&match))
             ~'&match))
-        ~form)
-      `(perf/postwalk (fn ~replace-fn-symb [~'&match]
-                        (match-one ~'&match
-                          ~@clauses
-                          ~'_ ~'&match))
-                      ~form))))
+        ~form))
+    `(perf/postwalk (fn ~(gensym "replace-") [~'&match]
+                      (match-one ~'&match
+                        ~@clauses
+                        ~'_ ~'&match))
+                    ~form)))
 
 (defmacro replace-in
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
