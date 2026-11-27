@@ -11,6 +11,7 @@
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
+   [metabase.embedding.util :as embed.util]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.session.models.session :as models.session]
@@ -84,7 +85,9 @@
     (sso.i/sso-post request)
     (catch Throwable e
       (log/errorf "Error logging in: %s" (ex-message e))
-      (sso-error-page e :in))))
+      (if (embed.util/is-modular-embedding-request? request)
+        (throw e)
+        (sso-error-page e :in)))))
 
 ;; ------------------------------ Single Logout aka SLO ------------------------------
 

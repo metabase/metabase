@@ -34,9 +34,11 @@ export async function jwtDefaultRefreshTokenFunction(
 
   if (!authSsoResponse.ok) {
     // HTTP status error from Metabase SSO
+    const errorData = await authSsoResponse.json().catch(() => null);
     throw MetabaseError.CANNOT_FETCH_JWT_TOKEN({
       url: mbAuthUrl,
       status: String(authSsoResponse.status),
+      message: errorData?.message,
     });
   }
 
