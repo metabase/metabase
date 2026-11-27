@@ -353,3 +353,15 @@
         (let [[result probes] (run-retry-have-select-privilege! 3 true probe-error-fn)]
           (is (true? result))
           (is (= 1 probes)))))))
+
+(deftest describe-database-tables-probe-inside-resilient-context-test
+  (mt/test-drivers (mt/normal-driver-select
+                    {:+parent :sql-jdbc
+                     :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
+                                         (get-method sql-jdbc.sync/have-select-privilege? %))]
+                     :-features [:table-privileges]})
+    (testing "reducing describe-database tables does not request resilient connections outside resilient context (#76902)"
+      (mt/with-log-messages-for-level [log-messages :warn]
+        (let [tables (into [] (:tables (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))))]
+          (is (seq tables))
+          (is (empty? (filter #(re-find #"not in a resilient context" (str (:message %))) (log-messages)))))))))
