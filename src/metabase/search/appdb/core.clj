@@ -48,7 +48,7 @@
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
-    (if (or (#{:h2 :mysql} (mdb/db-type))
+    (if (or (#{:h2 :mysql :postgres} (mdb/db-type))
             (= 1 (count terms)))
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))
