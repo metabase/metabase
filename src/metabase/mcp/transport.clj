@@ -80,7 +80,8 @@
                      "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
 (def ^:private standard-input-schema-client-names
-  "Substrings of a lowercased `clientInfo.name` that mark a client known to read the standard MCP input schemas."
+  "Words, or runs of words, in a lowercased `clientInfo.name` that mark a client known to read the standard MCP input
+  schemas."
   ["claude" "codex" "cursor" "visual studio code" "vscode" "zed"])
 
 (defn- standard-input-schema-client?
@@ -89,9 +90,11 @@
   [client-name]
   ;; Copilot Studio initializes as "mcs" and asks the user for every required argument it can't fill.
   (boolean (when (string? client-name)
-             (let [client-name (u/lower-case-en client-name)]
+             (let [client-name (u/lower-case-en client-name)
+                   ;; whole words only, so `zed` doesn't match inside "standardized"
+                   words       (str " " (str/join " " (str/split client-name #"[^a-z0-9]+")) " ")]
                (or (= "mcs" client-name)
-                   (some #(str/includes? client-name %) standard-input-schema-client-names))))))
+                   (some #(str/includes? words (str " " % " ")) standard-input-schema-client-names))))))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."

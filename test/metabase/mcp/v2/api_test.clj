@@ -642,13 +642,13 @@
    v2.tu/all-scopes
    (fn [auth]
      (testing "clients known to read standard schemas are sent only the required arguments"
-       (doseq [client-name ["mcs" "claude-code" "codex-mcp-client" "Visual Studio Code"]]
+       (doseq [client-name ["mcs" "claude-code" "codex-mcp-client" "Visual Studio Code" "Zed"]]
          (testing client-name
            (is (=? {:required   ["id"]
                     :properties {:row_limit {:type "integer"}}}
                    (listed-input-schema auth client-name "run_saved_question"))))))
      (testing "every other client is sent the strict schemas"
-       (doseq [client-name ["openai-mcp" "ChatGPT" "mcp" "some-new-client"]]
+       (doseq [client-name ["openai-mcp" "ChatGPT" "mcp" "some-new-client" "standardized-client" "mcs-proxy"]]
          (testing client-name
            (is (=? {:required   ["id" "parameters" "row_limit"]
                     :properties {:row_limit {:type ["integer" "null"]}}}
