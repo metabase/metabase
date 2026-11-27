@@ -52,7 +52,7 @@
   llm-call-available?
   llm-call-unavailable-reason])
 
-;; `call-llm!` is the LLM facade: every one-call LLM feature outside Metabot calls the model through it.
+;; The LLM facade: see `metabase.metabot.ai/call-llm!`.
 (p/import-vars
  [metabase.metabot.ai
   call-llm!

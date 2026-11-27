@@ -519,32 +519,32 @@
           (throw e))))))
 
 (defn call-llm!
-  "The LLM facade: call the model of the one-call feature `feature-id` and return its answer, checked against the
-  feature's schema, with keyword keys at every level.
-  Every one-call LLM feature calls the model through this function, which code outside Metabot reaches as
-  `metabase.metabot.core/call-llm!`.
+  "The LLM facade, through which every one-call LLM feature calls its model.
+  Returns the answer of the feature `feature-id`, checked against its schema, with keyword keys at every level.
+  Code outside Metabot calls it as `metabase.metabot.core/call-llm!`.
 
   The options `opts` are a closed map, see [[::options]]:
 
     {:audience        :embedded  ; or :internal, or :any for work that serves no one audience
-     :prompt          {:system \"…\", :user \"…\", :untrusted {:request user-text}}  ; or {:system, :messages}
+     :prompt          {:system \"…\", :user \"…\", :untrusted {:request user-text}}  ; or :messages for both
      :response        {:schema ::answer, :max-tokens 800, :temperature 0.0}
-     :timeout-ms      4000      ; deadline from entry for the wait on the provider, retries and backoff included
+     :timeout-ms      4000      ; deadline, see below
      :max-attempts    2         ; attempts for transient failures, 3 by default
      :request-id      \"…\"       ; groups calls into one message; never taken from the client
      :conversation-id \"…\"}      ; links the call to a Metabot conversation in usage logs
 
-  The `:timeout-ms` deadline counts from entry, so the checks count towards it, and the call doesn't start once it has
-  passed.
+  The `:timeout-ms` deadline bounds the wait for the provider, retries and backoff included.
+  It starts at entry, so the checks use up part of it, and the call doesn't start once it has passed.
   A check blocked on the app DB is not interrupted, so it can hold the caller past the deadline.
 
   Throws `ex-info` with `:type`, `:status-code` and `:error-code`, whose message is translated and safe to show any
   user.
-  Checked in this order before the provider is called: `:metabot/ai-disabled`, `:metabot/metabot-disabled` (the
-  Metabot setting of `:audience`), `:metabot/invalid-call` (including a `:trigger :user` feature with no bound
-  user), `:metabot/permission-denied`, `:metabot/llm-not-configured`, `:metabot/managed-limit-reached`,
-  `:metabot/usage-limit-reached` and `:metabot/prompt-too-large` (see [[max-prompt-chars]]).
-  Then `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
+  Before the provider is called, the checks throw, in this order: `:metabot/ai-disabled`,
+  `:metabot/metabot-disabled` (the Metabot setting of `:audience`), `:metabot/invalid-call` (including a
+  `:trigger :user` feature with no bound user), `:metabot/permission-denied`, `:metabot/llm-not-configured`,
+  `:metabot/managed-limit-reached`, `:metabot/usage-limit-reached` and `:metabot/prompt-too-large` (see
+  [[max-prompt-chars]]).
+  After it: `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
   `:metabot/structured-output-incomplete` and `:metabot/structured-output-invalid`."
   [feature-id opts]
   (let [start-nanos               (System/nanoTime)
