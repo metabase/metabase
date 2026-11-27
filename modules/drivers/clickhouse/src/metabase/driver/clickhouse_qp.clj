@@ -253,6 +253,24 @@
   [_ _ expr]
   (date-trunc :'toStartOfYear expr))
 
+(def ^:private date-valued-truncation-units
+  "Units whose truncation returns a `Date`, which ClickHouse compares with a `DateTime` at midnight in that `DateTime`'s
+  timezone."
+  #{:week :month :quarter :year})
+
+(defn- relative-datetime-in-report-timezone
+  "Truncated relative datetime `expr` as a `DateTime` starting at midnight in the report timezone, when `unit`
+  truncates to a `Date`."
+  [unit expr]
+  (let [report-timezone (get-report-timezone-id-safely)]
+    (if (and report-timezone (date-valued-truncation-units unit))
+      [:'toDateTime expr (h2x/literal report-timezone)]
+      expr)))
+
+(defmethod sql.qp/->honeysql [:clickhouse :relative-datetime]
+  [driver [_ _opts _amount unit :as clause]]
+  (relative-datetime-in-report-timezone unit ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)))
+
 ;;; ------------------------------------------------------------------------------------
 ;;; Unix timestamps functions
 ;;; ------------------------------------------------------------------------------------

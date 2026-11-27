@@ -1731,3 +1731,33 @@
                (is (some? e))
                (is (false? (:workspace/cleanup? (ex-data e)))
                    (ex-message e))))))))))
+
+(deftest previous-month-filter-uses-report-timezone-boundaries-test
+  (mt/test-driver :clickhouse
+    (let [pacific        (java.time.ZoneId/of "US/Pacific")
+          this-month     (-> (java.time.ZonedDateTime/now pacific)
+                             (.withDayOfMonth 1)
+                             .toLocalDate
+                             (.atStartOfDay pacific))
+          previous-month (.minusMonths this-month 1)
+          utc-of         (fn [^java.time.ZonedDateTime zdt]
+                           (.toLocalDateTime (.withZoneSameInstant zdt java.time.ZoneOffset/UTC)))
+          hour-before    (fn [^java.time.ZonedDateTime zdt] (.minusHours zdt 1))
+          hour-after     (fn [^java.time.ZonedDateTime zdt] (.plusHours zdt 1))]
+      (mt/dataset (mt/dataset-definition
+                   "previous_month_report_tz"
+                   [["events"
+                     [{:field-name "label",       :base-type :type/Text}
+                      {:field-name "happened_at", :base-type {:native "DateTime('UTC')"}}]
+                     [["before-previous-month" (utc-of (hour-before previous-month))]
+                      ["start-of-previous-month" (utc-of (hour-after previous-month))]
+                      ["end-of-previous-month" (utc-of (hour-before this-month))]
+                      ["start-of-this-month" (utc-of (hour-after this-month))]]]])
+        (mt/with-report-timezone-id! "US/Pacific"
+          (let [mp     (mt/metadata-provider)
+                column (lib.metadata/field mp (mt/id :events :happened_at))
+                query  (-> (lib/query mp (lib.metadata/table mp (mt/id :events)))
+                           (lib/filter (lib/time-interval column -1 :month))
+                           (lib/with-fields [(lib.metadata/field mp (mt/id :events :label))]))]
+            (is (= #{"start-of-previous-month" "end-of-previous-month"}
+                   (into #{} (map first) (mt/rows (qp/process-query query)))))))))))
