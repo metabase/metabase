@@ -257,15 +257,15 @@ export const FieldValuesWidgetInner = forwardRef<
 
   const search = useRef(
     _.debounce(async (value: string) => {
-      if (!value) {
+      if (value) {
+        await fetchValues(value);
+      } else if (shouldList(parameter)) {
+        await fetchValues();
+      } else {
         setOptions([]);
         setLoadingState("LOADED");
-        setLastValue(value);
-      } else {
-        setLoadingState("LOADING");
-        await fetchValues(value);
-        setLastValue(value);
       }
+      setLastValue(value);
     }, 500),
   );
 

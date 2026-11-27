@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupParameterSearchValuesEndpoint } from "__support__/server-mocks";
+import {
+  setupParameterSearchValuesEndpoint,
+  setupParameterValuesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockParameter,
@@ -100,6 +103,40 @@ describe("FieldValuesWidget", () => {
       );
 
       expect(onChange).toHaveBeenLastCalledWith(["9223372036854775807"]);
+    });
+  });
+
+  describe("search mode", () => {
+    it("should restore initial options when search input is cleared", async () => {
+      setupParameterValuesEndpoints(
+        createMockParameterValues({
+          values: [["Gizmo"], ["Widget"]],
+          has_more_values: true,
+        }),
+      );
+      setupParameterSearchValuesEndpoint(
+        "Ga",
+        createMockParameterValues({ values: [["Gadget"]] }),
+      );
+      setup({
+        multi: true,
+        placeholder: "Value",
+        parameter: createMockParameter({
+          values_source_type: "card",
+          values_source_config: { card_id: 1, value_field: ["field", 1, null] },
+          values_query_type: "list",
+        }),
+      });
+
+      const input = await screen.findByRole("combobox");
+      await userEvent.click(input);
+      expect(await screen.findByText("Gizmo")).toBeInTheDocument();
+      await userEvent.type(input, "Ga");
+      expect(await screen.findByText("Gadget")).toBeInTheDocument();
+      expect(screen.queryByText("Gizmo")).not.toBeInTheDocument();
+      await userEvent.clear(input);
+
+      expect(await screen.findByText("Gizmo")).toBeInTheDocument();
     });
   });
 
