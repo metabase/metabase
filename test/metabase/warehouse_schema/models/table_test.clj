@@ -771,7 +771,10 @@
         (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id table-id)]))]
           (serialization/load :model/Table [(assoc extracted :data_authority authority)])))
       (testing "imports any other value as it is, and keeps a Table's configured value over the retired one"
-        (is (= {upload :ingested regular :unconfigured other :computed kept :computed}
+        (is (= {upload  :ingested
+                regular :unconfigured
+                other   :computed
+                kept    :computed}
                (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular other kept]])))))))
 
 (deftest curation-column-defaults-test

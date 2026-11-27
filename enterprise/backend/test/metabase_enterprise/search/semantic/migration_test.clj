@@ -538,7 +538,10 @@
                    :model/TableUserSettings _ {:table_id inactive :is_published true}
                    :model/Table {plain :id}    {:db_id db-id :active true :data_layer :final}]
       (let [ids (set (#'semantic.db.migration.impl/curated-table-ids))]
-        (is (= {:published-final true :published-internal false :inactive false :unpublished false}
+        (is (= {:published-final    true
+                :published-internal false
+                :inactive           false
+                :unpublished        false}
                {:published-final    (contains? ids (str pub))
                 :published-internal (contains? ids (str staged))
                 :inactive           (contains? ids (str inactive))
@@ -570,7 +573,7 @@
                                                                 ["table" "999997"        "authoritative" true]
                                                                 ["table" "999998"        "ingested"      false]
                                                                 ["card"  "1"             nil             false]]]
-              (let [legacy-input (cond-> (json/encode {:curated true :data_authority authority})
+              (let [legacy-input (cond-> (json/encode {:curated true, :data_authority authority})
                                    double-encoded? json/encode)]
                 (insert-index-row! pgvector kw-tbl {:model          [:inline model]
                                                     :model_id       [:inline model-id]
@@ -592,7 +595,7 @@
                 (is (not-any? #(= "authoritative" (or (:data_authority %) (get-in % [:legacy_input :data_authority])))
                               (vals by-id))))
               (testing "but rows that weren't authoritative are left as they were"
-                (is (=? {:data_authority "unconfigured" :legacy_input {:data_authority "unconfigured"}}
+                (is (=? {:data_authority "unconfigured", :legacy_input {:data_authority "unconfigured"}}
                         (get by-id (str pub-other))))))))))))
 
 (deftest official-collection-dashboard-ids-test

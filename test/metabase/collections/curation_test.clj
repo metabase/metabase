@@ -20,7 +20,7 @@
     (is (not (collections.curation/curated? {:model "table" :is_published true :data_layer "internal"})))
     (is (not (collections.curation/curated? {:model "table" :is_published true :data_layer "hidden"}))))
   (testing "a table's data authority doesn't make it curated (BOT-2735)"
-    (is (not (collections.curation/curated? {:model "table" :data_authority "authoritative" :data_layer "final"}))))
+    (is (not (collections.curation/curated? {:model "table", :data_authority "authoritative", :data_layer "final"}))))
   (testing "text signals are normalized whether keyword or string"
     (is (collections.curation/curated? {:model "table" :is_published true :data_layer :final}))
     (is (collections.curation/curated? {:model :metric :root_collection_type :library-metrics})))

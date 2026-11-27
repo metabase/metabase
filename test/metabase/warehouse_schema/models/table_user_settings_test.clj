@@ -199,6 +199,6 @@
       (let [settings  (t2/select-one :model/TableUserSettings :table_id table-id)
             extracted (first (serialization/export-batch :model/TableUserSettings [settings]))]
         (serialization/load :model/TableUserSettings [(assoc extracted :data_authority "authoritative")])
-        (is (= {:settings nil :table :ingested}
+        (is (= {:settings nil, :table :ingested}
                {:settings (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)
                 :table    (t2/select-one-fn :data_authority :model/Table :id table-id)}))))))

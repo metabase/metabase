@@ -353,7 +353,7 @@
             (let [result (->> (search.tu/search-results "Curatedgoldtbl")
                               (filter (comp #{"table"} :model))
                               first)]
-              (is (=? {:model "table" :curated true :data_layer "final"}
+              (is (=? {:model "table", :curated true, :data_layer "final"}
                       result)))))))))
 
 (defn- queued-updates!

@@ -5686,7 +5686,11 @@
       (settings! computed {:data_authority "computed"})
       (migrate!)
       (testing "authoritative uploads become ingested, other authoritative tables unconfigured, the rest keep theirs"
-        (is (= {upload "ingested" admin-set "unconfigured" computed "computed" ingested "ingested" plain "unconfigured"}
+        (is (= {upload    "ingested"
+                admin-set "unconfigured"
+                computed  "computed"
+                ingested  "ingested"
+                plain     "unconfigured"}
                (t2/select-pk->fn :data_authority :metabase_table :id [:in ids])))
-        (is (= {upload "ingested" admin-set "unconfigured" computed "computed"}
+        (is (= {upload "ingested", admin-set "unconfigured", computed "computed"}
                (t2/select-fn->fn :table_id :data_authority :metabase_table_user_settings :table_id [:in ids])))))))
