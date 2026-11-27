@@ -9,7 +9,6 @@
    [metabase.session.schema :as session.schema]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -223,7 +222,7 @@
   "The id of the live Session with `key-hashed`, or nil."
   [key-hashed :- :string
    liveness   :- ::session.schema/liveness-params]
-  (:id (t2/query-one (merge session.query/session-from-and-joins
+  (:id (t2/query-one (merge (session.query/session-from-and-joins)
                             {:select [:session.id]
                              :where  (into [:and [:= :session.key_hashed key-hashed]]
                                            (session.query/live-session-conditions liveness))
@@ -261,7 +260,7 @@
   admin is no longer an admin. The person's fields are the ones a Session's lookup returns."
   [token-hash :- :string
    liveness   :- ::session.schema/liveness-params]
-  (let [now (h2x/current-datetime-honeysql-form (:db-type liveness))]
+  (let [now [:current-timestamp]]
     (t2/query-one
      {:select    [[:person.id :metabase-user-id]
                   [:person.is_superuser :is-superuser?]
@@ -271,7 +270,7 @@
                   [:pgm.is_group_manager :is-group-manager?]]
       :from      [[:core_session :session]]
       :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
-      :left-join (into session.query/session-left-joins
+      :left-join (into (session.query/session-left-joins)
                        [[:core_user :person] [:= :person.id :preview.user_id]
                         [:permissions_group_membership :pgm] [:and
                                                               [:= :pgm.user_id :person.id]
