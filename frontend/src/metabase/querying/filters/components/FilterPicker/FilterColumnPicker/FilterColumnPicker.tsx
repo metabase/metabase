@@ -19,10 +19,9 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
 import type {
@@ -32,6 +31,7 @@ import type {
 } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
+import { getFilterColumnGroups } from "./utils";
 
 type Item = ColumnListItem | SegmentListItem | ExpressionClauseItem;
 
@@ -195,50 +195,13 @@ function getSections({
   isSearching: boolean;
   tc: (content: string | null | undefined) => string | null | undefined;
 }): Section[] {
-  const withMultipleStages = stageIndexes.length > 1;
-  const columnSections = stageIndexes.flatMap((stageIndex) => {
-    const columns = Lib.filterableColumns(query, stageIndex);
-    const columnGroups = Lib.groupColumns(columns);
-
-    return columnGroups.map((group) => {
-      const groupInfo = Lib.displayInfo(query, stageIndex, group);
-      const columnItems = Lib.getColumnsFromColumnGroup(group).map((column) => {
-        const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        return {
-          name: columnInfo.name,
-          displayName: columnInfo.displayName,
-          filterPositions: columnInfo.filterPositions,
-          column,
-          query,
-          stageIndex,
-          combinedName: `${columnInfo.table?.name ?? ""} ${columnInfo.name}`,
-          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
-          longDisplayName: columnInfo.longDisplayName,
-        };
-      });
-      const segments = groupInfo.isSourceTable
-        ? Lib.availableSegments(query, stageIndex)
-        : [];
-      const segmentItems = segments.map((segment) => {
-        const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
-        return {
-          ...segmentInfo,
-          segment,
-          stageIndex,
-        };
-      });
-
-      return {
-        name: tc(
-          withMultipleStages
-            ? getGroupName(groupInfo, stageIndex)
-            : groupInfo.displayName,
-        ),
-        icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
-        items: [...segmentItems, ...columnItems],
-      };
-    });
-  });
+  const columnSections = getFilterColumnGroups(query, stageIndexes).map(
+    ({ name, groupInfo, segmentItems, columnItems }) => ({
+      name: tc(name),
+      icon: withColumnGroupIcon ? getColumnGroupIcon(groupInfo) : null,
+      items: [...segmentItems, ...columnItems],
+    }),
+  );
 
   const expressionClausesSection = {
     key: "expression-clauses",
