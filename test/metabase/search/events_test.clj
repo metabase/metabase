@@ -934,3 +934,17 @@
         (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [instances] (swap! batches conj (count instances)))]
           (#'search.events/handle! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)) nil)))
       (is (= [2 2 1] @batches)))))
+
+(deftest api-delete-purges-card-from-index-test
+  (testing "DELETE /api/card/:id removes the card from the appdb search index (#66775)"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (queries.card/create-cards! [{:creator_id            (mt/user->id :rasta)
+                                                       :database_id           (mt/id)
+                                                       :display               :table
+                                                       :visualization_settings {}
+                                                       :dataset_query         (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                       :name                  "Api Delete Purge Card"}])]
+          (is (= 1 (indexed-count "card" id)))
+          (mt/user-http-request :crowberto :delete 204 (str "card/" id))
+          (is (= 0 (indexed-count "card" id))))))))
