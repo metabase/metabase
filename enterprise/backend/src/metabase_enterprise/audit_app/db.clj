@@ -97,10 +97,17 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :id :name] :table_id table-id))
 
-(mu/defn card-result-metadata-reducible
-  "Reducible raw `:id` and `:result_metadata` rows of the Cards of the Database with `database-id`."
+(mu/defn field-names-of-database :- [:set :string]
+  "The distinct names of the Fields of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/reducible-select [(t2/table-name :model/Card) :id :result_metadata] :database_id database-id))
+  (t2/select-fn-set :name [:model/Field :name] :table_id [:in ^:allow-subquery {:select [:id]
+                                                                                :from   [(t2/table-name :model/Table)]
+                                                                                :where  [:= :db_id database-id]}]))
+
+(mu/defn card-result-metadata-reducible
+  "Reducible raw `:id`, `:dataset_query` and `:result_metadata` rows of the Cards of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/reducible-select [(t2/table-name :model/Card) :id :dataset_query :result_metadata] :database_id database-id))
 
 (mu/defn cards-of-table
   "The Cards on the Table with `table-id`."
