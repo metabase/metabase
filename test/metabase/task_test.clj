@@ -24,7 +24,7 @@
    (java.time Duration Instant)
    (java.util Date)
    (java.util.concurrent LinkedBlockingQueue TimeUnit)
-   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler SchedulerException
+   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext JobKey Scheduler SchedulerException
                Trigger)))
 
 (set! *warn-on-reflection* true)
@@ -667,3 +667,27 @@
                      {:after-init after-init, :after-stop (halts?)})))
             (finally
               (task/stop-scheduler!))))))))
+
+(deftest shut-down-scheduler-logs-running-jobs-test
+  (let [shutdowns  (atom 0)
+        quartz     (fn [running-jobs]
+                     (reify Scheduler
+                       (getCurrentlyExecutingJobs [_] (running-jobs))
+                       (shutdown [_] (swap! shutdowns inc))))
+        running    (reify JobExecutionContext
+                     (getJobDetail [_]
+                       (reify JobDetail
+                         (getKey [_] (JobKey. "a-job")))))]
+    (testing "the jobs still running are logged, and the scheduler is shut down"
+      (reset! shutdowns 0)
+      (mt/with-log-messages-for-level [messages [metabase.task.impl :warn]]
+        (#'task.impl/shut-down-scheduler! (quartz (constantly [running])))
+        (is (= {:messages  ["Stopping the scheduler while 1 jobs are still running: DEFAULT.a-job"]
+                :shutdowns 1}
+               {:messages  (map :message (messages))
+                :shutdowns @shutdowns}))))
+    (testing "the scheduler is shut down even when listing its running jobs throws"
+      (reset! shutdowns 0)
+      (is (thrown? SchedulerException
+                   (#'task.impl/shut-down-scheduler! (quartz #(throw (SchedulerException. "listing failed"))))))
+      (is (= 1 @shutdowns)))))
