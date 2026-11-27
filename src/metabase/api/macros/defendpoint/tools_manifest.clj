@@ -243,17 +243,16 @@
   "Make an MCP inputSchema that lists only the arguments a call must send in `:required`.
   An optional argument is published with its type alone, without the `null` its `[:maybe ...]` adds, so omitting it is
   how a client leaves it unset; the server still accepts an explicit `null`.
+  Fields nested in an argument keep their `null`.
   This is the schema for clients without OpenAI's strict-tool rules, which [[strict-tool-input-schema]] serves."
-  [schema]
+  [{:keys [properties] :as schema}]
   ;; Copilot Studio asks the user for every required argument it can't fill, and truncates a schema at a type array.
-  (mu.json-schema/postwalk-schemas
-   (fn [{:keys [properties] :as node}]
-     (if (map? properties)
-       (let [required? (set (map keyword (:required node)))]
-         (assoc node :properties (u/for-map [[k v] properties]
-                                   [k (cond-> v (not (required? k)) mu.json-schema/non-nullable)])))
-       node))
-   schema))
+  ;; Only arguments lose their `null`: the registry drops a `nil` argument, so `null` and absent mean the same there,
+  ;; while a nested `null` can clear a value, as in `question_write`'s `column_metadata`.
+  (let [required? (set (map name (:required schema)))]
+    (cond-> schema
+      (map? properties) (assoc :properties (u/for-map [[k v] properties]
+                                             [k (cond-> v (not (required? (name k))) mu.json-schema/non-nullable)])))))
 
 (defn- nullable-malli?
   "True when `schema` accepts `nil` (e.g. `[:maybe X]`, `:any`, `:nil`)."

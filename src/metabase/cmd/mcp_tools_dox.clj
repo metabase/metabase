@@ -202,9 +202,9 @@
   [(md/code name) (type-cell argument) (description-cell argument)])
 
 (defn- arguments-markdown
-  "The arguments as a table. No `Required` column: the strict schema lists every property as required so clients can
-  send explicit nulls."
+  "The arguments as a table, without a `Required` column."
   [{:keys [arguments]}]
+  ;; OpenAI clients are sent every argument as required, so the column would be wrong for them.
   (if (empty? arguments)
     "This tool takes no arguments."
     (md/table ["Argument" "Type" "Description"] (map argument-row arguments))))

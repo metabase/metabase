@@ -304,9 +304,9 @@
   downgrades the capability rather than rejecting the session."
   [{:keys [supports-mcp-ui? strict-input-schemas?]}]
   (let [uuid       (str (UUID/randomUUID))
-        payload    (encode-session-payload (cond-> {:v  session-payload-version
-                                                    :ui (true? supports-mcp-ui?)}
-                                             strict-input-schemas? (assoc :strict true)))
+        payload    (encode-session-payload {:v      session-payload-version
+                                            :ui     (true? supports-mcp-ui?)
+                                            :strict (true? strict-input-schemas?)})
         session-id (str uuid "." payload "." (session-payload-signature uuid payload))]
     ;; Enforce the `mcp_query_handle.mcp_session_id` column width (254) at the mint site, not only on the read path
     ;; ([[session-parts]]). A future payload field that pushed an id past the cap would otherwise mint fine and
@@ -347,13 +347,6 @@
   ([_user-id metadata]
    (create-session-id metadata)))
 
-(defn- signed-payload-flag?
-  "True when the signed capability payload of `session-id` sets flag `k`; false for an unsigned payload or none."
-  [session-id k]
-  (boolean
-   (when-let [{:keys [payload extended]} (session-parts session-id)]
-     (and extended (true? (get payload k))))))
-
 (defn supports-mcp-ui?
   "Return true if the client PROVABLY advertised MCP Apps UI support during initialize.
 
@@ -362,13 +355,15 @@
   true here, which meant a caller could bypass the whole gate by simply omitting the payload. Both that and an
   unsigned payload now fail closed."
   [session-id]
-  (signed-payload-flag? session-id :ui))
+  (boolean
+   (when-let [{:keys [payload extended]} (session-parts session-id)]
+     (and extended (true? (:ui payload))))))
 
 (defn strict-input-schemas?
-  "Return true if the client that initialized `session-id` needs OpenAI strict tool input schemas.
-  A session without a signed payload saying so gets the standard schemas."
+  "Return true unless the signed payload of `session-id` turns off OpenAI strict tool input schemas."
   [session-id]
-  (signed-payload-flag? session-id :strict))
+  ;; A session minted before the flag existed has no `:strict`, and was served the strict schemas.
+  (not (false? (:strict (:payload (session-parts session-id))))))
 
 (defn get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.

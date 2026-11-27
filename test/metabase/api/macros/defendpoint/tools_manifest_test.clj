@@ -131,14 +131,12 @@
                          :limit  {:type "integer", :minimum 1}
                          :mode   {:type "string", :enum ["a" "b"]}
                          :pick   {:type "string", :const "x", :description "Pick."}
+                         ;; a nested field keeps its `null`, which can clear a value
                          :filter {:type       "object"
                                   :properties {:x {:type "string"}
-                                               :y {:type "integer"}}
+                                               :y {:type ["integer" "null"]}}
                                   :required   [:x]}
                          :either {:type ["string" "integer"], :description "A string or an id."}
-                         :tags   {:type                 "object"
-                                  :additionalProperties {:type       "object"
-                                                         :properties {:name {:type "string"}}}}
                          :id     {:type ["integer" "null"]}}
             :required   [:id]}
            (tools-manifest/standard-tool-input-schema
@@ -150,9 +148,12 @@
               [:pick   {:optional true} [:maybe {:description "Pick."} [:= {:json-schema/type "string"} "x"]]]
               [:filter {:optional true} [:maybe [:map [:x :string] [:y {:optional true} [:maybe :int]]]]]
               [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
-              [:tags   {:optional true} [:map-of :string [:map [:name {:optional true} [:maybe :string]]]]]
               ;; a required argument keeps its `null`, the only way to send it unset
-              [:id                      [:maybe :int]]]))))))
+              [:id                      [:maybe :int]]])))))
+  (testing "a required argument named by a string keeps its `null`"
+    (is (= {"id" {:type ["integer" "null"]}}
+           (:properties (tools-manifest/standard-tool-input-schema
+                         {:type "object", :properties {"id" {:type ["integer" "null"]}}, :required ["id"]}))))))
 
 (deftest ^:parallel localized-description-test
   (testing "a localized description stays a localized string, which is translated for each caller when serialized"

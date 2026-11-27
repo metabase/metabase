@@ -67,15 +67,15 @@
                 (mcp.session/create! (mt/user->id :crowberto) {:strict-input-schemas? true}))))
     (is (false? (mcp.session/strict-input-schemas?
                  (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})))))
-  (testing "a payload without the flag, as an older node mints, is still a valid session with UI support"
+  (testing "a payload without the flag, as an older node mints, keeps UI support and the strict schemas it had"
     (let [session-id (extended-session-id {:v 1 :ui true})]
       (is (true? (mcp.session/valid-id? session-id)))
       (is (true? (mcp.session/supports-mcp-ui? session-id)))
-      (is (false? (mcp.session/strict-input-schemas? session-id)))))
+      (is (true? (mcp.session/strict-input-schemas? session-id)))))
   (testing "an unsigned payload's flag is not believed"
-    (let [encoded (->> (.getBytes (json/encode {:v 1, :ui false, :strict true}) StandardCharsets/UTF_8)
+    (let [encoded (->> (.getBytes (json/encode {:v 1, :ui false, :strict false}) StandardCharsets/UTF_8)
                        (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))]
-      (is (false? (mcp.session/strict-input-schemas? (str (random-uuid) "." encoded)))))))
+      (is (true? (mcp.session/strict-input-schemas? (str (random-uuid) "." encoded)))))))
 
 (deftest create-session-id-length-test
   (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column (254)"
