@@ -379,11 +379,16 @@
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
+            client-name      (get-in params [:clientInfo :name])
             ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
             supports-mcp-ui? (and (mcp-app-ui-capability? params)
-                                  (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
-            session-id       (mcp.session/create! user-id {:supports-mcp-ui?
-                                                           supports-mcp-ui?})
+                                  (mcp/inline-ui-enabled-for-client? client-name))
+            session-id       (mcp.session/create! user-id
+                                                  {:supports-mcp-ui?      supports-mcp-ui?
+                                                   ;; OpenAI's strict-tool rules need every argument listed,
+                                                   ;; which other clients read as required
+                                                   :strict-input-schemas? (= "chatgpt"
+                                                                             (mcp.usage/detect-client client-name))})
             init-response (handle-initialize (:id body) params capabilities instructions)]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.

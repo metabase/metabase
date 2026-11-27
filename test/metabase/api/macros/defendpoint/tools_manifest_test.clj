@@ -123,6 +123,37 @@
               [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
               [:value {:optional true} [:maybe :any]]]))))))
 
+(deftest ^:parallel standard-tool-input-schema-test
+  (testing "only required arguments are `required`, and an optional one is typed without the `null` of its [:maybe]"
+    ;; Copilot Studio asks the user for every required argument it can't fill, and truncates a schema at a type array
+    (is (= {:type       "object"
+            :properties {:flag   {:type "boolean", :description "A flag."}
+                         :limit  {:type "integer", :minimum 1}
+                         :mode   {:type "string", :enum ["a" "b"]}
+                         :pick   {:type "string", :const "x", :description "Pick."}
+                         :filter {:type       "object"
+                                  :properties {:x {:type "string"}
+                                               :y {:type "integer"}}
+                                  :required   [:x]}
+                         :either {:type ["string" "integer"], :description "A string or an id."}
+                         :tags   {:type                 "object"
+                                  :additionalProperties {:type       "object"
+                                                         :properties {:name {:type "string"}}}}
+                         :id     {:type ["integer" "null"]}}
+            :required   [:id]}
+           (tools-manifest/standard-tool-input-schema
+            (tools-manifest/malli->json-schema
+             [:map
+              [:flag {:optional true} [:maybe [:boolean {:description "A flag."}]]]
+              [:limit {:optional true} [:maybe [:int {:min 1}]]]
+              [:mode {:optional true} [:maybe [:enum "a" "b"]]]
+              [:pick {:optional true} [:maybe {:description "Pick."} [:= {:json-schema/type "string"} "x"]]]
+              [:filter {:optional true} [:maybe [:map [:x :string] [:y {:optional true} [:maybe :int]]]]]
+              [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
+              [:tags {:optional true} [:map-of :string [:map [:name {:optional true} [:maybe :string]]]]]
+              ;; a required argument keeps its `null`, the only way to send it unset
+              [:id [:maybe :int]]]))))))
+
 (deftest ^:parallel localized-description-test
   (testing "a localized description stays a localized string, which is translated for each caller when serialized"
     (let [pick (deferred-tru "Pick one.")]

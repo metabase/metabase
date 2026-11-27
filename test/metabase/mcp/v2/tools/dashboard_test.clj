@@ -840,7 +840,8 @@
 (deftest published-patch-mapping-schema-test
   (testing "a strict client can send every key of a patched parameter mapping, card_id included"
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [schema   (:inputSchema (first (filter #(= "dashboard_write" (:name %)) (registry/list-tools))))
+      (let [schema   (:inputSchema (first (filter #(= "dashboard_write" (:name %))
+                                                  (registry/list-tools {:strict-input-schemas? true}))))
             mapping? (fn [x]
                        (let [props (when (map? x) (:properties x))]
                          ;; an op object (wire_parameter) has these keys too, but also `op`

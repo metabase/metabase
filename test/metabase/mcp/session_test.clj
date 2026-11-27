@@ -61,12 +61,29 @@
       (is (not (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash plain-session-id)))
           "Capability tracking should not materialize a core_session"))))
 
+(deftest session-strict-input-schemas-flag-test
+  (testing "create! records whether the client needs OpenAI strict tool input schemas"
+    (is (true? (mcp.session/strict-input-schemas?
+                (mcp.session/create! (mt/user->id :crowberto) {:strict-input-schemas? true}))))
+    (is (false? (mcp.session/strict-input-schemas?
+                 (mcp.session/create! (mt/user->id :crowberto) {:supports-mcp-ui? true})))))
+  (testing "a payload without the flag, as an older node mints, is still a valid session with UI support"
+    (let [session-id (extended-session-id {:v 1 :ui true})]
+      (is (true? (mcp.session/valid-id? session-id)))
+      (is (true? (mcp.session/supports-mcp-ui? session-id)))
+      (is (false? (mcp.session/strict-input-schemas? session-id)))))
+  (testing "an unsigned payload's flag is not believed"
+    (let [encoded (->> (.getBytes (json/encode {:v 1, :ui false, :strict true}) StandardCharsets/UTF_8)
+                       (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))]
+      (is (false? (mcp.session/strict-input-schemas? (str (random-uuid) "." encoded)))))))
+
 (deftest create-session-id-length-test
   (testing "generated session ids fit the persisted mcp_query_handle.mcp_session_id column (254)"
     ;; Exhaustive, not a sample: the correlator is a fixed-width UUID and `create-session-id`
-    ;; collapses its argument to `(true? supports-mcp-ui?)`, so these three calls cover every
-    ;; payload the encoder can produce. Payload growth that breaks the column fails here.
-    (doseq [metadata [{:supports-mcp-ui? true} {:supports-mcp-ui? false} nil]]
+    ;; reduces its argument to two flags, so these calls cover every payload the encoder can
+    ;; produce. Payload growth that breaks the column fails here.
+    (doseq [metadata (cons nil (for [ui [true false] strict [true false]]
+                                 {:supports-mcp-ui? ui, :strict-input-schemas? strict}))]
       (is (<= (count (mcp.session/create! (mt/user->id :crowberto) metadata)) 254)
           (str "session id exceeds the column width for metadata " (pr-str metadata))))))
 

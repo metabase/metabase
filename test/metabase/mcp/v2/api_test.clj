@@ -626,6 +626,26 @@
          (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["chatgpt"]]
            (is (contains? (tool-names (handshake)) "visualize_query"))))))))
 
+(deftest tools-list-input-schemas-follow-the-client-test
+  ;; Copilot Studio asks the user for every required argument it can't fill, while OpenAI's strict tool rules need
+  ;; every argument listed.
+  (testing "input schemas list only the required arguments, except for OpenAI clients"
+    (v2.tu/do-with-bearer-token!
+     v2.tu/all-scopes
+     (fn [auth]
+       (let [run-saved-question (fn [client-name]
+                                  (let [init       (jsonrpc-request "initialize" {:clientInfo {:name client-name}})
+                                        session-id (get-in (mcp-request auth init) [:headers "Mcp-Session-Id"])]
+                                    (->> (mcp-request auth (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+                                         :body :result :tools
+                                         (some #(when (= "run_saved_question" (:name %)) (:inputSchema %))))))]
+         (is (=? {:required   ["id"]
+                  :properties {:row_limit {:type "integer"}}}
+                 (run-saved-question "claude-code")))
+         (is (=? {:required   ["id" "parameters" "row_limit"]
+                  :properties {:row_limit {:type ["integer" "null"]}}}
+                 (run-saved-question "openai-mcp"))))))))
+
 (deftest tools-list-descriptions-fit-client-truncation-test
   (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
             whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the

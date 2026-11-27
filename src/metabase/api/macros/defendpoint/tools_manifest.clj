@@ -239,6 +239,24 @@
                 schema)))]
     (strict-schema schema)))
 
+(defn standard-tool-input-schema
+  "Make an MCP inputSchema that lists only the arguments a call must send in `:required`.
+  An optional argument is published with its type alone, without the `null` its `[:maybe ...]` adds, so omitting it is
+  how a client leaves it unset; the server still accepts an explicit `null`.
+  This is the schema for clients without OpenAI's strict-tool rules, which [[strict-tool-input-schema]] serves."
+  [schema]
+  ;; Copilot Studio asks the user for every required argument it can't fill, and truncates a schema at a type array.
+  (mu.json-schema/postwalk-schemas
+   (fn [{:keys [properties] :as node}]
+     (if (map? properties)
+       (let [required? (set (map keyword (:required node)))]
+         (assoc node :properties (into {}
+                                       (map (fn [[k v]]
+                                              [k (cond-> v (not (required? (keyword k))) mu.json-schema/non-nullable)]))
+                                       properties)))
+       node))
+   schema))
+
 (defn- nullable-malli?
   "True when `schema` accepts `nil` (e.g. `[:maybe X]`, `:any`, `:nil`)."
   [schema]

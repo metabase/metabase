@@ -251,16 +251,16 @@
 (defn- tool->manifest-entry
   "The published manifest entry for `tool`; `scope-label` is as for [[with-required-permission]]."
   [{:keys [args annotations output-schema description scope] :as tool} scope-label]
-  (cond-> (assoc tool
-                 :description (with-required-permission description scope scope-label)
-                 :securitySchemes (security-schemes scope)
-                 :inputSchema (-> args
-                                  tools-manifest/malli->json-schema
-                                  tools-manifest/strict-tool-input-schema)
-                 :annotations (merge default-annotations annotations))
-    ;; No strict transform on outputs — that rewrite exists to satisfy OpenAI's strict-tool rules
-    ;; for arguments the model produces, and outputs aren't constrained by them.
-    output-schema (assoc :outputSchema (tools-manifest/malli->json-schema output-schema))))
+  (let [input-schema (tools-manifest/malli->json-schema args)]
+    (cond-> (assoc tool
+                   :description          (with-required-permission description scope scope-label)
+                   :securitySchemes      (security-schemes scope)
+                   :inputSchema          (tools-manifest/standard-tool-input-schema input-schema)
+                   ::strict-input-schema (tools-manifest/strict-tool-input-schema input-schema)
+                   :annotations          (merge default-annotations annotations))
+      ;; No strict transform on outputs — that rewrite exists to satisfy OpenAI's strict-tool rules
+      ;; for arguments the model produces, and outputs aren't constrained by them.
+      output-schema (assoc :outputSchema (tools-manifest/malli->json-schema output-schema)))))
 
 (defn english-scope-label
   "The consent-screen description registered for `scope`, in English, or nil."
@@ -286,19 +286,23 @@
    per-group policy ([[metabase.mcp.permissions/policy-for-current-user]]) and by the client extensions
    `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that can't render
    an iframe rather than failing at call time). Token scopes don't filter the list; [[call-tool]]
-   enforces them. The 0-arity assumes full extension support."
+   enforces them. The 0-arity assumes full extension support.
+   Input schemas list only the required arguments, unless `:strict-input-schemas?` asks for the OpenAI strict form,
+   which lists every argument and makes the optional ones nullable."
   ([]
    ;; Full support because [[tools-hash]] has no session, so the hash must not depend on per-session capabilities.
    (list-tools {:supports-mcp-ui? true}))
   ([options]
    (let [supported (mcp.ui-resource/supported-extensions options)
-         policy    (mcp.perms/policy-for-current-user)]
+         policy    (mcp.perms/policy-for-current-user)
+         strict?   (:strict-input-schemas? options)]
      (into []
            (comp
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
             ;; the user's groups allow it
             (filter #(tool-allowed? policy %))
+            (map #(cond-> % strict? (assoc :inputSchema (::strict-input-schema %))))
             (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
                                   :securitySchemes :_meta])))
            (manifest)))))
