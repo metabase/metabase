@@ -371,7 +371,7 @@
           (is (= [::system] @stopped)))))))
 
 (deftest start-system-sets-the-var-only-after-the-reporter-installs-test
-  (testing "setup! finds the system var set only once nothing in the start can fail"
+  (testing "the system var is set only once the reporter is installed, so a concurrent setup! cannot return early"
     (let [seen-while-installing (atom ::not-installed)]
       (with-redefs [prometheus/system nil]
         (mt/with-dynamic-fn-redefs [prometheus/make-prometheus-system (constantly ::system)
