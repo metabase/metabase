@@ -124,14 +124,14 @@
                                               :metabase.app-db.core/app-db
                                               :metabase.driver.sql-jdbc.connection/pools
                                               :metabase.tracing.core/otel-sdk}
-    ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics and writes
-    ;; the index
+    ;; the field-value listener runs warehouse queries
+    ;; the search listener writes the index in the app DB and records traces and metrics
     :metabase.queue-listener.core/listeners #{:metabase.analytics.prometheus/system
                                               :metabase.app-db.core/app-db
                                               :metabase.driver.sql-jdbc.connection/pools
                                               :metabase.tracing.core/otel-sdk}
-    ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs, and publishes and
-    ;; deliveries record metrics
+    ;; the default queue backend stores messages in the app DB and delivers them in scheduler jobs
+    ;; publishing and delivering record metrics
     :metabase.mq.init/mq                    #{:metabase.analytics.prometheus/system
                                               :metabase.app-db.core/app-db
                                               :metabase.task.impl/scheduler}}
