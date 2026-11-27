@@ -225,3 +225,7 @@ test/metabase/slackbot @metabase/metabot
 test/metabase/slackbot_test.* @metabase/metabot
 
 # ===== END generated module ownership =====
+
+# Metabot prompts and skills, and the MCP tool definitions, which no module directory covers
+resources/metabot @metabase/metabot
+resources/mcp @metabase/metabot
