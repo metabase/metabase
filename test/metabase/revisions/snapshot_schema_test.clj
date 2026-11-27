@@ -216,4 +216,8 @@
             (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Newer"})
             (is (=? {:object {:name "Newer"}}
                     (t2/select-one :model/Revision :model "Card" :model_id card-id
-                                   {:order-by [[:id :desc]]})))))))))
+                                   {:order-by [[:id :desc]]}))))
+          (testing "the Card reverts to the snapshot"
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "card" :id card-id :revision_id revision-id})
+            (is (= "Older" (t2/select-one-fn :name :model/Card :id card-id)))))))))
