@@ -44,10 +44,12 @@ export const extractRemappedColumns = (
           return true;
         }
         cols[col.remapped_from_index].remapped_to_column = col;
-        cols[col.remapped_from_index].remapping?.set(
-          row[col.remapped_from_index],
-          row[colIndex],
-        );
+        if (value != null) {
+          cols[col.remapped_from_index].remapping?.set(
+            row[col.remapped_from_index],
+            value,
+          );
+        }
         return false;
       } else {
         return true;
