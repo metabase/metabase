@@ -1,15 +1,31 @@
-import { pill } from "../../test-utils";
+import { Editor } from "@tiptap/core";
+
+import type { Token } from "../../model";
+import { editPillAt, pill } from "../../test-utils";
+import { tokensToContent } from "../document";
 import { draftContent, insertDraft } from "../draft/layout";
-import { createTestEditor } from "../test-editor";
+import { createEditorExtensions } from "../extensions";
 
 const A = pill("A");
 const B = pill("B");
 
-const countHidden = (editor: ReturnType<typeof createTestEditor>["editor"]) =>
+type SetupOpts = {
+  stages: Token<string>[][];
+};
+
+const setup = ({ stages }: SetupOpts) => {
+  const editor = new Editor({
+    extensions: createEditorExtensions({ caretClassName: "caret" }),
+    content: tokensToContent(stages),
+  });
+  return { editor };
+};
+
+const countHidden = (editor: Editor) =>
   editor.view.dom.querySelectorAll("[data-hidden]").length;
 
-const getHiddenCount = (...stages: Parameters<typeof createTestEditor>) =>
-  countHidden(createTestEditor(...stages).editor);
+const getHiddenCount = (...stages: Token<string>[][]) =>
+  countHidden(setup({ stages }).editor);
 
 describe("hidden then", () => {
   it.each([
@@ -35,13 +51,13 @@ describe("hidden then", () => {
   });
 
   it("shows a then after a row filter that is being edited", () => {
-    const { editor, editPillAt } = createTestEditor([A], [B]);
-    editPillAt(0, A);
+    const { editor } = setup({ stages: [[A], [B]] });
+    editPillAt(editor, 0, A);
     expect(countHidden(editor)).toBe(0);
   });
 
   it("shows the then of a stage with only a draft in it", () => {
-    const { editor } = createTestEditor([A], []);
+    const { editor } = setup({ stages: [[A], []] });
     insertDraft(editor, { from: 2, to: 2 }, draftContent("co"), 1);
     expect(countHidden(editor)).toBe(0);
   });

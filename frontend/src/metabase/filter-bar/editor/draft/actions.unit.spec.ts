@@ -1,18 +1,27 @@
-import { boolOpToken, pillToken } from "../../model";
+import { Editor } from "@tiptap/core";
+
+import { type Token, boolOpToken, pillToken } from "../../model";
 import {
   MOCK_ADAPTER,
   type MockFilter,
+  findDraft,
+  getCaretDraft,
+  getStages,
   mockFilter,
   mockSegment,
+  press,
+  type,
 } from "../../test-utils";
 import type {
   FilterBarAdapter,
   FilterColumn,
   FilterOperator,
 } from "../../types";
-import { createActionsTestEditor } from "../test-editor";
+import { tokensToContent } from "../document";
+import { createEditorExtensions } from "../extensions";
 
-import { addListValues } from "./actions";
+import { addListValues, createDraftActions } from "./actions";
+import { createDraftActionKeys } from "./plugins/action-keys";
 import { getDraftRange, getInputRange, readDraft, readValues } from "./read";
 import type { DraftStep } from "./types";
 
@@ -70,26 +79,50 @@ const mockPill = (filter: MockFilter) =>
 
 const START = { from: 0, to: 0 };
 
+type SetupOpts = {
+  stages?: Token<MockFilter>[][];
+  adapter?: FilterBarAdapter<MockFilter>;
+};
+
+const setupEditor = ({
+  stages = [],
+  adapter = MOCK_ADAPTER,
+}: SetupOpts = {}) => {
+  const openFilterEditor = jest.fn();
+  const actions = createDraftActions<MockFilter>({
+    getAdapter: () => adapter,
+    openFilterEditor,
+  });
+  const editor = new Editor({
+    extensions: [
+      ...createEditorExtensions({ caretClassName: "caret" }),
+      createDraftActionKeys(actions),
+    ],
+    content: tokensToContent(stages),
+  });
+  return { editor, actions, openFilterEditor };
+};
+
 const setup = (
   column: FilterColumn,
   operator: FilterOperator,
   adapter?: FilterBarAdapter<MockFilter>,
 ) => {
-  const testEditor = createActionsTestEditor({ adapter });
-  const { editor, actions, getCaretDraft } = testEditor;
+  const testEditor = setupEditor({ adapter });
+  const { editor, actions } = testEditor;
   actions.pickColumn(editor, START, column, 0);
   actions.pickOperator(editor, START, operator);
   const read = () => {
-    const draft = getCaretDraft();
+    const draft = getCaretDraft(editor);
     return { ...readDraft(draft), values: readValues(draft) };
   };
   return { ...testEditor, read };
 };
 
 const setupPill = (filter: MockFilter) => {
-  const testEditor = createActionsTestEditor({ stages: [[mockPill(filter)]] });
+  const testEditor = setupEditor({ stages: [[mockPill(filter)]] });
   const read = () => {
-    const draft = testEditor.getCaretDraft();
+    const draft = getCaretDraft(testEditor.editor);
     return { ...readDraft(draft), values: readValues(draft) };
   };
   return { ...testEditor, read };
@@ -98,21 +131,20 @@ const setupPill = (filter: MockFilter) => {
 describe("createDraftActions", () => {
   describe("commitDraft", () => {
     it("does not commit a range with an empty end", () => {
-      const { findDraft, getStages, press, type } = setup(SUBTOTAL, BETWEEN);
-      type("10");
-      press("Enter");
-      expect(findDraft()).not.toBeNull();
-      expect(getStages()).toEqual([[]]);
+      const { editor } = setup(SUBTOTAL, BETWEEN);
+      type(editor, "10");
+      press(editor, "Enter");
+      expect(findDraft(editor)).not.toBeNull();
+      expect(getStages(editor)).toEqual([[]]);
     });
 
     it("commits a filter with no values", () => {
       const filter = mockFilter("status", "is-empty");
-      const { editor, actions, findDraft, getStages, press } =
-        setupPill(filter);
+      const { editor, actions } = setupPill(filter);
       actions.editPill(editor, 0);
-      press("Enter");
-      expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([[mockPill(filter)]]);
+      press(editor, "Enter");
+      expect(findDraft(editor)).toBeNull();
+      expect(getStages(editor)).toEqual([[mockPill(filter)]]);
     });
 
     it("keeps the draft when the adapter makes no filter", () => {
@@ -122,24 +154,20 @@ describe("createDraftActions", () => {
           toFilter: () => null,
         }),
       };
-      const { findDraft, getStages, press, type } = setup(
-        SUBTOTAL,
-        GREATER,
-        adapter,
-      );
-      type("5");
-      press("Enter");
-      expect(findDraft()).not.toBeNull();
-      expect(getStages()).toEqual([[]]);
+      const { editor } = setup(SUBTOTAL, GREATER, adapter);
+      type(editor, "5");
+      press(editor, "Enter");
+      expect(findDraft(editor)).not.toBeNull();
+      expect(getStages(editor)).toEqual([[]]);
     });
 
     it("adds the typed text to the list values", () => {
-      const { getStages, press, type } = setup(SUBTOTAL, IS);
-      type("1");
-      press(",");
-      type("2");
-      press("Enter");
-      expect(getStages()).toEqual([
+      const { editor } = setup(SUBTOTAL, IS);
+      type(editor, "1");
+      press(editor, ",");
+      type(editor, "2");
+      press(editor, "Enter");
+      expect(getStages(editor)).toEqual([
         [mockPill(mockFilter("subtotal", "=", "1", "2"))],
       ]);
     });
@@ -147,59 +175,56 @@ describe("createDraftActions", () => {
 
   describe("addTypedValues", () => {
     it("turns the typed text into a list value on ,", () => {
-      const { press, read, type } = setup(SUBTOTAL, IS);
-      type("1");
-      expect(press(",")).toBe(true);
+      const { editor, read } = setup(SUBTOTAL, IS);
+      type(editor, "1");
+      expect(press(editor, ",")).toBe(true);
       expect(read()).toMatchObject({ text: "", values: ["1"] });
     });
 
     it("goes to the end of a range on , and then commits it", () => {
-      const { findDraft, getStages, press, read, type } = setup(
-        SUBTOTAL,
-        BETWEEN,
-      );
-      type("10");
-      press(",");
-      type("20");
+      const { editor, read } = setup(SUBTOTAL, BETWEEN);
+      type(editor, "10");
+      press(editor, ",");
+      type(editor, "20");
       expect(read()).toMatchObject({ texts: ["10", "20"] });
-      press(",");
-      expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([
+      press(editor, ",");
+      expect(findDraft(editor)).toBeNull();
+      expect(getStages(editor)).toEqual([
         [mockPill(mockFilter("subtotal", "between", "10", "20"))],
       ]);
     });
 
     it("leaves , in a single value to others", () => {
-      const { press, type } = setup(SUBTOTAL, GREATER);
-      type("5");
-      expect(press(",")).toBe(false);
+      const { editor } = setup(SUBTOTAL, GREATER);
+      type(editor, "5");
+      expect(press(editor, ",")).toBe(false);
     });
   });
 
   describe("tabInValues", () => {
     it("turns the typed text into a list value on Tab", () => {
-      const { findDraft, press, read, type } = setup(SUBTOTAL, IS);
-      type("1");
-      press("Tab");
-      expect(findDraft()).not.toBeNull();
+      const { editor, read } = setup(SUBTOTAL, IS);
+      type(editor, "1");
+      press(editor, "Tab");
+      expect(findDraft(editor)).not.toBeNull();
       expect(read()).toMatchObject({ text: "", values: ["1"] });
     });
 
     it("commits a list with no typed text on Tab", () => {
-      const { getStages, press, type } = setup(SUBTOTAL, IS);
-      type("1");
-      press("Tab");
-      press("Tab");
-      expect(getStages()).toEqual([
+      const { editor } = setup(SUBTOTAL, IS);
+      type(editor, "1");
+      press(editor, "Tab");
+      press(editor, "Tab");
+      expect(getStages(editor)).toEqual([
         [mockPill(mockFilter("subtotal", "=", "1"))],
       ]);
     });
 
     it("commits a single value on Tab", () => {
-      const { getStages, press, type } = setup(SUBTOTAL, GREATER);
-      type("5");
-      press("Tab");
-      expect(getStages()).toEqual([
+      const { editor } = setup(SUBTOTAL, GREATER);
+      type(editor, "5");
+      press(editor, "Tab");
+      expect(getStages(editor)).toEqual([
         [mockPill(mockFilter("subtotal", ">", "5"))],
       ]);
     });
@@ -208,48 +233,48 @@ describe("createDraftActions", () => {
   describe("removeLastValue", () => {
     const setupList = () => {
       const testEditor = setup(SUBTOTAL, IS);
-      testEditor.type("1");
-      testEditor.press(",");
-      testEditor.type("2");
-      testEditor.press(",");
+      type(testEditor.editor, "1");
+      press(testEditor.editor, ",");
+      type(testEditor.editor, "2");
+      press(testEditor.editor, ",");
       return testEditor;
     };
 
     it("removes the last value on Backspace at the input start", () => {
-      const { press, read } = setupList();
-      expect(press("Backspace")).toBe(true);
+      const { editor, read } = setupList();
+      expect(press(editor, "Backspace")).toBe(true);
       expect(read()).toMatchObject({ values: ["1"] });
     });
 
     it("keeps the values on Backspace at the start of typed text", () => {
-      const { editor, getCaretDraft, press, read, type } = setupList();
-      type("x");
-      editor.commands.setTextSelection(getInputRange(getCaretDraft()).from);
-      expect(press("Backspace")).toBe(true);
+      const { editor, read } = setupList();
+      type(editor, "x");
+      editor.commands.setTextSelection(
+        getInputRange(getCaretDraft(editor)).from,
+      );
+      expect(press(editor, "Backspace")).toBe(true);
       expect(read()).toMatchObject({ text: "x", values: ["1", "2"] });
     });
 
     it("leaves Backspace after typed text to others", () => {
-      const { press, read, type } = setupList();
-      type("x");
-      expect(press("Backspace")).toBe(false);
+      const { editor, read } = setupList();
+      type(editor, "x");
+      expect(press(editor, "Backspace")).toBe(false);
       expect(read()).toMatchObject({ text: "x", values: ["1", "2"] });
     });
   });
 
   describe("pickColumn", () => {
     it("opens the filter editor for a column with no operators", () => {
-      const {
+      const { editor, actions, openFilterEditor } = setupEditor();
+      type(editor, "cr");
+      actions.pickColumn(
         editor,
-        actions,
-        findDraft,
-        getCaretDraft,
-        openFilterEditor,
-        type,
-      } = createActionsTestEditor();
-      type("cr");
-      actions.pickColumn(editor, getDraftRange(getCaretDraft()), CREATED_AT, 0);
-      expect(findDraft()).toBeNull();
+        getDraftRange(getCaretDraft(editor)),
+        CREATED_AT,
+        0,
+      );
+      expect(findDraft(editor)).toBeNull();
       expect(openFilterEditor).toHaveBeenCalledWith({
         type: "new",
         column: CREATED_AT,
@@ -301,9 +326,9 @@ describe("createDraftActions", () => {
     });
 
     it("commits an operator with no values right away", () => {
-      const { findDraft, getStages } = setup(STATUS, IS_EMPTY);
-      expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([
+      const { editor } = setup(STATUS, IS_EMPTY);
+      expect(findDraft(editor)).toBeNull();
+      expect(getStages(editor)).toEqual([
         [mockPill(mockFilter("status", "is-empty"))],
       ]);
     });
@@ -312,10 +337,9 @@ describe("createDraftActions", () => {
   describe("editPill", () => {
     it("opens the filter editor for a pill with no parts", () => {
       const filter = mockSegment("Active users");
-      const { editor, actions, findDraft, openFilterEditor } =
-        setupPill(filter);
+      const { editor, actions, openFilterEditor } = setupPill(filter);
       expect(actions.editPill(editor, 0)).toBe(true);
-      expect(findDraft()).toBeNull();
+      expect(findDraft(editor)).toBeNull();
       expect(openFilterEditor).toHaveBeenCalledWith({
         type: "edit",
         filter,
@@ -338,31 +362,31 @@ describe("createDraftActions", () => {
 
   describe("editSelectedPill", () => {
     it("edits a selected pill on Enter", () => {
-      const { press, read, selectNode } = setupPill(
-        mockFilter("subtotal", "=", "1"),
-      );
-      selectNode(0);
-      expect(press("Enter")).toBe(true);
+      const { editor, read } = setupPill(mockFilter("subtotal", "=", "1"));
+      editor.commands.setNodeSelection(0);
+      expect(press(editor, "Enter")).toBe(true);
       expect(read()).toMatchObject({ step: "value", values: ["1"] });
     });
 
     it.each<{
       name: string;
-      select: (testEditor: ReturnType<typeof createActionsTestEditor>) => void;
+      select: (editor: Editor) => void;
     }>([
-      { name: "a caret", select: ({ placeCaret }) => placeCaret(0) },
+      {
+        name: "a caret",
+        select: (editor) => editor.commands.setTextSelection(0),
+      },
       {
         name: "a selected bool op",
-        select: ({ selectNode }) => selectNode(1),
+        select: (editor) => editor.commands.setNodeSelection(1),
       },
     ])("does nothing on ArrowDown with $name", ({ select }) => {
-      const testEditor = createActionsTestEditor({
+      const { editor } = setupEditor({
         stages: [[mockPill(mockFilter("id", ">", "1")), boolOpToken("or")]],
       });
-      const { findDraft, press } = testEditor;
-      select(testEditor);
-      expect(press("ArrowDown")).toBe(false);
-      expect(findDraft()).toBeNull();
+      select(editor);
+      expect(press(editor, "ArrowDown")).toBe(false);
+      expect(findDraft(editor)).toBeNull();
     });
   });
 });

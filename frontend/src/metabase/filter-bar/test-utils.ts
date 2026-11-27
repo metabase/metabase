@@ -1,3 +1,9 @@
+import { type Editor, findChildren } from "@tiptap/core";
+
+import { documentToTokens } from "./editor/document";
+import { insertPillDraft } from "./editor/draft/layout";
+import { findDraftAt } from "./editor/draft/read";
+import { isDraftNode } from "./editor/nodes/types";
 import {
   type PillToken,
   boolOpToken,
@@ -10,6 +16,7 @@ import type {
   FilterBarAdapter,
   FilterBarStageAdapter,
   FilterColumn,
+  FilterOperator,
   FilterOperatorGroup,
   FilterParts,
   FilterStages,
@@ -242,3 +249,72 @@ export const MOCK_STAGES: FilterStages<MockFilter> = [
   ),
   leaf(mockFilter("count", ">", "5")),
 ];
+
+export type KeyModifiers = Pick<
+  KeyboardEventInit,
+  "shiftKey" | "metaKey" | "ctrlKey" | "altKey"
+>;
+
+export const getStages = <F = string>(editor: Editor) =>
+  documentToTokens<F>(editor.state.doc);
+
+export const press = (
+  editor: Editor,
+  key: string,
+  modifiers: KeyModifiers = {},
+) =>
+  Boolean(
+    editor.view.someProp("handleKeyDown", (handle) =>
+      handle(editor.view, new KeyboardEvent("keydown", { key, ...modifiers })),
+    ),
+  );
+
+export const type = (editor: Editor, text: string) => {
+  [...text].forEach((char) => {
+    const { from, to } = editor.state.selection;
+    const isHandled = editor.view.someProp("handleTextInput", (handle) =>
+      handle(editor.view, from, to, char, () => editor.state.tr),
+    );
+    if (!isHandled) {
+      editor.view.dispatch(editor.state.tr.insertText(char, from, to));
+    }
+  });
+};
+
+export const findDraft = (editor: Editor) => {
+  const [draft] = findChildren(editor.state.doc, isDraftNode);
+  return draft ? { pos: draft.pos, text: draft.node.textContent } : null;
+};
+
+export const getCaretDraft = (editor: Editor) => {
+  const draft = findDraftAt(editor.state.selection.$from);
+  if (!draft) {
+    throw new Error("Expected a draft at the caret");
+  }
+  return draft;
+};
+
+const EDIT_COLUMN: FilterColumn = { key: "c", label: "C", icon: "int" };
+const EDIT_OPERATOR: FilterOperator = {
+  key: "=",
+  label: "is",
+  valueKind: "multi",
+};
+
+export const editPillAt = <F>(
+  editor: Editor,
+  pos: number,
+  token: PillToken<F>,
+  stage = 0,
+) =>
+  insertPillDraft(
+    editor,
+    { from: pos, to: pos + 1 },
+    token,
+    {
+      column: { type: "column", column: EDIT_COLUMN, targetStage: stage },
+      operator: { type: "operator", operator: EDIT_OPERATOR },
+      values: [],
+    },
+    "value",
+  );

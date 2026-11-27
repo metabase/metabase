@@ -1,21 +1,45 @@
-import { pillToken } from "../model";
-import { AND, CLOSE, OPEN, OR, createTestPill, pill } from "../test-utils";
+import { Editor } from "@tiptap/core";
+
+import { type Token, pillToken } from "../model";
+import {
+  AND,
+  CLOSE,
+  OPEN,
+  OR,
+  createTestPill,
+  editPillAt,
+  findDraft,
+  getStages,
+  pill,
+  type,
+} from "../test-utils";
 
 import {
   getStageAt,
   normalizeDocument,
   placePillAt,
   replacePillTokens,
+  tokensToContent,
 } from "./document";
-import { createTestEditor } from "./test-editor";
+import { createEditorExtensions } from "./extensions";
 
 const A = pill("A");
 const B = pill("B");
 const C = pill("C");
 
-const getNodeNames = (
-  editor: ReturnType<typeof createTestEditor>["editor"],
-) => {
+type SetupOpts = {
+  stages: Token<string>[][];
+};
+
+const setup = ({ stages }: SetupOpts) => {
+  const editor = new Editor({
+    extensions: createEditorExtensions({ caretClassName: "caret" }),
+    content: tokensToContent(stages),
+  });
+  return { editor };
+};
+
+const getNodeNames = (editor: Editor) => {
   const names: string[] = [];
   editor.state.doc.descendants((node) => {
     if (node.isInline) {
@@ -28,59 +52,57 @@ const getNodeNames = (
 describe("document", () => {
   it("keeps the stages on the way through the document", () => {
     const stages = [[A, AND, OPEN, B, OR, C, CLOSE], [pill("D")]];
-    expect(createTestEditor(...stages).getStages()).toEqual(stages);
+    const { editor } = setup({ stages });
+    expect(getStages(editor)).toEqual(stages);
   });
 
   it("keeps empty stages", () => {
     const stages = [[], [A], [], [B]];
-    expect(createTestEditor(...stages).getStages()).toEqual(stages);
+    const { editor } = setup({ stages });
+    expect(getStages(editor)).toEqual(stages);
   });
 
   it("parts the stages with a then node", () => {
-    const { editor } = createTestEditor([A], [], [B]);
+    const { editor } = setup({ stages: [[A], [], [B]] });
     expect(getNodeNames(editor)).toEqual(["pill", "then", "then", "pill"]);
   });
 
   it("puts the new pill tokens into the pills in place of the old ones", () => {
-    const { editor, getStages } = createTestEditor([A, AND, B]);
+    const { editor } = setup({ stages: [[A, AND, B]] });
     const newA = pillToken("new A", createTestPill("A"));
     const newB = pillToken("new B", createTestPill("B"));
     replacePillTokens(editor, [[newA, AND, newB]]);
-    expect(getStages()[0][0]).toBe(newA);
-    expect(getStages()[0][2]).toBe(newB);
+    expect(getStages(editor)[0][0]).toBe(newA);
+    expect(getStages(editor)[0][2]).toBe(newB);
   });
 
   it("matches pills by their order when the document hides an and", () => {
-    const { editor, getStages } = createTestEditor([A, B, OR, C]);
+    const { editor } = setup({ stages: [[A, B, OR, C]] });
     const newB = pillToken("new B", createTestPill("B"));
     replacePillTokens(editor, [[A, AND, newB, OR, C]]);
-    expect(getStages()).toEqual([[A, newB, OR, C]]);
+    expect(getStages(editor)).toEqual([[A, newB, OR, C]]);
   });
 
   it("puts the new token into a draft that edits a pill and back on leave", () => {
-    const { editor, getStages, findDraft, editPillAt } = createTestEditor([
-      A,
-      AND,
-      B,
-    ]);
-    editPillAt(0, A);
+    const { editor } = setup({ stages: [[A, AND, B]] });
+    editPillAt(editor, 0, A);
     const newA = pillToken("new A", createTestPill("A"));
     replacePillTokens(editor, [[newA, AND, B]]);
-    expect(getStages()[0][0]).toBe(newA);
+    expect(getStages(editor)[0][0]).toBe(newA);
     editor.commands.setTextSelection(editor.state.doc.content.size);
-    expect(findDraft()).toBeNull();
-    expect(getStages()).toEqual([[newA, AND, B]]);
+    expect(findDraft(editor)).toBeNull();
+    expect(getStages(editor)).toEqual([[newA, AND, B]]);
   });
 
   it("keeps the old pills that have no new token", () => {
-    const { editor, getStages } = createTestEditor([A, AND, B]);
+    const { editor } = setup({ stages: [[A, AND, B]] });
     const newA = pillToken("new A", createTestPill("A"));
     replacePillTokens(editor, [[newA]]);
-    expect(getStages()).toEqual([[newA, AND, B]]);
+    expect(getStages(editor)).toEqual([[newA, AND, B]]);
   });
 
   it("dispatches nothing when every filter is the same", () => {
-    const { editor } = createTestEditor([A, AND, B]);
+    const { editor } = setup({ stages: [[A, AND, B]] });
     const { state } = editor;
     replacePillTokens(editor, [[pill("A"), AND, pill("B")]]);
     expect(editor.state).toBe(state);
@@ -88,38 +110,33 @@ describe("document", () => {
 
   describe("normalizeDocument", () => {
     it("keeps a normalized document as it is", () => {
-      const { editor } = createTestEditor([A, OR, B]);
+      const { editor } = setup({ stages: [[A, OR, B]] });
       const { state } = editor;
       normalizeDocument(editor);
       expect(editor.state).toBe(state);
     });
 
     it("removes a dangling bool op", () => {
-      const { editor, getStages } = createTestEditor([A, AND]);
+      const { editor } = setup({ stages: [[A, AND]] });
       normalizeDocument(editor);
-      expect(getStages()).toEqual([[A]]);
+      expect(getStages(editor)).toEqual([[A]]);
     });
 
     it("removes a draft and keeps the pills", () => {
-      const { editor, getStages, findDraft, placeCaret, type } =
-        createTestEditor([A]);
-      placeCaret(1);
-      type("x");
+      const { editor } = setup({ stages: [[A]] });
+      editor.commands.setTextSelection(1);
+      type(editor, "x");
       normalizeDocument(editor);
-      expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([[A]]);
+      expect(findDraft(editor)).toBeNull();
+      expect(getStages(editor)).toEqual([[A]]);
     });
 
     it("puts back a pill that is being edited", () => {
-      const { editor, getStages, findDraft, editPillAt } = createTestEditor([
-        A,
-        OR,
-        B,
-      ]);
-      editPillAt(0, A);
+      const { editor } = setup({ stages: [[A, OR, B]] });
+      editPillAt(editor, 0, A);
       normalizeDocument(editor);
-      expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([[A, OR, B]]);
+      expect(findDraft(editor)).toBeNull();
+      expect(getStages(editor)).toEqual([[A, OR, B]]);
     });
   });
 
@@ -129,13 +146,13 @@ describe("document", () => {
     { pos: 2, stage: 1 },
     { pos: 3, stage: 1 },
   ])("finds stage $stage at $pos", ({ pos, stage }) => {
-    const { editor } = createTestEditor([A], [B]);
+    const { editor } = setup({ stages: [[A], [B]] });
     expect(getStageAt(editor.state.doc, pos)).toBe(stage);
   });
 
   it("replaces the pill at the position with the placed one", () => {
-    const { editor, getStages } = createTestEditor([A, AND, B]);
+    const { editor } = setup({ stages: [[A, AND, B]] });
     placePillAt(editor, 0, C, 0);
-    expect(getStages()).toEqual([[C, AND, B]]);
+    expect(getStages(editor)).toEqual([[C, AND, B]]);
   });
 });
