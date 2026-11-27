@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import VisibilityTogglerS from "./VisibilityToggler.module.css";
 
@@ -20,16 +20,19 @@ export const VisibilityToggler = ({
 }: VisibilityTogglerProps) => {
   const text = isOpen ? null : t`Open Editor`;
   const icon = isOpen ? "contract" : "expand";
+  const label = isOpen ? t`Close editor` : t`Open editor`;
 
   return (
     <Flex
-      component="a"
+      component={UnstyledButton}
       align="center"
       className={cx(VisibilityTogglerS.ToggleContent, className, {
         [VisibilityTogglerS.isReadOnly]: readOnly,
       })}
       onClick={toggleEditor}
       data-testid="visibility-toggler"
+      aria-label={label}
+      aria-expanded={isOpen}
       aria-hidden={readOnly}
     >
       {text && (
