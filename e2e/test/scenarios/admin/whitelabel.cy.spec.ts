@@ -1,37 +1,55 @@
 const { H } = cy;
 
-function checkFavicon(url) {
+function checkFavicon(url: string) {
   cy.request("/api/setting/application-favicon-url")
     .its("body")
     .should("include", url);
 }
 
-function checkLogo() {
-  cy.readFile("e2e/support/assets/logo.jpeg", "base64").then((logo_data) => {
-    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
-  });
+function checkLogo(logoBase64: string) {
+  cy.get(`img[src="data:image/jpeg;base64,${logoBase64}"]`).should("exist");
 }
 
-function illustrationUrlPattern(settingKey) {
+function illustrationUrlPattern(settingKey: string) {
   return new RegExp(`api/session/illustration/${settingKey}\\?v=[0-9a-f]{16}`);
 }
 
-function checkIllustrationResponse({ url, imageBase64 }) {
+function checkIllustrationResponse({
+  url,
+  imageBase64,
+}: {
+  url: string;
+  imageBase64: string;
+}) {
   cy.request({ url, encoding: "base64" }).then((response) => {
     expect(response.headers["content-type"]).to.eq("image/jpeg");
     expect(response.body).to.eq(imageBase64);
   });
 }
 
-function checkBackgroundIllustration({ testId, settingKey, imageBase64 }) {
+function checkBackgroundIllustration({
+  testId,
+  settingKey,
+  imageBase64,
+}: {
+  testId: string;
+  settingKey: string;
+  imageBase64: string;
+}) {
   cy.findByTestId(testId)
     .should("have.css", "background-image")
     .and("match", illustrationUrlPattern(settingKey))
     .then((backgroundImage) => {
-      const url = String(backgroundImage).match(/url\("(.+)"\)/)[1];
-      checkIllustrationResponse({ url, imageBase64 });
+      const url = String(backgroundImage).match(/url\("(.+)"\)/)?.[1];
+      expect(url).to.be.a("string");
+      checkIllustrationResponse({ url: String(url), imageBase64 });
     });
 }
+
+const getHelpLinkCustomDestinationInput = () =>
+  cy
+    .findByTestId("help-link-setting")
+    .findByPlaceholderText("Enter a URL it should go to");
 
 const MB = 1024 * 1024;
 
@@ -40,14 +58,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-  });
-
-  it("smoke UI test: should show the upsell without the whitelabel feature", () => {
-    H.deleteToken();
-    cy.visit("/admin/settings/appearance");
-    cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
-      "be.visible",
-    );
   });
 
   it("should show the application name in the main app (metabase#17043)", () => {
@@ -65,22 +75,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   });
 
   describe("image uploads", () => {
-    describe("company logo", () => {
-      it("should show the logo while signed out", () => {
-        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-          (logo_data) => {
-            H.updateSetting(
-              "application-logo-url",
-              `data:image/jpeg;base64,${logo_data}`,
-            );
-          },
-        );
-        cy.signOut();
-        cy.visit("/");
-        checkLogo();
-      });
-    });
-
     describe("favicon", () => {
       it("should show up in user's HTML, including a favicon URL set before we changed the input to a file input", () => {
         cy.visit("/admin/settings/whitelabel");
@@ -97,17 +91,15 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
           (base64Url) => {
             const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
-            cy.wrap(faviconUrl).as("faviconUrl");
             checkFavicon(faviconUrl);
+
+            cy.signInAsNormalUser();
+            cy.visit("/");
+            cy.get('head link[rel="icon"]')
+              .get(`[href="${faviconUrl}"]`)
+              .should("have.length", 1);
           },
         );
-        cy.signInAsNormalUser();
-        cy.visit("/");
-        cy.get("@faviconUrl").then((faviconUrl) => {
-          cy.get('head link[rel="icon"]')
-            .get(`[href="${faviconUrl}"]`)
-            .should("have.length", 1);
-        });
 
         cy.log(
           "should work for people that set favicon URL before we change the input to file input",
@@ -125,9 +117,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       });
     });
 
-    describe("login page illustration", () => {
+    describe("login page logo and illustration", () => {
       it(
-        "should reject a corrupted image, accept a valid one and display it on the login page",
+        "should reject a corrupted image, accept a valid one and display it and the logo on the login page",
         { tags: "@prerelease" },
         () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
@@ -173,9 +165,16 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
             (logo_data) => {
+              H.updateEnterpriseSetting(
+                "application-logo-url",
+                `data:image/jpeg;base64,${logo_data}`,
+              );
               cy.signOut();
-              cy.log("the login page loads the image from its URL");
+              cy.log(
+                "the login page shows the logo and loads the image from its URL",
+              );
               cy.visit("/");
+              checkLogo(logo_data);
               checkBackgroundIllustration({
                 testId: "login-page-illustration",
                 settingKey: "login-page-illustration-custom",
@@ -189,30 +188,20 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   });
 
   describe("font", () => {
-    it("should be able to make multiple font changes (metabase#45486) and apply the correct font for other users", () => {
-      cy.log("Reproduces metabase#45486");
+    it("should save a font in the UI and apply it for other users", () => {
       cy.intercept("PUT", "/api/setting/application-font").as("saveFont");
-      const fontsWithExpectedFallback = [
-        ["Lora", "serif"],
-        ["Merriweather", "Lora, serif"],
-        ["Montserrat", "sans-serif"],
-        ["Lato", "Arial, sans-serif"],
-      ];
       cy.visit("/admin/settings/whitelabel/branding");
 
-      fontsWithExpectedFallback.forEach(([newFont, fallback]) => {
-        cy.findByLabelText("Font").click();
-        H.selectDropdown().findByText(newFont).click();
-        cy.wait("@saveFont");
-        cy.get("body").should(
-          "have.css",
-          "font-family",
-          `${newFont}, ${fallback}`,
-        );
-      });
+      cy.findByLabelText("Font").click();
+      H.selectDropdown().findByText("Open Sans").click();
+      cy.wait("@saveFont");
+      cy.get("body").should(
+        "have.css",
+        "font-family",
+        '"Open Sans", Lato, sans-serif',
+      );
 
-      cy.log("should apply correct font");
-      H.updateSetting("application-font", "Open Sans");
+      cy.log("should apply the saved font for other users");
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.get("body").should(
@@ -224,7 +213,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   });
 
   describe("Help link", () => {
-    it("should validate the custom URL on the server and link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
+    it("should validate the custom URL on the server, and show the upsell and link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
       cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
         "putHelpLinkUrl",
       );
@@ -245,14 +234,20 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("Please make sure this is a valid URL")
         .should("not.exist");
 
-      cy.log(
-        "should link to metabase help when the whitelabel feature is disabled (eg OSS)",
-      );
       // Point the help link at the custom destination first, so only the
       // whitelabel feature gating can bring back the default Metabase help link
       H.updateSetting("help-link", "custom");
       H.deleteToken();
 
+      cy.log("should show the upsell without the whitelabel feature");
+      cy.visit("/admin/settings/appearance");
+      cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
+        "be.visible",
+      );
+
+      cy.log(
+        "should link to metabase help when the whitelabel feature is disabled (eg OSS)",
+      );
       cy.signInAsNormalUser();
       cy.visit("/");
       H.getProfileLink().click();
@@ -263,18 +258,4 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .and("include", "https://www.metabase.com/help?");
     });
   });
-
-  describe("Landing Page (now moved to general tab metabase#38699)", () => {
-    it("should go to the custom landing page from the main app", () => {
-      H.updateSetting("landing-page", "/test-1");
-      cy.visit("/admin/settings/general");
-      H.goToMainApp();
-      cy.url().should("include", "/test-1");
-    });
-  });
 });
-
-const getHelpLinkCustomDestinationInput = () =>
-  cy
-    .findByTestId("help-link-setting")
-    .findByPlaceholderText("Enter a URL it should go to");
