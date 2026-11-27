@@ -5,6 +5,7 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { PLUGIN_DATA_TESTING } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -51,12 +52,14 @@ describe("MetricTabs", () => {
     hasDataPermissions = true,
     role = "consumer",
     initialRoute = "/",
+    metricUrls = urls,
   }: {
     card?: Partial<Card>;
     hasDimensions?: boolean;
     hasDataPermissions?: boolean;
     role?: "admin" | "analyst" | "consumer";
     initialRoute?: string;
+    metricUrls?: MetricUrls;
   } = {}) {
     const card = createMockCard({
       type: "metric",
@@ -87,7 +90,7 @@ describe("MetricTabs", () => {
     });
 
     renderWithProviders(
-      <Route path="*" element={<MetricTabs card={card} urls={urls} />} />,
+      <Route path="*" element={<MetricTabs card={card} urls={metricUrls} />} />,
       {
         withRouter: true,
         initialRoute,
@@ -211,6 +214,43 @@ describe("MetricTabs", () => {
       setup({ role: "consumer" });
       await screen.findByText("About");
       expect(getTabLabels()).not.toContain("Dependencies");
+    });
+  });
+
+  describe("Tests tab", () => {
+    const urlsWithTests: MetricUrls = {
+      ...urls,
+      tests: (id) => `/metric/${id}/tests`,
+    };
+
+    afterEach(() => {
+      PLUGIN_DATA_TESTING.isEnabled = false;
+    });
+
+    it("is hidden when testing is not enabled", async () => {
+      setup({ metricUrls: urlsWithTests });
+      await screen.findByText("About");
+      expect(getTabLabels()).not.toContain("Tests");
+    });
+
+    it("is hidden on pages that have no tests URL", async () => {
+      PLUGIN_DATA_TESTING.isEnabled = true;
+      setup();
+      await screen.findByText("About");
+      expect(getTabLabels()).not.toContain("Tests");
+    });
+
+    it("shows as selected on the tests page of the metric", async () => {
+      PLUGIN_DATA_TESTING.isEnabled = true;
+      setup({
+        card: { id: 5 },
+        metricUrls: urlsWithTests,
+        initialRoute: "/metric/5-revenue/tests",
+      });
+      expect(await screen.findByRole("tab", { name: "Tests" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
     });
   });
 });

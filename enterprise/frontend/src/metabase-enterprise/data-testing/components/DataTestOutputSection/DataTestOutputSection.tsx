@@ -1,33 +1,23 @@
 import { t } from "ttag";
 
-import type {
-  DataTestData,
-  DataTestExpectation,
-  Transform,
-} from "metabase-types/api";
+import type { DataTestData, DataTestExpectation } from "metabase-types/api";
 
-import { DataTestSection } from "../../../components/DataTestSection";
-import { getTableName } from "../../../utils";
-import { TransformTestDataCard } from "../TransformTestDataCard";
+import { DataTestDataCard } from "../DataTestDataCard";
+import { DataTestSection } from "../DataTestSection";
 
-type TransformTestOutputSectionProps = {
-  transform: Transform;
+type DataTestOutputSectionProps = {
+  description: string;
   expectations: DataTestExpectation[];
 };
 
-export function TransformTestOutputSection({
-  transform,
+export function DataTestOutputSection({
+  description,
   expectations,
-}: TransformTestOutputSectionProps) {
-  const tableName = getTableName(transform.target);
-
+}: DataTestOutputSectionProps) {
   return (
-    <DataTestSection
-      label={t`Output`}
-      description={t`Checks on ${tableName}, the table this transform writes.`}
-    >
+    <DataTestSection label={t`Output`} description={description}>
       {expectations.map((expectation) => (
-        <TransformTestDataCard
+        <DataTestDataCard
           key={expectation.name}
           name={expectation.name}
           icon="list"

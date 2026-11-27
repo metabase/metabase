@@ -5,6 +5,7 @@ export * from "./application-permissions";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";
+export * from "./card-test";
 export * from "./cloud-add-ons";
 export * from "./content-diagnostics";
 export * from "./content-translation";

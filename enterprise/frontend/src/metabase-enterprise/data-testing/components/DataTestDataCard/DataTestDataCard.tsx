@@ -22,19 +22,19 @@ import type {
   IconName,
 } from "metabase-types/api";
 
-type TransformTestDataCardProps = {
+type DataTestDataCardProps = {
   name: string;
   icon: IconName;
   description: string;
   data: DataTestData;
 };
 
-export function TransformTestDataCard({
+export function DataTestDataCard({
   name,
   icon,
   description,
   data,
-}: TransformTestDataCardProps) {
+}: DataTestDataCardProps) {
   return (
     <Card withBorder p={0} aria-label={name}>
       <Group gap="sm" px="lg" py="md" wrap="nowrap">

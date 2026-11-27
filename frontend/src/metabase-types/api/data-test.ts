@@ -98,8 +98,15 @@ export type CardTest = {
   expectations: DataTestExpectation[];
   created_at: string;
   updated_at: string;
+  last_run: DataTestRun | null;
   card?: Card;
 };
+
+export type ListCardTestsRequest = {
+  "card-id"?: CardId;
+};
+
+export type RunCardTestResponse = RunTransformTestResponse;
 
 export type SegmentTestId = number;
 

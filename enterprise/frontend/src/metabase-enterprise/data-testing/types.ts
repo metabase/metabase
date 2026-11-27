@@ -3,14 +3,13 @@ import type { ComponentType } from "react";
 
 import type * as Urls from "metabase/urls";
 import type {
+  CardTest,
   DataTestId,
   DataTestRun,
   DataTestType,
   RunTransformTestResponse,
   TransformTest,
 } from "metabase-types/api";
-
-import type { DataTestRunTriggeredFrom } from "./analytics";
 
 /** The fields of a test that the pages of every test type show. */
 export type DataTest = {
@@ -26,6 +25,7 @@ export type DataTestSubjectId = number;
 /** The test of each test type, as its API returns it. */
 export type DataTestByType = {
   transform: TransformTest;
+  card: CardTest;
 };
 
 export type DataTestQueryResult<T> = {
@@ -69,10 +69,7 @@ export type DataTestTypeDefinition<T extends DataTest> = {
   getSubjectId: (test: T) => DataTestSubjectId;
   getTestUrl: (test: T) => string;
   getTestRunsUrl: (test: T, params?: Urls.DataTestRunListParams) => string;
-  trackManualRun: (opts: {
-    testId: DataTestId;
-    triggeredFrom: DataTestRunTriggeredFrom;
-  }) => void;
+  testType: DataTestType;
   getListLabel: () => string;
   getRunDescription: () => string;
   SubjectLink: ComponentType<{ test: T }>;

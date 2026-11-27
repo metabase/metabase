@@ -213,7 +213,8 @@ describe("TransformTestListPage", () => {
         fetchMock.callHistory.called("path:/api/ee/transform-test/1/run"),
       ).toBe(false);
       expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "transform_test_trigger_manual_run",
+        event: "data_test_trigger_manual_run",
+        event_detail: "transform",
         target_id: 2,
         triggered_from: "test_list",
       });

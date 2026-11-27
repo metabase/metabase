@@ -173,7 +173,8 @@ describe("TransformTestOverviewPage", () => {
     ).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: /Run now/ }));
     expect(trackSimpleEvent).toHaveBeenCalledWith({
-      event: "transform_test_trigger_manual_run",
+      event: "data_test_trigger_manual_run",
+      event_detail: "transform",
       target_id: 2,
       triggered_from: "test_overview",
     });

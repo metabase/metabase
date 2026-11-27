@@ -187,7 +187,8 @@ describe("TransformTestRunsPage", () => {
       }),
     ).toBe(true);
     expect(trackSimpleEvent).toHaveBeenCalledWith({
-      event: "transform_test_trigger_manual_run",
+      event: "data_test_trigger_manual_run",
+      event_detail: "transform",
       target_id: 2,
       triggered_from: "test_runs",
     });

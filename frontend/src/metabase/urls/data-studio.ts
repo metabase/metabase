@@ -1,5 +1,6 @@
 import type {
   CardId,
+  CardTestId,
   CollectionId,
   DatabaseId,
   ErdParams,
@@ -11,6 +12,8 @@ import type {
   TableId,
   WritebackActionId,
 } from "metabase-types/api";
+
+import { type DataTestRunListParams, dataTestRuns } from "./data-testing";
 
 const ROOT_URL = "/data-studio";
 
@@ -294,6 +297,22 @@ export function dataStudioMetricDependencies(cardId: CardId) {
 
 export function dataStudioMetricHistory(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/history`;
+}
+
+export function dataStudioMetricTestList(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/tests`;
+}
+
+export function dataStudioMetricTest(cardId: CardId, testId: CardTestId) {
+  return `${dataStudioMetricTestList(cardId)}/${testId}`;
+}
+
+export function dataStudioMetricTestRuns(
+  cardId: CardId,
+  testId: CardTestId,
+  params?: DataTestRunListParams,
+) {
+  return dataTestRuns(dataStudioMetricTest(cardId, testId), params);
 }
 
 type DataStudioSchemaViewerParams = {
