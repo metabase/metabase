@@ -170,6 +170,14 @@
     (model-persistence.db/update-persisted-infos-for-databases!
      database-ids {:active false, :state "deletable", :state_change_at :%now})))
 
+(defn mark-persisted-infos-for-pruning-for-cards!
+  "Marks the refreshable PersistedInfos of the Cards with `card-ids` as `deletable`, inactive, for the PersistPrune
+  task, which a Card moving to another Database does, as its cache table lives in the old one."
+  [card-ids]
+  (when (seq card-ids)
+    (model-persistence.db/update-persisted-infos-for-cards-in-states!
+     card-ids (refreshable-states) {:active false, :state "deletable", :state_change_at :%now})))
+
 (defn mark-persisted-infos-for-pruning-for-disabling!
   "Marks every PersistedInfo as `deletable`, inactive, which disabling model persistence for the instance does."
   []

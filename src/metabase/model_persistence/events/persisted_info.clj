@@ -1,6 +1,6 @@
 (ns metabase.model-persistence.events.persisted-info
   "Handlers of the lifecycle events that have a model Card persisted when its database persists models, for the user
-  who turned it into one."
+  who turned it into one, and its cache pruned when it moves to another database."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
@@ -43,8 +43,16 @@
        (or (nil? previous-object)
            (u.events/changed? change :type))))
 
+(defn- moved-database?
+  "Whether the `change` moved an existing Card to another Database."
+  [{:keys [previous-object] :as change}]
+  (and (some? previous-object)
+       (u.events/changed? change :database_id)))
+
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [changes user-id]}]
+  (when-let [moved-ids (not-empty (into [] (comp (filter moved-database?) (map (comp :id :object))) changes))]
+    (persisted-info/mark-persisted-infos-for-pruning-for-cards! moved-ids))
   (when user-id
     (when-let [card-ids (not-empty (into [] (comp (filter became-model?) (map (comp :id :object))) changes))]
       (run! #(turn-on-models! (vec %) user-id) (partition-all mdb/create-partition-size card-ids)))))

@@ -207,6 +207,17 @@
   [changes :- persisted-info-changes]
   (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active]) changes))
 
+(mu/defn update-persisted-infos-for-cards-in-states!
+  "Apply `changes` to the PersistedInfos of the Cards with `card-ids` that are in one of `states`."
+  [card-ids :- [:sequential ::lib.schema.id/card]
+   states   :- [:set :string]
+   changes  :- persisted-info-changes]
+  (update-persisted-info-rows! (mdb/select-batched #(t2/select [:model/PersistedInfo :id :state :active]
+                                                               :card_id [:in %]
+                                                               :state [:in states])
+                                                   card-ids)
+                               changes))
+
 (mu/defn update-active-persisted-infos-for-cards!
   "Apply `changes` to the active PersistedInfos of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]
