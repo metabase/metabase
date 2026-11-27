@@ -877,19 +877,21 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (let [stored-field-ids (map last breakout-fields)
-        stored-fields    (map #(when (integer? %)
-                                 (driver-api/field (driver-api/metadata-provider) %))
-                              stored-field-ids)
-        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                                  driver clause honeysql-form)
-        qualified        (parent-method query)
-        unqualified      (parent-method (update query
-                                                :breakout
-                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-    (if (some driver-api/json-field? stored-fields)
+  (let [json-breakout? (fn [breakout]
+                         (let [stored-field-id (last breakout)]
+                           (and (integer? stored-field-id)
+                                (driver-api/json-field? (driver-api/field (driver-api/metadata-provider) stored-field-id)))))
+        parent-method  (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                driver clause honeysql-form)
+        qualified      (parent-method query)]
+    (if (some json-breakout? breakout-fields)
       (merge qualified
-             (select-keys unqualified #{:group-by}))
+             (select-keys (parent-method (update query
+                                                 :breakout
+                                                 (partial mapv #(cond-> %
+                                                                  (json-breakout? %)
+                                                                  (sql.qp/rewrite-fields-to-force-using-column-aliases {:is-breakout true})))))
+                          #{:group-by}))
       qualified)))
 
 (defn- order-by-is-json-field?

@@ -598,6 +598,29 @@
                   "  1048575"]
                  (str/split-lines (driver/prettify-native-form driver/*driver* (:query only-order))))))))))
 
+(deftest ^:parallel json-breakout-keeps-ordinary-breakout-qualified-test
+  (mt/test-driver :postgres
+    (testing "ordinary breakouts next to a JSON breakout stay qualified in GROUP BY to avoid ambiguity with joined columns"
+      (let [mp    (lib.tu/mock-metadata-provider
+                   {:database (assoc meta/database :engine driver/*driver*, :id 1)
+                    :tables   [(merge (meta/table-metadata :venues) {:id 1 :db-id 1 :name "orders" :schema nil})]
+                    :fields   [(merge (meta/field-metadata :venues :id)
+                                      {:id 1 :table-id 1 :name "userid" :database-type "int4"})
+                               (merge (meta/field-metadata :venues :name)
+                                      {:id            2
+                                       :table-id      1
+                                       :name          "category"
+                                       :nfc-path      ["category" "location"]
+                                       :database-type "text"})]})
+            query (-> (lib/query mp (lib.metadata/table mp 1))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field mp 1))
+                      (lib/breakout (lib.metadata/field mp 2)))
+            sql   (:query (qp.compile/compile query))
+            group-by-clause (second (re-find #"(?s)GROUP BY\s+(.*?)\s+ORDER BY" (str/replace sql #"\s+" " ")))]
+        (is (= "\"orders\".\"userid\", \"category\"" group-by-clause)
+            sql)))))
+
 (defn- ^:private json-alias-in-model-mock-metadata-provider [driver]
   (providers.mock/mock-metadata-provider
    (json-alias-mock-metadata-provider driver)
