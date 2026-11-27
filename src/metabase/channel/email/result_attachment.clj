@@ -186,8 +186,9 @@
            attach   (fn []
                       (let [result           (:result (channel.shared/maybe-realize-data-rows part))
                             ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
-                            ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
-                            filename-prefix  (render.util/dashcard-title card dashcard)]
+                            ;; displayed title; falls back to the card's own name when there is none (see [[render.util/dashcard-title]]).
+                            filename-prefix  (or (not-empty (render.util/dashcard-title card dashcard))
+                                                 (:name card))]
                         (when-not (:render/too-large? result)
                           (->>
                            [(when-let [temp-file (and (:include_csv card)

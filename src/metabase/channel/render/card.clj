@@ -29,9 +29,9 @@
    card        :- [:maybe ::body/card]
    dashcard    :- [:maybe ::body/dashcard]
    options     :- [:maybe ::body/options]]
-  (when (:channel.render/include-title? options)
-    (let [card-name    (render.util/dashcard-title card dashcard)
-          image-bundle (when (:channel.render/include-buttons? options)
+  (when-let [card-name (and (:channel.render/include-title? options)
+                            (not-empty (render.util/dashcard-title card dashcard)))]
+    (let [image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
           title-href   (if dashcard
                          (urls/dashcard-url dashcard)
