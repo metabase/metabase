@@ -55,6 +55,19 @@
   []
   (t2/select :model/CacheConfig :strategy :duration :refresh_automatically true))
 
+(mu/defn- card-on-dashboard :- vector?
+  "Where-clause for the Card in `card-id-column` being on the Dashboard in `dashboard-id-column`, as a dashcard's
+  Card or one of its series."
+  [card-id-column      :- :keyword
+   dashboard-id-column :- :keyword]
+  [:exists ^:allow-subquery {:select    [[[:inline 1]]]
+                             :from      [[(t2/table-name :model/DashboardCard) :dc]]
+                             :left-join [[(t2/table-name :model/DashboardCardSeries) :dcs]
+                                         [:= :dcs.dashboardcard_id :dc.id]]
+                             :where     [:and
+                                         [:= :dc.dashboard_id dashboard-id-column]
+                                         [:or [:= :dc.card_id card-id-column] [:= :dcs.card_id card-id-column]]]}])
+
 (mu/defn duration-queries-to-rerun
   "The query definitions to rerun for the duration cache `scopes`, each `{:model :model-id :rerun-cutoff}`, counting
   only executions started after `started-after`; `parameterized?` selects parameterized or plain queries."
@@ -84,20 +97,20 @@
                                    :where    [:and
                                               (case model
                                                 "question"  [:= :qe.card_id model-id]
-                                                "dashboard" [:= :qe.dashboard_id model-id])
+                                                "dashboard" [:and
+                                                             [:= :qe.dashboard_id model-id]
+                                                             (card-on-dashboard :qe.card_id :qe.dashboard_id)])
                                               [:<= :qc.updated_at rerun-cutoff]
                                               [:>= :qe.started_at started-after]
                                               [:= :qe.error nil]
                                               [:= :qe.is_sandboxed false]
+                                              [:or [:= :qe.context nil] [:not= :qe.context "cache-refresh"]]
                                               (if parameterized?
                                                 [:and
                                                  [:= :qe.parameterized true]
                                                  ;; Only rerun a parameterized query if it's had a cache hit within
                                                  ;; the last caching window
-                                                 [:= :qe.cache_hit true]
-                                                 ;; Don't factor the last cache refresh into whether we should rerun
-                                                 ;; a parameterized query
-                                                 [:not= :qe.context "cache-refresh"]]
+                                                 [:= :qe.cache_hit true]]
                                                 [:= :qe.parameterized false])]
                                    :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
                        :u]]}))
