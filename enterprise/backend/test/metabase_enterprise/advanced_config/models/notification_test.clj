@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]
+   [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -80,7 +81,7 @@
               (is (t2/exists? :model/NotificationRecipient :notification_handler_id handler-id)))))))))
 
 (deftest validate-email-handlers!-test
-  (testing "the send-time check reuses validate-email-handlers!, which throws on a disallowed raw external recipient"
+  (testing "validate-email-handlers! throws on disallowed raw external recipient"
     (let [handler (fn [email] {:channel_type :channel/email
                                :recipients   [{:type :notification-recipient/raw-value :details {:value email}}
                                               {:type :notification-recipient/user :user {:email "someone@evil.com"}}]})]
@@ -97,3 +98,21 @@
         (mt/with-premium-features #{}
           (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
             (is (nil? (models.notification/validate-email-handlers! [(handler "attacker@evil.com")])))))))))
+
+(deftest existing-notification-sends-to-recipients-on-allowed-domains-test
+  (testing "recipient added before subscription-allowed-domains narrowed does not stop sending to allowed recipients"
+    (mt/with-premium-features #{:email-allow-list}
+      (notification.tu/with-card-notification
+        [notification {:notification-card {:send_condition :has_result}
+                       :handlers          [{:channel_type :channel/email
+                                            :recipients   [{:type    :notification-recipient/raw-value
+                                                            :details {:value "cam@metabase.com"}}
+                                                           {:type    :notification-recipient/raw-value
+                                                            :details {:value "cam@disallowed-domain.com"}}]}]}]
+        (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
+          (notification.tu/with-channel-fixtures [:channel/email]
+            (let [emails     (notification.tu/with-mock-inbox-email!
+                               (notification/send-notification! notification :notification/sync? true))
+                  recipients (into #{} (mapcat #(concat (:to %) (:bcc %))) emails)]
+              (is (contains? recipients "cam@metabase.com"))
+              (is (not (contains? recipients "cam@disallowed-domain.com"))))))))))

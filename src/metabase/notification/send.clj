@@ -230,15 +230,10 @@
             (models.notification/delete-notifications! [id])
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
-        (let [hydrated-notification (hydrate-notification notification-info)
+        (let [hydrated-notification (-> (hydrate-notification notification-info)
+                                        (update :handlers models.notification/remove-disallowed-email-recipients))
               handlers              (:handlers hydrated-notification)
               failures              (volatile! [])]
-          (try
-            (models.notification/validate-email-handlers! handlers)
-            (catch clojure.lang.ExceptionInfo _e
-              (throw (ex-info "A subscription recipient is not permitted by subscription-allowed-domains"
-                              {:status-code     403
-                               :notification-id id}))))
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
