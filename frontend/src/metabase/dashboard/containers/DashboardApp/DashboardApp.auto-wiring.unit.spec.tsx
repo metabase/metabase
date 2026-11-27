@@ -588,6 +588,16 @@ describe("DashboardApp > filter auto-wiring", () => {
         );
       const suggestion =
         "Auto-connect this filter to all questions containing “User.Name”?";
+      // a dismissed toast stays mounted until its exit transition ends, so
+      // let 1s pass before checking either way
+      const expectStillOpen = async (message: string) => {
+        await tick(1000);
+        expect(getToastMessages()).toEqual([expect.stringContaining(message)]);
+      };
+      const expectDismissed = async () => {
+        await tick(1000);
+        expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+      };
 
       await selectName();
       expect(await findToast(suggestion)).toBeInTheDocument();
@@ -596,11 +606,11 @@ describe("DashboardApp > filter auto-wiring", () => {
       await selectName();
 
       // 13s after the first suggestion, 11s after the second one
-      await tick(11000);
-      expect(getToastMessages()).toEqual([expect.stringContaining(suggestion)]);
-      await tick(2000);
+      await tick(10000);
+      await expectStillOpen(suggestion);
+      // 12s after the second suggestion
       await tick(1000);
-      expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+      await expectDismissed();
 
       await disconnectFirstCard();
       await selectName();
@@ -610,16 +620,13 @@ describe("DashboardApp > filter auto-wiring", () => {
           name: "Auto-connect",
         }),
       );
-      await user.unhover(screen.getByTestId("toast-undo"));
-      await tick(7000);
-      expect(getToastMessages()).toEqual([
-        expect.stringContaining(
-          "The filter was auto-connected to all questions containing “User.Name”.",
-        ),
-      ]);
-      await tick(2000);
+      await tick(6000);
+      await expectStillOpen(
+        "The filter was auto-connected to all questions containing “User.Name”.",
+      );
+      // 8s after the undo toast opened
       await tick(1000);
-      expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+      await expectDismissed();
     });
 
     describe("multiple tabs", () => {
