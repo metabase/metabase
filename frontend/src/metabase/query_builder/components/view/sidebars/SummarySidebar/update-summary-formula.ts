@@ -34,13 +34,13 @@ export function updateSummaryFormula({
   generatedExpressions,
   isFormulaCreated,
   renamedFormula,
-  editedFormula,
+  isFormulaEdited,
 }: Options) {
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
     (formula) => {
-      const isRewrite = isNotNull(renamedFormula) || isNotNull(editedFormula);
+      const isRewrite = isNotNull(renamedFormula) || isFormulaEdited;
       if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }

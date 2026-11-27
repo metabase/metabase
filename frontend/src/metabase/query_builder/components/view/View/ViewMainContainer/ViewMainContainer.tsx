@@ -127,7 +127,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       }
       updateQuestion(nextQuestion, {
         run: true,
-        editedFormula: isNewColumn ? undefined : "expression",
+        columnChange: isNewColumn ? undefined : "in-place",
       });
     },
     onEditSummaryFormula: handleEditSummaryFormula,

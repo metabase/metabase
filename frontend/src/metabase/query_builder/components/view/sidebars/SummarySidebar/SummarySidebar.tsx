@@ -61,7 +61,7 @@ type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
   onQueryChange: (
     nextQuery: Lib.Query,
     pivotChange?: SummaryPivotChange,
-    editedFormula?: SummaryQueryChangeOptions["editedFormula"],
+    columnChange?: SummaryQueryChangeOptions["columnChange"],
   ) => void;
 };
 
@@ -111,7 +111,7 @@ export function SummarySidebar({
     onQueryChange(
       result.query,
       syncLayoutWithQuery(result.query, addedWellId),
-      options?.editedFormula,
+      options?.columnChange,
     );
   };
   const tc = useTranslateContent();

@@ -551,7 +551,7 @@ describe("syncVizSettings", () => {
 });
 
 describe("syncVizSettingsWithQuery", () => {
-  describe("column_settings", () => {
+  describe("formula column changes", () => {
     function createQuery(factors: number[]) {
       return Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
@@ -583,7 +583,7 @@ describe("syncVizSettingsWithQuery", () => {
       { stage: "the summary stage", appendStage: false },
       { stage: "a later stage", appendStage: true },
     ])(
-      "keeps each column's formatting in $stage when an edited formula takes its sibling's name",
+      "keeps each column's settings and order in $stage when an edited formula takes its sibling's name",
       ({ appendStage }) => {
         const summaryQuery = createQuery([5, 6]);
         const oldQuery = appendStage
@@ -593,6 +593,11 @@ describe("syncVizSettingsWithQuery", () => {
         const [replacement] = Lib.aggregations(createQuery([6]), -1);
         const newQuery = Lib.replaceClause(oldQuery, 0, original, replacement);
         const settings = createMockVisualizationSettings({
+          "table.columns": [
+            { name: "Sum(Total * 6)", enabled: false },
+            { name: "Sum(Total * 5)", enabled: true },
+          ],
+          "graph.metrics": ["Sum(Total * 6)", "Sum(Total * 5)"],
           column_settings: {
             '["name","Sum(Total * 5)"]': { number_style: "currency" },
             '["name","Sum(Total * 6)"]': { decimals: 3 },
@@ -604,10 +609,18 @@ describe("syncVizSettingsWithQuery", () => {
           newQuery,
           oldQuery,
           {
-            editedFormula: "aggregation",
+            columnChange: "in-place",
           },
         );
 
+        expect(newSettings["table.columns"]).toEqual([
+          { name: "Sum(Total * 6)_2", enabled: false },
+          { name: "Sum(Total * 6)", enabled: true },
+        ]);
+        expect(newSettings["graph.metrics"]).toEqual([
+          "Sum(Total * 6)_2",
+          "Sum(Total * 6)",
+        ]);
         expect(newSettings.column_settings).toEqual({
           '["name","Sum(Total * 6)"]': { number_style: "currency" },
           '["name","Sum(Total * 6)_2"]': { decimals: 3 },

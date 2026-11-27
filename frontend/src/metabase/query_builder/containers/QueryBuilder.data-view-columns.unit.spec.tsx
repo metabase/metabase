@@ -9,7 +9,8 @@ import { mockGetBoundingClientRect } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   createMockCard,
   createMockColumn,
@@ -20,6 +21,7 @@ import {
   ORDERS,
   ORDERS_ID,
   createOrdersCreatedAtDatasetColumn,
+  createOrdersIdDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -171,6 +173,79 @@ describe("new column shortcuts in the data view", () => {
 
   afterEach(() => {
     documentHiddenSpy?.mockRestore();
+  });
+
+  it("keeps a custom column's format and table position after editing its formula from the header", async () => {
+    const originalName = "1 + 1";
+    const updatedName = "1 + 2";
+    const card = createMockCard({
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.expression(
+          Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+          -1,
+          originalName,
+          Lib.expressionClause("+", [1, 1]),
+        ),
+      ),
+      visualization_settings: {
+        "table.columns": [
+          { name: originalName, enabled: true },
+          { name: "ID", enabled: true },
+        ],
+        column_settings: {
+          [getColumnKey({ name: originalName })]: { prefix: "£" },
+        },
+      },
+    });
+    const dataset = (name: string, value: number) =>
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createOrdersIdDatasetColumn(),
+            createExpressionColumn(name, "type/Integer"),
+          ],
+          rows: [[1, value]],
+        }),
+        row_count: 1,
+      });
+    await setup({
+      card,
+      dataset: dataset(originalName, 2),
+      database: createSampleDatabase({ auto_run_queries: true }),
+    });
+    fetchMock.modifyRoute("dataset-post", {
+      response: dataset(updatedName, 3),
+    });
+
+    expect(await screen.findByText("£2")).toBeVisible();
+    const header = screen.getByRole("columnheader", { name: originalName });
+    const clickTarget = within(header).getByTestId("cell-data");
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+    await userEvent.click(await screen.findByText("Edit formula"));
+
+    const editor = await screen.findByTestId("formula-editor");
+    const view = EditorView.findFromDOM(
+      await within(editor).findByRole("textbox"),
+    );
+    await waitFor(() => expect(view?.state.doc.toString()).toBe(originalName));
+    if (view) {
+      await act(async () => {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: updatedName },
+          userEvent: "input.type",
+        });
+      });
+    }
+    await userEvent.click(
+      within(editor).getByRole("button", { name: "Update" }),
+    );
+
+    expect(await screen.findByText("£3")).toBeVisible();
+    const headers = screen.getAllByRole("columnheader", { name: /.+/ });
+    expect(headers[0]).toHaveAccessibleName(updatedName);
+    expect(headers[1]).toHaveAccessibleName("ID");
   });
 
   it("should keep the chart settings after adding columns from the data view (metabase#43294)", async () => {

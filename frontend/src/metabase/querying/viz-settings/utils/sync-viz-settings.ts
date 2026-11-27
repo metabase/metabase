@@ -29,7 +29,7 @@ export function syncVizSettingsWithQuery(
   settings: VisualizationSettings,
   newQuery: Lib.Query,
   oldQuery: Lib.Query,
-  options: Pick<SyncVizSettingsOpts, "editedFormula"> = {},
+  options: Pick<SyncVizSettingsOpts, "columnChange"> = {},
 ): VisualizationSettings {
   if (isNativeQuery(newQuery) || isNativeQuery(oldQuery)) {
     return settings;
@@ -63,10 +63,11 @@ export function syncVizSettingsWithSeries(
   });
 }
 
-export type EditedFormula = "aggregation" | "expression";
+/** In-place changes preserve result column positions. Regrouping can move or merge breakouts. */
+export type ColumnChange = "in-place" | "regrouped";
 
 export type SyncVizSettingsOpts = {
-  editedFormula?: EditedFormula;
+  columnChange?: ColumnChange;
   placeNewColumnsInQueryOrder?: boolean;
 };
 
@@ -76,20 +77,19 @@ export function syncVizSettings(
   oldColumns: ColumnInfo[],
   options: SyncVizSettingsOpts = {},
 ): VisualizationSettings {
+  const matchedColumns = options.columnChange
+    ? matchChangedColumns(newColumns, oldColumns, options.columnChange)
+    : newColumns;
   let nextSettings = settings;
   nextSettings = syncTableColumns(
     nextSettings,
-    newColumns,
+    matchedColumns,
     oldColumns,
     options,
   );
-  nextSettings = syncColumnSettings(
-    nextSettings,
-    newColumns,
-    oldColumns,
-    options,
-  );
-  nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
+  nextSettings = syncColumnSettings(nextSettings, matchedColumns, oldColumns);
+  nextSettings = syncGraphMetrics(nextSettings, matchedColumns, oldColumns);
+  // The summary sidebar already accounts for renamed columns when it prepares the pivot split.
   nextSettings = syncPivotColumnSplit(nextSettings, newColumns, oldColumns);
   nextSettings = syncPivotCollapsedRows(nextSettings, newColumns, oldColumns);
   return nextSettings;
@@ -248,13 +248,16 @@ function matchColumnsByPosition(
   }));
 }
 
-/** Replacing a formula can rename both its result column and a sibling with the same name. */
-function matchFormulaEditColumns(
+/**
+ * Gives each new column the key of the old column it replaces. A rename can also change
+ * the suffix of a sibling with the same name.
+ */
+function matchChangedColumns(
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
-  editedFormula: EditedFormula,
+  columnChange: ColumnChange,
 ) {
-  if (editedFormula === "aggregation") {
+  if (columnChange === "in-place") {
     return matchColumnsByPosition(newColumns, oldColumns);
   }
 
@@ -268,7 +271,7 @@ function matchFormulaEditColumns(
   return [
     // Rebuilding a formula's breakouts can move other groupings. Match those by key first.
     ...newDimensions.filter((column) => oldKeys.has(column.key)),
-    // Breakouts that collapse into one retain the first grouping.
+    // When several groupings collapse into one, it keeps the settings of the first.
     ...matchColumnsByPosition(renamed, replaced.slice(0, renamed.length)),
     ...matchColumnsByPosition(
       newColumns.filter((column) => column.isAggregation),
@@ -281,7 +284,6 @@ function syncColumnSettings(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
-  { editedFormula }: SyncVizSettingsOpts,
 ): VisualizationSettings {
   const columnSettings = settings["column_settings"];
   if (!columnSettings) {
@@ -290,9 +292,7 @@ function syncColumnSettings(
 
   const columnEntries = syncColumns<[string, ColumnSettings]>({
     settings: Object.entries(columnSettings),
-    newColumns: editedFormula
-      ? matchFormulaEditColumns(newColumns, oldColumns, editedFormula)
-      : newColumns,
+    newColumns,
     oldColumns,
     getColumnName: ([key]) => getColumnNameFromKey(key),
     setColumnName: ([_key, setting], name) => [getColumnKey({ name }), setting],

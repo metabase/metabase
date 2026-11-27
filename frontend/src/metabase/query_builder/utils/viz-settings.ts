@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import {
-  type EditedFormula,
+  type ColumnChange,
   syncVizSettingsWithQuery,
 } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { isNotNull } from "metabase/utils/types";
@@ -79,7 +79,7 @@ export function keepPivotColumnSplitOfChangedQuery(
 export function getAdHocQuestionWithVizSettings(options: {
   question: Question;
   currentQuestion?: Question;
-  editedFormula?: EditedFormula;
+  columnChange?: ColumnChange;
   shouldStartAdHocQuestion?: boolean;
   onCloseQuestionInfo?: () => void;
 }) {
@@ -87,7 +87,7 @@ export function getAdHocQuestionWithVizSettings(options: {
     shouldStartAdHocQuestion = false,
     currentQuestion,
     onCloseQuestionInfo,
-    editedFormula,
+    columnChange,
   } = options;
   let { question } = options;
 
@@ -113,7 +113,7 @@ export function getAdHocQuestionWithVizSettings(options: {
         question.settings(),
         question.query(),
         currentQuestion.query(),
-        { editedFormula },
+        { columnChange },
       ),
     );
   }

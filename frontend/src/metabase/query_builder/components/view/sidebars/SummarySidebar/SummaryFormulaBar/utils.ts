@@ -4,6 +4,7 @@ import {
   findExpression,
   isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
+import type { ColumnChange } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
@@ -198,18 +199,18 @@ function rebucketFormulaBreakouts(
   stageIndex: number,
   name: string,
   nextName: string,
-): Lib.Query {
+): { query: Lib.Query; columnChange: ColumnChange } {
   const column = findFormulaColumn(query, stageIndex, name);
   const nextColumn = findFormulaColumn(nextQuery, stageIndex, nextName);
   if (!column || !nextColumn) {
-    return nextQuery;
+    return { query: nextQuery, columnChange: "regrouped" };
   }
   const isSameType =
     Lib.displayInfo(query, stageIndex, column).effectiveType ===
     Lib.displayInfo(nextQuery, stageIndex, nextColumn).effectiveType;
   if (isSameType) {
     // Lib already kept each grouping, its bucket, and the references to it in later stages.
-    return nextQuery;
+    return { query: nextQuery, columnChange: "in-place" };
   }
   // A new type can drop the old bucket and leave groupings that duplicate each other, which
   // Lib removes. A clause, not a column, keeps the references to the grouping in later stages.
@@ -237,7 +238,7 @@ function rebucketFormulaBreakouts(
     },
     nextQuery,
   );
-  return previousBreakouts
+  const result = previousBreakouts
     .slice(currentBreakouts.length)
     .reduce((currentQuery, previousBreakout) => {
       const column = findFormulaColumn(currentQuery, stageIndex, nextName);
@@ -250,6 +251,7 @@ function rebucketFormulaBreakouts(
         withPreviousBucket(currentQuery, stageIndex, column, previousBreakout),
       );
     }, rebucketedQuery);
+  return { query: result, columnChange: "regrouped" };
 }
 
 export function editSummaryFormula(
@@ -271,7 +273,10 @@ export function editSummaryFormula(
       formula.clause,
       Lib.withExpressionName(expression.clause, name),
     );
-    return { query: nextQuery, options: { editedFormula: "aggregation" } };
+    return {
+      query: nextQuery,
+      options: { isFormulaEdited: true, columnChange: "in-place" },
+    };
   }
   const { query: nextQuery, name: nextName } = editExpression(
     query,
@@ -282,14 +287,19 @@ export function editSummaryFormula(
   );
   const renamedFormula =
     nextName === formula.name ? undefined : { name: formula.name, nextName };
+  const result = rebucketFormulaBreakouts(
+    query,
+    nextQuery,
+    stageIndex,
+    formula.name,
+    nextName,
+  );
   return {
-    query: rebucketFormulaBreakouts(
-      query,
-      nextQuery,
-      stageIndex,
-      formula.name,
-      nextName,
-    ),
-    options: { editedFormula: "expression", renamedFormula },
+    query: result.query,
+    options: {
+      isFormulaEdited: true,
+      columnChange: result.columnChange,
+      renamedFormula,
+    },
   };
 }

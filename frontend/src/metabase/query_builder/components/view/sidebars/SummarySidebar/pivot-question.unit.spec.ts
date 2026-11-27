@@ -267,6 +267,46 @@ describe("getSummaryQuestion", () => {
     expect(syncedSettings["pivot_table.column_split"]).toEqual(columnSplit);
   });
 
+  it("keeps both pivot values when one is renamed to the same name as the other", () => {
+    const initial = createQuestion({ display: "pivot" });
+    const count = Lib.aggregations(initial.query(), STAGE_INDEX)[0];
+    const query = Lib.aggregate(
+      initial.query(),
+      STAGE_INDEX,
+      Lib.withExpressionName(count, "Orders"),
+    );
+    const original = Lib.aggregations(query, STAGE_INDEX)[0];
+    const nextQuery = Lib.replaceClause(
+      query,
+      STAGE_INDEX,
+      original,
+      Lib.withExpressionName(original, "Orders"),
+    );
+    const columnSplit = {
+      rows: ["CREATED_AT"],
+      columns: ["CREATED_AT_2"],
+      values: ["Orders", "Orders_2"],
+    };
+    const nextQuestion = getSummaryQuestion(
+      initial.setQuery(query),
+      nextQuery,
+      {
+        type: "show",
+        columnSplit,
+      },
+    );
+
+    const settings = syncVizSettingsWithQuery(
+      nextQuestion.settings(),
+      nextQuery,
+      query,
+      {
+        columnChange: "in-place",
+      },
+    );
+    expect(settings["pivot_table.column_split"]).toEqual(columnSplit);
+  });
+
   it("keeps a renamed Rows formula in the rows of the column split that updateQuestion syncs", () => {
     const question = createQuestion({
       display: "pivot",

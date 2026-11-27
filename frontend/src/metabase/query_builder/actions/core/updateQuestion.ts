@@ -2,7 +2,7 @@
 import _ from "underscore";
 
 import { getVariableTemplateTags } from "metabase/querying/native";
-import type { EditedFormula } from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import type { ColumnChange } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -67,7 +67,7 @@ function shouldTemplateTagEditorBeVisible({
 }
 
 export type UpdateQuestionOpts = {
-  editedFormula?: EditedFormula;
+  columnChange?: ColumnChange;
   run?: boolean;
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
@@ -80,7 +80,7 @@ export const updateQuestion = (
   newQuestion: Question,
   {
     run = false,
-    editedFormula,
+    columnChange,
     shouldStartAdHocQuestion = true,
     shouldUpdateUrl = false,
   }: UpdateQuestionOpts = {},
@@ -92,7 +92,7 @@ export const updateQuestion = (
     newQuestion = getAdHocQuestionWithVizSettings({
       question: newQuestion,
       currentQuestion,
-      editedFormula,
+      columnChange,
       onCloseQuestionInfo: () => dispatch(onCloseQuestionInfo()),
       shouldStartAdHocQuestion:
         shouldStartAdHocQuestion && queryBuilderMode !== "dataset",

@@ -1,8 +1,18 @@
+import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  setupDatabaseEndpoints,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -20,9 +30,14 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import type { UpdateQuestionOpts } from "../../../../actions";
+import { FormulaBarSlotProvider, FormulaBarSlotTarget } from "../../FormulaBar";
+
 import { StructuredQueryRightSidebar } from "./StructuredQueryRightSidebar";
 
-type UpdateQuestion = (question: Question, opts?: { run?: boolean }) => void;
+jest.unmock("@uiw/react-codemirror");
+
+type UpdateQuestion = (question: Question, opts?: UpdateQuestionOpts) => void;
 
 interface SidebarProps {
   isShowingSummarySidebar: boolean;
@@ -43,6 +58,7 @@ const setup = ({
   querySpec = DEFAULT_TEST_QUERY,
   sourceCards = [],
 }: SetupOpts = {}) => {
+  setupDatabaseEndpoints(createSampleDatabase());
   setupUserMetabotPermissionsEndpoint();
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],
@@ -63,15 +79,18 @@ const setup = ({
   >();
 
   const Sidebar = ({ isShowingSummarySidebar }: SidebarProps) => (
-    <StructuredQueryRightSidebar
-      question={question}
-      isShowingSummarySidebar={isShowingSummarySidebar}
-      isShowingTimelineSidebar={false}
-      isShowingQuestionInfoSidebar={false}
-      isShowingQuestionSettingsSidebar={false}
-      updateQuestion={updateQuestion}
-      onSave={jest.fn()}
-    />
+    <FormulaBarSlotProvider>
+      <FormulaBarSlotTarget />
+      <StructuredQueryRightSidebar
+        question={question}
+        isShowingSummarySidebar={isShowingSummarySidebar}
+        isShowingTimelineSidebar={false}
+        isShowingQuestionInfoSidebar={false}
+        isShowingQuestionSettingsSidebar={false}
+        updateQuestion={updateQuestion}
+        onSave={jest.fn()}
+      />
+    </FormulaBarSlotProvider>
   );
 
   const { rerender } = renderWithProviders(
@@ -134,6 +153,64 @@ describe("StructuredQueryRightSidebar", () => {
     expect(Lib.aggregations(nextQuestion.query(), -1)).toHaveLength(1);
     expect(options).toEqual({ run: true });
   });
+
+  it.each([
+    { formula: "[Total] + 2", columnChange: "in-place" },
+    { formula: "now()", columnChange: "regrouped" },
+  ])(
+    "updates the question with $columnChange columns after a grouping formula changes to $formula",
+    async ({ formula, columnChange }) => {
+      const { updateQuestion, openSummary } = setup({
+        querySpec: {
+          stages: [
+            {
+              ...ORDERS_BY_MONTH_STAGE,
+              expressions: [
+                {
+                  name: "Total + 1",
+                  value: {
+                    type: "operator",
+                    operator: "+",
+                    args: [
+                      { type: "column", name: "TOTAL" },
+                      { type: "literal", value: 1 },
+                    ],
+                  },
+                },
+              ],
+              breakouts: [{ type: "column", name: "Total + 1" }],
+            },
+          ],
+        },
+      });
+      openSummary();
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Edit the formula of Total + 1",
+        }),
+      );
+      const editor = await screen.findByTestId("formula-editor");
+      const view = await waitFor(() => {
+        const view = EditorView.findFromDOM(editor);
+        expect(view?.state.doc.toString()).toBe("[Total] + 1");
+        return view;
+      });
+      if (view) {
+        act(() =>
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: formula },
+            userEvent: "input.type",
+          }),
+        );
+      }
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      expect(updateQuestion).toHaveBeenCalledWith(expect.any(Question), {
+        run: true,
+        columnChange,
+      });
+    },
+  );
 
   describe("field list by source", () => {
     it("lists a model's columns and the tables it links to for a question built on a model", () => {

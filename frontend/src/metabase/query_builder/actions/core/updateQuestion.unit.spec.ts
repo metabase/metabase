@@ -46,13 +46,13 @@ import * as ui from "../ui";
 import * as url from "../url";
 
 import * as native from "./native";
-import { updateQuestion } from "./updateQuestion";
+import { type UpdateQuestionOpts, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
 type TestCard = Card | UnsavedCard;
 
-type SetupOpts = {
+type SetupOpts = Pick<UpdateQuestionOpts, "columnChange"> & {
   card: TestCard;
   originalCard?: Card;
   queryResult?: Dataset;
@@ -210,6 +210,7 @@ function addReviewsJoin<T extends TestCard>(card: T): T {
 
 async function setup({
   card,
+  columnChange,
   originalCard = getDefaultOriginalQuestion(card),
   queryResult: lastQueryResult,
   queryBuilderMode = "view",
@@ -268,6 +269,7 @@ async function setup({
   });
 
   await updateQuestion(question, {
+    columnChange,
     run,
     shouldUpdateUrl,
     shouldStartAdHocQuestion,
@@ -834,6 +836,49 @@ describe("QB Actions > updateQuestion", () => {
           expect(setTemplateTagEditorVisibleSpy).toHaveBeenCalledWith(false);
         });
       });
+    });
+  });
+
+  it("saves the currency format under the new name when a formula changes in place", async () => {
+    function getQuery(operator: "sum" | "avg", name: string) {
+      return Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                name,
+                value: {
+                  type: "operator",
+                  operator,
+                  args: [{ type: "column", name: "TOTAL" }],
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }
+    const originalCard = createSavedStructuredCard({
+      dataset_query: getQuery("sum", "Sum(Total)"),
+      visualization_settings: {
+        column_settings: {
+          '["name","Sum(Total)"]': { number_style: "currency" },
+        },
+      },
+    });
+
+    const { result } = await setup({
+      card: {
+        ...originalCard,
+        dataset_query: getQuery("avg", "Average(Total)"),
+      },
+      originalCard,
+      columnChange: "in-place",
+    });
+
+    expect(result.card.visualization_settings.column_settings).toEqual({
+      '["name","Average(Total)"]': { number_style: "currency" },
     });
   });
 

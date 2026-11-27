@@ -66,7 +66,7 @@ describe("updateSummaryFormula", () => {
       nextQuery,
       stageIndex: -1,
       generatedExpressions,
-      editedFormula: "expression",
+      isFormulaEdited: true,
     });
 
     expect(result.query).toBe(nextQuery);
