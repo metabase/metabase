@@ -215,6 +215,7 @@
       :field-order         (keyword v)
       :initial-sync-status (keyword v)
       :visibility-type     (keyword v)
+      :data-layer          (keyword v)
       v)))
 
 (defn- use-schema-name

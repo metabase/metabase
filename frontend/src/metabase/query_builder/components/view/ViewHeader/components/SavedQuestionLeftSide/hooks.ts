@@ -24,7 +24,6 @@ export function useHiddenSourceTables(
   }
 
   return joinTablesInfo.filter(
-    (tableInfo) =>
-      !tableInfo.isSourceTable || tableInfo.visibilityType !== null,
+    (tableInfo) => !tableInfo.isSourceTable || tableInfo.dataLayer === "hidden",
   );
 }

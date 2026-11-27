@@ -89,7 +89,7 @@
                           :metadata/table
                           #(and
                             (not (false? (:active %)))
-                            (not (#{:hidden :technical :cruft} (:visibility-type %))))
+                            (not (#{:hidden "hidden"} (:data-layer %))))
 
                           :metadata/column
                           (active-column-pred {:include-sensitive? include-sensitive?})
