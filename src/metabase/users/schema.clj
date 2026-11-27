@@ -143,7 +143,7 @@
    [:can-access-data-studio? {:optional true} [:maybe :boolean]]
    [:tenant-filter           {:optional true} [:maybe [:or ms/PositiveInt [:enum :all :external]]]]
    [:sort                    {:optional true} [:maybe [:enum :first-name :last-name]]]
-   [:limit                   {:optional true} [:maybe ms/PositiveInt]]
+   [:limit                   {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:offset                  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
 
 (mr/def ::user-parameter-value.value
