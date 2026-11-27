@@ -14,8 +14,6 @@ import {
   ScalarCardShell,
   useScalarCardShell,
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
-import { ScalarDescription } from "metabase/visualizations/components/ScalarValue/ScalarDescription";
-import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { getScalarValueFontSize } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
@@ -92,22 +90,9 @@ function ScalarComponent(
   const sublabel = settings["scalar.sublabel"];
   const isMetricsViewer = label !== undefined;
 
-  const { tier, availableWidth, titleElement, description } =
-    useScalarCardShell(props, {
-      hideTitle: isMetricsViewer,
-    });
-  const descriptionFooter =
-    tier.size === 100 && description ? (
-      <ScalarDescription description={description} />
-    ) : null;
-  const titleLabel = titleElement && (
-    <ScalarLabel
-      description={descriptionFooter ? null : description}
-      xPadding={tier.xPadding}
-    >
-      {titleElement}
-    </ScalarLabel>
-  );
+  const { tier, availableWidth, titleElement } = useScalarCardShell(props, {
+    hideTitle: isMetricsViewer,
+  });
 
   if (isMultiSeries) {
     return (
@@ -121,13 +106,9 @@ function ScalarComponent(
 
   if (goalData.status === "resolving") {
     return (
-      <ScalarCardShell
-        actionButtons={actionButtons}
-        footer={descriptionFooter}
-        tier={tier}
-      >
+      <ScalarCardShell actionButtons={actionButtons} tier={tier}>
         <GoalResolvingState />
-        {titleLabel}
+        {titleElement}
       </ScalarCardShell>
     );
   }
@@ -202,11 +183,7 @@ function ScalarComponent(
     fullScalarValue !== displayValue || isValueTruncated;
 
   return (
-    <ScalarCardShell
-      tier={tier}
-      actionButtons={actionButtons}
-      footer={descriptionFooter}
-    >
+    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
       <Box maw="100%" pos="relative" px={`${goalWarningWidthPx}px`}>
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
@@ -252,7 +229,7 @@ function ScalarComponent(
           </Box>
         )}
       </Box>
-      {titleLabel}
+      {titleElement}
     </ScalarCardShell>
   );
 }

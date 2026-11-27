@@ -211,68 +211,111 @@ describe("Scalar", () => {
     expect(onChangeCardAndRun).not.toHaveBeenCalled();
   });
 
-  it.each([82, 126, 230])(
-    "should show the description on info icon hover at %i pixels wide",
-    async (width) => {
+  describe("title tooltip", () => {
+    interface TitleTooltipSetupOpts {
+      width?: number;
+      description?: string;
+      isEditingDashboard?: boolean;
+    }
+
+    const setupTitle = ({
+      width = 230,
+      description,
+      isEditingDashboard = false,
+    }: TitleTooltipSetupOpts = {}) => {
       renderWithProviders(
         <Scalar
           {...mockedProps}
           showTitle
+          isDashboard={isEditingDashboard}
+          isEditing={isEditingDashboard}
           series={series(12345)}
           rawSeries={series(12345)}
-          settings={{ ...settings, "card.description": "Scalar description" }}
+          settings={{ ...settings, "card.description": description }}
           visualizationIsClickable={() => false}
           width={width}
           height={150}
         />,
       );
+    };
 
-      await userEvent.hover(screen.getByLabelText("info icon"));
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
 
-      expect(await screen.findByText("Scalar description")).toBeInTheDocument();
-    },
-  );
+    it.each([82, 126, 230])(
+      "should show only the description on title hover when the title fits at %i pixels wide",
+      async (width) => {
+        setupTitle({ width, description: "Scalar description" });
 
-  it.each([82, 126, 230])(
-    "should open the description tooltip with keyboard navigation at %i pixels wide",
-    async (width) => {
-      renderWithProviders(
-        <Scalar
-          {...mockedProps}
-          showTitle
-          series={series(12345)}
-          rawSeries={series(12345)}
-          settings={{ ...settings, "card.description": "Scalar description" }}
-          visualizationIsClickable={() => false}
-          width={width}
-          height={150}
-        />,
-      );
+        await userEvent.hover(screen.getByText("Scalar Title"));
 
-      // without a title link, the info icon is the first tabbable element
-      await userEvent.tab();
-
-      expect(await screen.findByText("Scalar description")).toBeInTheDocument();
-    },
-  );
-
-  it("should not show the info icon while editing a dashboard", () => {
-    renderWithProviders(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        isDashboard
-        isEditing
-        series={series(12345)}
-        rawSeries={series(12345)}
-        settings={{ ...settings, "card.description": "Scalar description" }}
-        visualizationIsClickable={() => false}
-        width={230}
-        height={150}
-      />,
+        const tooltip = await screen.findByRole("tooltip");
+        expect(tooltip).toHaveTextContent("Scalar description");
+        expect(tooltip).not.toHaveTextContent("Scalar Title");
+      },
     );
 
-    expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
+    it("should show the full title and then the description when the title is truncated", async () => {
+      mockTextOverflow();
+      setupTitle({ description: "Scalar description" });
+
+      await userEvent.hover(screen.getByText("Scalar Title"));
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        /^Scalar Title\s*Scalar description$/,
+      );
+    });
+
+    it("should show only the full title when a truncated title has no description", async () => {
+      mockTextOverflow();
+      setupTitle();
+
+      await userEvent.hover(screen.getByText("Scalar Title"));
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        /^Scalar Title$/,
+      );
+    });
+
+    it("should not show a tooltip when the title fits and has no description", async () => {
+      setupTitle();
+
+      await userEvent.hover(screen.getByText("Scalar Title"));
+
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    it("should not show an info icon for the description", () => {
+      setupTitle({ description: "Scalar description" });
+
+      expect(screen.queryByLabelText("info icon")).not.toBeInTheDocument();
+    });
+
+    it.each([82, 126, 230])(
+      "should open the description tooltip with keyboard navigation at %i pixels wide",
+      async (width) => {
+        setupTitle({ width, description: "Scalar description" });
+
+        // without a link, the title itself is the first tabbable element
+        await userEvent.tab();
+
+        expect(
+          await screen.findByText("Scalar description"),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it("should not show the description while editing a dashboard", async () => {
+      setupTitle({
+        description: "Scalar description",
+        isEditingDashboard: true,
+      });
+
+      await userEvent.hover(screen.getByText("Scalar Title"));
+
+      expect(screen.queryByText("Scalar description")).not.toBeInTheDocument();
+    });
   });
 
   it("should render null", () => {

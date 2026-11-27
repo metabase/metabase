@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Box, Stack, rem } from "metabase/ui";
-import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
+import { Box, Flex, Stack, rem } from "metabase/ui";
 import type { ScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 
 import { TrendComparisonRow } from "./TrendComparisonRow";
@@ -11,7 +10,6 @@ import type { Trend } from "./compute";
 interface TrendCardComparisonProps {
   tier: ScalarSizeTier;
   title: ReactNode;
-  description?: string | null;
   trend: Trend;
   availableWidth: number;
   listsAllComparisons: boolean;
@@ -20,25 +18,18 @@ interface TrendCardComparisonProps {
 export function TrendCardComparison({
   tier,
   title,
-  description,
   trend,
   availableWidth,
   listsAllComparisons,
 }: TrendCardComparisonProps) {
-  const titleWithDescription = title ? (
-    <ScalarLabel description={description} xPadding={tier.xPadding}>
-      {title}
-    </ScalarLabel>
-  ) : null;
-
   if (trend.comparisons.length === 0) {
-    return titleWithDescription;
+    return title;
   }
 
   if (tier.size === 100) {
     return (
       <Stack align="center" gap="xxs" w="100%">
-        {titleWithDescription}
+        {title}
         <TrendComparisonRow
           trend={trend}
           formatOptions={trend.formatOptions}
@@ -51,7 +42,7 @@ export function TrendCardComparison({
 
   if (tier.size === 150) {
     return (
-      <ScalarLabel description={description} xPadding={tier.xPadding}>
+      <Flex align="center" justify="center" gap="xxs" miw={0} maw="100%">
         {title}
         <Box flex="0 0 auto">
           <TrendComparisonRow
@@ -60,13 +51,13 @@ export function TrendCardComparison({
             percentOnly
           />
         </Box>
-      </ScalarLabel>
+      </Flex>
     );
   }
 
   return (
     <>
-      {titleWithDescription}
+      {title}
       <Box
         pos="absolute"
         top={`calc(100% + ${rem(tier.comparisonGap)})`}

@@ -1,1 +1,0 @@
-export { ScalarLabel } from "./ScalarLabel";

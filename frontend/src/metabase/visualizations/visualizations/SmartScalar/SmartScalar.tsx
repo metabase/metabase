@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -67,11 +66,8 @@ function SmartScalarComponent(
     }
   }, [error, onRenderError]);
 
-  const { tier, rootFontScale, availableWidth, titleElement, description } =
-    useScalarCardShell(props, {
-      shouldHideDescription: (tier) =>
-        tier.size === 150 && (trend?.comparisons.length ?? 0) > 1,
-    });
+  const { tier, rootFontScale, availableWidth, titleElement } =
+    useScalarCardShell(props);
 
   if (trend == null) {
     return null;
@@ -234,7 +230,6 @@ function SmartScalarComponent(
       <TrendCardComparison
         tier={tier}
         title={titleElement}
-        description={description}
         trend={trend}
         availableWidth={availableWidth}
         listsAllComparisons={listsAllComparisons}

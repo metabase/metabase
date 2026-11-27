@@ -28,12 +28,13 @@
     vertical-align: top;
     line-height: inherit;
   }
+}
 
-  &&:focus-visible {
-    outline: 2px solid var(--mb-color-core-brand);
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
+.titleText:focus-visible,
+.titleLink.titleLink:focus-visible {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .titleIcon {
