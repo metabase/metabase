@@ -35,7 +35,7 @@
 ;; Crufty tables are ones we know are from frameworks like Rails or Django and thus automatically mark as `:cruft`
 
 (def ^:private crufty-table-patterns
-  "Regular expressions that match Tables that should automatically given the `visibility-type` of `:cruft`.
+  "Regular expressions that match Tables that should automatically be hidden.
    This means they are automatically hidden to users (but can be unhidden in the admin panel).
    These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
   #{;; Django
@@ -108,7 +108,6 @@
    [:estimated_row_count      {:optional true} [:maybe :int]]
    [:database_require_filter {:optional true} [:maybe :boolean]]
    [:description             {:optional true} [:maybe :string]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
    [:display_name            {:optional true} [:maybe :string]]
    [:initial_sync_status     {:optional true} [:maybe :string]]
    [:field_order             {:optional true} [:maybe :keyword]]
@@ -145,14 +144,14 @@
                      false
                      (crufty/name? table-name (into crufty-table-patterns
                                                     (some-> database :settings :auto-cruft-tables))))]
-    {:initial_sync_status (cond
-                            ;; if we're updating a table, we don't overwrite the initial sync status, so that it remain
-                            ;; "complete" during the sync. See:
-                            ;; [[metabase.sync.util-test/initial-sync-status-table-only-test]]
-                            (= sync-stage ::update) (:initial_sync_status table)
-                            is-crufty?              "complete"
-                            :else                   "incomplete")
-     :visibility_type     (when is-crufty? :cruft)}))
+    (cond-> {:initial_sync_status (cond
+                                    ;; if we're updating a table, we don't overwrite the initial sync status, so that it remain
+                                    ;; "complete" during the sync. See:
+                                    ;; [[metabase.sync.util-test/initial-sync-status-table-only-test]]
+                                    (= sync-stage ::update) (:initial_sync_status table)
+                                    is-crufty?              "complete"
+                                    :else                   "incomplete")}
+      is-crufty? (assoc :data_layer :hidden))))
 
 (mu/defn- new-table-row :- :map
   "The row of a new table in `database`, ready to be synced; `:sample?` is whether `database` is the Sample Database."
@@ -199,12 +198,9 @@
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (cond-> (cruft-dependent-cols existing database ::reactivate)
-    ;; do not unhide tables w/ cruft settings
-    (some? (:visibility_type existing)) (dissoc :visibility_type)
-    true                                (assoc :active true)
-    sample?                             (assoc :data_authority :ingested
-                                               :data_source    :ingested)))
+  (cond-> (assoc (cruft-dependent-cols existing database ::reactivate) :active true)
+    sample? (assoc :data_authority :ingested
+                   :data_source    :ingested)))
 
 (mu/defn- reactivate-tables!
   "Mark the existing inactive Tables `existing`, Table instances we already hold, active again with one call,
@@ -286,7 +282,7 @@
     (table/update-tables! (for [id (vec table-ids)] {:id id :active false}))))
 
 (def ^:private keys-to-update
-  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
+  [:description :database_require_filter :estimated_row_count :data_layer :initial_sync_status :is_writable])
 
 (mu/defn- table-metadata-changes
   "The changes to make to the table metadata if it has changed, as a pair of `metabase-table` and its changes, or nil
@@ -307,12 +303,9 @@
                                   (some? (:description old-table))
                                   (dissoc changes :description)
 
-                                  (or
-                                   ;; don't unhide tables that were hidden w/ cruft settings
-                                   (some? (:visibility_type old-table))
-                                   ;; noop
-                                   (= (:visibility_type new-table) (:visibility_type old-table)))
-                                  (dissoc changes :visibility_type)
+                                  ;; sync only ever hides a Table, and never changes the layer of one it does not hide
+                                  (not= :hidden (:data_layer new-table))
+                                  (dissoc :data_layer)
 
                                   ;; don't mark computed tables as writable — they are derived
                                   ;; and should never be editable, regardless of what the driver reports
