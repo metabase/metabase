@@ -165,6 +165,8 @@ export function DatasetsList({
           ...createDataSource("card", card.id, card.name),
           display: card.display,
           result_metadata: card.result_metadata,
+          moderated_status:
+            "moderated_status" in card ? card.moderated_status : null,
           notRecommended: false,
         }));
     }
@@ -202,6 +204,7 @@ export function DatasetsList({
         ...createDataSource("card", +card.id, card.name),
         display: card.display,
         result_metadata: card.result_metadata,
+        moderated_status: card.moderated_status,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
