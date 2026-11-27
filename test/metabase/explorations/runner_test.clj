@@ -288,7 +288,7 @@
 
 (deftest run-one-iteration-skips-contextual-without-other-tools-permission-test
   (testing "When the exploration creator lacks :permission/metabot-other-tools, the
-            permission check inside metabot.self/call-llm-structured-with-trace throws,
+            AI feature gate refuses the call,
             score-and-describe-chart catches and returns nil, and the EQR row's
             contextual fields land nil (UXW-4126)"
     (mt/with-temp [:model/User u {:email "ctx-noperm@example.com"}
@@ -338,7 +338,7 @@
 
 (deftest run-one-iteration-skips-contextual-when-usage-limit-reached-test
   (testing "When check-usage-limits! returns a limit message, the usage check inside
-            metabot.self/call-llm-structured-with-trace throws and the contextual fields
+            AI feature gate refuses the call and the contextual fields
             land nil (UXW-4126)"
     (mt/with-temp [:model/User u {:email "ctx-limit@example.com"}
                    :model/Card card {:type :metric

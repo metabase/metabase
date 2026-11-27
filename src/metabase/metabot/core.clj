@@ -48,6 +48,7 @@
   check-usage-limits!
   log-ai-usage!]
  [metabase.metabot.self
+  known-models
   llm-call-available?
   llm-call-unavailable-reason])
 
