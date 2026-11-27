@@ -66,3 +66,7 @@ export function getRunDataTestCacheKey(
 ) {
   return `run-${testType}-test-${testId}`;
 }
+
+export function getExpectationAnchor(expectationName: string) {
+  return `expectation-${encodeURIComponent(expectationName)}`;
+}

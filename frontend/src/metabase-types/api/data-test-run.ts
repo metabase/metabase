@@ -1,3 +1,4 @@
+import type { RunTransformTestResponse } from "./data-test";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { UserId, UserInfo } from "./user";
 
@@ -32,6 +33,20 @@ export type DataTestRunUser = Pick<
 
 export type DataTestRunWithUser = DataTestRun & {
   initiated_by_user: DataTestRunUser | null;
+};
+
+export type DataTestRunRefusal = {
+  message: string;
+  "error-code": string;
+};
+
+export type DataTestRunStoredResult =
+  | RunTransformTestResponse
+  | DataTestRunRefusal;
+
+export type DataTestRunDetail = DataTestRunWithUser & {
+  result: DataTestRunStoredResult | null;
+  can_read_result: boolean;
 };
 
 export type ListDataTestRunsRequest = {

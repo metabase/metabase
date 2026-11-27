@@ -1,5 +1,6 @@
 import type {
   DataTestRun,
+  DataTestRunDetail,
   DataTestRunUser,
   DataTestRunWithUser,
   ListDataTestRunsResponse,
@@ -40,6 +41,17 @@ export function createMockDataTestRunWithUser(
   return {
     ...createMockDataTestRun(),
     initiated_by_user: createMockDataTestRunUser(),
+    ...opts,
+  };
+}
+
+export function createMockDataTestRunDetail(
+  opts?: Partial<DataTestRunDetail>,
+): DataTestRunDetail {
+  return {
+    ...createMockDataTestRunWithUser(),
+    result: null,
+    can_read_result: true,
     ...opts,
   };
 }

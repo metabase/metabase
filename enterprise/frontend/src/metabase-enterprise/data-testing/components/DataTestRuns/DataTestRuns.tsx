@@ -1,5 +1,3 @@
-import { useDisclosure, useElementSize } from "@mantine/hooks";
-import cx from "classnames";
 import { useState } from "react";
 
 import { skipToken } from "metabase/api";
@@ -8,11 +6,10 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useLocation, useNavigate } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { Flex, Group, Stack } from "metabase/ui";
-import type * as Urls from "metabase/urls";
+import * as Urls from "metabase/urls";
 import { useListDataTestRunsQuery } from "metabase-enterprise/api";
 import type {
   DataTestId,
-  DataTestRunId,
   DataTestRunWithUser,
   DataTestType,
 } from "metabase-types/api";
@@ -23,7 +20,6 @@ import { getRunDataTestCacheKey } from "../../utils";
 import { DataTestRunButton } from "../DataTestRunButton";
 
 import { DataTestRunFilterBar } from "./DataTestRunFilterBar";
-import { DataTestRunSidebar } from "./DataTestRunSidebar";
 import { DataTestRunTable } from "./DataTestRunTable";
 import S from "./DataTestRuns.module.css";
 import { getParsedParams } from "./utils";
@@ -36,8 +32,8 @@ type DataTestRunsProps<K extends DataTestType> = {
 };
 
 /**
- * The run history of one test: filters, a paginated table of runs, and a
- * sidebar with the selected run.
+ * The run history of one test: filters and a paginated table of runs, each
+ * opening the page of its run.
  */
 export function DataTestRuns<K extends DataTestType>({
   testType,
@@ -57,7 +53,7 @@ export function DataTestRuns<K extends DataTestType>({
     subjectId: test != null ? definition.getSubjectId(test) : skipToken,
     tests: test != null ? [test] : [],
   });
-  const { getTestRunsUrl } = definition.useTestUrls();
+  const { getTestUrl, getTestRunsUrl } = definition.useTestUrls();
   const [, { isLoading: isRunning }] = definition.useRunTestMutation({
     fixedCacheKey: getRunDataTestCacheKey(testType, testId),
   });
@@ -65,10 +61,6 @@ export function DataTestRuns<K extends DataTestType>({
   const navigate = useNavigate();
   const params = getParsedParams(location);
   const { page = 0 } = params;
-  const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [isResizing, { open: startResizing, close: stopResizing }] =
-    useDisclosure();
-  const [selectedRunId, setSelectedRunId] = useState<DataTestRunId>();
   const [isPolling, setIsPolling] = useState(false);
 
   const { data, isLoading, error } = useListDataTestRunsQuery(
@@ -84,7 +76,6 @@ export function DataTestRuns<K extends DataTestType>({
     { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
   );
   const runs = data?.data ?? EMPTY_RUNS;
-  const selectedRun = runs.find((run) => run.id === selectedRunId);
   const hasFilters =
     params.statuses != null ||
     params.startTime != null ||
@@ -104,8 +95,6 @@ export function DataTestRuns<K extends DataTestType>({
     );
   }
 
-  const { SubjectLink } = definition;
-
   const handleFilterOptionsChange = (
     filterOptions: Omit<Urls.DataTestRunListParams, "page">,
   ) => {
@@ -121,15 +110,7 @@ export function DataTestRuns<K extends DataTestType>({
   };
 
   return (
-    <Flex
-      className={cx({ [S.resizing]: isResizing })}
-      ref={containerRef}
-      flex={1}
-      mih={0}
-      gap="lg"
-      wrap="nowrap"
-      data-testid="data-test-runs"
-    >
+    <Flex flex={1} mih={0} gap="lg" wrap="nowrap" data-testid="data-test-runs">
       <Stack className={S.main} flex={1} gap="lg">
         <Group justify="space-between" align="center" wrap="nowrap">
           <DataTestRunFilterBar
@@ -154,7 +135,9 @@ export function DataTestRuns<K extends DataTestType>({
             <DataTestRunTable
               runs={runs}
               hasFilters={hasFilters}
-              onSelect={setSelectedRunId}
+              onSelect={(runId) =>
+                navigate(Urls.dataTestRun(getTestUrl(test), runId))
+              }
             />
             {data.total > PAGE_SIZE && (
               <Group justify="end">
@@ -172,17 +155,6 @@ export function DataTestRuns<K extends DataTestType>({
           </>
         )}
       </Stack>
-      {selectedRun != null && (
-        <DataTestRunSidebar
-          testName={test.name}
-          subjectLink={<SubjectLink test={test} />}
-          run={selectedRun}
-          containerWidth={containerWidth}
-          onResizeStart={startResizing}
-          onResizeStop={stopResizing}
-          onClose={() => setSelectedRunId(undefined)}
-        />
-      )}
     </Flex>
   );
 }

@@ -9,6 +9,8 @@
    [metabase-enterprise.data-testing.models.test-suite]
    [metabase-enterprise.data-testing.models.test-suite-run]
    [metabase-enterprise.data-testing.run-api]
+   [metabase-enterprise.data-testing.run-retention]
    [metabase-enterprise.data-testing.run-tracking]
    [metabase-enterprise.data-testing.segment-api]
+   [metabase-enterprise.data-testing.settings]
    [metabase-enterprise.data-testing.suite-api]))
