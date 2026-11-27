@@ -786,6 +786,16 @@
            (owners '{lib       {:team "Querying Platform", :codeowners true}
                      lib.agent {:ns-prefix "metabase.agent", :codeowners true}})))))
 
+(deftest codeowners-entries-declined-test
+  (testing "a nested module that sets false inside its owned parent's directory is left unowned"
+    (is (= [['lib "@metabase/querying-platform"]
+            ['lib.schema nil]]
+           (owners '{lib        {:team "Querying Platform", :codeowners true}
+                     lib.schema {:codeowners false}}))))
+  (testing "a module that sets false with no owner around it needs no entry"
+    (is (= []
+           (owners '{lib {:team "Querying Platform", :codeowners false}})))))
+
 (deftest codeowners-entries-deep-nesting-test
   (testing "a grandchild that inherits the team of an opted-in nested module needs no entry"
     (is (= [['lib "@metabase/querying-platform"]
@@ -860,7 +870,13 @@
              (problems '{lib {:team "Gadget"}} (constantly false)))))
     (testing "false declines without being checked as an opt-in"
       (is (= []
-             (problems '{lib {:team "Gadget", :codeowners false}} (constantly false)))))))
+             (problems '{lib {:team "Gadget", :codeowners false}} (constantly false)))))
+    (testing "a module that declines is not named among a team's opted-in modules"
+      (is (= [{:type :bad-codeowner, :team "Gadget", :value "", :modules ['lib]}]
+             (problems '{lib        {:team "Gadget", :codeowners true}
+                         lib.schema {:codeowners false}}
+                       (constantly true)
+                       {"Gadget" ""}))))))
 
 (deftest codeowners-uncovered-nested-problems-test
   (let [problems (fn [config]
@@ -883,6 +899,11 @@
         (is (= []
                (problems {'lib       {:team "Querying Platform", :codeowners true}
                           'lib.agent {:ns-prefix "metabase.agent", :codeowners value}})))))
+    (testing "a nested module below one that declines is settled by it"
+      (is (= []
+             (problems '{lib             {:team "Querying Platform", :codeowners true}
+                         lib.agent       {:ns-prefix "metabase.agent", :codeowners false}
+                         lib.agent.tools {:ns-prefix "metabase.agent-tools"}}))))
     (testing "a nested module inside its parent's directory, of another team, or without code is not a problem"
       (is (= []
              (problems '{lib        {:team "Querying Platform", :codeowners true}
