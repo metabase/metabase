@@ -352,7 +352,7 @@
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
   `:total` metadata, and the queries whose search failed as `:failed-queries`.
-  Throws a 400 when `term-queries` holds more than ten distinct queries."
+  Throws a 400 when `term-queries` holds more than [[max-keyword-queries]] distinct queries."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot profile-id weights
            created-by archived collection-id offset filters-only? partial-results?]}]
@@ -370,11 +370,16 @@
               :collection-id        collection-id
               :offset               offset
               :filters-only?        filters-only?})
-  ;; The tool schema caps the list too; this also covers callers that skip it, such as the Agent API.
-  (when (> (count (distinct term-queries)) max-keyword-queries)
-    (throw (ex-info (format "Pass at most %d keyword queries." max-keyword-queries)
-                    {:status-code 400, :keyword-queries (count term-queries)})))
-  (let [search-models   (if (seq entity-types)
+  ;; A repeated query would add its ranking to the fusion twice, so each list is searched without repeats.
+  (let [terms           (vec (distinct term-queries))
+        phrases         (vec (distinct semantic-queries))
+        ;; The tool schema caps the list too; this also covers callers that skip it, such as the Agent API.
+        _               (when (> (count terms) max-keyword-queries)
+                          (throw (ex-info (format (str "Pass at most %d keyword queries. "
+                                                       "Combine related keywords or drop some.")
+                                                  max-keyword-queries)
+                                          {:status-code 400, :keyword-queries (count terms)})))
+        search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
@@ -439,21 +444,20 @@
         engine-outcomes (cond
                           ;; A pure listing over the filters: one search with no search string.
                           (and filters-only?
-                               (empty? term-queries)
-                               (empty? semantic-queries))
+                               (empty? terms)
+                               (empty? phrases))
                           [[{:ranked (ranked-fn nil nil)}]]
 
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           semantic-engine
                           (into []
                                 (keep (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries))))
-                                ;; A repeated query would add its ranking to the fusion twice.
-                                {semantic-engine (distinct semantic-queries)
-                                 fallback-engine (distinct term-queries)})
+                                {semantic-engine phrases
+                                 fallback-engine terms})
 
                           ;; Search for all the terms on equal footing, using the default engine.
                           :else
-                          [(ranked-fn* nil (distinct (concat term-queries semantic-queries)))])
+                          [(ranked-fn* nil (distinct (concat terms phrases)))])
         outcomes        (apply concat engine-outcomes)
         failed          (filter :error outcomes)
         _               (when (seq failed)
