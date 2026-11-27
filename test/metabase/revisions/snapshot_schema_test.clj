@@ -3,6 +3,8 @@
   reverts, and a snapshot that cannot be decoded into a valid one is refused with a 400."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.revisions.init]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -193,3 +195,13 @@
           (let [revision-id (insert-revision! "Transform" transform-id {:name 42})]
             (is (= 400 (refused-status! :model/Transform transform-id revision-id)))
             (is (= "Current" (t2/select-one-fn :name :model/Transform :id transform-id)))))))))
+
+(deftest read-card-revision-with-legacy-snapshot-test
+  (mt/with-model-cleanup [:model/Revision]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Current"}]
+      (let [legacy-query (lib/->legacy-MBQL (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+            revision-id  (insert-revision! "Card" card-id {:id            card-id
+                                                           :name          "Older"
+                                                           :dataset_query legacy-query})]
+        (is (=? {:id revision-id :object {:name "Older"}}
+                (t2/select-one :model/Revision :id revision-id)))))))
