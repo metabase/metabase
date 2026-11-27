@@ -250,14 +250,16 @@
                                                ;; UI only allow one subscription per card notification
                                                :alert_schedule  (some-> subscriptions first :cron_schedule channel.shared/friendly-cron-description)
                                                :goal_value      goal
-                                               :management_text (if (nil? non-user-email)
-                                                                  "Manage your subscriptions"
-                                                                  "Unsubscribe")
-                                               :management_url  (if (nil? non-user-email)
-                                                                  (urls/notification-management-url)
-                                                                  (let [email-handler-id (:notification_handler_id
-                                                                                          (m/find-first #(= non-user-email (-> % :details :value)) recipients))]
-                                                                    (notification-unsubscribe-url-for-non-user email-handler-id non-user-email)))}))]
+                                               :management_text (when (:id notification_card)
+                                                                  (if (nil? non-user-email)
+                                                                    "Manage your subscriptions"
+                                                                    "Unsubscribe"))
+                                               :management_url  (when (:id notification_card)
+                                                                  (if (nil? non-user-email)
+                                                                    (urls/notification-management-url)
+                                                                    (let [email-handler-id (:notification_handler_id
+                                                                                            (m/find-first #(= non-user-email (-> % :details :value)) recipients))]
+                                                                      (notification-unsubscribe-url-for-non-user email-handler-id non-user-email))))}))]
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
