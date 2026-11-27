@@ -7,8 +7,10 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.parameters.dates :as params.dates]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -81,7 +83,7 @@
   (testing "datetime range"
     (is (=? [:between
              {}
-             [:field {:base-type :type/DateTime, :temporal-unit :default} "field"]
+             [:field {:base-type :type/DateTime, :temporal-unit :minute} "field"]
              "2019-04-01T12:30:00"
              "2019-04-03T16:30:00"]
             (params.dates/date-string->filter
@@ -714,3 +716,24 @@
         (mt/with-temporary-setting-values [start-of-week first-day-of-week]
           (is (= expected
                  (params.dates/date-string->range "past1weeks"))))))))
+
+(deftest datetime-range-filter-includes-whole-end-minute-test
+  (mt/test-driver :h2
+    (mt/dataset (mt/dataset-definition "datetime-range-events"
+                                       [["events"
+                                         [{:field-name "label", :base-type :type/Text}
+                                          {:field-name "ts", :base-type :type/DateTime}]
+                                         [["lower-bound" #t "2026-03-25T16:00:00"]
+                                          ["end-minute-start" #t "2026-03-25T16:59:00"]
+                                          ["end-minute-one-second-in" #t "2026-03-25T16:59:01"]
+                                          ["end-minute-last-second" #t "2026-03-25T16:59:59"]
+                                          ["next-minute" #t "2026-03-25T17:00:00"]]]])
+      (testing "range ending at HH:MM keeps rows later in that minute (#77076)"
+        (let [mp    (mt/metadata-provider)
+              ts    (lib.metadata/field mp (mt/id :events :ts))
+              label (lib.metadata/field mp (mt/id :events :label))
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :events)))
+                        (lib/filter (params.dates/date-string->filter "2026-03-25T16:00~2026-03-25T16:59" (lib/ref ts)))
+                        (lib/with-fields [label]))]
+          (is (= #{"lower-bound" "end-minute-start" "end-minute-one-second-in" "end-minute-last-second"}
+                 (set (map first (mt/rows (qp/process-query query)))))))))))

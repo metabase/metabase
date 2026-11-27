@@ -382,7 +382,7 @@
               {:start date-1, :end date-2 :unit (absolute-date->unit date-1)})
     :filter (fn [{:keys [date-1 date-2]} field-clause]
               (lib/between
-               (with-temporal-unit-if-field field-clause :default)
+               (with-temporal-unit-if-field field-clause :minute)
                (->iso-8601-date-time date-1)
                (->iso-8601-date-time date-2)))}
    ;; before day
