@@ -12,6 +12,7 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.sandbox.test-util :as met]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
@@ -702,3 +703,18 @@
                     (check-can-query transform-tests single-row-can-run-transform-test? [true true true false])
                     (check-can-query card-tests single-row-can-run-card-test? [true true true true false])
                     (check-can-query segment-tests single-row-can-run-segment-test? [true false])))))))))))
+
+(deftest transform-test-runs-in-worktree-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope (mdb/worktree-id->scope worktree-id)
+        (mt/with-temp [:model/Transform     transform      (native-transform (mt/id) 1)
+                       :model/TransformTest transform-test {:transform_id (:id transform)}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "transform itself is not run"
+              (is (false? (:can_execute (t2/hydrate transform :can_execute)))))
+            (testing "its test is run, created and moved to it"
+              (is (mi/can-query? (t2/hydrate transform-test :can_query)))
+              (is (mi/can-create? :model/TransformTest {:transform_id (:id transform)}))
+              (is (mi/can-update? (assoc (t2/hydrate transform-test :can_write) :transform_id Integer/MAX_VALUE)
+                                  {:transform_id (:id transform)})))))))))

@@ -149,7 +149,7 @@
                                    (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids))
                              (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))
           models-cache (transforms.u/prefetch-source-models filtered)]
-      (-> (transform.model/assoc-permissions filtered models-cache [:can_read :can_write :can_query])
+      (-> (transform.model/assoc-permissions filtered models-cache [:can_read :can_write :can_execute])
           (transforms.u/add-source-readable models-cache)))))
 
 (mu/defn requestable-indexes :- [:maybe ::transforms.schema/requestable-indexes]
@@ -171,7 +171,7 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_query)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 
@@ -199,7 +199,7 @@
                                                             :owner_user_id owner-user-id)
                                                (seq tag-ids) (assoc :tag_ids tag-ids))]))]
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_query)))]
+                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      transform)))
 
 (mr/def ::update-body
@@ -229,7 +229,7 @@
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_query))]
+                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (-> transform
         transforms.u/add-source-readable)))
 

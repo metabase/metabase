@@ -1,10 +1,12 @@
 (ns metabase.transforms.execute
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -38,7 +40,8 @@
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
 
 (mu/defn execute! :- :nil
-  "Run `transform` and sync its target table.
+  "Run `transform` and sync its target table, which only the default remote sync worktree allows, as the
+  `:can_execute` of a Transform says.
 
   Executes synchronously, but the start is observable: once the run row is booked in the database,
   `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
@@ -55,6 +58,7 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
+       (mdb/check-default-worktree (tru "Transforms can only be run in the default worktree."))
        ;; the executors log their own failures at ERROR; this one happens before any executor runs
        (transforms.i/execute! (try (resolve-target transform)
                                    (catch Throwable t
