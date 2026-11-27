@@ -129,9 +129,9 @@
         rows          (metabot.db/table-curation-rows ids)
         destinations  (let [db-ids (into #{} (keep :db_id) rows)]
                         (if (seq db-ids) (metabot.db/destination-database-ids db-ids) #{}))]
-    (for [{:keys [id db_id active visibility_type is_published data_layer data_authority]} rows
+    (for [{:keys [id db_id active is_published data_layer data_authority]} rows
           :when (and active
-                     (nil? visibility_type)
+                     (not= :hidden (some-> data_layer keyword))
                      (not (contains? destinations db_id))
                      (not= db_id audit-app/audit-db-id))]
       [id {:model          "table"

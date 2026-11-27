@@ -309,7 +309,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (#(t2/hydrate % :can_read))
-                            true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            true                        (filter (every-pred #(not= :hidden (:data_layer %)) mi/can-read?))
                             true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))
@@ -466,7 +466,7 @@
              db
              (update db :tables apply-sandbox-column-filter))]
     (-> db
-        (update :tables (if include-hidden? identity (partial remove :visibility_type)))
+        (update :tables (if include-hidden? identity (partial remove #(= :hidden (:data_layer %)))))
         (update :tables (fn [tables]
                           (let [sensitive-table-ids (schema.table/sensitive-fields-table-ids include-sensitive-fields? tables)]
                             (for [table tables]

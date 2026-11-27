@@ -19,7 +19,7 @@
   (mdb/select-batched #(t2/select :model/Table
                                   :active          true
                                   :db_id           [:in %]
-                                  :visibility_type nil
+                                  :data_layer [:not= :hidden]
                                   {:order-by [[:%lower.schema :asc]
                                               [:%lower.display_name :asc]]})
                       database-ids))
@@ -30,7 +30,7 @@
   (mdb/select-batched #(t2/select [:model/Table :db_id :schema]
                                   :db_id           [:in %]
                                   :active          true
-                                  :visibility_type nil)
+                                  :data_layer [:not= :hidden])
                       database-ids))
 
 (mu/defn databases-where
@@ -91,7 +91,7 @@
              {:where    [:and [:= :db_id database-id]
                          [:= :active true]
                          [:like :%lower.name like-pattern]
-                         [:= :visibility_type nil]]
+                         [:not= :data_layer "hidden"]]
               :order-by [[:%lower.name :asc]]
               :limit    limit}))
 
@@ -209,12 +209,11 @@
 
 (mu/defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
-  `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
-  hidden -- see [[metabase.warehouse-schema.models.table/visibility-types]])."
+  `include-hidden?` is false, restricted to Tables whose `data_layer` is not hidden."
   [database-id     :- ::lib.schema.id/database
    include-hidden? :- :boolean]
   (let [clauses (cond-> []
-                  (not include-hidden?) (conj [:= :visibility_type nil]))]
+                  (not include-hidden?) (conj [:not= :data_layer "hidden"]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
                       (merge {:order-by [[:%lower.schema :asc]]}
                              (when clauses
@@ -238,7 +237,7 @@
              :db_id database-id
              :schema schema
              :active true
-             :visibility_type nil
+             :data_layer [:not= :hidden]
              {:order-by [[:display_name :asc]]}))
 
 (defn- card-usage-count-subquery

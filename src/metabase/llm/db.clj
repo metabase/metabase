@@ -58,7 +58,7 @@
                                     :id [:in %]
                                     :db_id database-id
                                     :active true
-                                    :visibility_type nil
+                                    :data_layer [:not= :hidden]
                                     {:where visible-clause})
                         table-ids)))
 

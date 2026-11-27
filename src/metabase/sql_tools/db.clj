@@ -26,9 +26,7 @@
                                       ;; Mirrors the Table filter the MetadataProvider applies to an unfiltered fetch; an
                                       ;; `:id` lookup does not apply it, so it has to happen here.
                                       [:= :active true]
-                                      [:or
-                                       [:= :visibility_type nil]
-                                       [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]})
+                                      [:not= :data_layer "hidden"]]})
          (into #{} (map u/lower-case-en) table-names)))))
 
 (mu/defn shadow-difference-seen-again! :- :int

@@ -770,7 +770,7 @@
                                               [:= :f.visibility_type "normal"]
                                               [:= :t.db_id database-id]
                                               [:= :t.active true]
-                                              [:= :t.visibility_type nil]]}]]})))
+                                              [:not= :t.data_layer "hidden"]]}]]})))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
@@ -842,11 +842,10 @@
 
 (defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
-  `include-hidden?` is false, restricted to Tables with no `visibility_type` (a non-nil value means the Table is
-  hidden -- see `metabase.warehouse-schema.models.table/visibility-types`)."
+  `include-hidden?` is false, restricted to Tables whose `data_layer` is not hidden."
   [database-id include-hidden?]
   (let [clauses (cond-> []
-                  (not include-hidden?) (conj [:= :visibility_type nil]))]
+                  (not include-hidden?) (conj [:not= :data_layer "hidden"]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
                       (merge {:order-by [[:%lower.schema :asc]]}
                              (when clauses
@@ -868,7 +867,7 @@
              :db_id database-id
              :schema schema
              :active true
-             :visibility_type nil
+             :data_layer [:not= :hidden]
              {:order-by [[:display_name :asc]]}))
 
 (mu/defn unarchived-segments-for-tables
@@ -1028,15 +1027,13 @@
    (app-db/select-batched
     #(t2/select :model/Table
                 {:select [:t.id :t.name :t.description
-                          :t.display_name :t.active :t.visibility_type :t.schema
+                          :t.display_name :t.active :t.data_layer :t.schema
                           [:db.name :database-name]
                           [:db.id :db_id]
                           [:db.initial_sync_status :initial-sync-status]]
                  :from [[(t2/table-name :model/Table) :t]]
                  :where [:and
-                         [:or
-                          [:= :visibility_type nil]
-                          [:!= :visibility_type "hidden"]]
+                         [:not= :t.data_layer "hidden"]
                          [:in :t.id %]]
                  :left-join [[(t2/table-name :model/Database) :db]
                              [:= :db.id :t.db_id]]})

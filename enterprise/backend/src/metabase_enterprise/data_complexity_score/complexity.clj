@@ -229,7 +229,7 @@
         verified-ids      (when curated-only? (verified-card-id-set))
         official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
+        ;; Extra columns (`:collection_id`, `:is_published`, `:db_id`,
         ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
         ;; library/metabot derivations below — they're ignored by `->card-entity` /
         ;; `->table-entity`.
@@ -266,8 +266,8 @@
                                        (contains? metabot-cids collection_id))
                                    (or (not curated-only?)
                                        (curated-card? card-row)))))
-        in-metabot-table? (fn [{:keys [visibility_type db_id] :as table-row}]
-                            (and (nil? visibility_type)
+        in-metabot-table? (fn [{:keys [data_layer db_id] :as table-row}]
+                            (and (not= :hidden (some-> data_layer keyword))
                                  (not (contains? routed-db-ids db_id))
                                  (or (not curated-only?)
                                      (curation/curated? (assoc (select-keys table-row [:is_published :data_layer :data_authority])

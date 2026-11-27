@@ -211,7 +211,7 @@
                                           (mi/can-read? model-object)
                                           ;; hidden tables, archived cards/dashboards
                                           (not (or (:archived model-object)
-                                                   (= (:visibility_type model-object) :hidden))))
+                                                   (= (some-> (:data_layer model-object) keyword) :hidden))))
                                :let [is-dataset? (= (keyword (:type model-object)) :model)
                                      is-metric? (= (keyword (:type model-object)) :metric)]]
                            (cond-> (assoc view-log :model_object model-object)

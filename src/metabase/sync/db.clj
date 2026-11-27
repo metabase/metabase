@@ -22,12 +22,11 @@
                     :where  [:and (sync-tables-clause (t2/table-name :model/Table)) [:= :db_id database-id]]})
 
 (mu/defn- sync-tables-clause
-  "Honey SQL clause matching the Tables aliased `table-alias` that take part in sync: active, with no
-  `visibility_type`."
+  "Honey SQL clause matching the Tables aliased `table-alias` that take part in sync: active and not hidden."
   [table-alias :- :keyword]
   [:and
    [:= (u/qualified-key table-alias :active) true]
-   [:= (u/qualified-key table-alias :visibility_type) nil]])
+   [:not= (u/qualified-key table-alias :data_layer) "hidden"]])
 
 ;;; ------------------------------------------------ Database ------------------------------------------------
 
@@ -436,7 +435,7 @@
                                                             [:= :f.active true]
                                                             [:not= :f.visibility_type "retired"]
                                                             [:= :t.active true]
-                                                            [:= :t.visibility_type nil]]
+                                                            [:not= :t.data_layer "hidden"]]
                                                 :order-by  [[:f.id :asc]]})
                                     table-names))
           lowest      (fn [rows] (reduce (fn [m {:keys [id schema table column]}]
