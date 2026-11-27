@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.schema-migrations-test :as schema-migrations-test]
+   [metabase.app-db.schema-worktrees-test :as schema-worktrees-test]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
    [metabase.remote-sync.core :as remote-sync]
@@ -203,7 +203,7 @@
   "The decision the app DB and the models make for `table`: `:scoped`, `:unscoped` or `:worktree-reference`, or the
   pair of facts that match none of them."
   [schema hooked table]
-  (let [column? (contains? (schema-migrations-test/worktree-tables schema) table)
+  (let [column? (contains? (schema-worktrees-test/worktree-tables schema) table)
         hook?   (contains? hooked table)]
     (cond
       (and column? hook?)               :scoped
@@ -224,7 +224,7 @@
   (when config/ee-available?
     (models.resolution/load-all-models!)
     (testing "every synced content table has worktree_id and its models derive :hook/worktree-id"
-      (let [schema (schema-migrations-test/app-db-schema)
+      (let [schema (schema-worktrees-test/app-db-schema)
             roots  (set/difference (set/intersection (content-roots) (set (keys schema)))
                                    (tables-of synced-table-allowlist))
             bad    (mismatches schema (hooked-tables) roots (constantly :scoped) {})]
@@ -234,7 +234,7 @@
   (when config/ee-available?
     (models.resolution/load-all-models!)
     (testing "every table reaching synced content through foreign keys has worktree_id and the hook"
-      (let [schema (schema-migrations-test/app-db-schema)
+      (let [schema (schema-worktrees-test/app-db-schema)
             roots  (content-roots)
             paths  (select-keys (paths-to-content schema roots (tables-of referencing-table-allowlist)) (keys schema))
             tables (set/difference (set/intersection (set (keys paths)) (model-tables))
@@ -247,7 +247,7 @@
   (when config/ee-available?
     (models.resolution/load-all-models!)
     (testing "every remaining app DB table with a model is in exactly one decision set and matches it"
-      (let [schema    (schema-migrations-test/app-db-schema)
+      (let [schema    (schema-worktrees-test/app-db-schema)
             hooked    (hooked-tables)
             roots     (content-roots)
             reaching  (set (keys (paths-to-content schema roots (tables-of referencing-table-allowlist))))
