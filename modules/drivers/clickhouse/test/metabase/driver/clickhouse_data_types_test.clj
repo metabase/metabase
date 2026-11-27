@@ -586,9 +586,10 @@
               [int identity]
               :format-nil-values
               (mt/with-db (mt/db)
+                ;; only the map: each of its keys is a field too (JSON unfolding)
                 (mt/run-mbql-query
                   maps_test
-                  {}))))))))
+                  {:fields [$id $m]}))))))))
 
 (deftest clickhouse-datetime-diff-nullable
   (mt/test-driver :clickhouse

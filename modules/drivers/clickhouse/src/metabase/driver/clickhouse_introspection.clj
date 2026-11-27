@@ -46,6 +46,15 @@
     [#"uint64"      :type/BigInteger]
     [#"uuid"        :type/UUID]]))
 
+(defn variant-or-dynamic?
+  "Is `database-type` a `Variant` or `Dynamic` type? Each value of these can have another type, and ClickHouse does not
+  allow them in GROUP BY, ORDER BY or aggregations. So they are text, and queries cast them to String."
+  [database-type]
+  (when-let [db-type (some-> database-type u/lower-case-en)]
+    (or (str/starts-with? db-type "variant(")
+        (= db-type "dynamic")
+        (str/starts-with? db-type "dynamic("))))
+
 (defn- normalize-db-type
   [db-type]
   (cond
@@ -68,7 +77,10 @@
     ;; Enum*
     (str/starts-with? db-type "enum")
     :type/Text
-    ;; Map
+    ;; Variant, Dynamic
+    (variant-or-dynamic? db-type)
+    :type/Text
+    ;; Map. `describe-table` stores an unfoldable map as `type/JSON`, see the comment there.
     (str/starts-with? db-type "map")
     :type/Dictionary
     ;; Tuple
@@ -233,16 +245,64 @@
       (when (every? some? elements)
         elements))))
 
+(defn- with-tuple-nested-fields
+  "Add a nested field for each element of `field` if it is a named `Tuple`, so each element is a field of its own. An
+  element that is a named tuple gets nested fields too."
+  [{:keys [database-type database-position] :as field}]
+  (if-let [elements (tuple-elements database-type)]
+    (assoc field
+           :base-type     :type/Dictionary
+           :nested-fields (into #{}
+                                (map (fn [[element-name element-type]]
+                                       (with-tuple-nested-fields
+                                         {:name              element-name
+                                          :database-type     element-type
+                                          :base-type         (sql-jdbc.sync/database-type->base-type :clickhouse element-type)
+                                          :database-position database-position})))
+                                elements)
+           ;; the elements show all of its values
+           :visibility-type :details-only)
+    field))
+
+(defn unfolded-map-value-type
+  "The value type of `database-type` if it is a `Map` that JSON unfolding unfolds, or else nil: a map with `String` keys
+  and a value type that can be `NULL`. Each key of such a map is a field of its own. The value type has no
+  `LowCardinality` or `Nullable`, e.g. `String` for `Map(String, LowCardinality(Nullable(String)))`."
+  [database-type]
+  (when-let [[key-type value-type] (type-arguments "Map" database-type)]
+    (let [unwrap     #(or (first (type-arguments %2 %1)) %1)
+          value-type (-> value-type (unwrap "LowCardinality") (unwrap "Nullable"))]
+      (when (and (#{"String" "LowCardinality(String)"} key-type)
+                 (not (re-find #"^(?:Array|Map|Tuple|Nested|JSON|Variant|Dynamic|Object|LowCardinality|Nullable|\w*AggregateFunction)\b"
+                               value-type)))
+        value-type))))
+
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
 
 (defmethod driver/describe-table :clickhouse
-  [_driver database table]
+  [driver database table]
   (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
         filtered-fields (for [field (:fields table-metadata)
-                              :let [updated-field (update field :database-required
-                                                          (fn [_] (is-db-required? field)))]
+                              :let [unfolded-map? (some? (unfolded-map-value-type (:database-type field)))
+                                    updated-field (cond-> (-> field
+                                                              (assoc :database-required (is-db-required? field))
+                                                              with-tuple-nested-fields)
+                                                    ;; stored as a JSON column, so its keys are fields of their own and
+                                                    ;; "Unfold JSON" turns them off. `database-type->base-type` keeps
+                                                    ;; `type/Dictionary` on purpose: the shared JSON sampler finds its
+                                                    ;; fields with `describe-table-fields`, which uses that type and not
+                                                    ;; this one. So it leaves the map to `map-key-fields`, which gives
+                                                    ;; the keys the type of the map values.
+                                                    unfolded-map?
+                                                    (assoc :base-type      :type/JSON
+                                                           :json-unfolding true)
+
+                                                    (and unfolded-map?
+                                                         (driver/database-supports? driver :nested-field-columns database))
+                                                    (assoc :visibility-type :details-only
+                                                           :preview-display false))]
                               ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
                               :when (not (re-matches #"^AggregateFunction\(.+$"

@@ -96,14 +96,38 @@
         (h2x/with-database-type-info (format "Nullable(%s)" cast-type)))
     (h2x/cast "Nullable(String)" subcolumn)))
 
+(defn- map-key-query
+  "The value of the key `map-key` of the `Map` column `parent` of the type `value-type`, or NULL if the row does not
+  have the key. `parent['key']` alone gives the default value of the type, e.g. 0, for a missing key."
+  [parent map-key value-type]
+  (-> [:if [:'mapContains parent map-key] [:'arrayElement parent map-key] nil]
+      (h2x/with-database-type-info (format "Nullable(%s)" value-type))))
+
+(defn- unfolded-map-value-type
+  "The value type of the `Map` column of the nested field column `nfc-field`, if its parent is an unfolded `Map`."
+  [{:keys [table-id nfc-path]}]
+  (when table-id
+    ;; a sensitive Map is still the parent of its keys
+    (some->> (driver-api/active-fields (driver-api/metadata-provider) table-id {:include-sensitive? true})
+             (some #(when (and (= (:name %) (first nfc-path))
+                               (nil? (:nfc-path %))
+                               (nil? (:parent-id %)))
+                      %))
+             :database-type
+             clickhouse-introspection/unfolded-map-value-type)))
+
 (defmethod sql.qp/json-query :clickhouse
   [_driver unwrapped-identifier nfc-field]
   {:pre [(h2x/identifier? unwrapped-identifier)]}
   (let [parent    (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+        map-type  (unfolded-map-value-type nfc-field)
         ;; `t.j.a.b` reads only the subcolumn of the path; `getSubcolumn(t.j, 'a.b')` reads the whole JSON column
         subcolumn (apply h2x/identifier :field (concat (h2x/identifier->components parent) (rest (:nfc-path nfc-field))))
         base-type (:base-type nfc-field)]
     (cond
+      map-type
+      (map-key-query parent (second (:nfc-path nfc-field)) map-type)
+
       (isa? base-type :type/DateTime)
       (-> [:'parseDateTime64BestEffortOrNull (h2x/cast "Nullable(String)" subcolumn) [:inline 3]]
           (h2x/with-database-type-info "Nullable(DateTime64(3))"))
@@ -144,8 +168,16 @@
         stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         honeysql-expr ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
-    (if (driver-api/json-field? stored-field)
+    (cond
+      (driver-api/json-field? stored-field)
       (json-field->honeysql driver clause stored-field honeysql-expr)
+
+      ;; only the column itself: through a join or an earlier stage it is already the String
+      (and (clickhouse-introspection/variant-or-dynamic? (:database-type stored-field))
+           (integer? (driver-api/qp.add.source-table (lib.options/options clause))))
+      (h2x/cast "Nullable(String)" honeysql-expr)
+
+      :else
       honeysql-expr)))
 
 (defn- in-report-timezone
