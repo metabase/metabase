@@ -37,9 +37,9 @@
            "Task history cleanup successful, no rows were deleted"))))))
 
 (task/defjob TaskHistoryCleanup
-  "Delete older TaskHistory rows of every remote sync worktree, see [[delete-old-task-history!]]."
+  "Delete older TaskHistory rows of each remote sync worktree, see [[delete-old-task-history!]]."
   {:saved-class    "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"
-   :worktree-scope {:type :all}}
+   :worktree-scope :each}
   [_]
   (task-history-cleanup!))
 

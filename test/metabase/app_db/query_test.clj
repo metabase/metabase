@@ -4,9 +4,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.db :as mdb.db]
    [metabase.app-db.format :as app-db.format]
    [metabase.app-db.query :as mdb.query]
+   [metabase.config.core :as config]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.settings.models.setting :as setting]
@@ -293,3 +295,22 @@
     (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "x" :msgstr "ex"}]
       (is (t2/exists? :model/ContentTranslation :locale "de"))
       (is (not (t2/exists? :model/ContentTranslation :locale "xx"))))))
+
+(deftest map-query-is-kept-to-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}  {:branch "test-branch"}
+                   :model/Card               {main-card-id :id} {}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (let [query    {:select [:id]
+                          :from   [(t2/table-name :model/Card)]
+                          :where  [:in :id [main-card-id card-id]]}
+                ids-of   #(into #{} (map :id) %)]
+            (testing "query reads rows of worktree only"
+              (is (= #{card-id} (ids-of (mdb.db/query query)))))
+            (testing "streaming reducible query reads rows of worktree only"
+              (is (= #{card-id} (ids-of (mdb.db/streaming-reducible-query query)))))
+            (testing "query in default worktree reads its rows only"
+              (mdb/with-worktree-scope {:type :main}
+                (is (= #{main-card-id} (ids-of (mdb.db/query query))))
+                (is (= #{main-card-id} (ids-of (mdb.db/streaming-reducible-query query))))))))))))

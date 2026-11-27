@@ -1,7 +1,7 @@
 ## Fixes of the remote sync worktree schema: what is in a Collection is deleted with it, so that deleting a worktree,
 ## which cascades to both, works on H2 and MySQL; sandboxes and collection permissions are shared across worktrees,
-## like data permissions; the single-column worktree_id indexes of the log tables, which outlive their worktree, go; and
-## the Postgres planner gets statistics for worktree_id.
+## like data permissions; the logs of a worktree are deleted with it; and the Postgres planner gets statistics for
+## worktree_id.
 
 databaseChangeLog:
   - changeSet:
@@ -391,165 +391,125 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-      id: wix6ow
+      id: wlfk00
       author: ranquild
-      comment: Drop idx_audit_log_worktree_id, which no foreign key or query uses
+      comment: Delete the audit_log rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: audit_log
-            indexName: idx_audit_log_worktree_id
-      rollback:
-        - createIndex:
-            tableName: audit_log
-            indexName: idx_audit_log_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: audit_log
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_audit_log_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixx6s
+      id: wlfk01
       author: ranquild
-      comment: Drop idx_data_test_run_worktree_id, which no foreign key or query uses
+      comment: Delete the data_test_run rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: data_test_run
-            indexName: idx_data_test_run_worktree_id
-      rollback:
-        - createIndex:
-            tableName: data_test_run
-            indexName: idx_data_test_run_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: data_test_run
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_data_test_run_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixkfa
+      id: wlfk02
       author: ranquild
-      comment: Drop idx_query_execution_worktree_id, which no foreign key or query uses
+      comment: Delete the query_execution rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: query_execution
-            indexName: idx_query_execution_worktree_id
-      rollback:
-        - createIndex:
-            tableName: query_execution
-            indexName: idx_query_execution_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: query_execution
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_query_execution_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixjv1
+      id: wlfk03
       author: ranquild
-      comment: Drop idx_source_replacement_run_worktree_id, which no foreign key or query uses
+      comment: Delete the source_replacement_run rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: source_replacement_run
-            indexName: idx_source_replacement_run_worktree_id
-      rollback:
-        - createIndex:
-            tableName: source_replacement_run
-            indexName: idx_source_replacement_run_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: source_replacement_run
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_source_replacement_run_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixgmz
+      id: wlfk04
       author: ranquild
-      comment: Drop idx_task_history_worktree_id, which no foreign key or query uses
+      comment: Delete the task_history rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: task_history
-            indexName: idx_task_history_worktree_id
-      rollback:
-        - createIndex:
-            tableName: task_history
-            indexName: idx_task_history_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: task_history
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_task_history_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixufs
+      id: wlfk05
       author: ranquild
-      comment: Drop idx_task_run_worktree_id, which no foreign key or query uses
+      comment: Delete the task_run rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: task_run
-            indexName: idx_task_run_worktree_id
-      rollback:
-        - createIndex:
-            tableName: task_run
-            indexName: idx_task_run_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: task_run
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_task_run_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixa2e
+      id: wlfk06
       author: ranquild
-      comment: Drop idx_test_suite_run_worktree_id, which no foreign key or query uses
+      comment: Delete the test_suite_run rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: test_suite_run
-            indexName: idx_test_suite_run_worktree_id
-      rollback:
-        - createIndex:
-            tableName: test_suite_run
-            indexName: idx_test_suite_run_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: test_suite_run
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_test_suite_run_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wix3n2
+      id: wlfk07
       author: ranquild
-      comment: Drop idx_transform_dag_run_worktree_id, which no foreign key or query uses
+      comment: Delete the transform_dag_run rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_worktree_id
-      rollback:
-        - createIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: transform_dag_run
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_dag_run_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wixfi7
+      id: wlfk08
       author: ranquild
-      comment: Drop idx_transform_run_worktree_id, which no foreign key or query uses
+      comment: Delete the transform_run rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: transform_run
-            indexName: idx_transform_run_worktree_id
-      rollback:
-        - createIndex:
-            tableName: transform_run
-            indexName: idx_transform_run_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: transform_run
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_transform_run_worktree_id
+            onDelete: CASCADE
   - changeSet:
-      id: wix6du
+      id: wlfk09
       author: ranquild
-      comment: Drop idx_view_log_worktree_id, which no foreign key or query uses
+      comment: Delete the view_log rows of a remote sync worktree with it
       changes:
-        - dropIndex:
-            tableName: view_log
-            indexName: idx_view_log_worktree_id
-      rollback:
-        - createIndex:
-            tableName: view_log
-            indexName: idx_view_log_worktree_id
-            columns:
-              - column:
-                  name: worktree_id
-
+        - addForeignKeyConstraint:
+            baseTableName: view_log
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_view_log_worktree_id
+            onDelete: CASCADE
   - changeSet:
       id: wixct0
       author: ranquild

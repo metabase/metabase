@@ -20,6 +20,12 @@
   []
   (t2/exists? :model/RemoteSyncWorktree :is_default false))
 
+(defenterprise worktree-ids
+  "The ids of every worktree, the default one first, with the `:remote-sync` feature or without it."
+  :feature :none
+  []
+  (t2/select-pks-vec :model/RemoteSyncWorktree {:order-by [[:id :asc]]}))
+
 (defenterprise user-worktree-id
   "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
   :feature :remote-sync

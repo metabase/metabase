@@ -31,9 +31,8 @@ Follow `resources/migrations/2026/20261126_remote_sync_worktrees.yaml`, which wo
 
 - `worktree_id INTEGER DEFAULT 1 NOT NULL`;
 - `idx_<table>_worktree_id`, created before the foreign key so that MySQL makes no index of its own;
-- `fk_<table>_worktree_id` → `remote_sync_worktree (id)` `ON DELETE CASCADE`; logs whose rows outlive the worktree
-  (`audit_log`, `data_test_run`, `query_execution`, `source_replacement_run`, `task_history`, `task_run`,
-  `test_suite_run`, `transform_dag_run`, `transform_run`, `view_log`) get no foreign key;
+- `fk_<table>_worktree_id` → `remote_sync_worktree (id)` `ON DELETE CASCADE`, logs included, which a deleted worktree
+  takes with it; a job that sweeps such rows by age, a cleanup or a run timeout, takes `:worktree-scope :each`;
 - every constraint and index named explicitly (`uq_`, `fk_`, `idx_`), at most 63 characters.
 
 ## Keys

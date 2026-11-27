@@ -1,6 +1,7 @@
 (ns metabase.remote-sync.worktrees
   "Remote sync worktrees, which the enterprise remote sync module keeps."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.remote-sync.spec :as remote-sync.spec]
    [methodical.core :as methodical]
@@ -13,6 +14,12 @@
   metabase-enterprise.remote-sync.db
   []
   false)
+
+(defenterprise worktree-ids
+  "The ids of every worktree, the default one first, which is the only one without the enterprise code."
+  metabase-enterprise.remote-sync.db
+  []
+  [mdb/default-worktree-id])
 
 (defenterprise user-worktree-id
   "The id of the worktree other than the default one the user with `user-id` checked out, or nil."

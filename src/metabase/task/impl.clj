@@ -26,6 +26,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.task.job-factory :as job-factory]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -472,6 +473,9 @@
       (not (string? saved-class))
       (throw (error "its `:saved-class` must be a string literal." {:saved-class saved-class}))
 
+      (not (contains? #{nil :each} (:worktree-scope options)))
+      (throw (error "its `:worktree-scope` must be `:each`." {:worktree-scope (:worktree-scope options)}))
+
       (not (re-matches #"[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)+" saved-class))
       (throw (error (format (str "its `:saved-class` %s is not a fully qualified Java class name, such as %s."
                                  " A namespace's `-` is a `_` in a class name.")
@@ -560,14 +564,23 @@
   [^JobExecutionContext job-context]
   (mdb/worktree-id->scope (some-> job-context .getMergedJobDataMap (.get worktree-id-key))))
 
+(defn run-in-each-worktree
+  "Calls `thunk` once in each remote sync worktree, the default one first."
+  [thunk]
+  (doseq [worktree-id (remote-sync/worktree-ids)]
+    (mdb/with-worktree-scope (mdb/worktree-id->scope (when-not (= mdb/default-worktree-id worktree-id) worktree-id))
+      (thunk))))
+
 (defn- job-body-form
-  "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and its
-  `worktree-scope`, or the remote sync worktree that scheduled its trigger."
+  "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and the remote
+  sync worktree that scheduled its trigger, or each worktree in turn with `worktree-scope` `:each`."
   [type-name job-context worktree-scope body]
   `(log/with-context {:quartz-job-type (quote ~type-name)}
      (tracing/with-span :tasks (str "task." (quote ~type-name)) {:task/name (str (quote ~type-name))}
-       (mdb/with-worktree-scope ~(or worktree-scope `(job-worktree-scope ~job-context))
-         ~@body))))
+       ~(if (= :each worktree-scope)
+          `(run-in-each-worktree (fn [] ~@body))
+          `(mdb/with-worktree-scope (job-worktree-scope ~job-context)
+             ~@body)))))
 
 (defmacro defjob
   "Defines a Quartz job class that runs `body` with a log context and an OpenTelemetry tracing span around it.
@@ -591,8 +604,8 @@
     `org.quartz.DisallowConcurrentExecution` does.
   - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as
     `org.quartz.PersistJobDataAfterExecution` does.
-  - `:worktree-scope`: the remote sync worktree scope the job runs in, such as `{:type :all}` for a cleanup of rows of
-    every worktree; without it, the job runs in the worktree whose thread scheduled its trigger.
+  - `:worktree-scope`: `:each` runs the job once in each remote sync worktree, for a sweep of rows that every
+    worktree keeps for itself; without it, the job runs in the worktree whose thread scheduled its trigger.
 
   For a job that implements more than `org.quartz.Job`, see [[defjob-type]]."
   {:arglists '([type-name docstring? options args & body])}

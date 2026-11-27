@@ -3,10 +3,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test :as schema-migrations-test]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -267,3 +269,51 @@
             (str "Stale entries of the decision sets:\n" (str/join "\n" (sort (set/difference listed remaining)))))
         (let [bad (mismatches schema hooked (set/intersection remaining listed) expected {})]
           (is (empty? bad) (str "Tables that do not match their decision:\n" (str/join "\n" bad))))))))
+
+(defn- visible-ids
+  "The ids among `ids` of the rows of `model` that a thread working in `scope` reads."
+  [scope model ids]
+  (mdb/with-worktree-scope scope
+    (set (t2/select-pks-set model :id [:in ids]))))
+
+(deftest content-is-isolated-per-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}       {:branch "test-branch"}
+                   :model/RemoteSyncWorktree {other-worktree-id :id} {:branch "other-branch"}
+                   :model/Collection         {main-collection-id :id} {}
+                   :model/Card               {main-card-id :id}       {:collection_id main-collection-id}
+                   :model/Dashboard          {main-dashboard-id :id}  {:collection_id main-collection-id}]
+      (let [worktree-scope       {:type :worktree :worktree-id worktree-id}
+            other-worktree-scope {:type :worktree :worktree-id other-worktree-id}]
+        (mdb/with-worktree-scope worktree-scope
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card       {card-id :id}       {:collection_id collection-id}
+                         :model/Dashboard  {dashboard-id :id}  {:collection_id collection-id}]
+            (doseq [[model main-id worktree-row-id] [[:model/Collection main-collection-id collection-id]
+                                                     [:model/Card main-card-id card-id]
+                                                     [:model/Dashboard main-dashboard-id dashboard-id]]
+                    :let [ids [main-id worktree-row-id]]]
+              (testing model
+                (testing "worktree reads its own rows and not default worktree's"
+                  (is (= #{worktree-row-id} (visible-ids worktree-scope model ids))))
+                (testing "default worktree reads its own rows and not worktree's"
+                  (is (= #{main-id} (visible-ids {:type :main} model ids))))
+                (testing "other worktree reads neither"
+                  (is (= #{} (visible-ids other-worktree-scope model ids))))
+                (testing "scope of every worktree reads both"
+                  (is (= (set ids) (visible-ids {:type :all} model ids))))))))))))
+
+(deftest same-entity-id-in-main-app-and-worktree-test
+  (when config/ee-available?
+    (let [entity-id "worktreetestentityid1"]
+      (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}  {:branch "test-branch"}
+                     :model/Card               {main-card-id :id} {:entity_id entity-id}]
+        (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+          (mt/with-temp [:model/Card {card-id :id} {:entity_id entity-id}]
+            (testing "worktree copy is its own row"
+              (is (not= main-card-id card-id)))
+            (testing "entity id names worktree copy in worktree"
+              (is (= card-id (t2/select-one-pk :model/Card :entity_id entity-id))))
+            (testing "entity id names default worktree row in default worktree"
+              (is (= main-card-id (mdb/with-worktree-scope {:type :main}
+                                    (t2/select-one-pk :model/Card :entity_id entity-id)))))))))))

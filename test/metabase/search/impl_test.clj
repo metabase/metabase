@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.core :as lib]
@@ -413,3 +414,30 @@
             [row]      (#'search.impl/hydrate-checks search-ctx :read [{:model "indexed-entity", :id 1, :database_id nil}])]
         (is (false? (#'search.impl/check-permissions-for-model search-ctx row)))
         (is (= [] (messages)))))))
+
+(deftest search-in-worktree-reads-worktree-content-in-place-test
+  (when config/ee-available?
+    (let [search-term "Worktree search test card"]
+      (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}  {:branch "test-branch"}
+                     :model/Card               {main-card-id :id} {:name search-term}]
+        (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+          (mt/with-temp [:model/Card {card-id :id} {:name search-term}]
+            (testing "search in worktree uses in-place engine whatever engine it asks for"
+              (is (= :search.engine/in-place (#'search.impl/parse-engine "appdb"))))
+            (testing "search in worktree finds its content and not default worktree's"
+              (mt/with-current-user (mt/user->id :crowberto)
+                (is (= #{card-id}
+                       (->> (search.impl/search (search.impl/search-context
+                                                 {:search-string         search-term
+                                                  :search-engine         "appdb"
+                                                  :archived              false
+                                                  :models                #{"card"}
+                                                  :current-user-id       (mt/user->id :crowberto)
+                                                  :is-superuser?         true
+                                                  :is-impersonated-user? false
+                                                  :is-sandboxed-user?    false
+                                                  :is-routed-user?       false}))
+                            :data
+                            (map :id)
+                            (filter #{main-card-id card-id})
+                            set)))))))))))

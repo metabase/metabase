@@ -23,5 +23,6 @@
  [remote-sync.worktrees
   ensure-built-ins!
   non-default-worktree-exists?
+  worktree-ids
   user-worktree-id
   worktree-by-id])
