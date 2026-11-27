@@ -18,26 +18,27 @@
 
 (defn- response-schema
   "The Malli schema of the answer. `metric_description` is required iff the caller signals the chart has no authored
-  description (so we ask the LLM to produce one); otherwise the closed map rejects it."
+  description (so we ask the LLM to produce one), and optional otherwise, so an answer that adds one anyway is kept.
+  Only the chart description and the score must be there: [[parse-response]] decides what else is usable."
   [generate-metric?]
-  (into [:map {:closed true}
-         [:chart_description
-          [:string {:description (str "One short sentence (≤ 25 words) describing WHAT THE CHART IS — the metric and the dimension it's broken out by, in the terms the user would use. "
-                                      "If a Slicing line is present (segment filter, top-N + Other rollup, specific-values subset, per-value over-time view), name it — it's part of what the chart is. "
-                                      "Describe the chart, not the data: do NOT narrate the data's shape, trend, or magnitude (no first/last/peak values, no 'rising'/'dramatic decline') and do NOT draw conclusions — the numbers come from the stats, not from you. "
-                                      "Ground filters, joins, and aggregation in the COMPILED SQL block when one is provided — do not restate the title. "
-                                      "Write this FIRST so the rest of the response is grounded in it.")}]]]
-        (concat
-         (when generate-metric?
-           [[:metric_description
-             [:string {:description (str "One short sentence (≤ 25 words) describing the metric in business terms (what it measures, what's included/excluded). "
-                                         "Read the aggregation, joins, and WHERE clause in the COMPILED SQL block (when provided) to identify what's being summed/counted/averaged and which subset of rows. "
-                                         "Do not restate the chart name.")}]]])
-         [[:reasoning
-           [:string {:description "One short sentence justifying the score, retained for debugging only."}]]
-          ;; Not bounded in the schema: an out-of-range score is clamped by [[parse-response]] rather than thrown away.
-          [:score
-           [number? {:description "Relevance in [0.0, 1.0]. 1 = directly answers; 0.5 = tangentially useful; 0 = unrelated or misleading."}]]])))
+  [:map {:closed true}
+   [:chart_description
+    [:string {:description (str "One short sentence (≤ 25 words) describing WHAT THE CHART IS — the metric and the dimension it's broken out by, in the terms the user would use. "
+                                "If a Slicing line is present (segment filter, top-N + Other rollup, specific-values subset, per-value over-time view), name it — it's part of what the chart is. "
+                                "Describe the chart, not the data: do NOT narrate the data's shape, trend, or magnitude (no first/last/peak values, no 'rising'/'dramatic decline') and do NOT draw conclusions — the numbers come from the stats, not from you. "
+                                "Ground filters, joins, and aggregation in the COMPILED SQL block when one is provided — do not restate the title. "
+                                "Write this FIRST so the rest of the response is grounded in it.")}]]
+   [:metric_description
+    {:optional (not generate-metric?)}
+    [:string {:description (str "One short sentence (≤ 25 words) describing the metric in business terms (what it measures, what's included/excluded). "
+                                "Read the aggregation, joins, and WHERE clause in the COMPILED SQL block (when provided) to identify what's being summed/counted/averaged and which subset of rows. "
+                                "Do not restate the chart name.")}]]
+   [:reasoning
+    {:optional true}
+    [:string {:description "One short sentence justifying the score, retained for debugging only."}]]
+   ;; Not bounded in the schema: an out-of-range score is clamped by [[parse-response]] rather than thrown away.
+   [:score
+    [number? {:description "Relevance in [0.0, 1.0]. 1 = directly answers; 0.5 = tangentially useful; 0 = unrelated or misleading."}]]])
 
 (def ^:private rubric-preamble
   "The `:system` prompt (see [[build-prompt]]), so the instructions live in a different channel from the untrusted

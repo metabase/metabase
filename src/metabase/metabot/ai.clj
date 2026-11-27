@@ -7,14 +7,17 @@
   [[unavailable-reason]] runs the same checks, so it says what [[call-llm!]] would do."
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [malli.error :as me]
    [malli.json-schema :as mjs]
+   [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as usage]
    [metabase.util.i18n :refer [tru]]
@@ -236,8 +239,8 @@
 
 (defn unavailable-reason
   "The `:type` of the error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the provider,
-  or nil when the call would go ahead. Runs the same checks as [[call-llm!]], except the options, so a feature can hide
-  its AI options when the call would refuse. Resolves against the current user."
+  or nil when the call would go ahead. Runs the same checks as [[call-llm!]], except the options and the prompt size, so
+  a feature can hide its AI options when the call would refuse. Resolves against the current user."
   [feature-id audience]
   (try
     (check! feature-id audience)
@@ -313,19 +316,31 @@
 
 (defn response-json-schema
   "The JSON Schema the provider gets for the Malli `schema`, as agent tools convert theirs, with `:required` names as
-  strings, as the text fallback of the structured call reads them."
+  strings, as the text fallback of the structured call reads them, and a `:re` pattern as its source string."
   [schema]
   (perf/postwalk (fn [node]
-                   (cond-> node
-                     (and (map? node) (sequential? (:required node))) (update :required #(mapv name %))))
+                   (cond
+                     (instance? java.util.regex.Pattern node)
+                     (str node)
+
+                     (and (map? node) (sequential? (:required node)))
+                     (update node :required #(mapv name %))
+
+                     :else
+                     node))
                  (mu.json-schema/without-one-of
                   (mjs/transform (mr/resolve-schema schema) {:additionalProperties false}))))
 
+(defn- answer-decoder
+  "Decodes an answer that arrived as JSON into the values `schema` names, such as a UUID or a keyword from a string."
+  [schema]
+  (mr/cached ::answer-decoder schema #(mc/decoder schema (mtx/json-transformer))))
+
 (defn- check-answer
-  "`answer` with keyword keys at every level, once it matches `schema`. Throws `:metabot/structured-output-invalid`
-  when it doesn't."
+  "`answer` with keyword keys at every level, decoded from JSON, once it matches `schema`. Throws
+  `:metabot/structured-output-invalid` when it doesn't."
   [feature-id schema answer]
-  (let [answer (perf/keywordize-keys answer)]
+  (let [answer ((answer-decoder schema) (perf/keywordize-keys answer))]
     (if (mr/validate schema answer)
       answer
       (let [explanation (me/humanize (mr/explain schema answer))]
@@ -382,8 +397,16 @@
              (tru "The AI model stopped before it finished its answer. Please try again.")
              {:feature-id feature-id :finish-reason (:finish-reason data)} e)
 
+      ;; An error the provider streamed after its 200. Its kind is on the `:error` part, not on the `:error` map.
+      (and (= "llm-stream-error" (:error-code data))
+           (= self.core/context-full-error-code (:error-code (:error data))))
+      (error :metabot/prompt-too-large 400 "ai_prompt_too_large"
+             (tru "The request is too large for the AI model.") {:feature-id feature-id} e)
+
       (= "llm-stream-error" (:error-code data))
-      (provider-failure-error feature-id (:provider-failure (:error data)) e)
+      (provider-failure-error feature-id
+                              (some #(when (= :error (:type %)) (:provider-failure %)) (:parts data))
+                              e)
 
       ;; Malformed JSON, a value that isn't an object, or no tool call and no matching JSON in the text.
       (contains? data :parts)
@@ -393,6 +416,10 @@
       ;; A transport failure that outlasted the retries.
       (instance? java.io.IOException e)
       (provider-failure-error feature-id :request-failed e)
+
+      ;; An HTTP error with no failure kind, such as a rejected request. Its body stays in the cause.
+      (:api-error data)
+      (provider-failure-error feature-id nil e)
 
       :else
       e)))
@@ -426,8 +453,11 @@
   `deadline-nanos` is the `System/nanoTime` of the deadline, which the call also hands the provider layer, so each
   request's socket timeout is the time left and no retry waits past it. A failure after the deadline has passed is
   a timeout. `thunk` runs on another thread, which carries this thread's bindings, and as a backstop that thread is
-  interrupted at the deadline."
+  interrupted at the deadline. It doesn't start once the deadline has passed, and an interrupt of the caller cancels
+  it."
   [feature-id timeout-ms deadline-nanos thunk]
+  (when (and timeout-ms (<= (long deadline-nanos) (System/nanoTime)))
+    (throw (timeout-error feature-id timeout-ms nil)))
   (if-not timeout-ms
     (thunk)
     (let [^Future fut (future-call
@@ -445,7 +475,11 @@
           (.cancel fut true)
           (throw (timeout-error feature-id timeout-ms nil)))
         (catch ExecutionException e
-          (throw (or (.getCause e) e)))))))
+          (throw (or (.getCause e) e)))
+        (catch InterruptedException e
+          (.cancel fut true)
+          (.interrupt (Thread/currentThread))
+          (throw e))))))
 
 (defn call-llm!
   "Call the model of the one-call feature `feature-id` and return its answer, checked against the feature's schema,
@@ -469,12 +503,14 @@
   `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
   `:metabot/structured-output-incomplete` and `:metabot/structured-output-invalid`."
   [feature-id opts]
-  (let [{:keys [entry model-ref]}                     (check-call! feature-id (:audience opts) opts)
+  (let [start-nanos                                   (System/nanoTime)
+        {:keys [entry model-ref]}                     (check-call! feature-id (:audience opts) opts)
         {:keys [prompt response timeout-ms max-attempts
                 request-id conversation-id]}          opts
         {:keys [schema max-tokens temperature]}       response
+        ;; from entry, so the checks against the app DB count towards it
         deadline-nanos                                (when timeout-ms
-                                                        (+ (System/nanoTime) (* (long timeout-ms) 1000000)))
+                                                        (+ start-nanos (* (long timeout-ms) 1000000)))
         json-schema                                   (response-json-schema schema)
         messages                                      (render-prompt prompt (new-boundary (:untrusted prompt)))
         _                                             (check-prompt-size! feature-id (:model entry) messages)

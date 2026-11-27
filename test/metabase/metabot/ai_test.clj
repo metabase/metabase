@@ -7,6 +7,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
@@ -307,6 +308,60 @@
                  :provider-failure :rate-limit}
                 (error-data #(metabot.ai/call-llm! :filters/ask-ai (opts :max-attempts 1)))))))))
 
+(defn- streamed-chunks
+  "A provider reply that starts and then streams `chunks`, as OpenRouter sends a failure after its 200."
+  [& chunks]
+  (let [chunks (cons {:type :start :messageId "msg-1"} chunks)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init] (reduce rf init chunks)))))
+
+(deftest streamed-provider-failure-test
+  (mut/with-fake-llm! [_ good-answer]
+    (mt/with-log-level [metabase.metabot :fatal]
+      (testing "a rate limit streamed after the 200 is a 429 provider failure, with its kind"
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_] (streamed-chunks (self.core/error-chunk {:code 429 :message "Rate limit exceeded"}
+                                                                                    "Rate limit exceeded")))]
+          (is (=? {:type :metabot/provider-failure :status-code 429 :provider-failure :rate-limit}
+                  (error-data #(metabot.ai/call-llm! :filters/ask-ai (opts :max-attempts 1)))))))
+      (testing "a context overflow streamed after the 200 is a prompt too large"
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_] (streamed-chunks (self.core/error-chunk
+                                                              {:code     400
+                                                               :message  "maximum context length is 1000 tokens"
+                                                               :metadata {:error_type "context_length_exceeded"}}
+                                                              "maximum context length is 1000 tokens")))]
+          (is (=? {:type :metabot/prompt-too-large :status-code 400}
+                  (error-data #(metabot.ai/call-llm! :filters/ask-ai (opts :max-attempts 1))))))))))
+
+(deftest unclassified-provider-error-test
+  (testing "an HTTP error with no failure kind is a typed provider failure that carries none of the provider's body"
+    (mut/with-fake-llm! [_ (ex-info "bad request" {:api-error  true
+                                                   :error-code :provider-api-error
+                                                   :provider   "openrouter"
+                                                   :status     400
+                                                   :body       {:error {:message  "Invalid input"
+                                                                        :metadata {:account "acct_123"}}}})]
+      (mt/with-log-level [metabase.metabot :fatal]
+        (let [data (error-data #(metabot.ai/call-llm! :filters/ask-ai (opts :max-attempts 1)))]
+          (is (=? {:type :metabot/provider-failure :status-code 502} data))
+          (is (not (re-find #"acct_123" (pr-str data)))))))))
+
+(deftest answer-schema-kinds-test
+  (testing "the usual Malli schemas convert to a JSON Schema the adapters accept, and their answers decode"
+    (doseq [[schema answer expected] [[[:map [:id :uuid]]
+                                       {:id "6f1c4f39-0b5d-4d0f-9a3e-1f0c2b7a9d10"}
+                                       {:id #uuid "6f1c4f39-0b5d-4d0f-9a3e-1f0c2b7a9d10"}]
+                                      [[:map [:code [:re #"^[A-Z]+$"]]] {:code "AB"} {:code "AB"}]
+                                      [[:map [:v [:or :string :int]]] {:v "a"} {:v "a"}]
+                                      [[:map [:v [:= "x"]]] {:v "x"} {:v "x"}]
+                                      [[:map [:v [:and :int [:> 0]]]] {:v 3} {:v 3}]
+                                      [[:map [:k :keyword]] {:k "plan"} {:k :plan}]]]
+      (testing (pr-str schema)
+        (is (mr/validate ::self.core/json-schema-node (metabot.ai/response-json-schema schema)))
+        (mut/with-fake-llm! [_ answer]
+          (is (= expected (metabot.ai/call-llm! :filters/ask-ai (opts :response {:schema schema :max-tokens 50})))))))))
+
 (deftest deadline-test
   (testing "a retry that would wait past the deadline fails at once"
     (let [attempts (atom 0)]
@@ -332,6 +387,17 @@
   (testing "without a deadline the timeouts are left alone"
     (is (= {:connection-timeout 10000 :socket-timeout 60000}
            (self.core/clamp-to-deadline {:connection-timeout 10000 :socket-timeout 60000} nil)))))
+
+(deftest expired-deadline-test
+  (testing "no request is sent once the deadline has passed"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"deadline of this LLM call has passed"
+                          (self.core/clamp-to-deadline {} (- (System/nanoTime) 1000000)))))
+  (testing "a call whose checks outlast its deadline never reaches the provider"
+    (mut/with-fake-llm! [sent good-answer]
+      (mt/with-dynamic-fn-redefs [usage/check-usage-limits! (fn [& _] (Thread/sleep 200) nil)]
+        (is (=? {:type :metabot/timeout :status-code 504}
+                (error-data #(metabot.ai/call-llm! :filters/ask-ai (opts :timeout-ms 100)))))
+        (is (empty? @sent))))))
 
 (deftest timeout-test
   (testing ":timeout-ms is a deadline for the whole call"

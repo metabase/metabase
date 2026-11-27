@@ -157,10 +157,15 @@
                                       :metric_description {:type "string"}
                                       :reasoning          {:type "string"}
                                       :score              {:type "number"}}
-                         :required   ["chart_description" "metric_description" "reasoning" "score"]}
+                         :required   ["chart_description" "metric_description" "score"]}
                 :input  [{:role    "user"
                           :content #"(?s).*<user_question boundary=\"[0-9a-f]{32}\">\nWhy is revenue down this month\?\n.*<compiled_sql boundary=.*SELECT 1.*"}]}]
               @sent))))
+  (testing "an answer without the debugging reasoning, or with a metric description nobody asked for, is kept"
+    (mut/with-fake-llm! [_ {:chart_description "c" :metric_description "m" :score 0.7}]
+      (is (=? {:score 0.7 :chart-description "c" :reasoning nil} (call {}))))
+    (mut/with-fake-llm! [_ {:chart_description "c" :metric_description "m" :reasoning "r" :score 0.7}]
+      (is (=? {:score 0.7 :chart-description "c"} (call {:card-description "authored"})))))
   (testing "an answer that breaks the schema gives nil"
     (mut/with-fake-llm! [_ {:chart_description "c" :reasoning "r" :score "high"}]
       (mt/with-log-level [metabase.contextual-interestingness.llm :fatal]

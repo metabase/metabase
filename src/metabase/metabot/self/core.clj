@@ -214,7 +214,8 @@
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema, or one of its children.
 
   Recursive, so a schema can hold arrays of objects and objects nested in objects. Closed to the keywords
-  [[metabase.metabot.ai]] gets from `malli.json-schema/transform`, so a keyword an adapter would pass on
+  [[metabase.metabot.ai]] gets from `malli.json-schema/transform` for the usual Malli schemas (maps, sequences,
+  enums, strings with a pattern or format, unions, intersections and constants), so a keyword an adapter would pass on
   without understanding fails here. `:properties` keys are the field names the schema itself declares: string keys
   off the wire, keyword keys when built in Clojure."
   [:map {:closed true}
@@ -231,7 +232,14 @@
    [:minItems             {:optional true} :int]
    [:maxItems             {:optional true} :int]
    [:minLength            {:optional true} :int]
-   [:maxLength            {:optional true} :int]])
+   [:maxLength            {:optional true} :int]
+   [:exclusiveMinimum     {:optional true} number?]
+   [:exclusiveMaximum     {:optional true} number?]
+   [:pattern              {:optional true} :string]
+   [:format               {:optional true} :string]
+   [:const                {:optional true} [:or :string number? :boolean :nil]]
+   [:anyOf                {:optional true} [:sequential [:ref ::json-schema-node]]]
+   [:allOf                {:optional true} [:sequential [:ref ::json-schema-node]]]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -1502,10 +1510,13 @@
 
 (defn clamp-to-deadline
   "`request-options`, the [[request]] opts of one request, with its connection and socket timeouts no longer than the
-  time left before `deadline-nanos`. Unchanged when `deadline-nanos` is nil."
+  time left before `deadline-nanos`. Unchanged when `deadline-nanos` is nil. Throws once the deadline has passed, so
+  no request is sent after it."
   [request-options deadline-nanos]
   (if-let [left (deadline-remaining-ms deadline-nanos)]
-    (let [left (max 1 (long left))]
+    (do
+      (when-not (pos? (long left))
+        (throw (ex-info "The deadline of this LLM call has passed" {:error-code :deadline-passed})))
       (assoc request-options
              :connection-timeout (min (long (or (:connection-timeout request-options) (llm/llm-connection-timeout-ms))) left)
              :socket-timeout     (min (long (or (:socket-timeout request-options) (llm/llm-request-timeout-ms))) left)))
