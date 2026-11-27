@@ -32,7 +32,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";
 import { getSetting } from "metabase/settings";
-import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
+import { Flex, Group, type IconProps, Title } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
@@ -94,6 +94,7 @@ import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/Click
 import { DashCardFilterMenu } from "./DashCardFilterMenu/DashCardFilterMenu";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
+import { DashCardSeriesMenuItem } from "./DashCardSeriesMenuItem";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type {
@@ -482,17 +483,15 @@ export function DashCardVisualization({
       isVisualizerDashboardCard(dashcard) &&
       isDashCardDataSeries(rawSeries)
         ? rawSeries.map((series, index) => (
-            <Menu.Item
+            <DashCardSeriesMenuItem
               key={index}
-              onClick={() => {
-                onOpenQuestion(series.card.id);
-              }}
-            >
-              {series.card.name}
-            </Menu.Item>
+              name={series.card.name}
+              getHref={getNextCardHref && (() => getNextCardHref(series.card))}
+              onOpen={() => onOpenQuestion(series.card.id)}
+            />
           ))
         : undefined,
-    [dashcard, rawSeries, onOpenQuestion, isEditing],
+    [dashcard, rawSeries, onOpenQuestion, getNextCardHref, isEditing],
   );
 
   const cardTitle = useMemo(() => {

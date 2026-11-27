@@ -2027,6 +2027,25 @@ describe("DashboardApp > visualizer", () => {
       },
     );
 
+    it("should render dashcard title menu items as links to their questions", async () => {
+      await setup({ dashcards: VISUALIZER_DASHBOARD_DASHCARDS });
+
+      await within(
+        await findDashcard(MULTI_SERIES_LINE_DASHCARD.id),
+      ).findByTestId("legend-caption-title");
+      await clickDashcardTitle(MULTI_SERIES_LINE_DASHCARD.id);
+      const menu = await screen.findByTestId("legend-caption-menu");
+      const menuItem = within(menu).getByRole("menuitem", {
+        name: PRODUCTS_BY_CREATED_AT.name,
+      });
+      await userEvent.hover(menuItem);
+
+      const href = menuItem.getAttribute("href") ?? "";
+      expect(href).toMatch(
+        new RegExp(`^/question/${PRODUCTS_BY_CREATED_AT.id}-`),
+      );
+    });
+
     it("should open the question of a single-series pie chart from the dashcard title", async () => {
       const { router } = await setup({
         dashcards: VISUALIZER_DASHBOARD_DASHCARDS,
