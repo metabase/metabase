@@ -253,6 +253,14 @@ describe("ExpressionWidget > entry points > offset", () => {
       await screen.findByText("OFFSET is not supported in custom filters"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("custom-expression-query-editor"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("Custom Expression")).toBeInTheDocument();
   });
 
   it("should not suggest or accept offset() in a custom column", async () => {
@@ -266,6 +274,13 @@ describe("ExpressionWidget > entry points > offset", () => {
       await screen.findByText("OFFSET is not supported in custom columns"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("custom-expression-query-editor"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("should suggest and accept offset() in a custom aggregation once it has a name", async () => {
