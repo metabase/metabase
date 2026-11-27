@@ -13,6 +13,7 @@ import {
   cleanupFlexContainerNodes,
   extractContainerSingleCardNode,
   getDroppedCardEmbedNodeData,
+  unwrapSingleChildFlexContainers,
 } from "./utils";
 
 export const HandleEditorDrop = Extension.create({
@@ -235,8 +236,6 @@ const handleCardDropOnParagraph = ({
     targetPos,
     cameFromFlexContainer ? view.state.schema.nodes.resizeNode : undefined,
   );
-  // If we have moved content out of a flex container, we may need to unwrap an unneeded flex container
-  cleanupFlexContainerNodes(view);
   return true; // Indicate that we've handled the drop.
 };
 
@@ -275,5 +274,5 @@ const moveNode = (
 
   tr.insert(adjustedToPos, possiblyWrappedNode);
 
-  view.dispatch(tr);
+  view.dispatch(unwrapSingleChildFlexContainers(tr));
 };
