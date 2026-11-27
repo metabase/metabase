@@ -979,3 +979,12 @@
         (is (= [[1345 "Alice Connelly"]]
                (mt/formatted-rows [int str] result)
                (mt/formatted-rows [int str] (qp/process-query native-query))))))))
+
+(deftest ci-probe-51411-integer-columns-synced-as-integer-test
+  (testing "integer columns of test-data are synced with an integer base type so remapping is offered (#51411)"
+    (mt/test-driver :oracle
+      (let [mp (mt/metadata-provider)]
+        (doseq [[table field] [[:venues :price] [:categories :id] [:checkins :user_id]]]
+          (let [base-type (:base-type (lib.metadata/field mp (mt/id table field)))]
+            (is (isa? base-type :type/Integer)
+                (str table "." field " base type is " base-type))))))))
