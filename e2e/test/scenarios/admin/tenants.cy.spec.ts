@@ -320,12 +320,23 @@ describe("Tenants - management", () => {
 
   it("should build the tenant collections permission table from the real collection graph", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
+    cy.request("POST", "/api/permissions/group", {
+      name: "Test Internal Group",
+      is_tenant_group: false,
+    });
 
     cy.visit("/admin/permissions/tenant-collections/root");
 
     cy.findByTestId("permission-table").within(() => {
-      cy.findByText("All internal users").should("be.visible");
       cy.findByText("All tenant users").should("be.visible");
+      cy.findAllByRole("row")
+        .contains("tr", "All internal users")
+        .findByText("View")
+        .should("be.visible");
+      cy.findAllByRole("row")
+        .contains("tr", "Test Internal Group")
+        .findByText("No access")
+        .should("be.visible");
     });
   });
 
