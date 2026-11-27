@@ -33,6 +33,10 @@ function setup({
     },
   ]);
   fetchMock.get("path:/api/ee/advanced-permissions/impersonation", []);
+  fetchMock.get("express:/api/permissions/graph/group/:id", {
+    groups: { 9: { 1: { "view-data": "unrestricted" } } },
+    revision: 1,
+  });
 
   const onApply = jest.fn();
   renderWithProviders(

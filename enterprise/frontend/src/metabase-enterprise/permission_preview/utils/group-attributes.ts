@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type {
   Database,
+  DatabaseId,
   GroupId,
   GroupTableAccessPolicy,
   Impersonation,
@@ -24,6 +25,8 @@ interface GroupAttributeSources {
   policies: GroupTableAccessPolicy[];
   impersonations: Impersonation[];
   databases: Database[];
+  /** The databases the group can view: routing belongs to a database, so it only matters where they can query */
+  viewableDatabaseIds: ReadonlySet<DatabaseId>;
 }
 
 /**
@@ -36,6 +39,7 @@ export function getGroupAttributes({
   policies,
   impersonations,
   databases,
+  viewableDatabaseIds,
 }: GroupAttributeSources): GroupAttribute[] {
   const attributes = new Map<string, AttributeUse[]>();
 
@@ -75,7 +79,10 @@ export function getGroupAttributes({
   }
 
   for (const database of databases) {
-    if (database.router_user_attribute) {
+    if (
+      database.router_user_attribute &&
+      viewableDatabaseIds.has(database.id)
+    ) {
       addUse(database.router_user_attribute, {
         kind: "routing",
         names: [database.name],

@@ -5,6 +5,7 @@ import { formatList } from "./format-list";
 import { getGroupAttributes, getUseDescription } from "./group-attributes";
 
 const SALES = 9;
+const VIEWABLE = new Set([1, 2]);
 const TARGET: ParameterTarget = ["dimension", ["field", 1, null]];
 
 const databases = [
@@ -40,6 +41,7 @@ describe("getGroupAttributes", () => {
       policies: [policy(10, ["category"]), policy(11, ["category", "state"])],
       impersonations: [{ db_id: 2, group_id: SALES, attribute: "role" }],
       databases,
+      viewableDatabaseIds: VIEWABLE,
     });
 
     expect(attributes.map(({ name }) => name)).toEqual([
@@ -56,6 +58,7 @@ describe("getGroupAttributes", () => {
       policies: [policy(10, ["category"]), policy(11, ["category"])],
       impersonations: [],
       databases,
+      viewableDatabaseIds: VIEWABLE,
     });
 
     expect(category.uses.map(getUseDescription)).toEqual([
@@ -69,6 +72,7 @@ describe("getGroupAttributes", () => {
       policies: [],
       impersonations: [{ db_id: 2, group_id: SALES, attribute: "role" }],
       databases,
+      viewableDatabaseIds: VIEWABLE,
     });
 
     expect(
@@ -88,6 +92,19 @@ describe("getGroupAttributes", () => {
       ],
       impersonations: [{ db_id: 2, group_id: 99, attribute: "role" }],
       databases: [databases[1]],
+      viewableDatabaseIds: VIEWABLE,
+    });
+
+    expect(attributes).toEqual([]);
+  });
+
+  it("leaves out the attribute of a routed database the group can't view", () => {
+    const attributes = getGroupAttributes({
+      groupId: SALES,
+      policies: [],
+      impersonations: [],
+      databases,
+      viewableDatabaseIds: new Set([2]),
     });
 
     expect(attributes).toEqual([]);

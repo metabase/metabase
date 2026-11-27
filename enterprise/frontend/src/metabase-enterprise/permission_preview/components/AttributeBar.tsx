@@ -2,12 +2,13 @@ import { type KeyboardEvent, useState } from "react";
 import { t } from "ttag";
 
 import {
+  useGetGroupPermissionsGraphQuery,
   useListDatabasesQuery,
   useListGroupTableAccessPoliciesQuery,
 } from "metabase/api";
 import { Box, Button, Flex, Popover, Text, TextInput } from "metabase/ui";
 import { useListImpersonationsQuery } from "metabase-enterprise/api";
-import type { GroupInfo } from "metabase-types/api";
+import type { GroupInfo, GroupPermissions } from "metabase-types/api";
 
 import {
   type GroupAttribute,
@@ -23,6 +24,17 @@ interface AttributeBarProps {
   onApply: (name: string, value: string) => void;
 }
 
+function getViewableDatabaseIds(permissions: GroupPermissions = {}) {
+  return new Set(
+    Object.entries(permissions)
+      .filter(([, database]) => {
+        const viewData = database["view-data"];
+        return viewData != null && viewData !== "blocked";
+      })
+      .map(([databaseId]) => Number(databaseId)),
+  );
+}
+
 /** The user attributes a group's rules read, each with the value the preview uses. */
 export function AttributeBar({ group, values, onApply }: AttributeBarProps) {
   const { data: policies = [] } = useListGroupTableAccessPoliciesQuery({
@@ -31,11 +43,14 @@ export function AttributeBar({ group, values, onApply }: AttributeBarProps) {
   const { data: impersonations = [] } = useListImpersonationsQuery();
   const { data: databases } = useListDatabasesQuery({ include: "tables" });
 
+  const { data: graph } = useGetGroupPermissionsGraphQuery(group.id);
+
   const attributes = getGroupAttributes({
     groupId: group.id,
     policies,
     impersonations,
     databases: databases?.data ?? [],
+    viewableDatabaseIds: getViewableDatabaseIds(graph?.groups[group.id]),
   });
 
   if (attributes.length === 0) {
