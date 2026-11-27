@@ -1,3 +1,4 @@
+import Color from "color";
 import type { EChartsType } from "echarts/core";
 import type React from "react";
 import { useEffect, useMemo } from "react";
@@ -105,8 +106,8 @@ export const getTooltipBaseOption = (
   };
 };
 
-export const getMarkerColorClass = (hexColor: string) => {
-  return `marker-${hexColor.slice(1, 7)}`;
+export const getMarkerColorClass = (color: string) => {
+  return `marker-${Color(color).hex().slice(1)}`;
 };
 
 export const useInjectSeriesColorsClasses = (hexColors: string[]) => {

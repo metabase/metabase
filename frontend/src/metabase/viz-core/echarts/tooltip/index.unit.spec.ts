@@ -4,6 +4,7 @@ import type { MutableRefObject } from "react";
 
 import {
   TOOLTIP_POINTER_MARGIN,
+  getMarkerColorClass,
   getTooltipPositionFn,
   useCloseTooltipOnScroll,
 } from ".";
@@ -170,4 +171,13 @@ describe("getTooltipPositionFn", () => {
       50 + TOOLTIP_POINTER_MARGIN, // relative tooltip top = relative mouse Y + margin
     ]);
   });
+});
+
+describe("getMarkerColorClass", () => {
+  it.each(["#F9D45C", "hsla(240, 4%, 95%, 1)", "rgb(10, 20, 30)"])(
+    "returns valid CSS class name for %s",
+    (color) => {
+      expect(getMarkerColorClass(color)).toMatch(/^[A-Za-z_][\w-]*$/);
+    },
+  );
 });
