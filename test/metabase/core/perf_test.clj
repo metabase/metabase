@@ -6,7 +6,8 @@
    [metabase.core.perf :as perf]
    [metabase.global-system.system :as global-system]
    [metabase.global-system.test-util :as global-system.tu]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)
    (java.io File)
@@ -27,11 +28,17 @@
 
 (deftest save-rate-minutes-test
   (testing "a positive whole number of minutes is used, and anything else, including the blank default, falls back"
-    (is (= {"10" 10, " 7 " 7, nil 5, "" 5, "soon" 5, "0" 5, "-3" 5}
-           (into {}
-                 (for [value ["10" " 7 " nil "" "soon" "0" "-3"]]
-                   [value (mt/with-dynamic-fn-redefs [config/config-str (constantly value)]
-                            (#'perf/save-rate-minutes 5))]))))))
+    (let [expected {"10"   10
+                    " 7 "  7
+                    nil    5
+                    ""     5
+                    "soon" 5
+                    "0"    5
+                    "-3"   5}]
+      (is (= expected
+             (u/for-map [value (keys expected)]
+               [value (mt/with-dynamic-fn-redefs [config/config-str (constantly value)]
+                        (#'perf/save-rate-minutes 5))]))))))
 
 (deftest ^:parallel directory-mode?-test
   (testing "blank string is not directory mode"
