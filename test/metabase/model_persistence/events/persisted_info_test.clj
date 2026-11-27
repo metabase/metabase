@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.app-db.query :as mdb.query]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
@@ -43,6 +45,34 @@
         (mt/with-current-user (mt/user->id :crowberto)
           (card/update-cards! [{:id (u/the-id card) :name "Renamed model" :description "Edited"}]))
         (is (zero? (t2/count :model/PersistedInfo :card_id (u/the-id card))))))))
+
+(deftest moving-model-to-another-database-prunes-its-persisted-info-test
+  (mt/with-premium-features #{}
+    (mt/with-temporary-setting-values [persisted-models-enabled true]
+      (mt/with-temp [:model/Database      db-1 {:settings {:persist-models-enabled true}}
+                     :model/Database      db-2 {:settings {:persist-models-enabled true}}
+                     :model/Card          card {:type          :model
+                                                :dataset_query (lib/native-query
+                                                                (lib-be/application-database-metadata-provider (u/the-id db-1))
+                                                                "SELECT 1")}
+                     :model/PersistedInfo _    {:card_id (u/the-id card) :database_id (u/the-id db-1)
+                                                :state   "persisted"     :active      true}]
+        (testing "editing model on its own database keeps its PersistedInfo"
+          (mt/with-current-user (mt/user->id :crowberto)
+            (card/update-cards! [{:id            (u/the-id card)
+                                  :dataset_query (lib/native-query
+                                                  (lib-be/application-database-metadata-provider (u/the-id db-1))
+                                                  "SELECT 2")}]))
+          (is (=? {:state "persisted" :active true}
+                  (t2/select-one :model/PersistedInfo :card_id (u/the-id card)))))
+        (testing "moving model to another database marks its PersistedInfo for pruning"
+          (mt/with-current-user (mt/user->id :crowberto)
+            (card/update-cards! [{:id            (u/the-id card)
+                                  :dataset_query (lib/native-query
+                                                  (lib-be/application-database-metadata-provider (u/the-id db-2))
+                                                  "SELECT 2")}]))
+          (is (=? {:state "deletable" :active false :database_id (u/the-id db-1)}
+                  (t2/select-one :model/PersistedInfo :card_id (u/the-id card)))))))))
 
 (deftest ^:synchronized model-cards-across-partitions-are-persisted-test
   (testing "an event with more model Cards than one batch persists every one of them"
