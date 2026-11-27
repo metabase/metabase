@@ -22,6 +22,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [metabase.warehouse-schema.user-settings-writes :as user-settings-writes]
    [methodical.core :as methodical]
@@ -34,18 +35,19 @@
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
 (t2/deftransforms :model/TableUserSettings
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :field_order     mi/transform-keyword
-   :data_layer      (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum table/data-layers)
-                     (some-fn table/legacy-data-layer->current identity))
-   :data_source     (mi/transform-validator-with-fixes
-                     mi/transform-keyword
-                     (partial mi/assert-optional-enum table/data-sources)
-                     (some-fn keyword identity))
-   :data_authority  table/transform-data-authority})
+  (merge {:entity_type     mi/transform-keyword
+          :visibility_type mi/transform-keyword
+          :field_order     mi/transform-keyword
+          :data_layer      (mi/transform-validator-with-fixes
+                            mi/transform-keyword
+                            (partial mi/assert-optional-enum table/data-layers)
+                            (some-fn table/legacy-data-layer->current identity))
+          :data_source     (mi/transform-validator-with-fixes
+                            mi/transform-keyword
+                            (partial mi/assert-optional-enum table/data-sources)
+                            (some-fn keyword identity))
+          :data_authority  table/transform-data-authority}
+         warehouse-schema.transforms/table-transforms))
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
@@ -402,9 +404,12 @@
 (defmethod audit/spec :model/TableUserSettings [_model]
   {:track          [:table_id]
    :track-redacted [:caveats :caveats_set :collection_id :data_authority :data_layer :data_layer_set :data_source
-                    :data_source_set :description :description_set :display_name :entity_type :field_order
-                    :is_published :owner_email :owner_user_id :points_of_interest :points_of_interest_set
-                    :show_in_getting_started :visibility_type :visibility_type_set]
+                    :data_source_set :description :description_set :display_name :eav_definition :eav_definition_set
+                    :entity_type :field_order :grain :grain_description :grain_description_set :grain_set
+                    :history_definition :history_definition_set :is_published :load_strategy :load_strategy_set
+                    :mutability :mutability_set :owner_email :owner_user_id :period_granularity
+                    :period_granularity_set :points_of_interest :points_of_interest_set :scd_type :scd_type_set
+                    :show_in_getting_started :table_role :table_role_set :visibility_type :visibility_type_set]
    :skip           []
    :topics         {}
    :subject        (fn [{:keys [object previous-object]}]
@@ -420,15 +425,29 @@
    :copy                [:display_name :description :entity_type :visibility_type :field_order :caveats
                          :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
                          :owner_email :is_published :description_set :visibility_type_set :data_layer_set
-                         :data_source_set]
+                         :data_source_set :table_role :grain :grain_description :period_granularity :mutability
+                         :load_strategy :scd_type :history_definition_set :eav_definition_set
+                         :period_granularity_set :table_role_set :grain_set :grain_description_set :mutability_set
+                         :load_strategy_set :scd_type_set]
    :skip                [:caveats_set :points_of_interest_set]
-   :defaults            {:description_set     false
-                         :visibility_type_set false
-                         :data_layer_set      false
-                         :data_source_set     false}
-   :transform           {:collection_id (serialization/fk-transform :model/Collection)
-                         :owner_user_id serialization/user-transform
-                         :table_id      serialization/table-transform}
+   :defaults            {:description_set        false
+                         :visibility_type_set    false
+                         :data_layer_set         false
+                         :data_source_set        false
+                         :history_definition_set false
+                         :eav_definition_set     false
+                         :period_granularity_set false
+                         :table_role_set         false
+                         :grain_set              false
+                         :grain_description_set  false
+                         :mutability_set         false
+                         :load_strategy_set      false
+                         :scd_type_set           false}
+   :transform           {:collection_id      (serialization/fk-transform :model/Collection)
+                         :owner_user_id      serialization/user-transform
+                         :table_id           serialization/table-transform
+                         :history_definition warehouse-schema.serialization/definition-transform
+                         :eav_definition     warehouse-schema.serialization/definition-transform}
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
    :insert!             create-table-user-settings!

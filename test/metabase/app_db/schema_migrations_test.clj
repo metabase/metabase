@@ -5562,6 +5562,73 @@
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
 
+(deftest structural-metadata-columns-test
+  (testing "existing Tables, Fields and their user settings get NULL structural metadata and unset flags"
+    (impl/test-migrations ["as9qdr" "qpwu5p"] [migrate!]
+      (let [db-id    (t2/insert-returning-pk! :metabase_database {:name       "Structural Metadata Test DB"
+                                                                  :engine     "h2"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+            table-id (t2/insert-returning-pk! :metabase_table {:active       true
+                                                               :db_id        db-id
+                                                               :name         "orders"
+                                                               :display_name "Orders"
+                                                               :created_at   :%now
+                                                               :updated_at   :%now})
+            field-id (t2/insert-returning-pk! :metabase_field {:table_id      table-id
+                                                               :name          "id"
+                                                               :display_name  "ID"
+                                                               :active        true
+                                                               :base_type     "type/Integer"
+                                                               :database_type "INTEGER"
+                                                               :created_at    :%now
+                                                               :updated_at    :%now})]
+        (t2/insert! :metabase_table_user_settings {:table_id table-id :display_name "Orders"})
+        (t2/insert! :metabase_field_user_settings {:field_id field-id :display_name "ID"})
+        (migrate!)
+        (let [table-columns [:table_role :grain :grain_description :period_granularity :mutability :load_strategy
+                             :scd_type :history_definition :eav_definition]
+              field-columns [:is_grain :attribute_scd_type :facets]
+              table-flags   (map #(keyword (str (name %) "_set")) table-columns)
+              field-flags   [:attribute_scd_type_set]
+              nils          #(zipmap % (repeat nil))
+              unset         #(zipmap % (repeat false))]
+          (is (= (nils table-columns)
+                 (select-keys (t2/select-one :metabase_table :id table-id) table-columns)))
+          (is (= (nils field-columns)
+                 (select-keys (t2/select-one :metabase_field :id field-id) field-columns)))
+          (is (= (merge (nils table-columns) (unset table-flags))
+                 (select-keys (t2/select-one :metabase_table_user_settings :table_id table-id)
+                              (concat table-columns table-flags))))
+          (let [field-settings (t2/select-one :metabase_field_user_settings :field_id field-id)]
+            (is (= (merge (nils field-columns) (unset field-flags))
+                   (select-keys field-settings (concat field-columns field-flags))))
+            (testing "is_grain and facets have no flag"
+              (is (not-any? #(contains? field-settings %) [:is_grain_set :facets_set]))))
+          (testing "user settings rows inserted after the migration default their flags to false"
+            (let [new-table-id (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                         :db_id        db-id
+                                                                         :name         "line_items"
+                                                                         :display_name "Line Items"
+                                                                         :created_at   :%now
+                                                                         :updated_at   :%now})
+                  new-field-id (t2/insert-returning-pk! :metabase_field {:table_id      new-table-id
+                                                                         :name          "id"
+                                                                         :display_name  "ID"
+                                                                         :active        true
+                                                                         :base_type     "type/Integer"
+                                                                         :database_type "INTEGER"
+                                                                         :created_at    :%now
+                                                                         :updated_at    :%now})]
+              (t2/insert! :metabase_table_user_settings {:table_id new-table-id :display_name "Line Items"})
+              (t2/insert! :metabase_field_user_settings {:field_id new-field-id :display_name "ID"})
+              (is (= (unset table-flags)
+                     (select-keys (t2/select-one :metabase_table_user_settings :table_id new-table-id) table-flags)))
+              (is (= (unset field-flags)
+                     (select-keys (t2/select-one :metabase_field_user_settings :field_id new-field-id)
+                                  field-flags))))))))))
+
 (deftest drop-table-transform-id-test
   (impl/test-migrations ["nqeyec" "p7c3vn"] [migrate!]
     (let [user-id    (t2/insert-returning-pk! :core_user {:first_name  "Test"

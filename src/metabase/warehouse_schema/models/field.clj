@@ -29,6 +29,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
@@ -56,56 +57,24 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
-(defn- hierarchy-keyword-in
-  "The transform that validates a value of the Field column `column-name` against `ancestor-types`; a HoneySQL
-  expression, a vector, is passed through untouched, since a before-update hook writes the derived types as one."
-  [column-name & {:keys [ancestor-types]}]
-  (fn [k]
-    (if (vector? k)
-      k
-      (when-let [k (some-> k keyword)]
-        (when-not (some
-                   (partial isa? k)
-                   ancestor-types)
-          (let [message (tru "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
-                             (pr-str column-name) (pr-str k) (pr-str ancestor-types))]
-            (throw (ex-info message
-                            {:status-code       400
-                             :errors            {column-name message}
-                             :value             k
-                             :allowed-ancestors ancestor-types}))))
-        (u/qualified-name k)))))
-
-(defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]
-  (fn [s]
-    (when (seq s)
-      (let [k (keyword s)]
-        (if (some
-             (partial isa? k)
-             ancestor-types)
-          k
-          (do
-            (log/warnf "Invalid Field %s %s: falling back to %s" column-name k fallback-type)
-            fallback-type))))))
-
 (def ^:private transform-field-base-type
-  {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
-   :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :base_type
+                                                 :ancestor-types [:type/*], :fallback-type :type/*))
 
 (def transform-field-effective-type
   "Transform effective_type"
-  {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
-   :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :effective_type
+                                                 :ancestor-types [:type/*], :fallback-type :type/*))
 
 (def transform-field-semantic-type
   "Transform semantic_type"
-  {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
-   :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :semantic_type
+                                                 :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
 
 (def transform-field-coercion-strategy
   "Transform coercion_strategy"
-  {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
-   :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
+  (warehouse-schema.transforms/hierarchy-keyword :model/Field :coercion_strategy
+                                                 :ancestor-types [:Coercion/*], :fallback-type nil))
 
 (defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
@@ -136,7 +105,7 @@
    :nfc_path          mi/transform-json
    :json_unfolding    mi/transform-boolean})
 
-(t2/deftransforms :model/Field field-transforms)
+(t2/deftransforms :model/Field (merge field-transforms warehouse-schema.transforms/field-transforms))
 
 (doto :model/Field
   (derive :metabase/model)
@@ -825,7 +794,8 @@
            :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
            :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
            :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
-           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
+           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity
+           :is_grain :attribute_scd_type :facets]
    :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
            :is_defective_duplicate :unique_field_helper]})
 
@@ -837,7 +807,7 @@
                    :database_is_pk :database_partitioned :database_position :database_required :database_type
                    :description :display_name :effective_type :has_field_values
                    :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type
-                   :settings :visibility_type]
+                   :settings :visibility_type :is_grain :attribute_scd_type :facets]
    :skip          [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
                    :is_defective_duplicate :unique_field_helper]
    :children      {:dimensions :model/Dimension}

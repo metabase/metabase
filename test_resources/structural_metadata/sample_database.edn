@@ -1,0 +1,91 @@
+;; The Sample Database that ships with Metabase, as sync reads it from `resources/sample-database.sqlite`: names, base
+;; types, synced semantic types, PKs and FKs. A NULL semantic type is kept, so the fixture does not fall back to the
+;; prototype name rules. Regenerate it with `fixtures/database-fixture` on a synced copy of the Sample Database.
+{:schema nil
+ :tables
+ [{:name "ACCOUNTS"
+   :fields [{:name "ID"                  :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "EMAIL"               :base_type :type/Text       :semantic_type :type/Email}
+            {:name "FIRST_NAME"          :base_type :type/Text       :semantic_type :type/Name}
+            {:name "LAST_NAME"           :base_type :type/Text       :semantic_type nil}
+            {:name "PLAN"                :base_type :type/Text       :semantic_type :type/Category}
+            {:name "SOURCE"              :base_type :type/Text       :semantic_type :type/Source}
+            {:name "SEATS"               :base_type :type/Integer    :semantic_type nil}
+            {:name "CREATED_AT"          :base_type :type/DateTime   :semantic_type :type/CreationTimestamp}
+            {:name "TRIAL_ENDS_AT"       :base_type :type/DateTime   :semantic_type nil}
+            {:name "CANCELED_AT"         :base_type :type/DateTime   :semantic_type :type/CancelationTimestamp}
+            {:name "TRIAL_CONVERTED"     :base_type :type/Boolean    :semantic_type nil}
+            {:name "ACTIVE_SUBSCRIPTION" :base_type :type/Boolean    :semantic_type nil}
+            {:name "LEGACY_PLAN"         :base_type :type/Boolean    :semantic_type nil}
+            {:name "LATITUDE"            :base_type :type/Float      :semantic_type :type/Latitude}
+            {:name "LONGITUDE"           :base_type :type/Float      :semantic_type :type/Longitude}
+            {:name "COUNTRY"             :base_type :type/Text       :semantic_type :type/Country}]}
+
+  {:name "ANALYTIC_EVENTS"
+   :fields [{:name "ID"           :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "ACCOUNT_ID"   :base_type :type/BigInteger :semantic_type :type/FK :fk "ACCOUNTS.ID"}
+            {:name "EVENT"        :base_type :type/Text       :semantic_type :type/Category}
+            {:name "TIMESTAMP"    :base_type :type/DateTime   :semantic_type nil}
+            {:name "PAGE_URL"     :base_type :type/Text       :semantic_type :type/URL}
+            {:name "BUTTON_LABEL" :base_type :type/Text       :semantic_type :type/Category}]}
+
+  {:name "FEEDBACK"
+   :fields [{:name "ID"            :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "ACCOUNT_ID"    :base_type :type/BigInteger :semantic_type :type/FK :fk "ACCOUNTS.ID"}
+            {:name "EMAIL"         :base_type :type/Text       :semantic_type :type/Email}
+            {:name "DATE_RECEIVED" :base_type :type/DateTime   :semantic_type nil}
+            {:name "RATING"        :base_type :type/Integer    :semantic_type :type/Score}
+            {:name "RATING_MAPPED" :base_type :type/Text       :semantic_type :type/Category}
+            {:name "BODY"          :base_type :type/Text       :semantic_type nil}]}
+
+  {:name "INVOICES"
+   :fields [{:name "ID"               :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "ACCOUNT_ID"       :base_type :type/BigInteger :semantic_type :type/FK :fk "ACCOUNTS.ID"}
+            {:name "PAYMENT"          :base_type :type/Float      :semantic_type nil}
+            {:name "EXPECTED_INVOICE" :base_type :type/Boolean    :semantic_type nil}
+            {:name "PLAN"             :base_type :type/Text       :semantic_type :type/Category}
+            {:name "DATE_RECEIVED"    :base_type :type/DateTime   :semantic_type nil}]}
+
+  {:name "ORDERS"
+   :fields [{:name "ID"         :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "USER_ID"    :base_type :type/Integer    :semantic_type :type/FK :fk "PEOPLE.ID"}
+            {:name "PRODUCT_ID" :base_type :type/Integer    :semantic_type :type/FK :fk "PRODUCTS.ID"}
+            {:name "SUBTOTAL"   :base_type :type/Float      :semantic_type nil}
+            {:name "TAX"        :base_type :type/Float      :semantic_type nil}
+            {:name "TOTAL"      :base_type :type/Float      :semantic_type nil}
+            {:name "DISCOUNT"   :base_type :type/Float      :semantic_type :type/Discount}
+            {:name "CREATED_AT" :base_type :type/DateTime   :semantic_type :type/CreationTimestamp}
+            {:name "QUANTITY"   :base_type :type/Integer    :semantic_type :type/Quantity}]}
+
+  {:name "PEOPLE"
+   :fields [{:name "ID"         :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "ADDRESS"    :base_type :type/Text       :semantic_type nil}
+            {:name "EMAIL"      :base_type :type/Text       :semantic_type :type/Email}
+            {:name "PASSWORD"   :base_type :type/Text       :semantic_type nil}
+            {:name "NAME"       :base_type :type/Text       :semantic_type :type/Name}
+            {:name "CITY"       :base_type :type/Text       :semantic_type :type/City}
+            {:name "LONGITUDE"  :base_type :type/Float      :semantic_type :type/Longitude}
+            {:name "STATE"      :base_type :type/Text       :semantic_type :type/State}
+            {:name "SOURCE"     :base_type :type/Text       :semantic_type :type/Source}
+            {:name "BIRTH_DATE" :base_type :type/Date       :semantic_type nil}
+            {:name "ZIP"        :base_type :type/Text       :semantic_type :type/ZipCode}
+            {:name "LATITUDE"   :base_type :type/Float      :semantic_type :type/Latitude}
+            {:name "CREATED_AT" :base_type :type/DateTime   :semantic_type :type/CreationTimestamp}]}
+
+  {:name "PRODUCTS"
+   :fields [{:name "ID"         :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "EAN"        :base_type :type/Text       :semantic_type nil}
+            {:name "TITLE"      :base_type :type/Text       :semantic_type :type/Title}
+            {:name "CATEGORY"   :base_type :type/Text       :semantic_type :type/Category}
+            {:name "VENDOR"     :base_type :type/Text       :semantic_type :type/Company}
+            {:name "PRICE"      :base_type :type/Float      :semantic_type nil}
+            {:name "RATING"     :base_type :type/Float      :semantic_type :type/Score}
+            {:name "CREATED_AT" :base_type :type/DateTime   :semantic_type :type/CreationTimestamp}]}
+
+  {:name "REVIEWS"
+   :fields [{:name "ID"         :base_type :type/BigInteger :semantic_type :type/PK :pk true}
+            {:name "PRODUCT_ID" :base_type :type/Integer    :semantic_type :type/FK :fk "PRODUCTS.ID"}
+            {:name "REVIEWER"   :base_type :type/Text       :semantic_type nil}
+            {:name "RATING"     :base_type :type/Integer    :semantic_type :type/Score}
+            {:name "BODY"       :base_type :type/Text       :semantic_type :type/Description}
+            {:name "CREATED_AT" :base_type :type/DateTime   :semantic_type :type/CreationTimestamp}]}]}

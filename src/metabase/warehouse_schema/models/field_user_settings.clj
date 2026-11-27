@@ -20,6 +20,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [metabase.warehouse-schema.user-settings-writes :as user-settings-writes]
    [methodical.core :as methodical]
@@ -30,13 +31,14 @@
 (methodical/defmethod t2/table-name :model/FieldUserSettings [_model] :metabase_field_user_settings)
 
 (t2/deftransforms :model/FieldUserSettings
-  {:effective_type    field/transform-field-effective-type
-   :coercion_strategy field/transform-field-coercion-strategy
-   :semantic_type     field/transform-field-semantic-type
-   :visibility_type   mi/transform-keyword
-   :has_field_values  mi/transform-keyword
-   :data_sensitivity  mi/transform-keyword
-   :settings          mi/transform-json})
+  (merge {:effective_type    field/transform-field-effective-type
+          :coercion_strategy field/transform-field-coercion-strategy
+          :semantic_type     field/transform-field-semantic-type
+          :visibility_type   mi/transform-keyword
+          :has_field_values  mi/transform-keyword
+          :data_sensitivity  mi/transform-keyword
+          :settings          mi/transform-json}
+         warehouse-schema.transforms/field-transforms))
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
@@ -59,7 +61,8 @@
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
-  (with-set-flags settings (t2/changes settings)))
+  (let [changes (t2/changes settings)]
+    (with-set-flags settings changes)))
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
@@ -377,7 +380,8 @@
 (defmethod change-log/spec :model/FieldUserSettings [_model]
   {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
            :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
-           :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
+           :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position
+           :is_grain :attribute_scd_type :facets :attribute_scd_type_set]
    :skip  []})
 
 (defmethod serialization/spec :model/FieldUserSettings [_]
@@ -386,11 +390,13 @@
    :copy          [:semantic_type :description :display_name :visibility_type
                    :has_field_values :effective_type :coercion_strategy :caveats
                    :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
-                   :description_set :semantic_type_set :fk_target_field_id_set]
+                   :description_set :semantic_type_set :fk_target_field_id_set :is_grain :attribute_scd_type
+                   :facets :attribute_scd_type_set]
    :skip          [:nfc_path]
    :defaults      {:description_set        false
                    :semantic_type_set      false
-                   :fk_target_field_id_set false}
+                   :fk_target_field_id_set false
+                   :attribute_scd_type_set false}
    :transform     {:fk_target_field_id serialization/field-transform
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths

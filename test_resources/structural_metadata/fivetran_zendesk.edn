@@ -1,0 +1,108 @@
+;; A Fivetran Zendesk Support destination schema. Ticket custom fields land as `custom_<name>` columns on `ticket`,
+;; defined by `ticket_field`; `ticket_field_history` keeps one row per field change; `ticket_tag` holds a ticket's
+;; tags. Deleted rows are flagged with `_fivetran_deleted` and every table gets `_fivetran_synced`.
+{:schema "zendesk"
+ :tables
+ [{:name "organization"
+   :fields [{:name "id"                :base_type :type/BigInteger :pk true}
+            {:name "name"              :base_type :type/Text}
+            {:name "details"           :base_type :type/Text}
+            {:name "external_id"       :base_type :type/Text}
+            {:name "group_id"          :base_type :type/BigInteger}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted" :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "user"
+   :fields [{:name "id"                :base_type :type/BigInteger :pk true}
+            {:name "name"              :base_type :type/Text}
+            {:name "email"             :base_type :type/Text}
+            {:name "role"              :base_type :type/Text}
+            {:name "time_zone"         :base_type :type/Text}
+            {:name "locale"            :base_type :type/Text}
+            {:name "organization_id"   :base_type :type/BigInteger :fk "organization.id"}
+            {:name "active"            :base_type :type/Boolean}
+            {:name "suspended"         :base_type :type/Boolean}
+            {:name "last_login_at"     :base_type :type/DateTimeWithLocalTZ}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted" :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "group"
+   :fields [{:name "id"                :base_type :type/BigInteger :pk true}
+            {:name "name"              :base_type :type/Text}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted" :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "ticket"
+   :fields [{:name "id"                    :base_type :type/BigInteger :pk true}
+            {:name "subject"               :base_type :type/Text}
+            {:name "description"           :base_type :type/Text}
+            {:name "status"                :base_type :type/Text}
+            {:name "priority"              :base_type :type/Text}
+            {:name "type"                  :base_type :type/Text}
+            {:name "via_channel"           :base_type :type/Text}
+            {:name "requester_id"          :base_type :type/BigInteger :fk "user.id"}
+            {:name "assignee_id"           :base_type :type/BigInteger :fk "user.id"}
+            {:name "organization_id"       :base_type :type/BigInteger :fk "organization.id"}
+            {:name "group_id"              :base_type :type/BigInteger :fk "group.id"}
+            {:name "is_public"             :base_type :type/Boolean}
+            {:name "due_at"                :base_type :type/DateTimeWithLocalTZ}
+            {:name "custom_order_number"   :base_type :type/Text}
+            {:name "custom_product_area"   :base_type :type/Text}
+            {:name "custom_refund_amount"  :base_type :type/Float}
+            {:name "created_at"            :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"            :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted"     :base_type :type/Boolean}
+            {:name "_fivetran_synced"      :base_type :type/DateTimeWithLocalTZ}]}
+
+  ;; the definitions of the `custom_*` columns on `ticket`
+  {:name "ticket_field"
+   :fields [{:name "id"                :base_type :type/BigInteger :pk true}
+            {:name "title"             :base_type :type/Text}
+            {:name "raw_title"         :base_type :type/Text}
+            {:name "type"              :base_type :type/Text}
+            {:name "description"       :base_type :type/Text}
+            {:name "active"            :base_type :type/Boolean}
+            {:name "required"          :base_type :type/Boolean}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  ;; one row per field change: EAV-shaped and a change log at once
+  {:name "ticket_field_history"
+   :fields [{:name "field_name"        :base_type :type/Text :pk true}
+            {:name "ticket_id"         :base_type :type/BigInteger :pk true :fk "ticket.id"}
+            {:name "updated"           :base_type :type/DateTimeWithLocalTZ :pk true}
+            {:name "value"             :base_type :type/Text}
+            {:name "user_id"           :base_type :type/BigInteger :fk "user.id"}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "ticket_tag"
+   :fields [{:name "ticket_id"         :base_type :type/BigInteger :pk true :fk "ticket.id"}
+            {:name "tag"               :base_type :type/Text :pk true}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "ticket_comment"
+   :fields [{:name "id"                :base_type :type/BigInteger :pk true}
+            {:name "ticket_id"         :base_type :type/BigInteger :fk "ticket.id"}
+            {:name "user_id"           :base_type :type/BigInteger :fk "user.id"}
+            {:name "body"              :base_type :type/Text}
+            {:name "public"            :base_type :type/Boolean}
+            {:name "created"           :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted" :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "satisfaction_rating"
+   :fields [{:name "id"                :base_type :type/BigInteger :pk true}
+            {:name "ticket_id"         :base_type :type/BigInteger :fk "ticket.id"}
+            {:name "score"             :base_type :type/Text}
+            {:name "comment"           :base_type :type/Text}
+            {:name "reason"            :base_type :type/Text}
+            {:name "created_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "updated_at"        :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}]}

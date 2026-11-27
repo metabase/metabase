@@ -134,3 +134,40 @@
                2 {:schema "PUBLIC"}}
               (update-vals parsed-fragment deref)))
       (is (not (contains? @(get parsed-fragment 1) :schema-name))))))
+
+(deftest ^:parallel parse-table-structural-metadata-test
+  (testing "a table's structural metadata is keywordized, and its definitions get kebab-case keys"
+    (let [metadata-fragment #js {:tables #js {"1" #js {:id                 1
+                                                       :table_role         "role/HistoryDimension"
+                                                       :grain              "user version"
+                                                       :grain_description  "One row for each version of a user"
+                                                       :period_granularity "day"
+                                                       :mutability         "versioned"
+                                                       :load_strategy      "merge"
+                                                       :scd_type           2
+                                                       :history_definition #js {:durable_key 12, :valid_from 15, :version nil}
+                                                       :eav_definition     #js {:entity_key 31, :definition_table 9}}
+                                              "2" #js {:id                 2
+                                                       :table_role         nil
+                                                       :history_definition nil}}}
+          parsed-fragment   (update-vals (lib.js.metadata/parse-objects :table metadata-fragment) deref)]
+      (is (=? {1 {:table-role         :role/HistoryDimension
+                  :grain              "user version"
+                  :grain-description  "One row for each version of a user"
+                  :period-granularity :day
+                  :mutability         :versioned
+                  :load-strategy      :merge
+                  :scd-type           2
+                  :history-definition {:durable-key 12, :valid-from 15, :version nil}
+                  :eav-definition     {:entity-key 31, :definition-table 9}}
+               2 {:table-role nil, :history-definition nil}}
+              parsed-fragment)))))
+
+(deftest ^:parallel parse-field-facets-test
+  (testing "a field's facets are keywordized"
+    (let [metadata-fragment #js {:fields #js {"1" #js {:id 1, :facets #js ["type/SurrogateKey" "type/SoftDeleteFlag"]}
+                                              "2" #js {:id 2, :facets nil}}}
+          parsed-fragment   (update-vals (lib.js.metadata/parse-objects :field metadata-fragment) deref)]
+      (is (=? {1 {:facets [:type/SurrogateKey :type/SoftDeleteFlag]}
+               2 {:facets nil}}
+              parsed-fragment)))))

@@ -207,6 +207,12 @@
   [_object-type]
   #{:database :fields :segments :metrics})
 
+(defn- parse-table-definition
+  "Parse a Table's `history_definition` or `eav_definition` against its Lib `schema`, which kebab-cases its keys."
+  [schema definition]
+  (some->> #?(:cljs (js->clj definition) :clj definition)
+           (lib.normalize/normalize schema)))
+
 (defmethod parse-field-fn :table
   [_object-type]
   (fn [k v]
@@ -215,6 +221,12 @@
       :field-order         (keyword v)
       :initial-sync-status (keyword v)
       :visibility-type     (keyword v)
+      :table-role          (keyword v)
+      :period-granularity  (keyword v)
+      :mutability          (keyword v)
+      :load-strategy       (keyword v)
+      :history-definition  (parse-table-definition ::lib.schema.metadata/table.history-definition v)
+      :eav-definition      (parse-table-definition ::lib.schema.metadata/table.eav-definition v)
       v)))
 
 (defn- use-schema-name
@@ -317,6 +329,7 @@
       :base-type                        (keyword v)
       :coercion-strategy                (keyword v)
       :effective-type                   (keyword v)
+      :facets                           (some->> #?(:cljs (js->clj v) :clj v) (perf/mapv keyword))
       :fingerprint                      (if (map? v)
                                           (perf/keywordize-keys v)
                                           #?(:cljs (js->clj v :keywordize-keys true)

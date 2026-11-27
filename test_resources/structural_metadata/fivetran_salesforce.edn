@@ -1,0 +1,123 @@
+;; A Fivetran Salesforce destination schema. Fivetran keeps Salesforce's own column names (snake_cased, custom fields
+;; keep their `__c` suffix), adds `_fivetran_synced` to every table and `_fivetran_deleted` to every table but the
+;; history tables and `fivetran_audit`, and in history mode adds `_fivetran_start`, `_fivetran_end` and
+;; `_fivetran_active` with `_fivetran_start` joining the primary key. Field history tables (`*_field_history`) are
+;; Salesforce's own audit trail. `fivetran_audit` is the connector's log table.
+;; Semantic types left out here are inferred the way the prototype's sync would (see the fixtures namespace).
+{:schema "salesforce"
+ :tables
+ [{:name "user"
+   :fields [{:name "id"                 :base_type :type/Text     :pk true}
+            {:name "username"           :base_type :type/Text}
+            {:name "name"               :base_type :type/Text}
+            {:name "email"              :base_type :type/Text}
+            {:name "is_active"          :base_type :type/Boolean}
+            {:name "user_role_id"       :base_type :type/Text}
+            {:name "created_date"       :base_type :type/DateTimeWithLocalTZ}
+            {:name "last_modified_date" :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"   :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted"  :base_type :type/Boolean}]}
+
+  {:name "account"
+   :fields [{:name "id"                   :base_type :type/Text :pk true}
+            {:name "name"                 :base_type :type/Text}
+            {:name "type"                 :base_type :type/Text}
+            {:name "industry"             :base_type :type/Text}
+            {:name "annual_revenue"       :base_type :type/Float}
+            {:name "number_of_employees"  :base_type :type/Integer}
+            {:name "billing_state"        :base_type :type/Text}
+            {:name "owner_id"             :base_type :type/Text :fk "user.id"}
+            {:name "parent_id"            :base_type :type/Text :fk "account.id"}
+            {:name "is_deleted"           :base_type :type/Boolean}
+            {:name "region__c"            :base_type :type/Text}
+            {:name "customer_tier__c"     :base_type :type/Text}
+            {:name "created_date"         :base_type :type/DateTimeWithLocalTZ}
+            {:name "last_modified_date"   :base_type :type/DateTimeWithLocalTZ}
+            {:name "system_modstamp"      :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"     :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted"    :base_type :type/Boolean}]}
+
+  {:name "contact"
+   :fields [{:name "id"                 :base_type :type/Text :pk true}
+            {:name "account_id"         :base_type :type/Text :fk "account.id"}
+            {:name "first_name"         :base_type :type/Text}
+            {:name "last_name"          :base_type :type/Text}
+            {:name "email"              :base_type :type/Text}
+            {:name "title"              :base_type :type/Text}
+            {:name "owner_id"           :base_type :type/Text :fk "user.id"}
+            {:name "is_deleted"         :base_type :type/Boolean}
+            {:name "created_date"       :base_type :type/DateTimeWithLocalTZ}
+            {:name "last_modified_date" :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"   :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted"  :base_type :type/Boolean}]}
+
+  {:name "opportunity"
+   :fields [{:name "id"                 :base_type :type/Text :pk true}
+            {:name "account_id"         :base_type :type/Text :fk "account.id"}
+            {:name "owner_id"           :base_type :type/Text :fk "user.id"}
+            {:name "name"               :base_type :type/Text}
+            {:name "stage_name"         :base_type :type/Text}
+            {:name "amount"             :base_type :type/Float}
+            {:name "probability"        :base_type :type/Float}
+            {:name "close_date"         :base_type :type/Date}
+            {:name "is_closed"          :base_type :type/Boolean}
+            {:name "is_won"             :base_type :type/Boolean}
+            {:name "forecast_category"  :base_type :type/Text}
+            {:name "is_deleted"         :base_type :type/Boolean}
+            {:name "created_date"       :base_type :type/DateTimeWithLocalTZ}
+            {:name "last_modified_date" :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"   :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted"  :base_type :type/Boolean}]}
+
+  {:name "opportunity_line_item"
+   :fields [{:name "id"                 :base_type :type/Text :pk true}
+            {:name "opportunity_id"     :base_type :type/Text :fk "opportunity.id"}
+            {:name "product_2_id"       :base_type :type/Text}
+            {:name "quantity"           :base_type :type/Float}
+            {:name "unit_price"         :base_type :type/Float}
+            {:name "total_price"        :base_type :type/Float}
+            {:name "service_date"       :base_type :type/Date}
+            {:name "is_deleted"         :base_type :type/Boolean}
+            {:name "created_date"       :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"   :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_deleted"  :base_type :type/Boolean}]}
+
+  ;; Salesforce's own field history: one row per changed field, so EAV-shaped and a change log at once
+  {:name "opportunity_field_history"
+   :fields [{:name "id"                :base_type :type/Text :pk true}
+            {:name "opportunity_id"    :base_type :type/Text :fk "opportunity.id"}
+            {:name "created_by_id"     :base_type :type/Text :fk "user.id"}
+            {:name "created_date"      :base_type :type/DateTimeWithLocalTZ}
+            {:name "field"             :base_type :type/Text}
+            {:name "data_type"         :base_type :type/Text}
+            {:name "old_value"         :base_type :type/Text}
+            {:name "new_value"         :base_type :type/Text}
+            {:name "is_deleted"        :base_type :type/Boolean}
+            {:name "_fivetran_synced"  :base_type :type/DateTimeWithLocalTZ}]}
+
+  ;; Fivetran history mode on `account`
+  {:name "account_history"
+   :fields [{:name "id"                 :base_type :type/Text :pk true}
+            {:name "_fivetran_start"    :base_type :type/DateTimeWithLocalTZ :pk true}
+            {:name "_fivetran_end"      :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_active"   :base_type :type/Boolean}
+            {:name "name"               :base_type :type/Text}
+            {:name "industry"           :base_type :type/Text}
+            {:name "owner_id"           :base_type :type/Text}
+            {:name "region__c"          :base_type :type/Text}
+            {:name "last_modified_date" :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"   :base_type :type/DateTimeWithLocalTZ}]}
+
+  {:name "fivetran_audit"
+   :fields [{:name "id"                       :base_type :type/Text :pk true}
+            {:name "message"                  :base_type :type/Text}
+            {:name "update_started"           :base_type :type/DateTimeWithLocalTZ}
+            {:name "update_id"                :base_type :type/Text}
+            {:name "schema"                   :base_type :type/Text}
+            {:name "table"                    :base_type :type/Text}
+            {:name "start"                    :base_type :type/DateTimeWithLocalTZ}
+            {:name "done"                     :base_type :type/DateTimeWithLocalTZ}
+            {:name "rows_updated_or_inserted" :base_type :type/Integer}
+            {:name "status"                   :base_type :type/Text}
+            {:name "progress"                 :base_type :type/DateTimeWithLocalTZ}
+            {:name "_fivetran_synced"         :base_type :type/DateTimeWithLocalTZ}]}]}

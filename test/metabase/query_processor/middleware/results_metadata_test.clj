@@ -138,6 +138,29 @@
               (is (= [nil "PII"]
                      (map :data_sensitivity (card-metadata card)))))))))))
 
+(deftest structural-metadata-in-result-metadata-test
+  (testing "a Field's structural metadata reaches query results through the Lib column metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name)
+                             {:is_grain true :attribute_scd_type 1 :facets [:type/NaturalKey]}
+      (let [query (mt/mbql-query venues {:fields [$id $name]})]
+        (mt/with-temp [:model/Card card {:dataset_query query}]
+          (let [result (qp/process-query
+                        (qp/userland-query
+                         query
+                         {:card-id    (u/the-id card)
+                          :query-hash (qp.util/query-hash {})}))
+                structural-metadata #(select-keys % [:name :is_grain :attribute_scd_type :facets])]
+            (when-not (= :completed (:status result))
+              (throw (ex-info "Query failed." result)))
+            (testing "the live query response has it, and only on the column that has it"
+              (is (= [{:name "ID"}
+                      {:name "NAME", :is_grain true, :attribute_scd_type 1, :facets [:type/NaturalKey]}]
+                     (map structural-metadata (get-in result [:data :cols])))))
+            (testing "the persisted Card result_metadata stores the facets as strings"
+              (is (= [{:name "ID"}
+                      {:name "NAME", :is_grain true, :attribute_scd_type 1, :facets ["type/NaturalKey"]}]
+                     (map structural-metadata (card-metadata card)))))))))))
+
 (defn- test-card-1 []
   (let [eid (u/generate-nano-id)]
     {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})

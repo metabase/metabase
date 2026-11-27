@@ -3,6 +3,7 @@
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
@@ -10,6 +11,59 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema]))
+
+(mr/def ::table-role
+  "A Table's `table_role`: a role in [[metabase.types.core/table-role-hierarchy]]."
+  [:ref ::lib.schema.metadata/table.table-role])
+
+(mr/def ::grain
+  "A Table's `grain`, the noun for one of its rows, such as \"order line\"."
+  [:string {:max 254}])
+
+(mr/def ::period-granularity
+  "A Table's `period_granularity`."
+  [:ref ::lib.schema.metadata/table.period-granularity])
+
+(mr/def ::mutability
+  "A Table's `mutability`."
+  [:ref ::lib.schema.metadata/table.mutability])
+
+(mr/def ::load-strategy
+  "A Table's `load_strategy`."
+  [:ref ::lib.schema.metadata/table.load-strategy])
+
+(mr/def ::scd-type
+  "A Table's `scd_type`, the slowly changing dimension type of its rows."
+  [:ref ::lib.schema.metadata/table.scd-type])
+
+(mr/def ::attribute-scd-type
+  "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it."
+  [:ref ::lib.schema.metadata/column.attribute-scd-type])
+
+(mr/def ::history-definition
+  "A Table's `history_definition`: the Fields that version its rows. Lib metadata has the same keys in kebab-case, see
+  `::lib.schema.metadata/table.history-definition`."
+  [:map {:closed true}
+   [:durable_key  {:optional true} [:maybe ::lib.schema.id/field]]
+   [:valid_from   {:optional true} [:maybe ::lib.schema.id/field]]
+   [:valid_to     {:optional true} [:maybe ::lib.schema.id/field]]
+   [:current_flag {:optional true} [:maybe ::lib.schema.id/field]]
+   [:version      {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::eav-definition
+  "A Table's `eav_definition`: the Fields, and the Table of definitions, of an entity-attribute-value table. Lib
+  metadata has the same keys in kebab-case, see `::lib.schema.metadata/table.eav-definition`."
+  [:map {:closed true}
+   [:entity_key       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:property_name    {:optional true} [:maybe ::lib.schema.id/field]]
+   [:property_value   {:optional true} [:maybe ::lib.schema.id/field]]
+   [:definition_table {:optional true} [:maybe ::lib.schema.id/table]]
+   [:label            {:optional true} [:maybe ::lib.schema.id/field]]
+   [:type             {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::facets
+  "A Field's `facets`: the roles it plays besides its semantic type."
+  [:ref ::lib.schema.metadata/column.facets])
 
 (mr/def ::dimension.type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external])
@@ -115,7 +169,10 @@
    [:database_is_generated      {:optional true} [:maybe :boolean]]
    [:database_default           {:optional true} [:maybe :string]]
    [:dimension_interestingness  {:optional true} [:maybe number?]]
-   [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]])
+   [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:is_grain                   {:optional true} [:maybe :boolean]]
+   [:attribute_scd_type         {:optional true} [:maybe ::attribute-scd-type]]
+   [:facets                     {:optional true} [:maybe ::facets]]])
 
 (mr/def ::field.create
   "What a caller gives to create a Field: the columns of an update without the `:id`, and its Table and name."
@@ -162,7 +219,11 @@
    [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
-   [:fk_target_field_id_set {:optional true} :boolean]])
+   [:fk_target_field_id_set {:optional true} :boolean]
+   [:is_grain               {:optional true} [:maybe :boolean]]
+   [:attribute_scd_type     {:optional true} [:maybe ::attribute-scd-type]]
+   [:facets                 {:optional true} [:maybe ::facets]]
+   [:attribute_scd_type_set {:optional true} :boolean]])
 
 (mr/def ::field-user-settings.create
   "What a caller gives to create a FieldUserSettings: the columns of an update without the `:id`, and its Field."
@@ -265,7 +326,25 @@
    [:caveats_set             {:optional true} :boolean]
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
-   [:data_source_set         {:optional true} :boolean]])
+   [:data_source_set         {:optional true} :boolean]
+   [:table_role              {:optional true} [:maybe ::table-role]]
+   [:grain                   {:optional true} [:maybe ::grain]]
+   [:grain_description       {:optional true} [:maybe :string]]
+   [:period_granularity      {:optional true} [:maybe ::period-granularity]]
+   [:mutability              {:optional true} [:maybe ::mutability]]
+   [:load_strategy           {:optional true} [:maybe ::load-strategy]]
+   [:scd_type                {:optional true} [:maybe ::scd-type]]
+   [:history_definition      {:optional true} [:maybe ::history-definition]]
+   [:eav_definition          {:optional true} [:maybe ::eav-definition]]
+   [:history_definition_set  {:optional true} :boolean]
+   [:eav_definition_set      {:optional true} :boolean]
+   [:period_granularity_set  {:optional true} :boolean]
+   [:table_role_set          {:optional true} :boolean]
+   [:grain_set               {:optional true} :boolean]
+   [:grain_description_set   {:optional true} :boolean]
+   [:mutability_set          {:optional true} :boolean]
+   [:load_strategy_set       {:optional true} :boolean]
+   [:scd_type_set            {:optional true} :boolean]])
 
 (mr/def ::table-user-settings.create
   "What a caller gives to create a TableUserSettings: the columns of an update without the `:id`, and its Table."
@@ -325,7 +404,16 @@
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user-or-older-export-id]]
-   [:transform_target        {:optional true} [:maybe :boolean]]])
+   [:transform_target        {:optional true} [:maybe :boolean]]
+   [:table_role              {:optional true} [:maybe ::table-role]]
+   [:grain                   {:optional true} [:maybe ::grain]]
+   [:grain_description       {:optional true} [:maybe :string]]
+   [:period_granularity      {:optional true} [:maybe ::period-granularity]]
+   [:mutability              {:optional true} [:maybe ::mutability]]
+   [:load_strategy           {:optional true} [:maybe ::load-strategy]]
+   [:scd_type                {:optional true} [:maybe ::scd-type]]
+   [:history_definition      {:optional true} [:maybe ::history-definition]]
+   [:eav_definition          {:optional true} [:maybe ::eav-definition]]])
 
 (mr/def ::table.create
   "What a caller gives to create a Table: the columns of an update without the `:id`, and its Database and name."
@@ -353,7 +441,8 @@
                            :database_required :database_type :description :display_name :effective_type
                            :has_field_values :json_unfolding :name :nfc_path
                            :points_of_interest :position :preview_display :semantic_type :settings
-                           :visibility_type :table_id :fk_target_field_id :parent_id]]
+                           :visibility_type :table_id :fk_target_field_id :parent_id :is_grain
+                           :attribute_scd_type :facets]]
     [:map {:closed true}
      [:dimensions {:optional true} [:maybe [:sequential [:ref ::external-dimension]]]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
@@ -366,7 +455,8 @@
                                          :has_field_values :effective_type :coercion_strategy :caveats
                                          :points_of_interest :json_unfolding :settings :data_sensitivity
                                          :custom_position :description_set :semantic_type_set
-                                         :fk_target_field_id_set :fk_target_field_id :field_id]]
+                                         :fk_target_field_id_set :fk_target_field_id :field_id :is_grain
+                                         :attribute_scd_type :facets :attribute_scd_type_set]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
@@ -386,7 +476,12 @@
                                          :caveats :points_of_interest :show_in_getting_started :data_authority
                                          :data_source :owner_email :is_published :description_set
                                          :visibility_type_set :data_layer_set :data_source_set :collection_id
-                                         :owner_user_id :data_layer :table_id]]
+                                         :owner_user_id :data_layer :table_id :table_role :grain
+                                         :grain_description :period_granularity :mutability :load_strategy
+                                         :scd_type :history_definition :eav_definition :history_definition_set
+                                         :eav_definition_set :period_granularity_set :table_role_set :grain_set
+                                         :grain_description_set :mutability_set :load_strategy_set
+                                         :scd_type_set]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
@@ -398,7 +493,8 @@
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :data_layer :db_id
-                           :owner_user_id]]
+                           :owner_user_id :table_role :grain :grain_description :period_granularity
+                           :mutability :load_strategy :scd_type :history_definition :eav_definition]]
     [:map {:closed true}
      [:serdes/meta    {:optional true} ::models.schema/external-meta]
      [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]

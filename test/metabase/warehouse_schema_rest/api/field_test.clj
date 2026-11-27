@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.sync.core :as sync]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -1080,3 +1081,37 @@
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
         (is (not (t2/exists? :model/FieldValues :id fv)))))))
+
+(deftest structural-metadata-get-and-put-test
+  (testing "GET and PUT /api/field/:id read and write the structural metadata keys"
+    (mt/with-temp [:model/Field {field-id :id} {}]
+      (let [body {:is_grain true, :attribute_scd_type 2, :facets ["type/CustomProperty"]}]
+        (is (=? body (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) body)))
+        (is (=? body (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id))))
+        (testing "the user settings record the write, so sync skips it"
+          (is (=? {:is_grain true, :attribute_scd_type 2, :attribute_scd_type_set true
+                   :facets [:type/CustomProperty]}
+                  (t2/select-one :model/FieldUserSettings :field_id field-id)))
+          (sync.updates/update-field-unless-user-set! field-id {:is_grain false, :attribute_scd_type 1, :facets []})
+          (is (=? {:is_grain true, :attribute_scd_type 2, :facets [:type/CustomProperty]}
+                  (t2/select-one :model/Field :id field-id))))
+        (testing "false and [] record a user's none"
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:is_grain false, :facets []})
+          (sync.updates/update-field-unless-user-set! field-id {:is_grain true, :facets [:type/CustomProperty]})
+          (is (=? {:is_grain false, :facets []} (t2/select-one :model/Field :id field-id))))))))
+
+(deftest structural-metadata-put-rejects-invalid-values-test
+  (testing "PUT /api/field/:id returns a 400 for a value its request schema rejects"
+    (mt/with-temp [:model/Field {field-id :id} {}]
+      (doseq [[column value] [[:is_grain "yes"]
+                              [:attribute_scd_type -1]
+                              [:attribute_scd_type 4]
+                              [:attribute_scd_type 1.5]
+                              [:facets ["type/NotAFacet"]]
+                              [:facets ["type/Category"]]
+                              [:facets "type/CustomProperty"]
+                              [:facets {:custom_property "type/CustomProperty"}]]]
+        (testing (pr-str column value)
+          (is (=? {:errors {column some?}}
+                  (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id) {column value})))
+          (is (nil? (t2/select-one :model/FieldUserSettings :field_id field-id))))))))

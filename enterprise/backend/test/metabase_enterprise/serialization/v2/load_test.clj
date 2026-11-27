@@ -277,6 +277,164 @@
             (is (= ["Email"] (t2/select-fn-vec :name :model/Dimension
                                                :field_id (t2/select-one-pk :model/Field :table_id (:id table) :name "email"))))))))))
 
+(def ^:private table-fields
+  "The names of the Fields of each Table that [[structural-metadata-entities!]] creates, by Table name."
+  {"history"     ["key" "valid_from" "valid_to" "current" "property" "value"]
+   "definitions" ["label" "type"]})
+
+(def ^:private named-history-definition
+  "The `history_definition` of the Table `history` that [[structural-metadata-entities!]] creates, with each Field by
+  name."
+  {:durable_key "key" :valid_from "valid_from" :valid_to "valid_to" :current_flag "current"})
+
+(def ^:private named-eav-definition
+  "The `eav_definition` of the Table `history` that [[structural-metadata-entities!]] creates, with each Field and the
+  definition Table by name."
+  {:entity_key "key" :property_name "property" :property_value "value"
+   :definition_table "definitions" :label "label" :type "type"})
+
+(def ^:private history-metadata
+  "The structural metadata of the Table `history`, besides its definitions."
+  {:table_role         :role/HistoryDimension
+   :grain              "user version"
+   :grain_description  "One row for each version of a user"
+   :period_granularity :month
+   :mutability         :versioned
+   :load_strategy      :merge
+   :scd_type           2})
+
+(def ^:private history-settings
+  "The user settings of the Table `history`, besides its definitions."
+  {:scd_type               2
+   :scd_type_set           true
+   :history_definition_set true
+   :eav_definition_set     true})
+
+(def ^:private key-field-metadata
+  "The structural metadata of the Field `key`."
+  {:is_grain true :attribute_scd_type 2 :facets [:type/DurableKey]})
+
+(def ^:private valid-from-settings
+  "The user settings of the Field `valid_from`."
+  {:is_grain false :attribute_scd_type 1 :attribute_scd_type_set true :facets [:type/ValidFrom]})
+
+(defn- rename-definition
+  "`definition` with each Field value replaced by `(fields v)` and the `definition_table` by `(tables v)`."
+  [definition fields tables]
+  (some->> definition
+           (into {} (map (fn [[k v]] [k ((if (= k :definition_table) tables fields) v)])))))
+
+(defn- structural-metadata-entities!
+  "Creates the Database `structural-db` in the current app DB, with a Table `history` whose definitions hold its own
+  Fields, the Table `definitions` and Fields of it, and returns the exported entities by model."
+  []
+  (let [db          (ts/create! :model/Database :name "structural-db")
+        table-ids   (into {}
+                          (for [table-name (keys table-fields)]
+                            [table-name (:id (ts/create! :model/Table :name table-name :db_id (:id db)))]))
+        field-ids   (into {}
+                          (for [[table-name field-names] table-fields
+                                field-name                field-names]
+                            [field-name (:id (ts/create! :model/Field :name field-name
+                                                         :table_id (table-ids table-name)))]))
+        history-id  (table-ids "history")
+        history-def (rename-definition named-history-definition field-ids table-ids)
+        eav-def     (rename-definition named-eav-definition field-ids table-ids)]
+    (t2/update! :model/Table :id history-id
+                (assoc history-metadata :history_definition history-def :eav_definition eav-def))
+    (t2/insert! :model/TableUserSettings
+                (assoc history-settings :table_id history-id :history_definition history-def :eav_definition eav-def))
+    (t2/update! :model/Field :id (field-ids "key") key-field-metadata)
+    (t2/insert! :model/FieldUserSettings (assoc valid-from-settings :field_id (field-ids "valid_from")))
+    {:model/Table             (extract-where "Table" :db_id [(:id db)])
+     :model/Field             (extract-where "Field" :table_id (vals table-ids))
+     :model/TableUserSettings (extract-where "TableUserSettings" :table_id [history-id])
+     :model/FieldUserSettings (extract-where "FieldUserSettings" :field_id (vals field-ids))}))
+
+(defn- loaded-structural-metadata
+  "What the current app DB holds for what [[structural-metadata-entities!]] creates, with Fields and Tables by name."
+  []
+  (let [db-id      (t2/select-one-pk :model/Database :name "structural-db")
+        tables     (t2/select :model/Table :db_id db-id)
+        fields     (t2/select :model/Field :table_id [:in (map :id tables)])
+        table-name (into {} (map (juxt :id :name)) tables)
+        field-name (into {} (map (juxt :id :name)) fields)
+        named      #(rename-definition % field-name table-name)
+        history    (u/seek #(= "history" (:name %)) tables)
+        settings   (t2/select-one :model/TableUserSettings :table_id (:id history))
+        field      (fn [n] (u/seek #(= n (:name %)) fields))]
+    {:table           (-> (select-keys history (keys history-metadata))
+                          (assoc :history_definition (named (:history_definition history))
+                                 :eav_definition     (named (:eav_definition history))))
+     :table-settings  (-> (select-keys settings (keys history-settings))
+                          (assoc :history_definition (named (:history_definition settings))
+                                 :eav_definition     (named (:eav_definition settings))))
+     :field           (select-keys (field "key") (keys key-field-metadata))
+     :field-settings  (select-keys (t2/select-one :model/FieldUserSettings :field_id (:id (field "valid_from")))
+                                   (keys valid-from-settings))
+     :field-tables    (into {} (map (juxt :name (comp table-name :table_id))) fields)
+     :inactive-fields (into #{} (comp (remove :active) (map :name)) fields)}))
+
+(def ^:private expected-structural-metadata
+  "What [[loaded-structural-metadata]] returns for a whole import of [[structural-metadata-entities!]]."
+  {:table           (assoc history-metadata
+                           :history_definition named-history-definition
+                           :eav_definition     named-eav-definition)
+   :table-settings  (assoc history-settings
+                           :history_definition named-history-definition
+                           :eav_definition     named-eav-definition)
+   :field           key-field-metadata
+   :field-settings  valid-from-settings
+   :field-tables    (into {}
+                          (for [[table-name field-names] table-fields
+                                field-name                field-names]
+                            [field-name table-name]))
+   :inactive-fields #{}})
+
+(deftest structural-metadata-round-trip-test
+  (testing "Tables whose definitions hold their own Fields load into an empty app DB in any order"
+    (let [entities (atom nil)
+          load!    (fn [models]
+                     (doseq [model models]
+                       (serialization/load model (get @entities model))))]
+      (ts/with-dbs [source-db whole-db tables-first-db fields-first-db settings-only-db missing-field-db]
+        (ts/with-db source-db
+          (reset! entities (structural-metadata-entities!)))
+        (testing "the export holds each Field as a path and the definition Table as a Table path"
+          (let [history (u/seek #(= "history" (:name %)) (:model/Table @entities))]
+            (is (= ["structural-db" nil "history" "key"] (get-in history [:history_definition :durable_key])))
+            (is (= ["structural-db" nil "definitions"] (get-in history [:eav_definition :definition_table])))
+            (is (= ["structural-db" nil "definitions" "label"] (get-in history [:eav_definition :label])))))
+        (testing "a whole import"
+          (ts/with-db whole-db
+            (serdes.load/load-metabase! (ts/ingestion-in-memory (into [] cat (vals @entities))))
+            (is (= expected-structural-metadata (loaded-structural-metadata)))))
+        (testing "Tables before their Fields: each Table updates the stub its definitions create"
+          (ts/with-db tables-first-db
+            (load! [:model/Table :model/Field :model/TableUserSettings :model/FieldUserSettings])
+            (is (= expected-structural-metadata (loaded-structural-metadata)))))
+        (testing "Fields before their Tables: each Table updates the stub its Fields create"
+          (ts/with-db fields-first-db
+            (load! [:model/Field :model/FieldUserSettings :model/TableUserSettings :model/Table])
+            (is (= expected-structural-metadata (loaded-structural-metadata)))))
+        (testing "user settings alone create stub Tables and Fields for their definitions"
+          (ts/with-db settings-only-db
+            (load! [:model/TableUserSettings])
+            (is (=? {:table           {:history_definition named-history-definition
+                                       :eav_definition     named-eav-definition}
+                     :table-settings  (:table-settings expected-structural-metadata)
+                     :field-tables    (:field-tables expected-structural-metadata)
+                     :inactive-fields (set (keys (:field-tables expected-structural-metadata)))}
+                    (loaded-structural-metadata)))))
+        (testing "a definition Field the import lacks becomes an inactive stub of the Table"
+          (ts/with-db missing-field-db
+            (swap! entities update :model/Field (partial into [] (remove #(= "valid_to" (:name %)))))
+            (load! [:model/Table :model/Field])
+            (is (=? {:table           {:history_definition named-history-definition}
+                     :field-tables    {"valid_to" "history"}
+                     :inactive-fields #{"valid_to"}}
+                    (loaded-structural-metadata)))))))))
+
 (deftest field-user-settings-survive-connecting-a-stub-database-test
   (testing "Field settings imported onto a stub database survive connecting it and syncing, and export again"
     (let [db-name    (mt/random-name)

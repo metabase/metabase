@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.table
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.models :as actions.models]
    [metabase.activity-feed.recent-views.spec :as recent-views]
@@ -34,6 +35,8 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
@@ -147,20 +150,22 @@
    :gold   :final})
 
 (t2/deftransforms :model/Table
-  {:entity_type             mi/transform-keyword
-   :show_in_getting_started mi/transform-boolean
-   :visibility_type         mi/transform-keyword
-   :data_layer              (mi/transform-validator-with-fixes
-                             mi/transform-keyword
-                             (partial mi/assert-optional-enum data-layers)
-                             (some-fn legacy-data-layer->current identity))
-   :field_order             mi/transform-keyword
-   :data_source             (mi/transform-validator-with-fixes
-                             mi/transform-keyword
-                             (partial mi/assert-optional-enum data-sources)
-                             (some-fn keyword identity))
-   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
-   :data_authority          transform-data-authority})
+  (merge
+   {:entity_type             mi/transform-keyword
+    :show_in_getting_started mi/transform-boolean
+    :visibility_type         mi/transform-keyword
+    :data_layer              (mi/transform-validator-with-fixes
+                              mi/transform-keyword
+                              (partial mi/assert-optional-enum data-layers)
+                              (some-fn legacy-data-layer->current identity))
+    :field_order             mi/transform-keyword
+    :data_source             (mi/transform-validator-with-fixes
+                              mi/transform-keyword
+                              (partial mi/assert-optional-enum data-sources)
+                              (some-fn keyword identity))
+    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
+    :data_authority          transform-data-authority}
+   warehouse-schema.transforms/table-transforms))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -503,6 +508,99 @@
       (set-new-table-permissions! (first tables))
       (set-new-tables-permissions! db-id tables))))
 
+(def ^:private definition-table-field-keys
+  "The keys of each definition column that hold a Field of the Table itself."
+  {:history_definition [:durable_key :valid_from :valid_to :current_flag :version]
+   :eav_definition     [:entity_key :property_name :property_value]})
+
+(def ^:private definition-table-of-definitions-field-keys
+  "The keys of `eav_definition` that hold a Field of its `definition_table`."
+  [:label :type])
+
+(def ^:private shared-definition-keys
+  "The pairs of keys of one definition that may hold the same Field: a history Table's date column can both start each
+  version and order the versions."
+  #{#{:valid_from :version}})
+
+(defn- definition-field-ids
+  "The Field ids `definition` holds, by key."
+  [definition]
+  (into {} (filter (comp some? val)) (dissoc definition :definition_table)))
+
+(defn- check-distinct-definition-fields
+  "Throw a 400 unless each Field in `definition`, the value of `column`, fills one key, or two keys that
+  [[shared-definition-keys]] lists."
+  [column definition]
+  (doseq [[field-id entries] (group-by val (definition-field-ids definition))
+          :let  [ks (into (sorted-set) (map key) entries)]
+          :when (> (count ks) 1)]
+    (api/checkp (contains? shared-definition-keys ks)
+                (name column)
+                (tru "{0} cannot share Field {1}" (str/join " and " (map name ks)) (str field-id)))))
+
+(defn- definition-rows
+  "One `[table column definition]` for each non-empty definition of `tables`."
+  [tables]
+  (for [table  tables
+        column (keys definition-table-field-keys)
+        :let   [definition (get table column)]
+        :when  (seq definition)]
+    [table column definition]))
+
+(defn- misplaced-field-key
+  "The first of `ks` whose Field in `definition` is not a Field of the Table with `table-id`, or nil. A nil `table-id`
+  owns no Field."
+  [definition ks table-id field-table-ids]
+  (some (fn [k]
+          (when-some [field-id (get definition k)]
+            (when-not (and (some? table-id) (= table-id (field-table-ids field-id)))
+              k)))
+        ks))
+
+(defn- check-eav-definition-table
+  "Throw a 400 unless the `definition_table` of the `eav_definition` `definition`, when it has one, is a Table of the
+  Database with `db-id`."
+  [definition db-id table-db-ids]
+  (when-some [definition-table (:definition_table definition)]
+    (api/checkp (= db-id (table-db-ids definition-table))
+                "eav_definition"
+                (tru "definition_table must be a Table of the same Database"))))
+
+(defn- check-definitions
+  "Throw a 400 unless every definition of `tables` satisfies these rules, in two reads:
+
+  - each of its Fields fills one key, except for the pairs [[shared-definition-keys]] lists
+  - the `label` and `type` of an `eav_definition` are Fields of its `definition_table`; every other Field is a Field
+    of the Table
+  - the `definition_table` is a Table of the Table's Database
+
+  A new Table has no `:id` yet, so every Field that must be a Field of the Table fails."
+  [tables]
+  (when-let [rows (seq (definition-rows tables))]
+    (let [field-table-ids (warehouse-schema.db/field-table-ids
+                           (into #{}
+                                 (mapcat (fn [[_table _column definition]] (vals (definition-field-ids definition))))
+                                 rows))
+          table-db-ids    (warehouse-schema.db/table-database-ids
+                           (into #{} (keep (fn [[_table _column definition]] (:definition_table definition))) rows))]
+      (doseq [[{:keys [id db_id]} column definition] rows]
+        (check-distinct-definition-fields column definition)
+        (when-some [k (misplaced-field-key definition (definition-table-field-keys column) id field-table-ids)]
+          (api/throw-invalid-param-exception (name column) (tru "{0} must be a Field of this Table" (name k))))
+        (when (= column :eav_definition)
+          (check-eav-definition-table definition db_id table-db-ids)
+          (when-some [k (misplaced-field-key definition definition-table-of-definitions-field-keys
+                                             (:definition_table definition) field-table-ids)]
+            (api/throw-invalid-param-exception (name column)
+                                               (tru "{0} must be a Field of the definition_table" (name k)))))))))
+
+(defn- prepare-new-tables
+  "Throw unless the definitions of the new Table `rows` satisfy [[check-definitions]], and return the rows with the
+  default field order of their driver."
+  [rows]
+  (check-definitions rows)
+  (add-default-field-orders rows))
+
 (defn- tables-created!
   "Give the new `tables` the default permissions of a new Table and publish their create event."
   [tables]
@@ -514,7 +612,7 @@
   default field order of their driver and the default permissions of a new Table."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
   (mdb/create-batched! :model/Table rows
-                       {:before-create add-default-field-orders
+                       {:before-create prepare-new-tables
                         :after-create  tables-created!}))
 
 (defn- ordered-field-positions
@@ -571,10 +669,25 @@
   [ids]
   (warehouse-schema.db/tables-by-ids (vec ids)))
 
+(defn- changed-definition-tables
+  "For each of `updates` that changes a stored Table's definition, its `:id`, the stored `:db_id` and only the
+  definitions it changes, so an update that keeps a definition does not check it again."
+  [id->stored updates]
+  (for [{:keys [id] :as row} updates
+        :let  [stored  (id->stored id)
+               changed (into {}
+                             (filter (fn [[column definition]]
+                                       (and (contains? definition-table-field-keys column)
+                                            (not= definition (get stored column)))))
+                             row)]
+        :when (and stored (seq changed))]
+    (assoc changed :id id :db_id (:db_id stored))))
+
 (defn- prepare-table-updates!
-  "Set the positions of the Fields of the Tables, among the `id->stored` ones, that `updates` give another field order,
-  and return `updates`."
+  "Throw unless a definition that `updates` change satisfies [[check-definitions]], set the positions of the Fields of
+  the Tables, among the `id->stored` ones, that `updates` give another field order, and return `updates`."
   [updates id->stored]
+  (check-definitions (changed-definition-tables id->stored updates))
   (update-field-positions! (reordered-tables id->stored updates))
   updates)
 
@@ -660,7 +773,8 @@
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :transform_target]
+           :owner_user_id :transform_target :table_role :grain :grain_description :period_granularity :mutability
+           :load_strategy :scd_type :history_definition :eav_definition]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (defmethod serialization/spec :model/Table [_]
@@ -669,13 +783,16 @@
    :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
-                         :owner_email]
+                         :owner_email :table_role :grain :grain_description :period_granularity :mutability
+                         :load_strategy :scd_type]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
                          :is_defective_duplicate :unique_table_helper]
-   :transform           {:archived_at    serialization/date-transform
-                         :deactivated_at serialization/date-transform
-                         :db_id          serialization/database-transform
-                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)}
+   :transform           {:archived_at        serialization/date-transform
+                         :deactivated_at     serialization/date-transform
+                         :db_id              serialization/database-transform
+                         :owner_user_id      (assoc serialization/user-transform :import import-owner-ids)
+                         :history_definition warehouse-schema.serialization/definition-transform
+                         :eav_definition     warehouse-schema.serialization/definition-transform}
    :defaults            {:is_upload               false
                          :show_in_getting_started false}
    :storage-paths       storage-paths
@@ -687,11 +804,11 @@
 (defmethod audit/spec :model/Table [_model]
   {:track          [:id :name :db_id]
    :track-redacted [:active :archived_at :caveats :data_authority :data_layer :data_source
-                    :database_require_filter :deactivated_at :description :display_name :entity_type
-                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate
-                    :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
-                    :show_in_getting_started :transform_target :unique_table_helper
-                    :visibility_type]
+                    :database_require_filter :deactivated_at :description :display_name :eav_definition
+                    :entity_type :estimated_row_count :field_order :grain :grain_description :history_definition
+                    :initial_sync_status :is_defective_duplicate :is_upload :is_writable :load_strategy :mutability
+                    :owner_email :owner_user_id :period_granularity :points_of_interest :scd_type :schema
+                    :show_in_getting_started :table_role :transform_target :unique_table_helper :visibility_type]
    :skip           [:view_count]
    :topics         {}})
 
