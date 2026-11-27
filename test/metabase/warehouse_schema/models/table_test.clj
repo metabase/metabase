@@ -776,3 +776,16 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
+
+(deftest insert-keeps-visibility-type-and-data-layer-in-step-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table {cruft :id}   {:db_id db-id :visibility_type :cruft}
+                 :model/Table {hidden :id}  {:db_id db-id :data_layer :hidden}
+                 :model/Table {final :id}   {:db_id db-id :data_layer :final}
+                 :model/Table {visible :id} {:db_id db-id}]
+    (is (= {cruft   [:cruft :hidden]
+            hidden  [:hidden :hidden]
+            final   [nil :final]
+            visible [nil :internal]}
+           (t2/select-pk->fn (juxt :visibility_type :data_layer) :model/Table
+                             :id [:in [cruft hidden final visible]])))))

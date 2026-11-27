@@ -213,9 +213,10 @@
   [table]
   (merge table
          (apply dissoc
-                {:display_name   (humanization/name->human-readable-name (:name table))
-                 :data_layer     :internal
-                 :data_authority :unconfigured}
+                {:display_name    (humanization/name->human-readable-name (:name table))
+                 :data_layer      (visibility-type->data-layer (some-> (:visibility_type table) keyword))
+                 :visibility_type (data-layer->visibility-type (some-> (:data_layer table) keyword))
+                 :data_authority  :unconfigured}
                 (keys table))))
 
 (t2/define-before-update :model/Table
