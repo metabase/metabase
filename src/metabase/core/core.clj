@@ -105,15 +105,17 @@
   (print-setup-url))
 
 ;; Named here because no one module can see both sides of an edge: the web server's requests, for one, run queries on
-;; warehouse pools and record traces.
+;; warehouse pools and record traces and metrics.
 ;; The halt orders only what it stops. While a step in [[shutdown-steps]] stops a component before the halt, that list's
 ;; order decides for it, so these edges take effect as steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
-  {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
+  {:metabase.server.instance/server #{:metabase.analytics.prometheus/system
+                                      :metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}
-   ;; scheduled jobs run queries and record traces
-   :metabase.task.impl/scheduler    #{:metabase.driver.sql-jdbc.connection/pools
+   ;; scheduled jobs run queries and record traces and metrics
+   :metabase.task.impl/scheduler    #{:metabase.analytics.prometheus/system
+                                      :metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
