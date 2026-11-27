@@ -537,15 +537,21 @@
   It starts at entry, so the checks use up part of it, and the call doesn't start once it has passed.
   A check blocked on the app DB is not interrupted, so it can hold the caller past the deadline.
 
-  Throws `ex-info` with `:type`, `:status-code` and `:error-code`, whose message is translated and safe to show any
-  user.
-  Before the provider is called, the checks throw, in this order: `:metabot/ai-disabled`,
-  `:metabot/metabot-disabled` (the Metabot setting of `:audience`), `:metabot/invalid-call` (including a
-  `:trigger :user` feature with no bound user), `:metabot/permission-denied`, `:metabot/llm-not-configured`,
-  `:metabot/managed-limit-reached`, `:metabot/usage-limit-reached` and `:metabot/prompt-too-large` (see
-  [[max-prompt-chars]]).
-  After it: `:metabot/provider-failure` (with its `:provider-failure` kind), `:metabot/timeout`,
-  `:metabot/structured-output-incomplete` and `:metabot/structured-output-invalid`."
+  Throws `ex-info` with `:type`, `:status-code` and `:error-code`, and a translated message safe to show any user.
+
+  Before the provider is called, the checks throw, in this order:
+
+  - `:metabot/ai-disabled`
+  - `:metabot/metabot-disabled`, for the Metabot setting of `:audience`
+  - `:metabot/invalid-call`, which includes a `:trigger :user` feature with no bound user
+  - `:metabot/permission-denied`
+  - `:metabot/llm-not-configured`
+  - `:metabot/managed-limit-reached`
+  - `:metabot/usage-limit-reached`
+  - `:metabot/prompt-too-large`, see [[max-prompt-chars]]
+
+  After it: `:metabot/provider-failure`, `:metabot/timeout`, `:metabot/structured-output-incomplete` and
+  `:metabot/structured-output-invalid`."
   [feature-id opts]
   (let [start-nanos               (System/nanoTime)
         ;; destructured only once checked, since a key-value seq would destructure as a map
