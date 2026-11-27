@@ -48,14 +48,14 @@
       (try
         (queue/put-with-delay! queue 0 "a")
         (await-test-while (zero? @items-handled)
-                          (is (= 1 @items-handled))
-                          (is (= ["a"] @last-batch)))
+          (is (= 1 @items-handled))
+          (is (= ["a"] @last-batch)))
         (queue/put-with-delay! queue 0 "b")
         (queue/put-with-delay! queue 0 "c")
         (queue/put-with-delay! queue 0 "d")
         (await-test-while (< @items-handled 4)
-                          (is (= 4 @items-handled))
-                          (is (some #{"d"} @last-batch)))
+          (is (= 4 @items-handled))
+          (is (some #{"d"} @last-batch)))
         (finally
           (queue-listener/stop-listening! listener-name)))
       (await-test-while (thread-name-running? thread-name))
@@ -84,13 +84,13 @@
       (try
         (queue/put-with-delay! queue 0 "a")
         (await-test-while (zero? @result-count)
-                          (is (= 0 @error-count))
-                          (is (= 1 @result-count)))
+          (is (= 0 @error-count))
+          (is (= 1 @result-count)))
         (queue/put-with-delay! queue 0 "err")
         (await-test-while (zero? @error-count)
-                          (is (= 1 @error-count))
-                          (is (= 1 @result-count))
-                          (is (= "Test Error" (.getMessage ^Exception @last-error))))
+          (is (= 1 @error-count))
+          (is (= 1 @result-count))
+          (is (= "Test Error" (.getMessage ^Exception @last-error))))
         (finally
           (queue-listener/stop-listening! listener-name))))))
 
@@ -122,8 +122,8 @@
         (dotimes [i 100]
           (queue/put-with-delay! queue 0 i))
         (await-test-while (< @batches-handled 100)
-                          (is (= 100 @batches-handled))
-                          (is (contains? @handlers-used listener-name)))
+          (is (= 100 @batches-handled))
+          (is (contains? @handlers-used listener-name)))
         (finally
           (queue-listener/stop-listening! listener-name)))
       (await-test-while (or (thread-name-running? thread-name-0)
@@ -147,14 +147,14 @@
         ;; First message triggers AssertionError
         (queue/put-with-delay! queue 0 "boom")
         (await-test-while (zero? @call-count)
-                          (is (= 1 @call-count)))
+          (is (= 1 @call-count)))
         ;; Thread should still be alive
         (is (thread-name-running? thread-name)
             "Listener thread should survive an AssertionError")
         ;; Second message should still be processed
         (queue/put-with-delay! queue 0 "ok")
         (await-test-while (< @call-count 2)
-                          (is (= 2 @call-count)))
+          (is (= 2 @call-count)))
         (finally
           (queue-listener/stop-listening! listener-name))))))
 
@@ -181,7 +181,7 @@
         ;; This escapes listener-thread's inner catch, but listener-thread-with-restart should restart it
         (queue/put-with-delay! queue 0 "fail")
         (await-test-while (not @err-handler-ran)
-                          (is @err-handler-ran))
+          (is @err-handler-ran))
         ;; Wait for restart backoff (initial-restart-backoff-ms = 500ms) plus margin
         (Thread/sleep 1000)
         ;; Thread should be alive again after restart
@@ -190,7 +190,7 @@
         ;; Verify second message is processed normally
         (queue/put-with-delay! queue 0 "ok")
         (await-test-while (< @call-count 2)
-                          (is (= 2 @call-count)))
+          (is (= 2 @call-count)))
         (finally
           (queue-listener/stop-listening! listener-name))))))
 
