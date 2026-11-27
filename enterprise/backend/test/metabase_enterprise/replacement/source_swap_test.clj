@@ -68,6 +68,23 @@
             (is (= "SELECT ID FROM PUBLIC.REVIEWS"
                    (lib/raw-native-query (:dataset_query (t2/select-one :model/Card :id card-id)))))))))))
 
+(deftest card-swap-source!-native-card-reference-as-cte-body-test
+  (testing "swap-source! from card to table replaces card reference in CTE body with subquery"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                                     :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Card {card-id :id}  {:dataset_query (lib/native-query
+                                                                     mp
+                                                                     (str "WITH x AS {{#" model-id "}} SELECT COUNT(*) FROM x"))}]
+            (replacement.field-refs/upgrade-field-refs! [:card card-id])
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:card model-id]
+                                                  [:table (mt/id :orders)])
+            (is (= "WITH x AS (SELECT * FROM \"PUBLIC\".\"ORDERS\") SELECT COUNT(*) FROM x"
+                   (lib/raw-native-query (:dataset_query (t2/select-one :model/Card :id card-id)))))))))))
+
 (deftest card-swap-source!-native-query-preserves-result-metadata-test
   (testing "swap-source! should preserve `:result_metadata` for native queries"
     (mt/with-premium-features #{:dependencies}

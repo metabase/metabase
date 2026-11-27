@@ -352,23 +352,31 @@
                   (lib/with-template-tags template-tags))))))
       query))
 
+(def ^:private table-position-re #"(?i)\b(?:from|join)\s*$")
+
 (defn- replace-card-refs-with-table
-  "Walk parsed SQL tokens, replacing card references to old-card-id with table-name.
-   Returns the reconstructed SQL string."
+  "Rebuild the SQL from parsed tokens, replacing references to old-card-id with table-name right after FROM or JOIN
+  and with a subquery selecting from it elsewhere."
   [parsed old-card-id table-name]
   (let [old-tag (str "#" old-card-id)]
     (apply str
-           (for [token parsed]
+           (for [[previous token] (map vector (cons nil parsed) parsed)]
              (cond
                (string? token)
                token
 
                (lib.params.parse.types/param? token)
                (let [k (:k token)]
-                 (if (or (= k old-tag)
-                         (str/starts-with? k (str old-tag "-")))
+                 (cond
+                   (not (or (= k old-tag)
+                            (str/starts-with? k (str old-tag "-"))))
+                   (str "{{" k "}}")
+
+                   (and (string? previous) (re-find table-position-re previous))
                    table-name
-                   (str "{{" k "}}")))
+
+                   :else
+                   (str "(SELECT * FROM " table-name ")")))
 
                (lib.params.parse.types/optional? token)
                (str "[[" (replace-card-refs-with-table (:args token) old-card-id table-name) "]]")
