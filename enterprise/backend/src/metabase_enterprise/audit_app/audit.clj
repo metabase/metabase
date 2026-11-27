@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.settings :as audit-app.settings]
@@ -11,6 +12,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.permissions.models.permissions :as permissions]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -106,19 +108,34 @@
       (field/change-case! (vec field-ids-to-update) :lower [:name])))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
+(defn- upper-case-field-name-refs
+  "`query` with the name refs to the Fields named in `field-names` upper-cased."
+  [query field-names]
+  (walk/postwalk (fn [x]
+                   (if (and (vector? x)
+                            (= :field (first x))
+                            (string? (peek x))
+                            (contains? field-names (u/upper-case-en (peek x))))
+                     (update x 2 u/upper-case-en)
+                     x))
+                 query))
+
 (defn- fix-h2-card-metadata! [audit-db-id]
-  (when-let [updates (not-empty
-                      (into []
-                            (keep (fn [card]
-                                    (when-let [result-metadata (not-empty (some-> (:result_metadata card)
-                                                                                  (json/decode true)))]
-                                      {:id              (:id card)
-                                       :result_metadata (mapv #(update % :name u/upper-case-en)
-                                                              (lib/normalize :metabase.queries.schema/card.result-metadata
-                                                                             result-metadata))
-                                       :updated_at      :updated_at})))
-                            (audit-app.db/card-result-metadata-reducible audit-db-id)))]
-    (queries.card/update-cards! updates {:writer :sync})))
+  (let [field-names (audit-app.db/field-names-of-database audit-db-id)]
+    (when-let [updates (not-empty
+                        (into []
+                              (map (fn [card]
+                                     (let [query           (lib/normalize ::lib.schema/query (json/decode (:dataset_query card) true))
+                                           result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
+                                       (cond-> {:id            (:id card)
+                                                :dataset_query (upper-case-field-name-refs query field-names)
+                                                :updated_at    :updated_at}
+                                         result-metadata
+                                         (assoc :result_metadata (mapv #(update % :name u/upper-case-en)
+                                                                       (lib/normalize :metabase.queries.schema/card.result-metadata
+                                                                                      result-metadata)))))))
+                              (audit-app.db/card-result-metadata-reducible audit-db-id)))]
+      (queries.card/update-cards! updates {:writer :sync}))))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]

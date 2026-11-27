@@ -15,6 +15,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
    [metabase.queries.card-schema :as card-schema]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync.core]
    [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -109,6 +110,22 @@
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! :model/Database :is_audit true {:engine "h2"})))))
+
+(deftest analytics-cards-run-on-app-db-test
+  (with-audit-db-restoration!
+    (testing "Every Usage analytics card runs on the host app database (#87232)"
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-test-user :crowberto
+          (is (= []
+                 (into []
+                       (keep (fn [card]
+                               (let [status (try
+                                              (:status (qp/process-query (:dataset_query card)))
+                                              (catch Exception e
+                                                (ex-message e)))]
+                                 (when-not (= :completed status)
+                                   [(:entity_id card) status]))))
+                       (t2/select :model/Card :database_id audit/audit-db-id :archived false)))))))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
