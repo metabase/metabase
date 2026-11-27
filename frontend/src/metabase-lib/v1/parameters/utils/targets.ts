@@ -201,8 +201,11 @@ export function getParameterColumns(
     question.display() === "pivot" ? query : Lib.ensureFilterStage(query);
 
   if (parameter && isTemporalUnitParameter(parameter)) {
-    const stageIndex = Lib.stageCount(query) - 1;
-    const availableColumns = getTemporalColumns(nextQuery, stageIndex);
+    const stageIndex = Lib.stageIndexes(query).findLast(
+      (stageIndex) => Lib.breakouts(query, stageIndex).length > 0,
+    );
+    const availableColumns =
+      stageIndex === undefined ? [] : getTemporalColumns(nextQuery, stageIndex);
     const columns = availableColumns.filter(({ column, stageIndex }) => {
       return columnFilterForParameter(nextQuery, stageIndex, parameter)(column);
     });

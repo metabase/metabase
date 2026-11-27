@@ -144,6 +144,40 @@ const queryDateBreakoutsMultiStage = Lib.createTestQuery(SAMPLE_PROVIDER, {
   ],
 });
 
+const queryDateBreakoutWithExpressionStage = Lib.createTestQuery(
+  SAMPLE_PROVIDER,
+  {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts: [
+          {
+            type: "column",
+            name: "CREATED_AT",
+            unit: "month",
+          },
+        ],
+      },
+      {
+        expressions: [
+          {
+            name: "Count + 1",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", name: "count" },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  },
+);
+
 const ordersColumns = [
   ["Orders", "Created At"],
   ["Orders", "Discount"],
@@ -494,6 +528,16 @@ describe("parameters/utils/targets", () => {
               ["Orders", "Created At: Month"],
               ["Products", "Product → Created At: Month"],
             ]),
+          );
+        });
+
+        it("date breakout followed by stage without breakouts - returns date column from breakout stage", () => {
+          const question = createQuestion(queryDateBreakoutWithExpressionStage);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [["Orders", "Created At: Month"]]),
           );
         });
 
