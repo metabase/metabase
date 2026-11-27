@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { flushSync } from "react-dom";
-import useLatest from "react-use/esm/useLatest.js";
+import { useLatest } from "react-use";
 
 import { OverlayStackContext } from "./overlay-stack-provider";
 

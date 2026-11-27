@@ -331,6 +331,7 @@ test("@release renders with a nonce-only inline style policy", async ({
   await expect(page.getByTestId("button-filled")).toBeVisible();
   await page.getByTestId("open-modal").click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
   const styles = await page.locator("style").evaluateAll((elements) =>
     elements.map((element) => ({
       nonce: element.nonce,
