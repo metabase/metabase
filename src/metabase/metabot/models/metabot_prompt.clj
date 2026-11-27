@@ -35,20 +35,21 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- card-types-of
-  "The map from the ID of each Card of `rows` to its type; the foreign key on `card_id` refuses a row without a Card."
-  [rows]
-  (let [card-ids (into [] (comp (map :card_id) (distinct)) rows)]
+  "The map from each of `card-ids` that names a Card to that Card's type; a nil or missing Card has no entry."
+  [card-ids]
+  (let [card-ids (into [] (comp (keep identity) (distinct)) card-ids)]
     (if (seq card-ids) (metabot.db/card-types card-ids) {})))
 
 (defn- add-prompt-models
   "The MetabotPrompt `rows`, each with the type of its Card as its model."
   [rows]
-  (let [card-types (card-types-of rows)]
+  ;; A row without an existing Card gets no model, and its insert fails.
+  (let [card-types (card-types-of (map :card_id rows))]
     (mapv #(assoc % :model (card-types (:card_id %))) rows)))
 
 (mu/defn create-metabot-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
   "Insert the MetabotPrompt `rows`, each with the type of its Card as its model, in one transaction and return the
-  inserted prompts, a row without an existing Card failing on the foreign key."
+  inserted prompts, a row without an existing Card failing the insert."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.create]]
   (mdb/create-batched! :model/MetabotPrompt rows {:before-create add-prompt-models}))
 
@@ -70,7 +71,7 @@
         id->new-card  (into {}
                             (remove (fn [[id card-id]] (= card-id (:card_id (id->stored id)))))
                             id->last-card)
-        card-types    (card-types-of (keep (fn [[_ card-id]] (when card-id {:card_id card-id})) id->new-card))]
+        card-types    (card-types-of (vals id->new-card))]
     (mapv (fn [{:keys [id] :as row}]
             (if (contains? id->new-card id)
               (assoc row :model (card-types (id->new-card id)))
