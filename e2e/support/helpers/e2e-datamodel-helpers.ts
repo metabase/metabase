@@ -36,7 +36,6 @@ export const DataModel = {
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
     getDatabaseCheckbox,
-    getDatabases: getTablePickerDatabases,
     getSchemas: getTablePickerSchemas,
     getSchema: getTablePickerSchema,
     getSchemaToggle: getTablePickerSchemaToggle,
@@ -350,10 +349,6 @@ function expandTablePickerSchema(name: string) {
 
 function getTablePickerDatabaseToggle(name: string) {
   return getTablePickerDatabase(name).find("[aria-expanded]");
-}
-
-function getTablePickerDatabases() {
-  return cy.findAllByTestId("tree-item").filter('[data-type="database"]');
 }
 
 function getTablePickerSchema(name: string) {

@@ -67,6 +67,11 @@ describe("scenarios > admin > datamodel", () => {
           tableId: ORDERS_ID,
         });
 
+        cy.log("an unselected hidden table shows its button without hover");
+        TablePicker.getTable("Accounts")
+          .button("Unhide table")
+          .should("be.visible");
+
         TablePicker.getTable("Orders").button("Hide table").click();
         cy.wait("@updateTable");
 
@@ -758,7 +763,6 @@ describe("issue 15542", () => {
 
 describe("issue 52411", { tags: "@external" }, () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/database/*/schema/*").as("getSchema");
     cy.intercept("GET", "/api/database").as("getDatabases");
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "multi_schema" });
@@ -768,10 +772,10 @@ describe("issue 52411", { tags: "@external" }, () => {
 
   it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
     cy.visit("/admin/datamodel/segments");
-    cy.wait(["@getDatabases", "@getSchema"]);
+    cy.wait("@getDatabases");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
+    // with several databases, the picker opens on the database list
     H.popover().within(() => {
-      cy.icon("chevronleft").click(); // go back
       cy.findByText("Writable Postgres12").click();
       cy.findByText("Wild").click();
       cy.findByText("Birds").click();
@@ -779,6 +783,50 @@ describe("issue 52411", { tags: "@external" }, () => {
     cy.findByTestId("segment-list-table")
       .findByText("Birds")
       .should("be.visible");
+  });
+});
+
+describe("issues 55617, 55618", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/segment").as("getSegments");
+    H.createSegment({
+      name: "My segment",
+      definition: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      },
+    });
+  });
+
+  it("should allow changing the FK target of segment fields in the list and the detail view (metabase#55617, metabase#55618)", () => {
+    cy.visit("/reference/segments");
+    cy.wait("@getSegments");
+    cy.findByRole("link", { name: /My segment/ }).click();
+    cy.findByRole("link", { name: /Fields in this segment/ }).click();
+
+    cy.button(/Edit/).should("be.visible").realClick();
+    cy.findAllByPlaceholderText("Select a target").should("have.length", 2);
+    cy.findAllByDisplayValue("People → ID").first().click();
+    H.popover().findByText("Reviews → ID").click();
+    cy.findAllByDisplayValue("Reviews → ID").should("have.length", 1);
+
+    cy.button("Cancel").click();
+    cy.findByRole("link", { name: /User ID/ }).click();
+    cy.button(/Edit/).should("be.visible").realClick();
+    cy.findByPlaceholderText("Select a target")
+      .should("have.value", "People → ID")
+      .click();
+    H.popover().findByText("Reviews → ID").click();
+    cy.findByPlaceholderText("Select a target").should(
+      "have.value",
+      "Reviews → ID",
+    );
   });
 });
 
