@@ -40,6 +40,7 @@ export function SnippetDescriptionSection({
     <EditableText
       initialValue={snippet.description ?? ""}
       placeholder={t`No description`}
+      isMultiline
       isMarkdown
       onChange={handleChange}
       isDisabled={isDisabled}

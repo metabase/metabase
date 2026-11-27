@@ -97,6 +97,22 @@ describe("SnippetSidebar (OSS)", () => {
     );
   });
 
+  it("should render snippet description as markdown", async () => {
+    const snippet = createMockNativeQuerySnippet({
+      name: "stuff-snippet",
+      description: "# Heading\n\n**bold text**",
+    });
+    await setup({ snippets: [snippet] });
+
+    await userEvent.click(getIcon("chevrondown"));
+
+    expect(
+      screen.getByRole("heading", { name: "Heading" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("bold text").tagName).toBe("STRONG");
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+  });
+
   it("should not render snippet folders without the snippet collections feature", async () => {
     const folder = createMockCollection({
       id: 1,

@@ -156,6 +156,7 @@ export function NewSnippetPage() {
             <EditableText
               initialValue={description}
               placeholder={t`No description`}
+              isMultiline
               isMarkdown
               onChange={setDescription}
             />
