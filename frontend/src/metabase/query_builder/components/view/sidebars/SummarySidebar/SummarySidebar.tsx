@@ -25,7 +25,6 @@ import { SummaryWells } from "./SummaryWells";
 import {
   type SummaryFieldAddedEventDetail,
   trackSummaryFieldAdded,
-  trackSummaryPivotModeToggled,
 } from "./analytics";
 import type {
   SummaryField,
@@ -42,6 +41,7 @@ import {
   areQueriesEqual,
   clearWell,
   getFieldSections,
+  hasNewSummaryClause,
   replaceWellWithField,
 } from "./utils";
 
@@ -183,16 +183,19 @@ export function SummarySidebar({
 
   const handleFieldSelect = (field: SummaryField) => {
     const wellId = getFieldWellId(field);
-    handleFieldAdd(
-      replaceWellWithField(query, stageIndex, wellId, field, layout.rows),
+    const nextQuery = replaceWellWithField(
+      query,
+      stageIndex,
       wellId,
-      "field_list_click",
+      field,
+      layout.rows,
     );
-  };
-
-  const handlePivotToggle = () => {
-    trackSummaryPivotModeToggled(isPivotMode ? "disabled" : "enabled");
-    togglePivotMode();
+    const isFieldAdded =
+      handleWellAdd(nextQuery, wellId) &&
+      hasNewSummaryClause(query, nextQuery, stageIndex, wellId);
+    if (isFieldAdded) {
+      trackSummaryFieldAdded(wellId, "field_list_click");
+    }
   };
 
   const handleClearAll = () =>
@@ -235,7 +238,7 @@ export function SummarySidebar({
             valueItems={valueItems}
             columnItems={columnItems}
             rowItems={rowItems}
-            onPivotToggle={handlePivotToggle}
+            onPivotToggle={togglePivotMode}
             onPick={(wellId, field) => handleAdd(wellId, field, "typeahead")}
             onChange={handleQueryChange}
           />

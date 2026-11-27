@@ -51,6 +51,11 @@ export type SummaryFormulaDraft = {
     }
 );
 
+export type SummaryFormulaStartTrigger = Extract<
+  FormulaBarOpenedEventDetail,
+  "equals_sign" | "formula_option" | "generated_formula"
+>;
+
 export type SummaryFormulaEditTrigger = Extract<
   FormulaBarOpenedEventDetail,
   "chip_edit" | "column_header"
@@ -60,6 +65,7 @@ export type SummaryFormulaInput = {
   start: (
     source: string,
     input: HTMLInputElement,
+    trigger: SummaryFormulaStartTrigger,
     onReady: () => void,
     name?: string,
   ) => void;

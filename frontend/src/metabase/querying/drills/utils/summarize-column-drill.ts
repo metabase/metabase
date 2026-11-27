@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { editSummary } from "metabase/redux/query-builder";
 import type { Dispatch } from "metabase/redux/store";
 import type {
+  ClickAction,
   ClickActionBase,
   Drill,
 } from "metabase/visualizations/types/click-actions";
@@ -34,6 +35,12 @@ const ACTIONS: Record<Lib.SummarizeColumnDrillThruOperator, ClickActionBase> = {
     buttonType: "token",
   },
 };
+
+const ACTION_NAMES = new Set(Object.values(ACTIONS).map(({ name }) => name));
+
+export function isSummarizeColumnAction(action: ClickAction): boolean {
+  return ACTION_NAMES.has(action.name);
+}
 
 export const summarizeColumnDrill: Drill<Lib.SummarizeColumnDrillThruInfo> = ({
   drill,

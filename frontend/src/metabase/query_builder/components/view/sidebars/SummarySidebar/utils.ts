@@ -633,6 +633,32 @@ export function replaceWellWithField(
   return nextQuery !== clearedQuery ? nextQuery : query;
 }
 
+function getSummaryClauseNames(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+): string[] {
+  const clauses: (Lib.AggregationClause | Lib.BreakoutClause)[] =
+    wellId === "values"
+      ? Lib.aggregations(query, stageIndex)
+      : Lib.breakouts(query, stageIndex);
+  return clauses.map(
+    (clause) => Lib.displayInfo(query, stageIndex, clause).longDisplayName,
+  );
+}
+
+export function hasNewSummaryClause(
+  query: Lib.Query,
+  nextQuery: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+): boolean {
+  const names = new Set(getSummaryClauseNames(query, stageIndex, wellId));
+  return getSummaryClauseNames(nextQuery, stageIndex, wellId).some(
+    (name) => !names.has(name),
+  );
+}
+
 export function getDragItem(data: unknown): SummaryDragItem | null {
   if (typeof data !== "object" || data == null || !("kind" in data)) {
     return null;

@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
+import { trackSummaryItemRenamed } from "../analytics";
 import type { SummaryValueItem } from "../types";
 import { isFormulaValue } from "../utils";
 
@@ -44,7 +45,8 @@ export function ValueChip({
 }: ValueChipProps) {
   const wellFieldRef = useWellFieldRef();
   const isFormula = isFormulaValue(item);
-  const handleRename = (name: string) =>
+  const handleRename = (name: string) => {
+    trackSummaryItemRenamed("values");
     onChange(
       Lib.replaceClause(
         query,
@@ -53,6 +55,7 @@ export function ValueChip({
         Lib.withExpressionName(item.clause, name),
       ),
     );
+  };
   const handleEdit =
     isFormula && formulaInput
       ? () =>

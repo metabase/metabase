@@ -6,6 +6,7 @@ import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
 
+import { trackSummaryPivotModeToggled } from "./analytics";
 import { getNextPivotLayout } from "./next-pivot-layout";
 import {
   NO_PIVOT_LAYOUT,
@@ -68,15 +69,35 @@ export function useSummaryPivotLayout({
     return pivotChange;
   };
 
+  const trackRowsWellModeChange = (
+    nextLayout: ColumnNameColumnSplitSetting,
+  ) => {
+    const isNextPivotMode =
+      canPivot && (isPivotToggled || nextLayout.rows.length > 0);
+    if (isNextPivotMode !== isPivotMode) {
+      trackSummaryPivotModeToggled(
+        "rows_well",
+        isNextPivotMode ? "enabled" : "disabled",
+      );
+    }
+  };
+
   const syncLayoutWithQuery = (
     nextQuery: Lib.Query,
     addedWellId?: SummaryWellId,
-  ) =>
-    storeLayout(
-      getNextPivotLayout({ query, nextQuery, stageIndex, layout, addedWellId }),
-    );
+  ) => {
+    const nextLayout = getNextPivotLayout({
+      query,
+      nextQuery,
+      stageIndex,
+      layout,
+      addedWellId,
+    });
+    trackRowsWellModeChange(nextLayout);
+    return storeLayout(nextLayout);
+  };
 
-  const changeLayout = (nextLayout: ColumnNameColumnSplitSetting) => {
+  const applyLayout = (nextLayout: ColumnNameColumnSplitSetting) => {
     const pivotChange = storeLayout(nextLayout);
     const isPivotSplitChanged = !_.isEqual(
       pivotSplit,
@@ -87,10 +108,19 @@ export function useSummaryPivotLayout({
     }
   };
 
+  const changeLayout = (nextLayout: ColumnNameColumnSplitSetting) => {
+    trackRowsWellModeChange(nextLayout);
+    applyLayout(nextLayout);
+  };
+
   const togglePivotMode = () => {
+    trackSummaryPivotModeToggled(
+      "toggle_button",
+      isPivotMode ? "disabled" : "enabled",
+    );
     if (isPivotMode) {
       turnPivotToggleOff();
-      changeLayout(NO_PIVOT_LAYOUT);
+      applyLayout(NO_PIVOT_LAYOUT);
     } else {
       turnPivotToggleOn();
     }

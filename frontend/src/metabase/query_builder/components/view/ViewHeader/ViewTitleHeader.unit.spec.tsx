@@ -1243,6 +1243,28 @@ describe("View Header | Summarize sidebar entry point", () => {
     ]);
   });
 
+  it("tracks the sidebar opened from the keyboard shortcut", async () => {
+    const trackSimpleEvent = jest
+      .spyOn(Analytics, "trackSimpleEvent")
+      .mockClear();
+    const card = getSavedGUIQuestionCard();
+    setupWithKBar({ card, queryBuilderMode: "view" });
+
+    await pressSummarizeKey();
+
+    const sidebarOpenedEvents = trackSimpleEvent.mock.calls
+      .map(([event]) => event)
+      .filter(({ event }) => event === "summary_sidebar_opened");
+    expect(sidebarOpenedEvents).toEqual([
+      {
+        event: "summary_sidebar_opened",
+        triggered_from: "keyboard_shortcut",
+        event_detail: "empty",
+        target_id: card.id,
+      },
+    ]);
+  });
+
   it("doesn't track the Summarize button closing the sidebar", async () => {
     const trackSimpleEvent = jest
       .spyOn(Analytics, "trackSimpleEvent")

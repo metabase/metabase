@@ -9,14 +9,12 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 
-import { trackFormulaBarOpened } from "metabase/querying/components/FormulaEditor";
 import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
 import { MatchedLabel } from "../MatchedLabel";
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
 import S from "../SummarySidebar.module.css";
-import { getFormulaBarLocation } from "../analytics";
 import type {
   SummaryField,
   SummaryFieldSection,
@@ -148,10 +146,10 @@ export function SummaryWellInput({
       formulaInput.start(
         result.source,
         inputRef.current,
+        "generated_formula",
         () => {},
         result.name,
       );
-      trackFormulaBarOpened(getFormulaBarLocation(wellId), "generated_formula");
     }
   };
 
@@ -164,8 +162,9 @@ export function SummaryWellInput({
     combobox.closeDropdown();
     if (optionValue === CUSTOM_FORMULA_OPTION_VALUE) {
       if (formulaInput && inputRef.current) {
-        formulaInput.start("", inputRef.current, () => setSearchText(""));
-        trackFormulaBarOpened(getFormulaBarLocation(wellId), "formula_option");
+        formulaInput.start("", inputRef.current, "formula_option", () =>
+          setSearchText(""),
+        );
       }
       return;
     }
@@ -191,10 +190,9 @@ export function SummaryWellInput({
     if (formulaInput && text.startsWith("=") && inputRef.current) {
       setSearchText(text);
       combobox.closeDropdown();
-      formulaInput.start(text.slice(1), inputRef.current, () =>
+      formulaInput.start(text.slice(1), inputRef.current, "equals_sign", () =>
         setSearchText(""),
       );
-      trackFormulaBarOpened(getFormulaBarLocation(wellId), "equals_sign");
       return;
     }
     setSearchText(text);

@@ -8,6 +8,7 @@ import type { SummaryWellId } from "./types";
 
 export type SummarySidebarOpenedTriggeredFrom =
   | "summarize_button"
+  | "keyboard_shortcut"
   | "column_header"
   | "column_header_summarize"
   | "chart_placeholder";
@@ -18,7 +19,13 @@ export type SummaryFieldAddedEventDetail =
   | "drag_and_drop"
   | "typeahead";
 
+export type SummaryItemRemovedEventDetail = "remove_button" | "backspace";
+
 export type SummaryFormulaGeneratedResult = "success" | "failure";
+
+export type SummaryPivotModeToggledTriggeredFrom =
+  | "toggle_button"
+  | "rows_well";
 
 export type SummaryPivotModeToggledEventDetail = "enabled" | "disabled";
 
@@ -56,6 +63,24 @@ export const trackSummaryFieldAdded = (
   });
 };
 
+export const trackSummaryItemRemoved = (
+  wellId: SummaryWellId,
+  detail: SummaryItemRemovedEventDetail,
+) => {
+  trackSimpleEvent({
+    event: "summary_item_removed",
+    triggered_from: wellId,
+    event_detail: detail,
+  });
+};
+
+export const trackSummaryItemRenamed = (wellId: SummaryWellId) => {
+  trackSimpleEvent({
+    event: "summary_item_renamed",
+    triggered_from: wellId,
+  });
+};
+
 export const trackSummaryFormulaGenerated = (
   wellId: SummaryWellId,
   result: SummaryFormulaGeneratedResult,
@@ -70,10 +95,12 @@ export const trackSummaryFormulaGenerated = (
 };
 
 export const trackSummaryPivotModeToggled = (
+  triggeredFrom: SummaryPivotModeToggledTriggeredFrom,
   detail: SummaryPivotModeToggledEventDetail,
 ) => {
   trackSimpleEvent({
     event: "summary_pivot_mode_toggled",
+    triggered_from: triggeredFrom,
     event_detail: detail,
   });
 };
