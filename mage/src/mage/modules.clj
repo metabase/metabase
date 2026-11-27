@@ -387,6 +387,12 @@
   [modules-config module]
   (true? (get-in modules-config [module :codeowners])))
 
+(defn- nearest-entry
+  "The entry of `entries` nearest around `src-dir`, or nil."
+  [entries src-dir]
+  ;; Entries come parent first, so the last one around `src-dir` is the nearest.
+  (last (filter #(path-within? (:src-dir %) src-dir) entries)))
+
 (defn- deciding-ancestor
   "The nearest ancestor of `module` of the same team that sets `:codeowners`, or nil."
   [modules-config module]
@@ -402,7 +408,8 @@
   (let [cfg (get modules-config module)]
     (if (contains? cfg :codeowners)
       (false? (:codeowners cfg))
-      (false? (get-in modules-config [(deciding-ancestor modules-config module) :codeowners])))))
+      (boolean (when-let [ancestor (deciding-ancestor modules-config module)]
+                 (false? (get-in modules-config [ancestor :codeowners])))))))
 
 (defn- codeowners-entries
   "One entry per module the block must name, in block order.
@@ -419,9 +426,7 @@
    (fn [entries module]
      (let [team      (modules/module-team modules-config module)
            src-dir   (modules/module-dir modules-config module "src")
-           ;; Entries come parent first, so the last one around `src-dir` is the nearest.
-           around    (filter #(path-within? (:src-dir %) src-dir) entries)
-           owners    (filter :opted-in? around)
+           owners    (filter #(and (:opted-in? %) (path-within? (:src-dir %) src-dir)) entries)
            opted-in? (opts-in? modules-config module)
            declined? (declines? modules-config module)
            handle    (when (and (not declined?)
@@ -429,7 +434,7 @@
                        (get team->codeowner team))]
        (cond-> entries
          (or opted-in?
-             (and (seq owners) (not= handle (:handle (last around)))))
+             (and (seq owners) (not= handle (:handle (nearest-entry entries src-dir)))))
          (conj {:module    module
                 :src-dir   src-dir
                 :team      team
@@ -456,8 +461,7 @@
                       src-dir  (modules/module-dir modules-config module "src")
                       ;; An ancestor that declines settles its descendants too.
                       decider  (deciding-ancestor modules-config module)
-                      ;; Entries come parent first, so the last one around `src-dir` is the nearest.
-                      owner    (:handle (last (filter #(path-within? (:src-dir %) src-dir) entries)))]
+                      owner    (:handle (nearest-entry entries src-dir))]
         :when        (and (opts-in? modules-config decider)
                           (not= owner (get team->codeowner team))
                           (source? src-dir))]
@@ -470,21 +474,22 @@
   A team whose codeowner is not one GitHub handle gives a single `:bad-codeowner` (`:team`, `:value`, `:modules`).
   A module left unowned by an opted-in ancestor of its team gives an [[uncovered-nested-problems]] problem.
   The predicate `source?` takes a module's src directory and says whether its code is there, and `entries` are the
-  module's [[codeowners-entries]], built when not given."
+  modules' [[codeowners-entries]], built when not given."
   ([modules-config team->codeowner source?]
    (codeowners-config-problems modules-config team->codeowner source?
                                (codeowners-entries modules-config team->codeowner)))
   ([modules-config team->codeowner source? entries]
-   (let [modules (for [[module cfg] (sort-by key modules-config)
-                       :when        (contains? cfg :codeowners)]
-                   module)]
+   (let [modules  (for [[module cfg] (sort-by key modules-config)
+                        :when        (contains? cfg :codeowners)]
+                    module)
+         ;; `false` declines, so it needs no codeowner or code. Any other value may be a mistyped `true`.
+         declined (into #{} (filter #(false? (get-in modules-config [% :codeowners]))) modules)]
      (concat
       (for [module  modules
             :let    [team      (modules/module-team modules-config module)
                      src-dir   (modules/module-dir modules-config module "src")
                      value     (get-in modules-config [module :codeowners])
-                     ;; `false` declines, so it needs no codeowner or code. Any other value may be a mistyped `true`.
-                     declined? (false? value)]
+                     declined? (contains? declined module)]
             problem (cond-> []
                       (not (boolean? value))
                       (conj {:type :unknown-value, :module module, :value value})
@@ -496,8 +501,7 @@
                       (conj {:type :no-source, :module module, :src-dir src-dir}))]
         problem)
       (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %)
-                                                       (remove #(false? (get-in modules-config [% :codeowners]))
-                                                               modules)))
+                                                       (remove declined modules)))
             :let                [handle (get team->codeowner team)]
             :when               (and (contains? team->codeowner team) (not (valid-codeowner? handle)))]
         {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)})
