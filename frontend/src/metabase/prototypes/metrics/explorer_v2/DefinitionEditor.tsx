@@ -525,10 +525,10 @@ export function DefinitionEditor({
             </span>
           ),
         )}
-        {pillActions === "inline" && (
+        {pillActions === "inline" && !isHost && (
           <Tooltip label={`Filter ${name}`}>
             <button
-              className={S.addFilter}
+              className={S.pillAction}
               aria-label={`Filter ${name}`}
               onMouseDown={(event) => event.preventDefault()}
               onClick={(event) => {
@@ -909,8 +909,9 @@ function NamePopover({
       <Popover.Target>
         <Tooltip label={label} disabled={isOpen}>
           <button
-            className={S.nameFilter}
+            className={S.pillAction}
             aria-label={label}
+            aria-expanded={isOpen}
             onClick={() => toggle(!isOpen)}
           >
             <Icon name={icon} size={12} />

@@ -181,15 +181,12 @@
   font-weight: normal;
 }
 
-/* Slides out of a hovered measure pill: opens a filter on that measure, like
-   typing "|". Collapsed it takes no room, not even the pill's gap. */
-.addFilter {
+.pillAction {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
   width: 0;
-  margin-left: -0.1875rem;
   padding: 2px 0;
   overflow: hidden;
   border: 0;
@@ -204,26 +201,28 @@
     opacity 120ms ease;
 }
 
+/* Only actions directly in the pill need to cancel its gap. */
+.pill > .pillAction {
+  margin-left: -0.1875rem;
+}
+
 /* A short wait before it opens, so sweeping across pills doesn't ripple. */
-.pill:hover .addFilter,
-.addFilter:focus-visible {
+.pill:hover .pillAction,
+.pillAction:focus-visible,
+.pillAction[aria-expanded="true"] {
   width: 1rem;
   margin-left: 0;
   opacity: 1;
   transition-delay: 80ms;
 }
 
-.addFilter:hover {
+.pillAction:hover {
   background: var(--mb-color-background_surface-secondary);
   color: var(--mb-color-core-filter);
 }
 
-.pill.pillHost .addFilter {
-  display: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .addFilter {
+  .pillAction {
     transition: none;
   }
 }
@@ -545,30 +544,6 @@
 /* The divider sits between the parts, outside the highlight of either. */
 .filterPart > .pipe {
   margin-left: 0.25rem;
-}
-
-/* Turns a typed-out filter into a segment: shown with the pill hovered. */
-.nameFilter {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--mb-color-text-tertiary);
-  cursor: pointer;
-  opacity: 0;
-}
-
-.pill:hover .nameFilter,
-.nameFilter:focus-visible,
-.nameFilter[aria-expanded="true"] {
-  opacity: 1;
-}
-
-.nameFilter:hover {
-  background: var(--mb-color-background_surface-secondary);
-  color: var(--mb-color-core-filter-strong);
 }
 
 /* The chart under the definition. Its dimension is picked in the panel next
