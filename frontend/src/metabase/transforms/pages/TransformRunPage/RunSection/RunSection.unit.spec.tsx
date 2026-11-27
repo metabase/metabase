@@ -79,6 +79,21 @@ async function triggerUpstreamRun() {
   await userEvent.click(screen.getByRole("button", { name: "Run all" }));
 }
 
+describe("RunSection run button", () => {
+  it("disables run and hides run options when transform cannot be executed", () => {
+    setup({
+      transform: createMockTransform({
+        id: TRANSFORM_ID,
+        last_run: null,
+        can_execute: false,
+      }),
+    });
+
+    expect(screen.getByTestId("run-button")).toBeDisabled();
+    expect(screen.queryByTestId("run-options-button")).not.toBeInTheDocument();
+  });
+});
+
 describe("RunSection DAG run flow", () => {
   it("offers upstream and downstream run options", async () => {
     setup();

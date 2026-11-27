@@ -127,20 +127,18 @@
 
 (defn can-create-test?
   "Whether the current user may create a test of `subject`: they may run native SQL against its Database, which
-  `db-id` gives, run the subject, as `can-query?` or else its `:can_query` says, and edit it on a read-only instance."
-  ([subject db-id]
-   (can-create-test? subject db-id subject-can-query?))
-  ([subject db-id can-query?]
-   (and (subject-native? db-id subject)
-        (can-query? subject)
-        (subject-writable-where-read-only? subject))))
+  `db-id` gives, run the subject, and edit it on a read-only instance."
+  [subject db-id]
+  (and (subject-native? db-id subject)
+       (subject-can-query? subject)
+       (subject-writable-where-read-only? subject)))
 
 (defn can-update-test?
   "Whether the current user may apply `changes` to the saved `test`, whose subject `subject-key` names and
   `load-subject` loads by id: `writable?` holds, a change to its inputs or expectations needs native SQL on the
-  Database of its new subject, which `db-id` gives, and a change of subject needs that they may run the new one, as
-  `can-query?` or else its `:can_query` says, and, on a read-only instance, edit it."
-  [test changes {:keys [subject-key load-subject db-id writable? can-query?] :or {can-query? subject-can-query?}}]
+  Database of its new subject, which `db-id` gives, and a change of subject needs that they may run the new one and,
+  on a read-only instance, edit it."
+  [test changes {:keys [subject-key load-subject db-id writable?]}]
   (let [changes?    #(and (contains? changes %) (not= (get changes %) (get test %)))
         new-subject (delay (some-> (get changes subject-key (get test subject-key)) load-subject))]
     (boolean
@@ -148,7 +146,7 @@
           (or (not-any? changes? native-columns)
               (subject-native? db-id @new-subject))
           (or (not (changes? subject-key))
-              (and (can-query? @new-subject)
+              (and (subject-can-query? @new-subject)
                    (subject-writable-where-read-only? @new-subject)))))))
 
 (defn assoc-subject-answers
@@ -200,22 +198,15 @@
                             :subject-check #(and (not read-only?) (mi/can-write? %))})))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_query]
-  "Add whether the current user may run each transform test, which is whether they read it, its transform's `:can_read`:
-  a test writes no table, so unlike its transform it runs in any remote sync worktree."
+  "Add whether the current user may run each transform test: they read it and may run its transform, as its
+  `:can_query` says, loading the transforms at once."
   [_model k transform-tests]
-  (for [transform-test (t2/hydrate transform-tests :can_read)]
-    (when transform-test
-      (assoc transform-test k (mi/can-read? transform-test)))))
-
-(defn- transform-readable?
-  "Whether the current user reads `transform`, which is whether they may run its tests, false when there is none."
-  [transform]
-  (boolean (some-> transform (t2/hydrate :can_read) mi/can-read?)))
+  (assoc-can-query transform-tests k :transform_id
+                   (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
-  (can-create-test? (some-> (:transform_id instance) data-testing.db/transform) transforms-base.i/source-db-id
-                    transform-readable?))
+  (can-create-test? (some-> (:transform_id instance) data-testing.db/transform) transforms-base.i/source-db-id))
 
 (defn- transform-writable?
   "Whether the current user may edit the Transform `transform-id`."
@@ -228,7 +219,6 @@
                     {:subject-key  :transform_id
                      :load-subject data-testing.db/transform
                      :db-id        transforms-base.i/source-db-id
-                     :can-query?   transform-readable?
                      :writable?    (or (mi/can-write? instance)
                                        (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
                                             (transform-writable? (:transform_id instance))))}))

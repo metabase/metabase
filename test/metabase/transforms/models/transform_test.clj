@@ -758,11 +758,11 @@
                      :model/Transform          transform         {}]
         (mt/with-current-user (mt/user->id :crowberto)
           (testing "default worktree"
-            (is (mi/can-query? (t2/hydrate transform :can_query))))
+            (is (:can_execute (t2/hydrate transform :can_execute))))
           (mdb/with-worktree-scope (mdb/worktree-id->scope worktree-id)
-            (testing "transform is read and not run"
-              (is (mi/can-read? (t2/hydrate transform :can_read)))
-              (is (not (mi/can-query? (t2/hydrate transform :can_query)))))
+            (testing "transform is queried and not run"
+              (is (mi/can-query? (t2/hydrate transform :can_query)))
+              (is (false? (:can_execute (t2/hydrate transform :can_execute)))))
             (testing "run that reaches executor is refused"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                     #"Transforms can only be run in the default worktree"

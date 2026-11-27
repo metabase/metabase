@@ -4,7 +4,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -107,7 +106,7 @@
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
-   [:can_query {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]
    ;; Index methods requestable on the target table (driver capability); nil when unsupported. Set only by GET /:id.
    ;; Referenced by registry keyword (not a require) to avoid a transforms-rest -> driver module dependency; the schema
    ;; is registered by `metabase.driver`, which is loaded well before any response is coerced.
@@ -205,7 +204,7 @@
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_query)
+    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          transforms.u/add-source-readable)))
 
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
@@ -331,17 +330,17 @@
                                [:delete-tables {:default false} [:maybe ms/BooleanValue]]]]
   (transforms.core/delete-transforms-folder! (api/write-check :model/Collection id) (boolean delete-tables)))
 
-(defn- check-can-query
-  "Returns `transform` after throwing a 403 unless the current user may run it, as its `:can_query` says."
+(defn- check-can-execute
+  "Returns `transform` after throwing a 403 unless the current user may run it, as its `:can_execute` says."
   [transform]
-  (api/check-403 (mi/can-query? (t2/hydrate transform :can_query)))
+  (api/check-403 (:can_execute (t2/hydrate transform :can_execute)))
   transform)
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [transform (check-can-query (api/read-check :model/Transform id))
+  (let [transform (check-can-execute (api/read-check :model/Transform id))
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms-base.u/python-transform? transform)
@@ -354,7 +353,7 @@
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (check-can-query (api/read-check :model/Transform id))
+  (check-can-execute (api/read-check :model/Transform id))
   (transform/update-transforms! [{:id id :last_checkpoint_value nil}])
   nil)
 
@@ -389,7 +388,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (run-transform! (check-can-query (api/read-check :model/Transform id))))
+  (run-transform! (check-can-execute (api/read-check :model/Transform id))))
 
 (api.macros/defendpoint :post "/:id/run-dag" :- [:map
                                                  [:status [:= 202]]
@@ -408,7 +407,7 @@
    _query-params
    {:keys [direction]} :- [:map {:closed true}
                            [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
-  (check-feature-and-lock! (check-can-query (api/read-check :model/Transform id)))
+  (check-feature-and-lock! (check-can-execute (api/read-check :model/Transform id)))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "DAG run started")
    :dag_run_id

@@ -220,6 +220,7 @@ function RunButtonSection({
   ] = useDisclosure(false);
   const [dagDirection, setDagDirection] =
     useState<TransformDagDirection | null>(null);
+  const isRunDisabled = permissionsReadOnly || transform.can_execute === false;
 
   const handleRun = async () => {
     trackTransformTriggerManualRun({ transformId: transform.id });
@@ -268,9 +269,9 @@ function RunButtonSection({
         allowCancellation
         onRun={handleRun}
         onCancel={openConfirmModal}
-        isDisabled={permissionsReadOnly}
+        isDisabled={isRunDisabled}
         menuItems={
-          permissionsReadOnly ? undefined : (
+          isRunDisabled ? undefined : (
             <>
               <Menu.Item onClick={() => setDagDirection("upstream")}>
                 {t`Run this and all upstream transforms`}

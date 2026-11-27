@@ -295,9 +295,9 @@
                          (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_read))))
                          (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Transform :id tid) :can_write))))))
                      (testing "responses say lucky may run it"
-                       (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform/" tid)))))
-                       (is (true? (:can_query (some #(when (= tid (:id %)) %)
-                                                    (mt/user-http-request :lucky :get 200 "transform"))))))
+                       (is (true? (:can_execute (mt/user-http-request :lucky :get 200 (str "transform/" tid)))))
+                       (is (true? (:can_execute (some #(when (= tid (:id %)) %)
+                                                      (mt/user-http-request :lucky :get 200 "transform"))))))
                      (mt/user-http-request :lucky :post 204 (str "transform/" tid "/reset-checkpoint"))
                      (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform :id tid)))
                      (is (nil? (:dag_run_id (mt/user-http-request :lucky :post 202 (str "transform/" tid "/run-dag")

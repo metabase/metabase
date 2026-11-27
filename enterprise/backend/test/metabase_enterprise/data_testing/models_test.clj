@@ -609,7 +609,7 @@
                           beyond-own (fn [k subject-ks n]
                                        (own subject-ks n)
                                        (- (:statements (hydrate k n)) (own subject-ks n)))]
-                      (doseq [[k subject-k] [[:can_write [:can_write]] [:can_query [:can_read]]]]
+                      (doseq [[k subject-k] [[:can_write [:can_write]] [:can_query [:can_read :can_query]]]]
                         (beyond-own k subject-k 1)
                         (is (= (beyond-own k subject-k 2) (beyond-own k subject-k 6))))))
                   (testing "each test gets the answer the per-test check gave"
@@ -712,7 +712,7 @@
                        :model/TransformTest transform-test {:transform_id (:id transform)}]
           (mt/with-current-user (mt/user->id :crowberto)
             (testing "transform itself is not run"
-              (is (not (mi/can-query? (t2/hydrate transform :can_query)))))
+              (is (false? (:can_execute (t2/hydrate transform :can_execute)))))
             (testing "its test is run, created and moved to it"
               (is (mi/can-query? (t2/hydrate transform-test :can_query)))
               (is (mi/can-create? :model/TransformTest {:transform_id (:id transform)}))

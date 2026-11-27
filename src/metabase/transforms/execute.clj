@@ -40,8 +40,8 @@
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
 
 (mu/defn execute! :- :nil
-  "Run `transform` and sync its target table, which only the default remote sync worktree allows, as the `:can_query`
-  of a Transform says.
+  "Run `transform` and sync its target table, which only the default remote sync worktree allows, as the
+  `:can_execute` of a Transform says.
 
   Executes synchronously, but the start is observable: once the run row is booked in the database,
   `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered

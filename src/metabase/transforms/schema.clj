@@ -166,6 +166,7 @@
     [:can_read              {:optional true} :boolean]
     [:can_write             {:optional true} :boolean]
     [:can_query             {:optional true} :boolean]
+    [:can_execute           {:optional true} :boolean]
     [:tag_ids               {:optional true} [:maybe [:sequential ::lib.schema.id/transform-tag]]]
     [:source_readable       {:optional true} :boolean]
     [:requestable_indexes   {:optional true} [:maybe ::requestable-indexes]]]])

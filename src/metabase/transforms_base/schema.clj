@@ -172,7 +172,8 @@
    [:owner                 {:optional true} [:maybe [:ref :metabase.transforms.schema/transform.owner]]]
    [:can_read              {:optional true} :boolean]
    [:can_write             {:optional true} :boolean]
-   [:can_query             {:optional true} :boolean]])
+   [:can_query             {:optional true} :boolean]
+   [:can_execute           {:optional true} :boolean]])
 
 ;;; ----------------------------------------- Source Range Params -----------------------------------------------
 
@@ -208,6 +209,7 @@
    [:can_read              {:optional true} :boolean]
    [:can_write             {:optional true} :boolean]
    [:can_query             {:optional true} :boolean]
+   [:can_execute           {:optional true} :boolean]
    [:deleted {:optional true} :boolean]])
 
 (defn- run-schema
