@@ -4091,7 +4091,6 @@
         "enum" : [ "card", "table", "transform" ]
       },
       "metabase-enterprise.sandbox.schema.attribute-remappings" : {
-        "description" : "value must be a valid attribute remappings map (attribute name -> remapped name)",
         "anyOf" : [ {
           "type" : "object",
           "additionalProperties" : {
@@ -4107,7 +4106,8 @@
           }
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "value must be a valid attribute remappings map (attribute name -> remapped name)"
       },
       "metabase-enterprise.scim.v2.api.patch-value" : {
         "description" : "A single attribute value in a PATCH operation. The strings clients send for booleans are parsed by the handler.",
@@ -4151,12 +4151,12 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.support-access-grants.schema.current-grant-response" : {
-        "description" : "Schema for GET /api/ee/support-access-grants/current response.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase-enterprise.support-access-grants.schema.grant-response"
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "Schema for GET /api/ee/support-access-grants/current response."
       },
       "metabase-enterprise.support-access-grants.schema.grant-response" : {
         "description" : "Schema for a support access grant object in API responses.",
@@ -4787,7 +4787,6 @@
         }
       },
       "metabase.actions.schema..action.for-insert" : {
-        "description" : "Schema for inserting a new Action (REST API or internally).",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -5140,10 +5139,10 @@
           },
           "required" : [ "name", "type", "model_id" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Schema for inserting a new Action (REST API or internally)."
       },
       "metabase.actions.schema..action.for-update" : {
-        "description" : "Schema for updating an Action (REST API or internally).",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -5502,7 +5501,8 @@
             }
           },
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Schema for updating an Action (REST API or internally)."
       },
       "metabase.actions.schema..action.parameter" : {
         "description" : "One entry of an Action's `:parameters`. An implicit action's are computed from the model's Fields rather than\n  authored, and carry annotations `metabase.actions.models/implicit-action-parameters` adds and\n  `select-actions-implicit-params` reads when it filters and orders them.",
@@ -5678,7 +5678,6 @@
         "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
       },
       "metabase.actions.schema.action" : {
-        "description" : "An Action as it should appear when we `SELECT` it from the app DB.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6061,7 +6060,8 @@
           },
           "required" : [ "id" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "An Action as it should appear when we `SELECT` it from the app DB."
       },
       "metabase.actions.schema.execute-parameter-values" : {
         "description" : "value must map parameter ids to scalar values.",
@@ -6600,7 +6600,6 @@
         "required" : [ "id", "name" ]
       },
       "metabase.agent-api.api.dashcard-mutation" : {
-        "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`         : requires `card_id`. Auto-positioned. Optional `display_size` (\"wide\", \"tall\", or \"full\").\n   - `add_heading` : requires `text`. Adds a full-width section heading.\n   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`\n                     (\"wide\", \"tall\", or \"full\").\n   - `update_text` : requires `dashcard_id` and `text`. Replaces a heading or text card's text\n                     in place, keeping its position and size.\n   - `remove`      : requires `dashcard_id`.\n   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").\n\n   The add actions take an optional `tab_id` (a tab on this dashboard); omitted, new cards land on\n   the dashboard's first tab.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6740,7 +6739,8 @@
           },
           "required" : [ "action", "dashcard_id", "position" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`         : requires `card_id`. Auto-positioned. Optional `display_size` (\"wide\", \"tall\", or \"full\").\n   - `add_heading` : requires `text`. Adds a full-width section heading.\n   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`\n                     (\"wide\", \"tall\", or \"full\").\n   - `update_text` : requires `dashcard_id` and `text`. Replaces a heading or text card's text\n                     in place, keeping its position and size.\n   - `remove`      : requires `dashcard_id`.\n   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\").\n\n   The add actions take an optional `tab_id` (a tab on this dashboard); omitted, new cards land on\n   the dashboard's first tab."
       },
       "metabase.agent-api.api.execute-query-request" : {
         "description" : "Request schema for /v1/execute. Accepts a base64-encoded MBQL query.",
@@ -6813,7 +6813,6 @@
         "additionalProperties" : false
       },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request body for /v2/query, one of three shapes:\n    - `{:continuation_token <string>}` from a prior response (pagination);\n    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64\n      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run\n      through the representations pipeline;\n    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as\n      /v2/construct-query.\n\n  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a\n  closed map, so top-level keys it doesn't declare (e.g. the legacy `source_entity` /\n  `referenced_entities` envelope, or a `:query` sent alongside a `:continuation_token`) are\n  dropped before the handler runs.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -6838,7 +6837,8 @@
           "additionalProperties" : false
         }, {
           "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
-        } ]
+        } ],
+        "description" : "Request body for /v2/query, one of three shapes:\n    - `{:continuation_token <string>}` from a prior response (pagination);\n    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64\n      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run\n      through the representations pipeline;\n    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as\n      /v2/construct-query.\n\n  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a\n  closed map, so top-level keys it doesn't declare (e.g. the legacy `source_entity` /\n  `referenced_entities` envelope, or a `:query` sent alongside a `:continuation_token`) are\n  dropped before the handler runs."
       },
       "metabase.agent-api.api.query-response" : {
         "description" : "Extends ::execute-query-response with an optional continuation_token for pagination.",
@@ -7392,7 +7392,6 @@
         "maxLength" : 7
       },
       "metabase.cache.api..cache-strategy.ee" : {
-        "description" : "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
         }, {
@@ -7401,7 +7400,8 @@
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee.duration"
         }, {
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee.schedule"
-        } ]
+        } ],
+        "description" : "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule"
       },
       "metabase.cache.api..cache-strategy.ee.duration" : {
         "description" : "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units.",
@@ -7457,12 +7457,12 @@
         "$ref" : "#/components/schemas/metabase.lib.schema..cache-strategy.nocache"
       },
       "metabase.cache.api..cache-strategy.oss" : {
-        "description" : "cache strategy :type must be one of :nocache, :ttl",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
         }, {
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ttl"
-        } ]
+        } ],
+        "description" : "cache strategy :type must be one of :nocache, :ttl"
       },
       "metabase.cache.api..cache-strategy.ttl" : {
         "description" : "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers.",
@@ -7627,7 +7627,6 @@
         } ]
       },
       "metabase.channel.models.channel.Channel" : {
-        "description" : "Channel schema.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -7806,10 +7805,10 @@
           },
           "required" : [ "name", "type" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Channel schema."
       },
       "metabase.channel.models.channel.ChannelTemplate" : {
-        "description" : "Channel Template schema.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -7910,10 +7909,10 @@
           },
           "required" : [ "channel_type" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Channel Template schema."
       },
       "metabase.channel.models.channel.ChannelTemplateUserProvided" : {
-        "description" : "Channel Template schema for API-provided templates. Does not allow handlebars-resource.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -7955,10 +7954,10 @@
           },
           "required" : [ "channel_type" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
       },
       "metabase.channel.schema..channel-template.email-details" : {
-        "description" : "The `:details` of a `:channel/email` ChannelTemplate.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -7995,7 +7994,8 @@
           },
           "required" : [ "type", "subject", "body" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "The `:details` of a `:channel/email` ChannelTemplate."
       },
       "metabase.channel.schema..channel-template.email-details.user-provided" : {
         "description" : "Email template details as the API accepts them. Only an inline Handlebars template is allowed; a resource template is\n  for internal use.",
@@ -8028,7 +8028,6 @@
         } ]
       },
       "metabase.channel.schema..channel.details-by-type" : {
-        "description" : "[[details-by-type]] as a schema, for the row schemas below.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -8059,7 +8058,8 @@
             }
           },
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "[[details-by-type]] as a schema, for the row schemas below."
       },
       "metabase.channel.schema.email-details" : {
         "description" : "The connection `:details` of a `:channel/email` channel: an optional SMTP host and port, as email is otherwise configured by settings.",
@@ -9064,7 +9064,6 @@
         "additionalProperties" : { }
       },
       "metabase.documents.prose-mirror..node.entity-id" : {
-        "description" : "The id of the entity a `cardEmbed` (`\"id\"`) or `smartLink` (`\"entityId\"`) node refers to.",
         "anyOf" : [ {
           "anyOf" : [ {
             "type" : "integer"
@@ -9073,7 +9072,8 @@
           } ]
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "The id of the entity a `cardEmbed` (`\"id\"`) or `smartLink` (`\"entityId\"`) node refers to."
       },
       "metabase.documents.prose-mirror.ast" : {
         "description" : "Schema for a prose-mirror document AST as it arrives at the API or is read back from the application database: a\n  node in the shape ProseMirror's `Node.toJSON` emits, whose children and marks are nodes too.",
@@ -9428,7 +9428,6 @@
         "maxLength" : 63
       },
       "metabase.indexes.schema.index-structured" : {
-        "description" : "A single structured index definition, dispatched on `:kind`. The shape stored in\n  `metabase_table_indexes.structured` and handed to the driver index multimethods.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.indexes.schema.classical-index"
         }, {
@@ -9461,7 +9460,8 @@
           "$ref" : "#/components/schemas/metabase.indexes.schema.order-by"
         }, {
           "$ref" : "#/components/schemas/metabase.indexes.schema.skip-index"
-        } ]
+        } ],
+        "description" : "A single structured index definition, dispatched on `:kind`. The shape stored in\n  `metabase_table_indexes.structured` and handed to the driver index multimethods."
       },
       "metabase.indexes.schema.order-by" : {
         "description" : "ClickHouse ORDER BY, inline.",
@@ -9666,12 +9666,12 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.snapshot"
           },
           "lib/deduplicated-name" : {
-            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.",
             "anyOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
           },
           "lib/transformation-added-base-type" : {
             "anyOf" : [ {
@@ -10023,12 +10023,12 @@
             } ]
           },
           "lib/original-name" : {
-            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names.",
             "anyOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
           },
           "lib/original-ref-style-for-result-metadata-purposes" : {
             "type" : "string",
@@ -10388,7 +10388,6 @@
         "additionalProperties" : false
       },
       "metabase.legacy-mbql.schema.FieldRefOptions" : {
-        "description" : "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be\n  empty.",
         "anyOf" : [ {
           "default" : { },
           "type" : "object",
@@ -10566,17 +10565,18 @@
           "additionalProperties" : false
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be\n  empty."
       },
       "metabase.legacy-mbql.schema.Reference" : {
-        "description" : "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
-        } ]
+        } ],
+        "description" : "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
       },
       "metabase.legacy-mbql.schema.SourceTable" : {
         "description" : "Schema for a valid value for the `:source-table` clause of an MBQL query.",
@@ -10873,12 +10873,12 @@
             } ]
           },
           "lib/deduplicated-name" : {
-            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.",
             "anyOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
           },
           "coercion_strategy" : {
             "anyOf" : [ {
@@ -11427,12 +11427,12 @@
             } ]
           },
           "lib/original-name" : {
-            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names.",
             "anyOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
           },
           "database_type" : {
             "anyOf" : [ {
@@ -11692,20 +11692,20 @@
         "additionalProperties" : false
       },
       "metabase.lib-be.schema.maybe-legacy-or-empty-query" : {
-        "description" : "value must be a valid MBQL query, or an empty query.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib-be.schema.empty-query"
         }, {
           "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
-        } ]
+        } ],
+        "description" : "value must be a valid MBQL query, or an empty query."
       },
       "metabase.lib-be.schema.maybe-legacy-or-internal-query" : {
-        "description" : "value must be a valid MBQL query, or an internal audit query.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib-be.schema.internal-query"
         }, {
           "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
-        } ]
+        } ],
+        "description" : "value must be a valid MBQL query, or an internal audit query."
       },
       "metabase.lib-be.schema.maybe-legacy-query" : {
         "description" : "value must be a valid MBQL query.",
@@ -12621,12 +12621,12 @@
             "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.original-metadata"
           },
           "was-pivot" : {
-            "description" : "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by\n  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query\n  results.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by\n  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query\n  results."
           }
         },
         "required" : [ "stages" ],
@@ -12719,6 +12719,7 @@
       },
       "metabase.lib.schema..stage.initial" : { },
       "metabase.lib.schema..stage.mbql" : {
+        "description" : "If an MBQL query stage specifies `:page`, it should not also specify `:limit`",
         "type" : "object",
         "properties" : {
           "qp/stage-had-source-card" : {
@@ -13089,7 +13090,6 @@
         "minItems" : 1
       },
       "metabase.lib.schema.cache-strategy" : {
-        "description" : "The caching strategy the results-cache middleware should apply to this query, attached\n  by [[metabase.query-processor.card]]. Any of the strategy types: which ones an instance may configure is\n  `metabase.cache.api`'s business, not the query's.",
         "anyOf" : [ {
           "description" : "What is added to a strategy once it is attached to a query.",
           "type" : "object",
@@ -13227,7 +13227,8 @@
           },
           "required" : [ "type", "schedule" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "The caching strategy the results-cache middleware should apply to this query, attached\n  by [[metabase.query-processor.card]]. Any of the strategy types: which ones an instance may configure is\n  `metabase.cache.api`'s business, not the query's."
       },
       "metabase.lib.schema.common..add-alias-info.source-table" : {
         "description" : "Value of the `:metabase.query-processor.util.add-alias-info/source-table` option\n  that [[metabase.query-processor.util.add-alias-info]] adds to a `:field` ref: the ID of the Table the field comes\n  from, the (escaped) alias of the join or source query it comes from, or one of the two sentinel keywords that\n  namespace uses for 'the source query' and 'nowhere in particular'.",
@@ -13247,7 +13248,6 @@
         "type" : "string"
       },
       "metabase.lib.schema.common.field-value" : {
-        "description" : "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]].",
         "anyOf" : [ {
           "anyOf" : [ {
             "type" : "string"
@@ -13263,7 +13263,8 @@
           } ]
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
       },
       "metabase.lib.schema.common.non-blank-string" : {
         "description" : "Schema for a string that cannot be blank.",
@@ -14154,7 +14155,6 @@
         "minItems" : 1
       },
       "metabase.lib.schema.join.fields" : {
-        "description" : "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either\n  `:none`, `:all`, or a sequence of Field clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Fields from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here! References\n    to expressions or aggregations in the thing we're joining should use column literal (string column name) `:field`\n    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`).",
         "anyOf" : [ {
           "type" : "string",
           "enum" : [ "all", "none" ]
@@ -14164,7 +14164,8 @@
             "$ref" : "#/components/schemas/mbql.clause.field"
           },
           "minItems" : 1
-        } ]
+        } ],
+        "description" : "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either\n  `:none`, `:all`, or a sequence of Field clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Fields from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here! References\n    to expressions or aggregations in the thing we're joining should use column literal (string column name) `:field`\n    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`)."
       },
       "metabase.lib.schema.join.join" : {
         "default" : { },
@@ -16592,12 +16593,12 @@
         } ]
       },
       "metabase.lib.schema.metadata.deduplicated-name" : {
-        "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.",
         "anyOf" : [ {
           "type" : "string"
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
       },
       "metabase.lib.schema.metadata.desired-column-alias" : {
         "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
@@ -16939,7 +16940,6 @@
         "type" : "number"
       },
       "metabase.lib.schema.metadata.lib-or-legacy-column" : {
-        "description" : "Schema for the maps in card `:result-metadata` and similar. These can be either\n  `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP\n  metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code.",
         "anyOf" : [ {
           "description" : "Malli schema for a valid map of column metadata, which can mean one of two things:\n\n  1. Metadata about a particular Field in the application database. This will always have an `:id`\n\n  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor\n     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns\n     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`\n     and thus will not have an `:id`.\n\n  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides\n  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want\n  to differentiate between the two versions.",
           "allOf" : [ {
@@ -17716,19 +17716,20 @@
           } ]
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
-        } ]
+        } ],
+        "description" : "Schema for the maps in card `:result-metadata` and similar. These can be either\n  `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP\n  metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
       },
       "metabase.lib.schema.metadata.metadata-provider" : {
         "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol.",
         "$ref" : "#/components/schemas/metabase.lib.metadata.protocols.metadata-provider"
       },
       "metabase.lib.schema.metadata.original-name" : {
-        "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names.",
         "anyOf" : [ {
           "type" : "string"
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names."
       },
       "metabase.lib.schema.metadata.source-column-alias" : {
         "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
@@ -17757,51 +17758,50 @@
         "type" : "object",
         "properties" : {
           "process-viz-settings?" : {
-            "description" : "Whether to process a question's visualization settings and include them in the result metadata so that they can\n  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default\n  `false`.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether to process a question's visualization settings and include them in the result metadata so that they can\n  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default\n  `false`."
           },
           "skip-results-metadata?" : {
             "type" : "boolean",
             "description" : "Should we skip adding `results_metadata` to query results after running the query? Used by\n     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this\n     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)"
           },
           "add-default-userland-constraints?" : {
-            "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
           },
           "disable-max-results?" : {
             "type" : "boolean",
             "description" : "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,\n  this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`."
           },
           "ignore-cached-results?" : {
-            "description" : "Whether to ignore any cached results and re-run the query. Used by the query results cache middleware; default\n  `false`.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether to ignore any cached results and re-run the query. Used by the query results cache middleware; default\n  `false`."
           },
           "csv-include-bom?" : {
-            "description" : "Whether a CSV download should start with a UTF-8 byte-order mark, which Excel needs to read the file as UTF-8.\n  Set by `metabase.query-processor.api` from the download's options and read by\n  `metabase.query-processor.middleware.format-rows` and the CSV writer; default `true`.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether a CSV download should start with a UTF-8 byte-order mark, which Excel needs to read the file as UTF-8.\n  Set by `metabase.query-processor.api` from the download's options and read by\n  `metabase.query-processor.middleware.format-rows` and the CSV writer; default `true`."
           },
           "format-rows?" : {
             "type" : "boolean",
             "description" : "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing\n     results? Used by `metabase.query-processor.middleware.format-rows`default `false`."
           },
           "pivot-options" : {
-            "description" : "Which of the query's breakouts and aggregations are the pivot table's rows, columns and measures, and whether it\n  shows totals. Attached by `metabase.query-processor.pivot` from the question's visualization settings (or from the\n  matching top-level query keys) so the export middleware and streaming writers can lay the results out; not something\n  a client sets itself.",
             "anyOf" : [ {
               "type" : "object",
               "properties" : {
@@ -17870,47 +17870,48 @@
               "additionalProperties" : false
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Which of the query's breakouts and aggregations are the pivot table's rows, columns and measures, and whether it\n  shows totals. Attached by `metabase.query-processor.pivot` from the question's visualization settings (or from the\n  matching top-level query keys) so the export middleware and streaming writers can lay the results out; not something\n  a client sets itself."
           },
           "disable-remaps?" : {
-            "description" : "Whether to skip the remapped (human-readable) columns that `metabase.query-processor.middleware.add-remaps`\n  normally splices in. Set by callers that want the query's own columns and nothing else -- calculating a Card's\n  result metadata, or fetching field values for a filter widget; default `false`.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether to skip the remapped (human-readable) columns that `metabase.query-processor.middleware.add-remaps`\n  normally splices in. Set by callers that want the query's own columns and nothing else -- calculating a Card's\n  result metadata, or fetching field values for a filter widget; default `false`."
           },
           "js-int-to-string?" : {
-            "description" : "Whether to convert bigint values in results to strings so that they can be parsed losslessly by JavaScript\n  clients. Used by `metabase.query-processor.middleware.large-int`; default `false`.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether to convert bigint values in results to strings so that they can be parsed losslessly by JavaScript\n  clients. Used by `metabase.query-processor.middleware.large-int`; default `false`."
           },
           "skip-result-metadata-persistence?" : {
             "type" : "boolean",
             "description" : "Should we skip persisting `result_metadata` to a saved Card while still returning it in query results? Used by\n       `metabase.query-processor.middleware.results-metadata`; default `false`. Has no effect when\n       `skip-results-metadata?` is true."
           },
           "pivot?" : {
-            "description" : "Whether the results should be laid out as a pivot table. Set by `metabase.query-processor.api` from the\n  `format_rows`/pivot download options and read by `metabase.query-processor.middleware.pivot-export` and the\n  streaming writers; default `false`.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether the results should be laid out as a pivot table. Set by `metabase.query-processor.api` from the\n  `format_rows`/pivot download options and read by `metabase.query-processor.middleware.pivot-export` and the\n  streaming writers; default `false`."
           },
           "disable-mbql->native?" : {
             "type" : "boolean",
             "description" : "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where\n  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to\n  get the fully pre-processed query without attempting to convert it to native."
           },
           "userland-query?" : {
-            "description" : "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in\n  certain userland-only middleware for such queries -- results are returned in a slightly different format, and\n  QueryExecution entries are normally saved, unless you pass `:no-save` as the option.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in\n  certain userland-only middleware for such queries -- results are returned in a slightly different format, and\n  QueryExecution entries are normally saved, unless you pass `:no-save` as the option."
           }
         },
         "additionalProperties" : false
@@ -18576,12 +18577,12 @@
             "$ref" : "#/components/schemas/metabase.lib.schema..sandboxing.original-metadata"
           },
           "was-pivot" : {
-            "description" : "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by\n  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query\n  results.",
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "description" : "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by\n  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query\n  results."
           }
         },
         "required" : [ "stages" ],
@@ -21835,7 +21836,6 @@
         "required" : [ "id", "role", "parts", "status" ]
       },
       "metabase.metabot.schema.client-message-part" : {
-        "description" : "One part of a persisted message: its a text, tool call, or data blob.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -21916,10 +21916,10 @@
             }
           },
           "required" : [ "id", "role", "type", "part" ]
-        } ]
+        } ],
+        "description" : "One part of a persisted message: its a text, tool call, or data blob."
       },
       "metabase.metabot.schema.client-message-status" : {
-        "description" : "Where a message's turn got to.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -21972,7 +21972,8 @@
             }
           },
           "required" : [ "type", "error" ]
-        } ]
+        } ],
+        "description" : "Where a message's turn got to."
       },
       "metabase.metabot.schema.column-info" : {
         "description" : "A chart column's name and inferred type, as sent for chart analysis. Mirrors\n  `metabase.metabot.context/ColumnInfoSchema`.",
@@ -21998,7 +21999,6 @@
         "$ref" : "#/components/schemas/metabase.lib.util.query-like"
       },
       "metabase.metabot.schema.row-value" : {
-        "description" : "One cell value in a chart series. The `object` arm is never read by this code -- it's forwarded to the\n  interestingness stats/repr code as-is -- so it's opaque rather than typed. Mirrors\n  `metabase.metabot.context/RowValueSchema`.",
         "anyOf" : [ {
           "anyOf" : [ {
             "type" : "string"
@@ -22013,7 +22013,8 @@
           } ]
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "One cell value in a chart series. The `object` arm is never read by this code -- it's forwarded to the\n  interestingness stats/repr code as-is -- so it's opaque rather than typed. Mirrors\n  `metabase.metabot.context/RowValueSchema`."
       },
       "metabase.metabot.schema.series-config" : {
         "description" : "One series of a chart, pre-materialized by the frontend for `analyze_chart`. Mirrors\n  `metabase.metabot.context/SeriesConfigSchema`.",
@@ -22863,7 +22864,6 @@
         "additionalProperties" : false
       },
       "metabase.notification.api.notification.CreateNotificationParams" : {
-        "description" : "Notification schema for a create request, or for sending one that was never saved. Like\n  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),\n  and carries no ids since the body has no row of its own.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -23192,10 +23192,10 @@
           },
           "required" : [ "payload_type" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Notification schema for a create request, or for sending one that was never saved. Like\n  FullyHydratedNotification but restricts templates to user-provided types only (no handlebars-resource),\n  and carries no ids since the body has no row of its own."
       },
       "metabase.notification.api.notification.NotificationApiUpdateInput" : {
-        "description" : "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT\n  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -23490,7 +23490,8 @@
           },
           "required" : [ "payload_type" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT\n  the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
       },
       "metabase.notification.models..SystemEventPayload.request" : {
         "description" : "The `:payload` of a system event notification as a client may send it: the event topic, plus the `:disable_links`\n  `POST /api/notification` stamps on. The event map itself is the server's to supply, so a request carries none.",
@@ -24344,7 +24345,6 @@
                 },
                 "embedding_params" : {
                   "anyOf" : [ {
-                    "description" : "value must be a valid embedding params map.",
                     "anyOf" : [ {
                       "description" : "Value must be a map.",
                       "type" : "object",
@@ -24353,7 +24353,8 @@
                       }
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "description" : "value must be a valid embedding params map."
                   }, {
                     "type" : "null"
                   } ]
@@ -24702,7 +24703,6 @@
         "additionalProperties" : false
       },
       "metabase.notification.models.CreateNotificationRecipientParams" : {
-        "description" : "Schema for :model/NotificationRecipient on a create request.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -25018,10 +25018,10 @@
           },
           "required" : [ "type", "details" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Schema for :model/NotificationRecipient on a create request."
       },
       "metabase.notification.models.CreateNotificationSubscriptionParams" : {
-        "description" : "Schema for :model/NotificationSubscription on a create request.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -25115,7 +25115,8 @@
           },
           "required" : [ "type", "cron_schedule" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Schema for :model/NotificationSubscription on a create request."
       },
       "metabase.notification.models.EchoedUser" : {
         "description" : "A hydrated User as a client hands it back on update: a `::users.schema/user` whose timestamps may be the ISO strings\n  they were encoded as on the way out.",
@@ -25374,7 +25375,6 @@
         "additionalProperties" : false
       },
       "metabase.notification.models.FullyHydratedNotification" : {
-        "description" : "Fully hydrated notification.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -25791,7 +25791,8 @@
           },
           "required" : [ "payload_type" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Fully hydrated notification."
       },
       "metabase.notification.models.NotificationCard" : {
         "description" : "Schema for :model/NotificationCard.",
@@ -26018,7 +26019,6 @@
                 },
                 "embedding_params" : {
                   "anyOf" : [ {
-                    "description" : "value must be a valid embedding params map.",
                     "anyOf" : [ {
                       "description" : "Value must be a map.",
                       "type" : "object",
@@ -26027,7 +26027,8 @@
                       }
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "description" : "value must be a valid embedding params map."
                   }, {
                     "type" : "null"
                   } ]
@@ -26377,7 +26378,6 @@
         "additionalProperties" : false
       },
       "metabase.notification.models.NotificationRecipient" : {
-        "description" : "Schema for :model/NotificationRecipient.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -26713,10 +26713,10 @@
           },
           "required" : [ "type", "details" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Schema for :model/NotificationRecipient."
       },
       "metabase.notification.models.NotificationSubscription" : {
-        "description" : "Schema for :model/NotificationSubscription.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -26816,10 +26816,10 @@
           },
           "required" : [ "type", "cron_schedule" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "Schema for :model/NotificationSubscription."
       },
       "metabase.notification.models.SystemEventPayload" : {
-        "description" : "The `:payload` of a system event notification on its way to being sent: the event topic, plus the `:disable_links`\n  `POST /api/notification` stamps on, plus the event map published under the topic, keyed the way\n  [[metabase.events.core/publish-event!]] was handed it. A `:notification/testing` notification's payload is empty.",
         "anyOf" : [ {
           "type" : "object",
           "properties" : {
@@ -27031,7 +27031,8 @@
           },
           "required" : [ "event_topic" ],
           "additionalProperties" : false
-        } ]
+        } ],
+        "description" : "The `:payload` of a system event notification on its way to being sent: the event topic, plus the `:disable_links`\n  `POST /api/notification` stamps on, plus the event map published under the topic, keyed the way\n  [[metabase.events.core/publish-event!]] was handed it. A `:notification/testing` notification's payload is empty."
       },
       "metabase.notification.models.event-topic" : {
         "description" : "One of the event topics a `:notification/system-event` notification can be triggered for.",
@@ -27498,13 +27499,13 @@
         "additionalProperties" : false
       },
       "metabase.permissions-rest.schema.native" : {
-        "description" : "native permissions",
         "anyOf" : [ {
           "type" : "string",
           "enum" : [ "write", "none", "full", "limited" ]
         }, {
           "type" : "null"
-        } ]
+        } ],
+        "description" : "native permissions"
       },
       "metabase.permissions-rest.schema.perms" : {
         "description" : "Perms that get reused for TablePerms and SchemaPerms",
@@ -28056,7 +28057,6 @@
           },
           "embedding_params" : {
             "anyOf" : [ {
-              "description" : "value must be a valid embedding params map.",
               "anyOf" : [ {
                 "description" : "Value must be a map.",
                 "type" : "object",
@@ -28065,7 +28065,8 @@
                 }
               }, {
                 "type" : "null"
-              } ]
+              } ],
+              "description" : "value must be a valid embedding params map."
             }, {
               "type" : "null"
             } ]
@@ -28987,12 +28988,12 @@
         } ]
       },
       "metabase.transforms.schema.transform-source" : {
-        "description" : "The `:source` of a transform, by its `:type`.",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.query-source"
         }, {
           "$ref" : "#/components/schemas/metabase.transforms.schema.python-source"
-        } ]
+        } ],
+        "description" : "The `:source` of a transform, by its `:type`."
       },
       "metabase.transforms.schema.transform-target" : {
         "anyOf" : [ {
@@ -30265,12 +30266,12 @@
           "name" : "include_metadata",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -30991,13 +30992,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -34433,12 +34434,12 @@
           "name" : "legacy-mbql",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -34576,7 +34577,6 @@
                   },
                   "embedding_params" : {
                     "anyOf" : [ {
-                      "description" : "value must be a valid embedding params map.",
                       "anyOf" : [ {
                         "description" : "Value must be a map.",
                         "type" : "object",
@@ -34585,7 +34585,8 @@
                         }
                       }, {
                         "type" : "null"
-                      } ]
+                      } ],
+                      "description" : "value must be a valid embedding params map."
                     }, {
                       "type" : "null"
                     } ]
@@ -35016,12 +35017,12 @@
                 "type" : "object",
                 "properties" : {
                   "include_inactive" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   }
                 },
                 "additionalProperties" : false
@@ -35055,12 +35056,12 @@
                   "type" : "object",
                   "properties" : {
                     "active" : {
-                      "default" : true,
                       "anyOf" : [ {
                         "type" : "boolean"
                       }, {
                         "type" : "null"
-                      } ]
+                      } ],
+                      "default" : true
                     },
                     "description" : {
                       "anyOf" : [ {
@@ -35090,12 +35091,12 @@
                   "type" : "object",
                   "properties" : {
                     "active" : {
-                      "default" : true,
                       "anyOf" : [ {
                         "type" : "boolean"
                       }, {
                         "type" : "null"
-                      } ]
+                      } ],
+                      "default" : true
                     },
                     "description" : {
                       "anyOf" : [ {
@@ -35125,12 +35126,12 @@
                   "type" : "object",
                   "properties" : {
                     "active" : {
-                      "default" : true,
                       "anyOf" : [ {
                         "type" : "boolean"
                       }, {
                         "type" : "null"
-                      } ]
+                      } ],
+                      "default" : true
                     },
                     "description" : {
                       "anyOf" : [ {
@@ -35164,12 +35165,12 @@
                   "type" : "object",
                   "properties" : {
                     "active" : {
-                      "default" : true,
                       "anyOf" : [ {
                         "type" : "boolean"
                       }, {
                         "type" : "null"
-                      } ]
+                      } ],
+                      "default" : true
                     },
                     "description" : {
                       "anyOf" : [ {
@@ -35609,26 +35610,26 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -35648,13 +35649,13 @@
           "name" : "personal-only",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -35831,26 +35832,26 @@
           "name" : "force",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "skip-graph",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -36007,13 +36008,13 @@
           "name" : "include-library",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36043,13 +36044,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36092,13 +36093,13 @@
           "name" : "include-available-models",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36199,13 +36200,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36245,39 +36246,39 @@
           "name" : "include-library",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "show-dashboard-questions",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -36390,36 +36391,36 @@
           "name" : "exclude-archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include-library",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36453,12 +36454,12 @@
           "name" : "shallow",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36578,13 +36579,13 @@
                 "type" : "object",
                 "properties" : {
                   "archived" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "description" : "value must be a valid boolean string ('true' or 'false').",
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "authority_level" : {
                     "anyOf" : [ {
@@ -36751,13 +36752,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36776,39 +36777,39 @@
           "name" : "show-dashboard-questions",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include-available-models",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36911,13 +36912,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -36936,26 +36937,26 @@
           "name" : "show-dashboard-questions",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "show-exploration-documents",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -38587,12 +38588,12 @@
                     } ]
                   },
                   "is_deep_copy" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "name" : {
                     "anyOf" : [ {
@@ -38793,7 +38794,6 @@
                   },
                   "embedding_params" : {
                     "anyOf" : [ {
-                      "description" : "value must be a valid embedding params map.",
                       "anyOf" : [ {
                         "description" : "Value must be a map.",
                         "type" : "object",
@@ -38802,7 +38802,8 @@
                         }
                       }, {
                         "type" : "null"
-                      } ]
+                      } ],
+                      "description" : "value must be a valid embedding params map."
                     }, {
                       "type" : "null"
                     } ]
@@ -39368,13 +39369,13 @@
                 "type" : "object",
                 "properties" : {
                   "paper_size" : {
-                    "default" : "a4",
                     "anyOf" : [ {
                       "type" : "string",
                       "enum" : [ "a4", "letter" ]
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : "a4"
                   },
                   "parameters" : {
                     "anyOf" : [ {
@@ -39738,60 +39739,60 @@
           "name" : "include_analytics",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "saved",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "exclude_uneditable_details",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_only_uploadable",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -39866,13 +39867,13 @@
                     "minLength" : 1
                   },
                   "is_on_demand" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "description" : "value must be a valid boolean string ('true' or 'false').",
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "cache_ttl" : {
                     "anyOf" : [ {
@@ -39894,22 +39895,22 @@
                     "properties" : { }
                   },
                   "is_full_sync" : {
-                    "default" : true,
                     "anyOf" : [ {
                       "description" : "value must be a valid boolean string ('true' or 'false').",
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : true
                   },
                   "connection_source" : {
-                    "default" : "admin",
                     "anyOf" : [ {
                       "type" : "string",
                       "enum" : [ "admin", "setup" ]
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : "admin"
                   },
                   "auto_run_queries" : {
                     "anyOf" : [ {
@@ -40504,13 +40505,13 @@
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -40546,65 +40547,65 @@
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_sensitive_fields",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "remove_inactive",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "skip_fields",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -40680,26 +40681,26 @@
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -40766,26 +40767,26 @@
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -40843,26 +40844,26 @@
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -41204,12 +41205,12 @@
                 "type" : "object",
                 "properties" : {
                   "pretty" : {
-                    "default" : true,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : true
                   }
                 },
                 "required" : [ ],
@@ -42315,26 +42316,26 @@
           "name" : "skip-graph",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "force",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -51193,13 +51194,13 @@
           "name" : "archive-cards",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -58819,13 +58820,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -59648,13 +59649,13 @@
                     } ]
                   },
                   "synchronous?" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "description" : "value must be a valid boolean string ('true' or 'false').",
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "table_name" : {
                     "anyOf" : [ {
@@ -60184,26 +60185,26 @@
           "name" : "skip-graph",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "force",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -60557,12 +60558,12 @@
                     "minimum" : 1
                   },
                   "is_group_manager" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "user_id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -63053,13 +63054,13 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -63079,13 +63080,13 @@
           "name" : "creator_or_recipient",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -63527,12 +63528,12 @@
                     } ]
                   },
                   "skip_if_empty" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   }
                 },
                 "required" : [ "name", "cards", "channels" ],
@@ -63611,12 +63612,12 @@
                     } ]
                   },
                   "skip_if_empty" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "alert_above_goal" : {
                     "anyOf" : [ {
@@ -63650,12 +63651,12 @@
                     } ]
                   },
                   "disable_links" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "parameters" : {
                     "anyOf" : [ {
@@ -64195,12 +64196,12 @@
                 "type" : "object",
                 "properties" : {
                   "archived" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   },
                   "cards" : {
                     "anyOf" : [ {
@@ -64609,12 +64610,12 @@
                     } ]
                   },
                   "skip_if_empty" : {
-                    "default" : false,
                     "anyOf" : [ {
                       "type" : "boolean"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : false
                   }
                 },
                 "required" : [ ],
@@ -64850,12 +64851,12 @@
           "name" : "include_metadata",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -64878,12 +64879,12 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -64938,12 +64939,12 @@
           "name" : "model_ancestors",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -65042,12 +65043,12 @@
           "name" : "include_dashboard_questions",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -65182,12 +65183,12 @@
           "name" : "include_metadata",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -65210,12 +65211,12 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -65270,12 +65271,12 @@
           "name" : "model_ancestors",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -65396,12 +65397,12 @@
           "name" : "include_dashboard_questions",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -67812,39 +67813,39 @@
           "name" : "include_sensitive_fields",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_hidden_fields",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -68860,12 +68861,12 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -68912,12 +68913,12 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         } ],
         "responses" : {
@@ -74360,13 +74361,13 @@
           "name" : "include_deactivated",
           "required" : false,
           "schema" : {
-            "default" : false,
             "anyOf" : [ {
               "description" : "value must be a valid boolean string ('true' or 'false').",
               "type" : "boolean"
             }, {
               "type" : "null"
-            } ]
+            } ],
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -74506,12 +74507,12 @@
                     } ]
                   },
                   "source" : {
-                    "default" : "admin",
                     "anyOf" : [ {
                       "type" : "string"
                     }, {
                       "type" : "null"
-                    } ]
+                    } ],
+                    "default" : "admin"
                   },
                   "password" : {
                     "anyOf" : [ {
