@@ -6,6 +6,7 @@ memory: project
 skills:
   - backend-module-conventions
   - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on Metabase's platform layer: the app DB, the HTTP server, the API framework, settings, scheduling, caching, Toucan 2 model infra, and shared utilities. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.

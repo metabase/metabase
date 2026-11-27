@@ -46,6 +46,7 @@
                :model/NotificationCard]]
   (doto model
     (derive :metabase/model)
+    (derive :hook/worktree-id)
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
               :hook/timestamped?))))

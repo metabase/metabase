@@ -1,14 +1,18 @@
 (ns metabase.search.query-semantics-stats
   "Result-set statistics for the shared search semantics corpus.
-
   These compare fixture membership, not ranking or production query frequency."
   (:require
    [clojure.set :as set]
    [metabase.search.query-semantics :as fixtures]))
 
 (def engines
-  "The four engines compared in each corpus case."
-  [:in-place :appdb-h2 :appdb-postgres :semantic])
+  "The engines compared in each corpus case.
+  Semantic search has two views: its vector arm alone, and its combined results with the app-db fallback."
+  [:in-place :appdb-h2 :appdb-mysql :appdb-postgres :semantic-only :semantic-with-fallback])
+
+(def goal-kinds
+  "The kinds of user goal an adapted-query comparison can have, in display order."
+  [:or :and :exclusion :title :word-forms :typing])
 
 (def engine-pairs
   "Ordered pairs; subset and superset counts are relative to the first engine."
@@ -25,6 +29,21 @@
     (set/subset? left right)   :left-subset
     :else                      :incomparable))
 
+(defn result-group-sizes
+  "Sizes of groups of engines with identical results, largest first."
+  [results]
+  (->> engines (map results) frequencies vals (sort >) vec))
+
+(defn matching-pair-count
+  "Count engine pairs with identical result sets in one case."
+  [results]
+  (count (filter (fn [[left right]] (= (results left) (results right))) engine-pairs)))
+
+(defn conforming-engines
+  "Engines whose results equal the correct result set, in engine order."
+  [correct results]
+  (filterv #(= correct (results %)) engines))
+
 (defn score
   "Precision, recall, and F1 against a correct result set.
 
@@ -40,26 +59,44 @@
      :recall    recall
      :f1        f1}))
 
+(defn- engine-hits
+  "Each engine's expected hits for the scenario query."
+  [scenario]
+  (zipmap engines (map #(fixtures/expected-hits scenario %) engines)))
+
 (defn scenario-rows
   "One identical-query result row per isolated scenario."
   [cases]
-  (for [case cases]
-    (assoc (select-keys case [:id :focus :config :query :docs])
-           :semantic-arms (get-in case [:expect :semantic])
-           :results       (zipmap engines (map #(fixtures/expected-hits case %) engines)))))
+  (for [scenario cases]
+    (assoc (select-keys scenario [:id :focus :note :config :query :docs])
+           :semantic-arms (get-in scenario [:expect :semantic])
+           :results       (engine-hits scenario))))
 
 (defn translation-rows
-  "One result row per adapted-query comparison, with its correct result set."
+  "One result row per adapted-query comparison, with its scenario query and correct result set.
+  Each engine's `:results` are its hits for its own query, and its `:typed` hits are for the scenario query.
+  Its `:scores` are both result sets scored against the correct one, as `{:best score, :typed score}`."
   [cases]
-  (for [case       cases
-        comparison (:comparisons case)
-        :let [specs (zipmap engines (map #(fixtures/comparison-spec case comparison %) engines))]]
-    (assoc (select-keys case [:config :docs])
-           :scenario-id (:id case)
-           :focus       (:focus comparison)
-           :correct     (set (:correct comparison))
-           :specs       specs
-           :results     (update-vals specs :hits))))
+  (for [scenario   cases
+        comparison (:comparisons scenario)
+        :let [specs   (zipmap engines (map #(fixtures/comparison-spec scenario comparison %) engines))
+              results (update-vals specs :hits)
+              typed   (engine-hits scenario)
+              correct (set (:correct comparison))]]
+    (assoc (select-keys scenario [:config :docs :query])
+           :scenario-id   (:id scenario)
+           :scenario-note (:note scenario)
+           :id            (:id comparison)
+           :focus         (:focus comparison)
+           :note          (:note comparison)
+           :kind          (:kind comparison)
+           :correct       correct
+           :specs         specs
+           :results       results
+           :typed         typed
+           :scores        (zipmap engines (for [engine engines]
+                                            {:best  (score correct (results engine))
+                                             :typed (score correct (typed engine))})))))
 
 (defn- mean
   ([xs]
@@ -77,23 +114,31 @@
      :mean-hits (zipmap engines (map #(mean (comp count %) results) engines))
      :pairwise  (zipmap engine-pairs
                         (for [[left right] engine-pairs]
-                          (merge {:equal 0, :left-superset 0, :left-subset 0, :incomparable 0}
+                          (merge {:equal         0
+                                  :left-superset 0
+                                  :left-subset   0
+                                  :incomparable  0}
                                  (frequencies (map #(relation (% left) (% right)) results)))))}))
 
-(defn- engine-score-summary
-  [rows engine]
-  (let [pairs  (map (juxt :correct (comp engine :results)) rows)
-        scores (map #(apply score %) pairs)]
-    {:precision (mean :precision scores)
-     :recall    (mean :recall scores)
-     :f1        (mean :f1 scores)
-     :exact     (count (filter #(apply = %) pairs))}))
+(defn- score-summary
+  "Mean scores per engine for one of each row's `:scores`, `:best` or `:typed`.
+  An F1 of 1 means the engine returned exactly the correct results."
+  [rows score-key]
+  (zipmap engines (for [engine engines
+                        :let [scores (map #(get-in % [:scores engine score-key]) rows)]]
+                    {:precision (mean :precision scores)
+                     :recall    (mean :recall scores)
+                     :f1        (mean :f1 scores)
+                     :exact     (count (filter #(= 1 (:f1 %)) scores))})))
 
 (defn summary
   "Summarize how the engines' results relate, for identical and adapted queries.
-  Adapted queries are also scored against their correct results."
-  [cases]
-  (let [translations (translation-rows cases)]
-    {:same-query   (membership-summary (scenario-rows cases))
-     :translations (assoc (membership-summary translations)
-                          :scores (zipmap engines (map #(engine-score-summary translations %) engines)))}))
+  Comparisons are scored against their correct results twice.
+  Each engine's adapted query gives `:scores`, and the scenario query as typed gives `:typed-scores`."
+  ([cases]
+   (summary (scenario-rows cases) (translation-rows cases)))
+  ([scenarios translations]
+   {:same-query   (membership-summary scenarios)
+    :translations (assoc (membership-summary translations)
+                         :scores       (score-summary translations :best)
+                         :typed-scores (score-summary translations :typed))}))

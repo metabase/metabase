@@ -9,25 +9,46 @@
   "The shared search scenarios, in fixture order, with their adapted-query comparisons."
   (-> "search/query_semantics.edn" io/resource slurp edn/read-string))
 
+(defn- with-fallback
+  "Return the union of the keyword, vector, and fallback hits, or an empty set when both arms are empty."
+  [keyword-hits vector-hits fallback-hits]
+  ;; Semantic search falls back below its results threshold, which these catalogues always are, but only when
+  ;; its own arms found something.
+  (let [own (set/union (set keyword-hits) (set vector-hits))]
+    (if (seq own)
+      (set/union own (set fallback-hits))
+      #{})))
+
 (defn expected-hits
   "Expected result labels for an engine's identical-query search.
-
-  For semantic this is the vector arm alone; see [[expected-hybrid-hits]] for what search returns."
-  [case engine]
-  (set (if (= engine :semantic)
-         (get-in case [:expect :semantic :vector])
-         (get-in case [:expect engine]))))
+  Both :semantic and :semantic-only expose the vector arm; see [[expected-hybrid-hits]] for both arms.
+  The fallback view includes the keyword arm and app-db's PostgreSQL fallback hits."
+  [scenario engine]
+  (case engine
+    (:semantic :semantic-only) (set (get-in scenario [:expect :semantic :vector]))
+    :semantic-with-fallback    (with-fallback (get-in scenario [:expect :semantic :keyword])
+                                 (get-in scenario [:expect :semantic :vector])
+                                 (get-in scenario [:expect :appdb-postgres]))
+    (set (get-in scenario [:expect engine]))))
 
 (defn expected-hybrid-hits
-  "Expected semantic search results: the union of its keyword and vector arms."
-  [case]
-  (set/union (set (get-in case [:expect :semantic :keyword]))
-             (set (get-in case [:expect :semantic :vector]))))
+  "Expected union of the semantic keyword and vector arms."
+  [scenario]
+  (set/union (set (get-in scenario [:expect :semantic :keyword]))
+             (set (get-in scenario [:expect :semantic :vector]))))
 
 (defn comparison-spec
   "An engine's query and expected hits for `comparison`.
-  Engines without an alternative keep the scenario's query and hits."
-  [case comparison engine]
-  (let [spec (get-in comparison [:alternatives engine]
-                     {:query (:query case), :hits (expected-hits case engine)})]
-    (update spec :hits set)))
+  Engines without an alternative keep the scenario's query and hits.
+  Both semantic engines share the `:semantic` alternative, whose `:hits` are the vector arm."
+  [scenario comparison engine]
+  (let [semantic (get-in comparison [:alternatives :semantic])
+        spec     (case engine
+                   :semantic-only          semantic
+                   :semantic-with-fallback (when semantic
+                                             {:query (:query semantic)
+                                              :hits  (with-fallback (:keyword semantic)
+                                                       (:hits semantic)
+                                                       (:fallback semantic))})
+                   (get-in comparison [:alternatives engine]))]
+    (update (or spec {:query (:query scenario), :hits (expected-hits scenario engine)}) :hits set)))

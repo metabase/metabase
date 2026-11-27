@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
+import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -22,15 +23,31 @@ import {
 } from "__support__/ui";
 import { waitForRequestsToSettle } from "__support__/utils";
 import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/routes";
+import {
+  findToast as findToastByMessage,
+  selectOption,
+} from "metabase/metadata/pages/shared/tests/helpers";
 import { Outlet, Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Database, Table, TableId } from "metabase-types/api";
+import type {
+  Database,
+  EnterpriseSettings,
+  Table,
+  TableId,
+  UserListResult,
+} from "metabase-types/api";
 import {
+  createMockBulkTableInfo,
+  createMockBulkTableSelectionInfo,
+  createMockCollection,
+  createMockCollectionItem,
   createMockDatabase,
   createMockField,
+  createMockPublishTablesResponse,
   createMockTable,
   createMockTokenFeatures,
+  createMockTransform,
   createMockUser,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
@@ -157,6 +174,8 @@ interface SetupOpts {
   initialRoute?: string;
   editableTable?: Table;
   searchResults?: { term: string; tables: Table[] };
+  users?: UserListResult[];
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 }
 
 function setup({
@@ -164,6 +183,8 @@ function setup({
   initialRoute = BASE_PATH,
   editableTable,
   searchResults,
+  users = [createMockUserListResult()],
+  remoteSyncType,
 }: SetupOpts = {}) {
   // Registered first so that they answer before the static table routes.
   const updates = editableTable ? setupEditableTable(editableTable) : [];
@@ -174,7 +195,7 @@ function setup({
   setupDatabasesEndpoints(databases);
   setupCardDataset();
   setupTablesBulkEndpoints();
-  setupUsersEndpoints([createMockUserListResult()]);
+  setupUsersEndpoints(users);
   setupUserAcknowledgementEndpoints({
     key: "seen-publish-tables-info",
     value: false,
@@ -193,10 +214,13 @@ function setup({
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
     settings: mockSettings({
+      "remote-sync-enabled": remoteSyncType != null,
+      "remote-sync-type": remoteSyncType,
       "token-features": createMockTokenFeatures({
         advanced_permissions: true,
         dependencies: true,
         library: true,
+        remote_sync: remoteSyncType != null,
         "schema-viewer": true,
       }),
     }),
@@ -656,6 +680,44 @@ describe("DataModel (data studio, enterprise)", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should switch between the Fields and Measures tabs", async () => {
+      const tableUrl = `${BASE_PATH}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`;
+      const { getPathname } = setup({ initialRoute: `${tableUrl}/field` });
+
+      const fieldsTab = await screen.findByRole("tab", { name: /Fields/ });
+      expect(fieldsTab).toHaveAttribute("aria-selected", "true");
+      await userEvent.click(screen.getByRole("tab", { name: /Measures/ }));
+
+      await waitFor(() => expect(getPathname()).toBe(`${tableUrl}/measures`));
+      expect(
+        await within(getTableSection()).findByText("No measures yet"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Measures/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await userEvent.click(screen.getByRole("tab", { name: /Fields/ }));
+      await waitFor(() => expect(getPathname()).toBe(`${tableUrl}/field`));
+    });
+
+    it("should select the Measures tab when opened at its URL", async () => {
+      setup({
+        initialRoute: `${BASE_PATH}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Measures/ }),
+      ).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: /Fields/ })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        await within(getTableSection()).findByText("No measures yet"),
+      ).toBeInTheDocument();
+    });
+
     it("should allow changing the table description", async () => {
       const { updates } = setup({
         editableTable: ORDERS_TABLE,
@@ -829,5 +891,827 @@ async function findTableTreeItem(tableId: TableId) {
       (item) => item.getAttribute("data-table-id") === String(tableId),
     );
     return checkNotNull(item);
+  });
+}
+
+const LIBRARY_ID = 6464;
+const LIBRARY_DATA_COLLECTION = createMockCollectionItem({
+  id: 10,
+  name: "Data",
+  model: "collection",
+  type: "library-data",
+  can_write: true,
+  location: `/${LIBRARY_ID}/`,
+  here: ["table", "collection"],
+  below: ["table", "collection"],
+});
+
+const TESTY_USER = createMockUserListResult({ id: 1 });
+const BOBBY_USER = createMockUserListResult({
+  id: 2,
+  first_name: "Bobby",
+  last_name: "Tables",
+  common_name: "Bobby Tables",
+  email: "bobby@metabase.test",
+});
+const USERS = [TESTY_USER, BOBBY_USER];
+
+type TableEditBody = {
+  table_ids?: TableId[];
+  schema_ids?: string[];
+  database_ids?: number[];
+} & Partial<
+  Pick<
+    Table,
+    | "owner_user_id"
+    | "owner_email"
+    | "data_layer"
+    | "entity_type"
+    | "data_source"
+  >
+>;
+
+const TABLE_EDIT_ATTRIBUTES = [
+  "owner_user_id",
+  "owner_email",
+  "data_layer",
+  "entity_type",
+  "data_source",
+] as const;
+
+/**
+ * A table backend that keeps state. The table lists of the tree, the search,
+ * the table metadata and the publishing info read the stored tables, and each
+ * write changes them inside the handler of its own request, the way the
+ * backend expands the database, schema and table selectors
+ * (data_studio/api/table_test.clj `bulk-edit-test`).
+ *
+ * Register it before the generic mocks of `setup`: fetch-mock answers with the
+ * first route that matches.
+ */
+function setupTablesBackend({
+  databases,
+  hasLibrary = true,
+}: {
+  databases: Database[];
+  hasLibrary?: boolean;
+}) {
+  const tablesById = new Map<TableId, Table>(
+    databases.flatMap((database) =>
+      (database.tables ?? []).map((table): [TableId, Table] => [
+        table.id,
+        structuredClone({ ...table, db_id: database.id }),
+      ]),
+    ),
+  );
+  let isLibraryCreated = hasLibrary;
+
+  const getTable = (id: TableId) => checkNotNull(tablesById.get(id));
+  const resolveSelectors = ({
+    table_ids = [],
+    schema_ids = [],
+    database_ids = [],
+  }: TableEditBody) =>
+    [...tablesById.values()].filter(
+      (table) =>
+        table_ids.includes(table.id) ||
+        database_ids.includes(table.db_id) ||
+        schema_ids.includes(`${table.db_id}:${table.schema}`),
+    );
+
+  databases.forEach((database) => {
+    const schemaNames = _.uniq(
+      (database.tables ?? []).map((table) => table.schema),
+    );
+    schemaNames.forEach((schema) => {
+      fetchMock.get({
+        url: `path:/api/database/${database.id}/schema/${encodeURIComponent(schema)}`,
+        name: `stateful-database-${database.id}-schema-${schema}`,
+        response: () =>
+          [...tablesById.values()]
+            .filter(
+              (table) => table.db_id === database.id && table.schema === schema,
+            )
+            .map((table) => structuredClone(table)),
+      });
+    });
+  });
+
+  tablesById.forEach((table) => {
+    fetchMock.get({
+      url: `path:/api/table/${table.id}/query_metadata`,
+      name: `stateful-table-${table.id}-query-metadata`,
+      response: () => structuredClone(getTable(table.id)),
+    });
+    fetchMock.put({
+      url: `path:/api/table/${table.id}`,
+      name: `stateful-table-${table.id}-put`,
+      response: (call) => {
+        const storedTable = getTable(table.id);
+        Object.assign(storedTable, getRequestBody(call));
+        return structuredClone(storedTable);
+      },
+    });
+  });
+
+  fetchMock.get({
+    url: "path:/api/table",
+    name: "stateful-table-search",
+    response: (call) => {
+      const term = new URL(call.url).searchParams.get("term") ?? "";
+      return [...tablesById.values()]
+        .filter((table) =>
+          [table.name, table.display_name].some((name) =>
+            name.toLowerCase().startsWith(term.toLowerCase()),
+          ),
+        )
+        .map((table) => structuredClone(table));
+    },
+  });
+
+  fetchMock.post({
+    url: "path:/api/data-studio/table/edit",
+    name: "stateful-tables-edit",
+    response: (call) => {
+      const body: TableEditBody = getRequestBody(call);
+      const attributes = _.pick(body, ...TABLE_EDIT_ATTRIBUTES);
+      resolveSelectors(body).forEach((table) =>
+        Object.assign(table, attributes),
+      );
+      return {};
+    },
+  });
+
+  fetchMock.post({
+    url: "path:/api/data-studio/table/selection",
+    name: "stateful-tables-selection",
+    response: (call) => {
+      const tables = resolveSelectors(getRequestBody(call));
+      const [table] = tables;
+      return createMockBulkTableSelectionInfo({
+        selected_table:
+          tables.length === 1
+            ? createMockBulkTableInfo({
+                id: table.id,
+                db_id: table.db_id,
+                name: table.name,
+                display_name: table.display_name,
+                schema: table.schema,
+                is_published: table.collection != null,
+              })
+            : null,
+      });
+    },
+  });
+
+  fetchMock.post({
+    url: "path:/api/ee/data-studio/table/publish-tables",
+    name: "stateful-tables-publish",
+    response: (call) => {
+      const targetCollection = createMockCollection({
+        id: LIBRARY_DATA_COLLECTION.id,
+        name: LIBRARY_DATA_COLLECTION.name,
+      });
+      resolveSelectors(getRequestBody(call)).forEach((table) => {
+        table.collection = targetCollection;
+      });
+      return createMockPublishTablesResponse({
+        target_collection: targetCollection,
+      });
+    },
+  });
+
+  fetchMock.post({
+    url: "path:/api/ee/data-studio/table/unpublish-tables",
+    name: "stateful-tables-unpublish",
+    response: (call) => {
+      resolveSelectors(getRequestBody(call)).forEach((table) => {
+        table.collection = null;
+      });
+      return { status: 204 };
+    },
+  });
+
+  fetchMock.get({
+    url: "path:/api/ee/library",
+    name: "stateful-library",
+    response: () =>
+      isLibraryCreated
+        ? createMockCollectionItem({
+            id: LIBRARY_ID,
+            name: "Library",
+            type: "library",
+            model: "collection",
+            location: "/",
+            here: ["collection"],
+            below: ["table"],
+          })
+        : { message: "not found" },
+  });
+  fetchMock.post({
+    url: "path:/api/ee/library",
+    name: "stateful-library-create",
+    response: () => {
+      isLibraryCreated = true;
+      return createMockCollection({ id: LIBRARY_ID, name: "Library" });
+    },
+  });
+  fetchMock.get(`path:/api/collection/${LIBRARY_ID}/items`, {
+    data: [LIBRARY_DATA_COLLECTION],
+    total: 1,
+  });
+  fetchMock.get(
+    `path:/api/collection/${LIBRARY_DATA_COLLECTION.id}`,
+    createMockCollection({
+      id: LIBRARY_DATA_COLLECTION.id,
+      name: LIBRARY_DATA_COLLECTION.name,
+      type: "library-data",
+      location: `/${LIBRARY_ID}/`,
+    }),
+  );
+  fetchMock.get(
+    "path:/api/collection/root",
+    createMockCollection({ id: "root", name: "Our analytics" }),
+  );
+
+  return {
+    getTable: (id: TableId) => structuredClone(getTable(id)),
+  };
+}
+
+function getRequestBody(call: CallLog) {
+  return JSON.parse(String(call.options.body));
+}
+
+function getRequestBodies(routeName: string): unknown[] {
+  return fetchMock.callHistory.calls(routeName).map(getRequestBody);
+}
+
+function getTableRow(tableId: TableId) {
+  const row = queryTreeItems("table").find(
+    (item) => item.getAttribute("data-table-id") === String(tableId),
+  );
+  return checkNotNull(row);
+}
+
+async function findTableRow(tableId: TableId) {
+  return await waitFor(() => getTableRow(tableId));
+}
+
+async function toggleRowCheckbox(row: HTMLElement) {
+  await userEvent.click(within(row).getByRole("checkbox"));
+}
+
+async function selectAttribute(placeholder: string, option: string) {
+  await selectOption(screen.getByPlaceholderText(placeholder), option);
+}
+
+async function expectRowOwner(tableId: TableId, owner: string) {
+  // anchored: the owner must be the whole cell text, as the e2e `have.text`
+  // checked, so extra text in the cell fails
+  const wholeText = new RegExp(
+    `^${owner.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+  );
+  await waitFor(() =>
+    expect(
+      within(getTableRow(tableId)).getByTestId("table-owner"),
+    ).toHaveTextContent(wholeText),
+  );
+}
+
+async function expectRowPublished(tableId: TableId) {
+  await waitFor(() =>
+    expect(
+      within(getTableRow(tableId)).getByLabelText("Published"),
+    ).toBeInTheDocument(),
+  );
+}
+
+async function publishSelection(buttonLabel: string) {
+  await userEvent.click(screen.getByRole("button", { name: /Publish$/ }));
+  const modal = await screen.findByRole("dialog");
+  await userEvent.click(
+    await within(modal).findByRole("button", { name: buttonLabel }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+}
+
+const BULK_SAMPLE_DB_ID = 11;
+const BULK_ACCOUNTS_TABLE = createMockTable({
+  id: 401,
+  db_id: BULK_SAMPLE_DB_ID,
+  schema: "PUBLIC",
+  name: "ACCOUNTS",
+  display_name: "Accounts",
+});
+const BULK_ORDERS_TABLE = createMockTable({
+  id: 402,
+  db_id: BULK_SAMPLE_DB_ID,
+  schema: "PUBLIC",
+  name: "ORDERS",
+  display_name: "Orders",
+});
+const BULK_SAMPLE_DB = createMockDatabase({
+  id: BULK_SAMPLE_DB_ID,
+  name: "Sample Database",
+  tables: [BULK_ACCOUNTS_TABLE, BULK_ORDERS_TABLE],
+});
+
+const BULK_WRITABLE_DB_ID = 12;
+const BULK_DOMESTIC_ANIMALS_TABLE = createMockTable({
+  id: 501,
+  db_id: BULK_WRITABLE_DB_ID,
+  schema: "Domestic",
+  name: "Animals",
+  display_name: "Animals",
+});
+const BULK_WILD_ANIMALS_TABLE = createMockTable({
+  id: 502,
+  db_id: BULK_WRITABLE_DB_ID,
+  schema: "Wild",
+  name: "Animals",
+  display_name: "Animals",
+});
+const BULK_WRITABLE_DB = createMockDatabase({
+  id: BULK_WRITABLE_DB_ID,
+  name: "Writable Postgres12",
+  engine: "postgres",
+  tables: [BULK_DOMESTIC_ANIMALS_TABLE, BULK_WILD_ANIMALS_TABLE],
+});
+
+const SCHEMAS_DB_ID = 13;
+const SCHEMA_A_TABLE = createMockTable({
+  id: 601,
+  db_id: SCHEMAS_DB_ID,
+  schema: "Schema A",
+  name: "Animals",
+  display_name: "Animals A",
+});
+const SCHEMA_B_TABLE = createMockTable({
+  id: 602,
+  db_id: SCHEMAS_DB_ID,
+  schema: "Schema B",
+  name: "Animals",
+  display_name: "Animals B",
+});
+const SCHEMA_C_TABLE = createMockTable({
+  id: 603,
+  db_id: SCHEMAS_DB_ID,
+  schema: "Schema C",
+  name: "Animals",
+  display_name: "Animals C",
+});
+const SCHEMAS_DB = createMockDatabase({
+  id: SCHEMAS_DB_ID,
+  name: "Many schemas",
+  engine: "postgres",
+  tables: [SCHEMA_A_TABLE, SCHEMA_B_TABLE, SCHEMA_C_TABLE],
+});
+
+const NO_SELECTORS = { table_ids: [], schema_ids: [], database_ids: [] };
+
+describe("DataModel (data studio, enterprise) > bulk table editing", () => {
+  beforeEach(() => {
+    jest
+      .spyOn(window.Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        const isRow = this.hasAttribute("data-index");
+        return createMockDOMRect({ height: isRow ? 44 : 1000, width: 1000 });
+      });
+  });
+
+  afterEach(async () => {
+    await waitForRequestsToSettle();
+    jest.restoreAllMocks();
+  });
+
+  it("should change the owner of and publish tables selected in two databases", async () => {
+    const databases = [BULK_SAMPLE_DB, BULK_WRITABLE_DB];
+    const backend = setupTablesBackend({ databases });
+    setup({ databases, users: USERS });
+
+    await userEvent.click(
+      await findTreeItem("database", BULK_WRITABLE_DB.name),
+    );
+    await userEvent.click(await findTreeItem("schema", "Domestic"));
+    await userEvent.click(await findTreeItem("database", BULK_SAMPLE_DB.name));
+    await toggleRowCheckbox(await findTableRow(BULK_ACCOUNTS_TABLE.id));
+    await toggleRowCheckbox(await findTableRow(BULK_DOMESTIC_ANIMALS_TABLE.id));
+    expect(
+      await screen.findByRole("heading", { name: /2 tables selected/ }),
+    ).toBeInTheDocument();
+
+    await selectAttribute("Pick someone, or type an email", "Bobby Tables");
+    await waitFor(() =>
+      expect(getRequestBodies("stateful-tables-edit")).toEqual([
+        {
+          ...NO_SELECTORS,
+          table_ids: [BULK_ACCOUNTS_TABLE.id, BULK_DOMESTIC_ANIMALS_TABLE.id],
+          owner_email: null,
+          owner_user_id: BOBBY_USER.id,
+        },
+      ]),
+    );
+    await expectRowOwner(BULK_ACCOUNTS_TABLE.id, "Bobby Tables");
+    await expectRowOwner(BULK_DOMESTIC_ANIMALS_TABLE.id, "Bobby Tables");
+    expect(
+      within(getTableRow(BULK_ORDERS_TABLE.id)).queryByTestId("table-owner"),
+    ).not.toBeInTheDocument();
+
+    await publishSelection("Publish these tables");
+    expect(getRequestBodies("stateful-tables-publish")).toEqual([
+      expect.objectContaining({
+        ...NO_SELECTORS,
+        table_ids: [BULK_ACCOUNTS_TABLE.id, BULK_DOMESTIC_ANIMALS_TABLE.id],
+      }),
+    ]);
+    await expectRowPublished(BULK_ACCOUNTS_TABLE.id);
+    await expectRowPublished(BULK_DOMESTIC_ANIMALS_TABLE.id);
+    expect(
+      within(getTableRow(BULK_ORDERS_TABLE.id)).queryByLabelText("Published"),
+    ).not.toBeInTheDocument();
+    expect(backend.getTable(BULK_ORDERS_TABLE.id).collection).toBeUndefined();
+  });
+
+  it("should change the owner of and publish tables selected in search results", async () => {
+    const databases = [BULK_SAMPLE_DB, BULK_WRITABLE_DB];
+    setupTablesBackend({ databases });
+    setup({ databases, users: USERS });
+
+    await userEvent.type(
+      await screen.findByPlaceholderText("Search tables"),
+      "a",
+    );
+    await toggleRowCheckbox(await findTableRow(BULK_ACCOUNTS_TABLE.id));
+    await toggleRowCheckbox(await findTableRow(BULK_WILD_ANIMALS_TABLE.id));
+    expect(
+      await screen.findByRole("heading", { name: /2 tables selected/ }),
+    ).toBeInTheDocument();
+
+    await selectAttribute("Pick someone, or type an email", "Bobby Tables");
+    await waitFor(() =>
+      expect(getRequestBodies("stateful-tables-edit")).toEqual([
+        {
+          ...NO_SELECTORS,
+          table_ids: [BULK_ACCOUNTS_TABLE.id, BULK_WILD_ANIMALS_TABLE.id],
+          owner_email: null,
+          owner_user_id: BOBBY_USER.id,
+        },
+      ]),
+    );
+    await expectRowOwner(BULK_ACCOUNTS_TABLE.id, "Bobby Tables");
+    await expectRowOwner(BULK_WILD_ANIMALS_TABLE.id, "Bobby Tables");
+    expect(
+      within(getTableRow(BULK_DOMESTIC_ANIMALS_TABLE.id)).queryByTestId(
+        "table-owner",
+      ),
+    ).not.toBeInTheDocument();
+
+    // the selection is kept after the edit, so it can be published at once
+    await publishSelection("Publish these tables");
+    expect(getRequestBodies("stateful-tables-publish")).toEqual([
+      expect.objectContaining({
+        ...NO_SELECTORS,
+        table_ids: [BULK_ACCOUNTS_TABLE.id, BULK_WILD_ANIMALS_TABLE.id],
+      }),
+    ]);
+    await expectRowPublished(BULK_ACCOUNTS_TABLE.id);
+    await expectRowPublished(BULK_WILD_ANIMALS_TABLE.id);
+    expect(
+      within(getTableRow(BULK_DOMESTIC_ANIMALS_TABLE.id)).queryByLabelText(
+        "Published",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should edit the attributes of and publish every table of a database", async () => {
+    const databases = [BULK_SAMPLE_DB, BULK_WRITABLE_DB];
+    setupTablesBackend({ databases });
+    setup({ databases, users: USERS });
+
+    await userEvent.click(
+      await findTreeItem("database", BULK_WRITABLE_DB.name),
+    );
+    await userEvent.click(await findTreeItem("schema", "Domestic"));
+    await userEvent.click(await findTreeItem("schema", "Wild"));
+    await findTableRow(BULK_WILD_ANIMALS_TABLE.id);
+    await toggleRowCheckbox(
+      await findTreeItem("database", BULK_WRITABLE_DB.name),
+    );
+    // the rows of the database are loaded, so it selects each of its tables
+    expect(
+      await screen.findByRole("heading", { name: /2 tables selected/ }),
+    ).toBeInTheDocument();
+
+    await selectAttribute("Pick someone, or type an email", "Bobby Tables");
+    await selectAttribute("Select visibility layer", "Final");
+    await selectAttribute("Select entity type", "Person");
+    await selectAttribute("Select a data source", "Ingested");
+
+    const selectors = {
+      ...NO_SELECTORS,
+      table_ids: [BULK_DOMESTIC_ANIMALS_TABLE.id, BULK_WILD_ANIMALS_TABLE.id],
+    };
+    await waitFor(() =>
+      expect(getRequestBodies("stateful-tables-edit")).toEqual([
+        { ...selectors, owner_email: null, owner_user_id: BOBBY_USER.id },
+        { ...selectors, data_layer: "final" },
+        { ...selectors, entity_type: "entity/UserTable" },
+        { ...selectors, data_source: "ingested" },
+      ]),
+    );
+
+    await publishSelection("Publish these tables");
+    expect(getRequestBodies("stateful-tables-publish")).toEqual([
+      expect.objectContaining(selectors),
+    ]);
+    for (const table of BULK_WRITABLE_DB.tables ?? []) {
+      await expectRowOwner(table.id, "Bobby Tables");
+      await expectRowPublished(table.id);
+    }
+
+    // a table of another database is left as it was
+    await userEvent.click(await findTreeItem("database", BULK_SAMPLE_DB.name));
+    const accountsRow = await findTableRow(BULK_ACCOUNTS_TABLE.id);
+    expect(
+      within(accountsRow).queryByTestId("table-owner"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(accountsRow).queryByLabelText("Published"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should edit the attributes of every table of two schemas", async () => {
+    const databases = [BULK_SAMPLE_DB, SCHEMAS_DB];
+    const backend = setupTablesBackend({ databases });
+    setup({ databases, users: USERS });
+
+    await userEvent.click(await findTreeItem("database", SCHEMAS_DB.name));
+    await toggleRowCheckbox(await findTreeItem("schema", "Schema A"));
+    await toggleRowCheckbox(await findTreeItem("schema", "Schema B"));
+    expect(
+      await screen.findByRole("heading", { name: /Multiple tables selected/ }),
+    ).toBeInTheDocument();
+
+    await selectAttribute("Pick someone, or type an email", "Bobby Tables");
+    await selectAttribute("Select visibility layer", "Final");
+    await selectAttribute("Select entity type", "Person");
+    await selectAttribute("Select a data source", "Ingested");
+
+    const selectors = {
+      ...NO_SELECTORS,
+      schema_ids: [`${SCHEMAS_DB_ID}:Schema A`, `${SCHEMAS_DB_ID}:Schema B`],
+    };
+    await waitFor(() =>
+      expect(getRequestBodies("stateful-tables-edit")).toEqual([
+        { ...selectors, owner_email: null, owner_user_id: BOBBY_USER.id },
+        { ...selectors, data_layer: "final" },
+        { ...selectors, entity_type: "entity/UserTable" },
+        { ...selectors, data_source: "ingested" },
+      ]),
+    );
+
+    await userEvent.click(await findTreeItem("schema", "Schema A"));
+    await userEvent.click(await findTreeItem("schema", "Schema B"));
+    await expectRowOwner(SCHEMA_A_TABLE.id, "Bobby Tables");
+    await expectRowOwner(SCHEMA_B_TABLE.id, "Bobby Tables");
+    expect(queryTreeItems("table")).toHaveLength(2);
+    expect(backend.getTable(SCHEMA_C_TABLE.id).owner_user_id).toBeNull();
+  });
+});
+
+const TRANSFORMS_DB_ID = 14;
+const TRANSFORM = createMockTransform({
+  id: 77,
+  name: "Test transform for animals",
+});
+const TRANSFORM_TABLE = createMockTable({
+  id: 701,
+  db_id: TRANSFORMS_DB_ID,
+  schema: "Schema A",
+  name: "transform_table",
+  display_name: "Transform Table",
+  data_source: "metabase-transform",
+  transform: TRANSFORM,
+});
+const ORPHAN_TRANSFORM_TABLE = createMockTable({
+  id: 702,
+  db_id: TRANSFORMS_DB_ID,
+  schema: "Schema A",
+  name: "orphan_transform_table",
+  display_name: "Orphan Transform Table",
+  data_source: "metabase-transform",
+  transform: null,
+});
+const INGESTED_TABLE = createMockTable({
+  id: 703,
+  db_id: TRANSFORMS_DB_ID,
+  schema: "Schema A",
+  name: "Animals",
+  display_name: "Animals",
+  data_source: "ingested",
+});
+const TRANSFORMS_DB = createMockDatabase({
+  id: TRANSFORMS_DB_ID,
+  name: "Writable Postgres12",
+  engine: "postgres",
+  tables: [TRANSFORM_TABLE, ORPHAN_TRANSFORM_TABLE, INGESTED_TABLE],
+});
+
+const REMOTE_SYNC_DB_ID = 15;
+const REMOTE_SYNC_ORDERS_TABLE = createMockTable({
+  id: 801,
+  db_id: REMOTE_SYNC_DB_ID,
+  schema: "",
+  name: "ORDERS",
+  display_name: "Orders",
+  owner_user_id: null,
+  owner_email: null,
+});
+const REMOTE_SYNC_PRODUCTS_TABLE = createMockTable({
+  id: 802,
+  db_id: REMOTE_SYNC_DB_ID,
+  schema: "",
+  name: "PRODUCTS",
+  display_name: "Products",
+});
+const REMOTE_SYNC_DB = createMockDatabase({
+  id: REMOTE_SYNC_DB_ID,
+  name: "QA MySQL8",
+  engine: "mysql",
+  tables: [REMOTE_SYNC_ORDERS_TABLE, REMOTE_SYNC_PRODUCTS_TABLE],
+});
+
+describe("DataModel (data studio, enterprise) > single table editing", () => {
+  beforeEach(() => {
+    jest
+      .spyOn(window.Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        const isRow = this.hasAttribute("data-index");
+        return createMockDOMRect({ height: isRow ? 44 : 1000, width: 1000 });
+      });
+  });
+
+  afterEach(async () => {
+    await waitForRequestsToSettle();
+    jest.restoreAllMocks();
+  });
+
+  it("should link a transform-created table to its transform and not let its source be changed", async () => {
+    const databases = [SAMPLE_DB, TRANSFORMS_DB];
+    setupTablesBackend({ databases });
+    setup({ databases });
+
+    await userEvent.click(await findTreeItem("database", TRANSFORMS_DB.name));
+    await userEvent.click(await findTableRow(TRANSFORM_TABLE.id));
+    expect(await findTableNameInput("Transform Table")).toBeInTheDocument();
+    expect(
+      within(getTableSection()).getByRole("link", {
+        name: /Test transform for animals/,
+      }),
+    ).toHaveAttribute("href", "/data-studio/transforms/77");
+    expect(
+      within(getTableSection()).getByPlaceholderText("Select a data source"),
+    ).toBeDisabled();
+
+    await userEvent.click(await findTableRow(ORPHAN_TRANSFORM_TABLE.id));
+    expect(
+      await findTableNameInput("Orphan Transform Table"),
+    ).toBeInTheDocument();
+    expect(
+      within(getTableSection()).getByText("Transform does not exist anymore"),
+    ).toBeInTheDocument();
+    expect(
+      within(getTableSection()).getByPlaceholderText("Select a data source"),
+    ).toBeDisabled();
+
+    // positive control: the source of an ingested table can be changed
+    await userEvent.click(await findTableRow(INGESTED_TABLE.id));
+    expect(await findTableNameInput("Animals")).toBeInTheDocument();
+    expect(
+      within(getTableSection()).getByPlaceholderText("Select a data source"),
+    ).toBeEnabled();
+    expect(
+      within(getTableSection()).queryByRole("link", {
+        name: /Test transform for animals/,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(getTableSection()).queryByText("Transform does not exist anymore"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should update the tree after publishing, unpublishing, renaming and changing the owner of a table with remote sync enabled (metabase#69554)", async () => {
+    const databases = [SAMPLE_DB, REMOTE_SYNC_DB];
+    const backend = setupTablesBackend({ databases, hasLibrary: false });
+    setupRemoteSyncEndpoints();
+    setup({ databases, users: USERS, remoteSyncType: "read-write" });
+
+    await userEvent.click(await findTreeItem("database", REMOTE_SYNC_DB.name));
+    await userEvent.click(await findTableRow(REMOTE_SYNC_ORDERS_TABLE.id));
+    expect(await findTableNameInput("Orders")).toBeInTheDocument();
+    expect(
+      within(getTableRow(REMOTE_SYNC_ORDERS_TABLE.id)).queryByTestId(
+        "table-published",
+      ),
+    ).not.toBeInTheDocument();
+
+    // publish
+    await userEvent.click(
+      within(getTableSection()).getByRole("button", { name: /Publish$/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create my semantic layer" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Publish this table" }),
+    );
+    await waitFor(() =>
+      expect(
+        within(getTableRow(REMOTE_SYNC_ORDERS_TABLE.id)).getByTestId(
+          "table-published",
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(getRequestBodies("stateful-tables-publish")).toEqual([
+      expect.objectContaining({ table_ids: [REMOTE_SYNC_ORDERS_TABLE.id] }),
+    ]);
+    expect(
+      within(getTableRow(REMOTE_SYNC_PRODUCTS_TABLE.id)).queryByTestId(
+        "table-published",
+      ),
+    ).not.toBeInTheDocument();
+
+    // unpublish
+    await userEvent.click(
+      await within(getTableSection()).findByRole("button", {
+        name: /Unpublish$/,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Unpublish this table" }),
+    );
+    await waitFor(() =>
+      expect(
+        within(getTableRow(REMOTE_SYNC_ORDERS_TABLE.id)).queryByTestId(
+          "table-published",
+        ),
+      ).not.toBeInTheDocument(),
+    );
+    expect(getRequestBodies("stateful-tables-unpublish")).toEqual([
+      expect.objectContaining({ table_ids: [REMOTE_SYNC_ORDERS_TABLE.id] }),
+    ]);
+    expect(backend.getTable(REMOTE_SYNC_ORDERS_TABLE.id).collection).toBeNull();
+
+    // rename
+    const nameInput = await findTableNameInput("Orders");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Renamed Orders");
+    await userEvent.tab();
+    await waitFor(() =>
+      expect(getTableRow(REMOTE_SYNC_ORDERS_TABLE.id)).toHaveTextContent(
+        "Renamed Orders",
+      ),
+    );
+    expect(
+      getRequestBodies(`stateful-table-${REMOTE_SYNC_ORDERS_TABLE.id}-put`),
+    ).toEqual([{ display_name: "Renamed Orders" }]);
+
+    // owner
+    expect(getTableRow(REMOTE_SYNC_ORDERS_TABLE.id)).not.toHaveTextContent(
+      "Bobby Tables",
+    );
+    await selectOption(
+      within(getTableSection()).getByPlaceholderText(
+        "Pick someone, or type an email",
+      ),
+      "Bobby Tables",
+    );
+    expect(await findToastByMessage("Table owner updated")).toBeInTheDocument();
+    expect(
+      getRequestBodies(`stateful-table-${REMOTE_SYNC_ORDERS_TABLE.id}-put`),
+    ).toEqual([
+      { display_name: "Renamed Orders" },
+      { owner_email: null, owner_user_id: BOBBY_USER.id },
+    ]);
+    await waitFor(() =>
+      expect(
+        within(getTableSection()).getByPlaceholderText(
+          "Pick someone, or type an email",
+        ),
+      ).toHaveValue("Bobby Tables"),
+    );
+    await expectRowOwner(REMOTE_SYNC_ORDERS_TABLE.id, "Bobby Tables");
+  });
+});
+
+function setupRemoteSyncEndpoints() {
+  fetchMock.get("path:/api/ee/remote-sync/current-task", 204);
+  fetchMock.get("path:/api/ee/remote-sync/is-dirty", { is_dirty: false });
+  fetchMock.get("path:/api/ee/remote-sync/dirty", { dirty: [] });
+  fetchMock.get("path:/api/ee/remote-sync/has-remote-changes", {
+    has_changes: false,
   });
 }

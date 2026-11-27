@@ -616,6 +616,12 @@
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
 
+(methodical/defmethod t2.pipeline/results-transform :around [:toucan.result-type/instances :hook/worktree-id]
+  "Leaves `worktree_id` out of the rows of a model with `:hook/worktree-id` before its after-select hooks see them."
+  [query-type model]
+  (comp (map #(dissoc % :worktree_id))
+        (next-method query-type model)))
+
 (defn- check-hook-runs-no-statement
   "Calls `thunk`, the `phase` hook of `model`, and throws when it ran an app-DB statement through Toucan."
   [model phase thunk]
@@ -699,14 +705,14 @@
 
 (defn- check-not-sql-string
   "Throws when the Toucan query `query`, a SQL string or `[sql & params]` that is not run against a warehouse Database,
-  reads or writes rows, which an app-DB query must express in Honey SQL, unless Funny SQL compiled it."
+  reads or writes rows, which an app-DB query must express in Funny SQL, unless Funny SQL compiled it."
   [query]
   (let [sql (if (string? query) query (first query))]
     (when (and (string? sql)
                (not (:metabase.funnysql.core/compiled (meta query)))
                (not (instance-of? :model/Database t2.connection/*current-connectable*))
                (re-find row-statement-pattern sql))
-      (throw (ex-info (format (str "An app-DB query must be Honey SQL, not the SQL string %s; write it as a Honey SQL map "
+      (throw (ex-info (format (str "An app-DB query must be Funny SQL, not the SQL string %s; write it as a Funny SQL map "
                                    "with (t2/table-name :model/X) table names")
                               (pr-str sql))
                       {:sql sql})))))

@@ -4,11 +4,11 @@ import { match } from "ts-pattern";
 import { isNotNull } from "metabase/utils/types";
 import type { ColumnSettings } from "metabase-types/api";
 
+import { getGoalLineValue } from "../../../lib/dynamic-goals";
 import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ChartLayout } from "../layout/types";
 import type { BaseCartesianChartModel, YAxisModel } from "../model/types";
 
-import { getGoalLineValue } from "./goal-line";
 import {
   type ValueAxisOption,
   getDurationYAxisTicks,
@@ -39,17 +39,14 @@ function getAxisExtent(
     }
   };
 
-  if (
-    hasGoal &&
-    settings["graph.show_goal"] &&
-    settings["graph.goal_value"] != null
-  ) {
-    includeValue(
-      getGoalLineValue(settings["graph.goal_value"], {
-        isNormalized: chartModel.leftAxisModel?.isNormalized ?? false,
-        toEChartsAxisValue: chartModel.yAxisScaleTransforms.toEChartsAxisValue,
-      }),
-    );
+  const goalValue = hasGoal
+    ? getGoalLineValue(
+        settings,
+        chartModel.leftAxisModel?.isNormalized ?? false,
+      )
+    : null;
+  if (goalValue !== null) {
+    includeValue(chartModel.yAxisScaleTransforms.toEChartsAxisValue(goalValue));
   }
 
   const trendLines = chartModel.trendLinesModel;

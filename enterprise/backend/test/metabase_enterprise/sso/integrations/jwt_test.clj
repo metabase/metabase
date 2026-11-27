@@ -730,7 +730,7 @@
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}]
-            (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+            (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
               (let [response (client/client-real-response :get 302 "/auth/sso"
                                                           {:request-options {:redirect-strategy :none}}
                                                           :return_to default-redirect-uri
@@ -1451,7 +1451,7 @@
         (with-jwt-default-setup!
           (mt/with-additional-premium-features #{:tenants}
             (mt/with-temporary-setting-values [use-tenants true]
-              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+              (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri
@@ -1500,7 +1500,7 @@
         (with-jwt-default-setup!
           (mt/with-additional-premium-features #{:tenants}
             (mt/with-temporary-setting-values [use-tenants true]
-              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+              (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri

@@ -167,6 +167,28 @@ describe.each(["pulse", "notification"] as const)(
 );
 
 describe("UnsubscribePage invalid links", () => {
+  it("shows an error when the server rejects a malformed pulse-id", async () => {
+    setup({
+      query: "hash=459a8e9f8d9e&email=non-user%40example.com&pulse-id=f",
+      status: 400,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Confirm unsubscribe" }),
+    );
+
+    expect(await screen.findByLabelText("error message")).toBeInTheDocument();
+    const body: unknown = await fetchMock.callHistory
+      .lastCall("path:/api/pulse/unsubscribe")
+      ?.request?.json();
+    expect(body).toEqual({
+      hash: "459a8e9f8d9e",
+      email: "non-user@example.com",
+      "pulse-id": "f",
+    });
+    expect(screen.queryByText(/You've unsubscribed/)).not.toBeInTheDocument();
+  });
+
   it.each([
     "email=recipient%40example.com&pulse-id=1",
     "hash=hash&pulse-id=1",

@@ -23,6 +23,8 @@
   plain data keys:
 
   - `:dependency-columns`, the columns whose update has the dependency job compute the entity's dependencies again.
+  - `:dependency-column-values`, for some of those columns, a fn of the column's value returning what the dependencies
+    read of it; an update that leaves that the same doesn't count.
   - `:written-with-parts?`, true for an entity whose parts are written with it and publish nothing, so that its update
     event cannot say whether they changed: every update has the dependency job compute its dependencies again.
   - `:analysis-columns`, the columns whose update has the analysis job analyze the entity again.
@@ -47,6 +49,7 @@
    [:analysis           {:optional true} ifn?]
    [:after-dependencies {:optional true} ifn?]
    [:dependency-columns {:optional true} [:set :keyword]]
+   [:dependency-column-values {:optional true} [:map-of :keyword ifn?]]
    [:written-with-parts? {:optional true} :boolean]
    [:analysis-columns   {:optional true} [:set :keyword]]
    [:output-columns     {:optional true} [:set :keyword]]

@@ -1623,3 +1623,106 @@
        clojure.lang.ExceptionInfo
        #"Top-level map key :raw is not currently supported"
        (mu/disable-enforcement (funnysql.format/format {:raw "x"} :postgres)))))
+
+(deftest ^:parallel create-table-null-test
+  (is (= ["CREATE TABLE `t` (`seen_at` timestamp(6) NULL)"]
+         (funnysql.format/format {:create-table [:t]
+                                  :with-columns [[:seen_at [:timestamp 6] :null]]}
+                                 :mysql))))
+
+(deftest ^:parallel mysql-fulltext-match-test
+  (is (= ["MATCH (`search_index`.`search_terms`) AGAINST (? IN BOOLEAN MODE)" "+orders -test*"]
+         (funnysql.format/format [:match-against :search_index.search_terms "+orders -test*"] :mysql)))
+  (testing "the query remains a parameter even when it contains SQL punctuation"
+    (is (= ["MATCH (`txt`) AGAINST (? IN BOOLEAN MODE)" "'); DROP TABLE card; --"]
+           (funnysql.format/format [:match-against :txt "'); DROP TABLE card; --"] :mysql))))
+  (is (thrown? clojure.lang.ExceptionInfo
+               (funnysql.format/format [:match-against (keyword "txt); DROP TABLE card") "x"] :mysql))))
+
+(deftest ^:parallel mysql-upsert-test
+  (is (= [(str "INSERT INTO `idx` (`model`, `model_id`, `name`) VALUES (?, ?, ?) "
+               "ON DUPLICATE KEY UPDATE `name` = values(`name`)")
+          "card" "1" "Orders"]
+         (funnysql.format/format {:insert-into             :idx
+                                  :values                  [{:model "card", :model_id "1", :name "Orders"}]
+                                  :on-duplicate-key-update {:name [:values :name]}}
+                                 :mysql))))
+
+(deftest ^:parallel mysql-search-text-column-test
+  (is (= ["CREATE TABLE `idx` (`txt` longtext CHARACTER SET `utf8mb4` COLLATE `utf8mb4_bin`)"]
+         (funnysql.format/format {:create-table [:idx]
+                                  :with-columns [[:txt :longtext [:character-set :utf8mb4] [:collate :utf8mb4_bin]]]}
+                                 :mysql))))
+
+(deftest ^:parallel mysql-regexp-predicate-test
+  (is (= ["NOT (`txt` regexp ?)" "(^|[^[:alnum:]_])id([^[:alnum:]_]|$)"]
+         (funnysql.format/format [:not [:regexp :txt "(^|[^[:alnum:]_])id([^[:alnum:]_]|$)"]] :mysql))))
+
+(deftest ^:parallel mysql-fulltext-rejects-invalid-arguments-test
+  (doseq [expr [[:match-against :txt]
+                [:match-against :txt "word" :extra]]]
+    (is (thrown? clojure.lang.ExceptionInfo (funnysql.format/format expr :mysql))))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format [:match-against :txt "word"] engine)))))
+
+(deftest ^:parallel mysql-upsert-rejects-other-engines-test
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format {:insert-into             :idx
+                                          :values                  [{:id 1}]
+                                          :on-duplicate-key-update {:id [:values :id]}}
+                                         engine)))))
+
+(deftest ^:parallel text-column-rejects-invalid-options-test
+  (doseq [option [[:collate]
+                  [:character-set]
+                  [:collate :utf8mb4_bin :extra]
+                  [:character-set :utf8mb4 :extra]
+                  [:collate (keyword "utf8mb4_bin; DROP TABLE card")]
+                  [:character-set (keyword "utf8mb4; DROP TABLE card")]]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format {:create-table [:idx], :with-columns [[:txt :longtext option]]} :mysql)))))
+
+(deftest ^:parallel mysql-table-engine-test
+  (is (= ["CREATE TABLE `idx` (`id` integer) ENGINE InnoDB"]
+         (funnysql.format/format {:create-table [:idx], :with-columns [[:id :integer]], :engine :innodb} :mysql)))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format {:create-table [:idx], :engine :innodb} engine))))
+  (doseq [storage-engine [:myisam "InnoDB; DROP TABLE card"]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format {:create-table [:idx], :engine storage-engine} :mysql)))))
+
+(deftest ^:parallel mysql-analyze-table-test
+  (is (= ["ANALYZE TABLE `idx`"] (funnysql.format/format {:analyze-table :idx} :mysql)))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo (funnysql.format/format {:analyze-table :idx} engine))))
+  (is (thrown? clojure.lang.ExceptionInfo
+               (funnysql.format/format {:analyze-table (keyword "idx; DROP TABLE card")} :mysql))))
+
+(deftest ^:parallel mysql-table-defaults-test
+  (is (= [(str "CREATE TABLE `idx` (`id` integer) ENGINE InnoDB "
+               "CHARACTER SET `utf8mb4` COLLATE `utf8mb4_unicode_ci`")]
+         (funnysql.format/format {:create-table  [:idx]
+                                  :with-columns  [[:id :integer]]
+                                  :engine        :innodb
+                                  :character-set :utf8mb4
+                                  :collate       :utf8mb4_unicode_ci}
+                                 :mysql)))
+  (doseq [option [:character-set :collate]
+          engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo (funnysql.format/format {option :utf8mb4} engine))))
+  (doseq [option [:character-set :collate]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format {option (keyword "utf8mb4; DROP TABLE card")} :mysql)))))
+
+(deftest ^:parallel mysql-system-variable-test
+  (is (= ["SELECT @@max_allowed_packet AS `max_allowed_packet`"]
+         (funnysql.format/format {:select [[[:system-variable :max_allowed_packet] :max_allowed_packet]]} :mysql)))
+  (testing "the name must be a word"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format [:system-variable (keyword "x; DROP TABLE card")] :mysql))))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format [:system-variable :max_allowed_packet] engine)))))

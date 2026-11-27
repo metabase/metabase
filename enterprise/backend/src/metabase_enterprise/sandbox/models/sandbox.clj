@@ -44,6 +44,7 @@
 
 (doto :model/Sandbox
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))

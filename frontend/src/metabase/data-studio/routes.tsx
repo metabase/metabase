@@ -5,6 +5,7 @@ import {
   PLUGIN_DATA_APPS,
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_SCHEMA_VIEWER,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -156,6 +157,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
             getDataStudioSchemaViewerUpsellRoutes
           )()}
           <Route path="git-sync" lazy={gitSyncSectionLayout} />
+          {PLUGIN_REMOTE_SYNC.getDataStudioRoutes()}
 
           <Route path="*" element={<NotFound />} />
         </Route>

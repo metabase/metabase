@@ -1013,6 +1013,8 @@
   (api/write-check (get-exploration-or-404 id))
   (let [doc (summary-document-or-404 id)]
     (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))
+    (queries/check-new-card-goal-references {:visualization_settings visualization_settings
+                                             :document_id            (:id doc)})
     (t2/with-transaction [_conn]
       (let [{:keys [card-id stored-result-id primary-eq]}
             (eqr/create-ephemeral-card-for-exploration-queries!

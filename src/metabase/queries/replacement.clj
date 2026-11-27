@@ -7,7 +7,8 @@
    [metabase.queries.models.query :as queries.query]
    [metabase.replacement.core :as replacement]
    [metabase.replacement.walk :as replacement.walk]
-   [metabase.source-swap.core :as source-swap]))
+   [metabase.source-swap.core :as source-swap]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -66,17 +67,20 @@
                                (not= parameters parameters')     (assoc :parameters parameters')))))
 
 (defn swap-source
-  "The writes that swap `old-source` for `new-source` in the query and parameters of `card`, or nil when its query is
-  not valid."
+  "The writes that swap `old-source` for `new-source` in the query, parameters and dynamic goals of `card`, or nil when
+  its query is not valid."
   [card old-source new-source]
   (let [query (:dataset_query card)]
     (when (replacement/valid-query? query)
-      (let [query'      (source-swap/swap-source-in-query query old-source new-source)
-            table-id    (:table_id card)
-            table-id'   (:table-id (queries.query/query->database-and-table-ids query'))
-            parameters  (or (:parameters card) [])
-            parameters' (replacement/swap-parameter-source-card-id parameters old-source new-source)]
+      (let [query'        (source-swap/swap-source-in-query query old-source new-source)
+            table-id      (:table_id card)
+            table-id'     (:table-id (queries.query/query->database-and-table-ids query'))
+            parameters    (or (:parameters card) [])
+            parameters'   (replacement/swap-parameter-source-card-id parameters old-source new-source)
+            viz-settings  (:visualization_settings card)
+            viz-settings' (dynamic-goals/swap-goal-source viz-settings old-source new-source)]
         (card-writes card query' (cond-> {}
-                                   (not= query query')           (assoc :dataset_query query')
-                                   (not= table-id table-id')     (assoc :table_id table-id')
-                                   (not= parameters parameters') (assoc :parameters parameters')))))))
+                                   (not= viz-settings viz-settings') (assoc :visualization_settings viz-settings')
+                                   (not= query query')               (assoc :dataset_query query')
+                                   (not= table-id table-id')         (assoc :table_id table-id')
+                                   (not= parameters parameters')     (assoc :parameters parameters')))))))

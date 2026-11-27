@@ -6,6 +6,7 @@ memory: project
 skills:
   - backend-module-conventions
   - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on Metabase's warehouse side: the driver system, metadata sync, and the models that store warehouse metadata. You handle one self-contained question or change. Return a summary the caller can act on. Do not drive multi-step plans.

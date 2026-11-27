@@ -505,7 +505,11 @@ describe("metabot reducer", () => {
         metabotActions.reasoningDelta({ conversationId, text: "hmm" }),
       );
       store.dispatch(
-        metabotActions.addAgentTextDelta({ conversationId, text: "hi" }),
+        metabotActions.addAgentTextDelta({
+          conversationId,
+          text: "hi",
+          blockId: "t1",
+        }),
       );
 
       // the chain message stays in history, and its id is released
@@ -530,7 +534,11 @@ describe("metabot reducer", () => {
         }),
       );
       store.dispatch(
-        metabotActions.addAgentTextDelta({ conversationId, text: "hi" }),
+        metabotActions.addAgentTextDelta({
+          conversationId,
+          text: "hi",
+          blockId: "t1",
+        }),
       );
       store.dispatch(
         metabotActions.toolCallSearchResults({
@@ -557,7 +565,11 @@ describe("metabot reducer", () => {
         }),
       );
       store.dispatch(
-        metabotActions.addAgentTextDelta({ conversationId, text: "hi" }),
+        metabotActions.addAgentTextDelta({
+          conversationId,
+          text: "hi",
+          blockId: "t1",
+        }),
       );
       // the saved card's link only exists once the tool finishes
       store.dispatch(

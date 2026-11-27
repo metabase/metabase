@@ -31,6 +31,7 @@
 (methodical/defmethod t2/table-name :model/TransformRun [_model] :transform_run)
 
 (derive :model/TransformRun :metabase/model)
+(derive :model/TransformRun :hook/worktree-id)
 
 (t2/define-before-update :model/TransformRun
   [run]

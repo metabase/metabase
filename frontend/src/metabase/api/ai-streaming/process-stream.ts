@@ -41,7 +41,7 @@ export type StreamedError = { errorText: string };
 
 export type AIStreamingConfig = {
   onStart?: (event: StartEvent) => void;
-  onTextPart?: (delta: string) => void;
+  onTextPart?: (delta: string, blockId: string) => void;
   onReasoningStart?: (event: ReasoningStartEvent) => void;
   onReasoningDelta?: (event: ReasoningDeltaEvent) => void;
   onReasoningEnd?: (event: ReasoningEndEvent) => void;
@@ -104,7 +104,7 @@ export async function processChatResponse(
     for await (const event of paced) {
       match(event)
         .with({ type: "start" }, (e) => config.onStart?.(e))
-        .with({ type: "text-delta" }, (e) => config.onTextPart?.(e.delta))
+        .with({ type: "text-delta" }, (e) => config.onTextPart?.(e.delta, e.id))
         .with({ type: "reasoning-start" }, (e) => config.onReasoningStart?.(e))
         .with({ type: "reasoning-delta" }, (e) => config.onReasoningDelta?.(e))
         .with({ type: "reasoning-end" }, (e) => config.onReasoningEnd?.(e))

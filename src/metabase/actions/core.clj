@@ -8,6 +8,7 @@
    [metabase.actions.execution]
    [metabase.actions.hierarchy]
    [metabase.actions.models]
+   [metabase.actions.row-actions]
    [metabase.actions.scope]
    [potemkin :as p]))
 
@@ -17,6 +18,7 @@
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
   metabase.actions.models/keep-me
+  metabase.actions.row-actions/keep-me
   metabase.actions.scope/keep-me)
 
 (p/import-vars

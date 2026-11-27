@@ -17,7 +17,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.ui-logic :as ui-logic]
+   [metabase.visualization-settings.ui-logic :as ui-logic]
    [potemkin :as p]
    [potemkin.types :as p.types])
   (:import

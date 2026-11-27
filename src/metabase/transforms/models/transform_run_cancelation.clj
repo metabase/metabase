@@ -14,6 +14,7 @@
 (methodical/defmethod t2/table-name :model/TransformRunCancelation [_model] :transform_run_cancelation)
 
 (derive :model/TransformRunCancelation :metabase/model)
+(derive :model/TransformRunCancelation :hook/worktree-id)
 
 (mu/defn reducible-canceled-local-runs
   "Return a reducible sequence of local canceled runs."

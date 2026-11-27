@@ -40,6 +40,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as viz.dynamic-goals]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -57,6 +58,7 @@
 
 (doto :model/Document
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -287,13 +289,23 @@
 
 (defn- check-new-cards
   "Throws, for the first of `entries`, `{:data :source-card-id}`, in order that the current user may not create, what
-  [[check-new-card]] throws for it, after reading the source Card it copies, if any."
+  [[check-new-card]] throws for it, after reading the source Card it copies, if any, then what the check of the goals
+  they newly reference throws."
   [entries]
   (when-not (new-cards-permitted? entries)
     (run! (fn [{:keys [data source-card-id]}]
             (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
               (check-new-card data)))
-          entries)))
+          entries))
+  ;; only a copy with goals needs its source, so a write that copies no goals reads no Card here
+  (let [sources (queries.card/readable-cards-by-id
+                 (into #{}
+                       (keep (fn [{:keys [data source-card-id]}]
+                               (when (seq (viz.dynamic-goals/goal-references (:visualization_settings data)))
+                                 source-card-id)))
+                       entries))]
+    (queries.card/check-new-cards-goal-references
+     (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)]) entries))))
 
 (defn check-clone-cards
   "Throws, for the first of `cards`, Cards that are copied into a Document in order, what its read check, then
@@ -325,14 +337,17 @@
 (defn- check-document-cards
   "Throws what the checks of the Cards a write of a Document makes throw, for the first Card in order that the current
   user may not create: the existing `to-clone` Cards copied into `clone-collection-id`, then the `new-cards`, a map of
-  temporary id to data, put in `new-collection-id` unless they name another Collection."
-  [to-clone clone-collection-id new-cards new-collection-id]
+  temporary id to data, put in `new-collection-id` unless they name another Collection, all of them in the Document
+  with `document-id`, nil for one not created yet."
+  [document-id to-clone clone-collection-id new-cards new-collection-id]
   (when (seq to-clone)
-    (check-clone-cards to-clone (mapv #(assoc % :collection_id clone-collection-id) to-clone)))
+    (check-clone-cards to-clone (mapv #(assoc % :collection_id clone-collection-id :document_id document-id) to-clone)))
   (when (seq new-cards)
     (check-new-cards (mapv (fn [[_ card-data]]
                              {:source-card-id (:source_card_id card-data)
-                              :data           (cond-> (dissoc card-data :source_card_id)
+                              :data           (cond-> (-> card-data
+                                                          (dissoc :source_card_id)
+                                                          (assoc :document_id document-id))
                                                 (nil? (:collection_id card-data)) (assoc :collection_id new-collection-id))})
                            new-cards))))
 
@@ -343,7 +358,8 @@
   to be called before the write."
   [{:keys [document collection_id cards]}]
   (with-content-gate-cache
-    (check-document-cards (embedded-cards-to-clone nil document prose-mirror/prose-mirror-content-type)
+    (check-document-cards nil
+                          (embedded-cards-to-clone nil document prose-mirror/prose-mirror-content-type)
                           collection_id
                           cards
                           collection_id)))
@@ -354,7 +370,8 @@
   [existing-document {:keys [document collection_id cards] :as body}]
   (when document
     (with-content-gate-cache
-      (check-document-cards (embedded-cards-to-clone (:id existing-document) document (:content_type existing-document))
+      (check-document-cards (:id existing-document)
+                            (embedded-cards-to-clone (:id existing-document) document (:content_type existing-document))
                             (:collection_id existing-document)
                             cards
                             (if (contains? body :collection_id) collection_id (:collection_id existing-document))))))

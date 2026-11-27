@@ -20,6 +20,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -27,14 +28,16 @@
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
 (deftest audit-db-view-names-test
-  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
+  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`, but the remote sync worktree views"
     (let [view-query {:select [:table_name]
                       :from   [:information_schema.views]
                       :where  [:like :table_name "v\\_%"]}]
       (is (set/superset?
            audit-app.permissions/audit-db-view-names
            (into #{}
-                 (map :table_name (t2/query view-query))))))))
+                 (comp (map :table_name)
+                       (remove #(str/starts-with? (u/lower-case-en %) "v_worktree_")))
+                 (t2/query view-query)))))))
 
 (deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!
@@ -368,3 +371,34 @@
         (let [resp (mt/user-http-request :crowberto :get 200 "permissions/graph")]
           (is (every? #(not (contains? % audit/audit-db-id))
                       (vals (:groups resp)))))))))
+
+(deftest public-dynamic-goal-on-audit-card-needs-audit-app-test
+  (testing "a public chart's dynamic goal on an audit DB card is checked like any other audit query"
+    (audit-test/with-audit-db-restoration!
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (let [audit-view (->> (t2/select-one :model/Table
+                                             :db_id audit/audit-db-id
+                                             {:where [:in [:lower :name] audit-app.permissions/audit-db-view-names]})
+                              (tu/poll-until 5000))
+              mp         (mt/metadata-provider)
+              chart      (fn [goal-id]
+                           {:dataset_query          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                        (lib/aggregate (lib/count)))
+                            :display                :line
+                            :public_uuid            (str (random-uuid))
+                            :visualization_settings {:graph.show_goal  true
+                                                     :graph.goal_value {:id goal-id :type "card" :column "count"}}})]
+          (mt/with-temp [:model/Card {goal-id :id} {:database_id   audit/audit-db-id
+                                                    :dataset_query {:database audit/audit-db-id
+                                                                    :type     :query
+                                                                    :query    {:source-table (u/the-id audit-view)
+                                                                               :aggregation  [[:count]]}}}]
+            (mt/with-temp [:model/Card {uuid :public_uuid} (chart goal-id)]
+              (let [goal! #(get-in (client/client :get 202 (str "public/card/" uuid "/goal-values")) [:card goal-id])]
+                (testing "with the audit-app feature, the goal resolves"
+                  (mt/with-premium-features #{:audit-app}
+                    (is (=? {:status "completed"} (goal!)))))
+                (testing "without it, the goal fails and the chart still renders"
+                  (mt/with-premium-features #{}
+                    (is (=? {:status "failed"} (goal!)))
+                    (is (= "completed" (:status (client/client :get 202 (str "public/card/" uuid "/query")))))))))))))))

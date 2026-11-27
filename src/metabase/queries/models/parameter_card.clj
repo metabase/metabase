@@ -15,6 +15,7 @@
 
 (doto :model/ParameterCard
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ParameterCard

@@ -48,6 +48,7 @@ export const setupUnsubscribeFromSubscriptionEndpoint = (
 
 export const setupSubscriptionsEndpoint = (
   subscriptions: DashboardSubscription[],
+  { delay }: { delay?: number } = {},
 ) => {
-  fetchMock.get("path:/api/pulse", subscriptions);
+  fetchMock.get("path:/api/pulse", subscriptions, { delay });
 };

@@ -79,7 +79,7 @@
 (def ^:private ts-rank-weights "{0, 0.2, 0.4, 1.0}")
 
 (defmethod specialization/text-score :postgres
-  []
+  [_search-ctx]
   ;; the weights are a `float4[]` literal; a `?` parameter leaves the `ts_rank` overload unresolvable
   [:ts_rank [:literal ts-rank-weights] :search_vector :query [:inline ts-rank-normalization]])
 
