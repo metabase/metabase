@@ -798,5 +798,12 @@
       (is (= [:hidden :hidden]
              (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id hidden))))
     (testing "disagreeing pair is rejected"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update both visibility_type and data_layer"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"visibility_type and data_layer must agree"
                             (t2/update! :model/Table :id rejected {:visibility_type :hidden :data_layer :final}))))))
+
+(deftest update-of-both-columns-keeps-given-data-layer-test
+  (mt/with-temp [:model/Table {table-id :id} {:visibility_type :hidden}]
+    (testing "visible pair with final data_layer is stored as given"
+      (t2/update! :model/Table :id table-id {:visibility_type nil :data_layer :final})
+      (is (= [nil :final]
+             (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id table-id))))))

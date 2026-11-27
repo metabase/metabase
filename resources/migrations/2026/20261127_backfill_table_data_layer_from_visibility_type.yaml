@@ -1,7 +1,7 @@
 ## metabase_table.data_layer takes over from visibility_type as the one column that says whether a Table is hidden.
 ## Only updates kept the two in step, so Tables inserted hidden (sync marks cruft Tables on insert) have a
-## visibility_type and a data_layer of 'internal'. These changesets make data_layer agree with visibility_type,
-## which is what the application has been reading.
+## non-NULL visibility_type but a data_layer of 'internal'. These changesets make data_layer agree with
+## visibility_type, which is what the application has been reading.
 
 databaseChangeLog:
   - changeSet:

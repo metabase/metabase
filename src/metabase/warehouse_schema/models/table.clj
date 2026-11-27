@@ -65,20 +65,17 @@
   #{:final :internal :hidden})
 
 (defn visibility-type->data-layer
-  "Convert legacy visibility_type to data_layer.
-  Used when updating via the legacy field."
+  "The data_layer of a Table with `visibility-type`: :hidden for any hidden type, else :internal."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
     :hidden
     :internal))
 
 (defn data-layer->visibility-type
-  "Convert data_layer back to legacy visibility_type.
-  Used for rollback compatibility to v56."
+  "The visibility_type of a Table with `data-layer`: :hidden for :hidden, else nil."
   [data-layer]
   (case data-layer
     :hidden :hidden
-    ;; internal,final all map to visible (nil)
     nil))
 
 (def field-orderings
@@ -187,19 +184,19 @@
              (not= (keyword (:data_layer changes)) (keyword (:data_layer original)))
              (not= (some? (:visibility_type changes))
                    (= (keyword (:data_layer changes)) :hidden)))
-    (throw (ex-info (tru "Cannot update both visibility_type and data_layer") {:status-code 400}))))
+    (throw (ex-info (tru "visibility_type and data_layer must agree: data_layer is hidden exactly when visibility_type is set")
+                    {:status-code 400}))))
 
 (defn- visibility-changes
-  "The other half of the `visibility_type`/`data_layer` pair, derived from the half `changes` changes in `original`."
+  "The other half of the `visibility_type`/`data_layer` pair, derived when `changes` changes one half of `original`."
   [{:keys [visibility_type data_layer] :as changes} original]
-  (cond
-    (and (contains? changes :visibility_type)
-         (not= (keyword visibility_type) (keyword (:visibility_type original))))
-    {:data_layer (visibility-type->data-layer (keyword visibility_type))}
+  (let [changed? (fn [k] (and (contains? changes k) (not= (keyword (k changes)) (keyword (k original)))))]
+    (cond
+      (and (changed? :visibility_type) (not (changed? :data_layer)))
+      {:data_layer (visibility-type->data-layer (keyword visibility_type))}
 
-    (and (contains? changes :data_layer)
-         (not= (keyword data_layer) (keyword (:data_layer original))))
-    {:visibility_type (data-layer->visibility-type (keyword data_layer))}))
+      (and (changed? :data_layer) (not (changed? :visibility_type)))
+      {:visibility_type (data-layer->visibility-type (keyword data_layer))})))
 
 (defn- activity-changes
   "The `deactivated_at` and `archived_at` that a change of `active` in `changes` from `original` sets."
