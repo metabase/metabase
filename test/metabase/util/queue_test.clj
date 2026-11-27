@@ -95,19 +95,19 @@
           time-until-nth  #(max 0 (+ buffer (- (msg-delay %) (since-start))))
           take-batch-wait-ms (time-until-nth 10)]
       (testing "Polling for a short initial time will return before any messages are ready, regardless the max-next-ms"
-        (is (nil? (#'queue/take-batch! q 10 100 5000))))
+        (is (nil? (queue/take-batch! q 10 100 5000))))
       (testing "With a long max-first-ms and max-next-ms, we limit by the max-batch-messages"
-        (is (= [0 1 2] (#'queue/take-batch! q take-batch-wait-ms 3 (time-until-nth 3)))))
+        (is (= [0 1 2] (queue/take-batch! q take-batch-wait-ms 3 (time-until-nth 3)))))
       (testing "Some time later we can read an additional batch of messages without any polling delay"
         (Thread/sleep ^long (time-until-nth n))
         ;; Wait until all items have matured
-        (is (= [3 4] (#'queue/take-batch! q 0 5 0))))
+        (is (= [3 4] (queue/take-batch! q 0 5 0))))
       (testing "But the outlier is not yet ready"
-        (is (nil? (#'queue/take-batch! q 0 5 0))))
+        (is (nil? (queue/take-batch! q 0 5 0))))
       (testing "Eventually the outlier is ready"
-        (is (= [10] (#'queue/take-batch! q take-batch-wait-ms 5 50))))
+        (is (= [10] (queue/take-batch! q take-batch-wait-ms 5 50))))
       (testing "Afterwards the queue is empty"
-        (is (nil? (#'queue/take-batch! q take-batch-wait-ms 5 0)))))))
+        (is (nil? (queue/take-batch! q take-batch-wait-ms 5 0)))))))
 
 (deftest ^:synchronized same-deadline-take-batch-is-fifo-test
   (testing "messages that mature together come off in the order they were put on"
@@ -117,7 +117,7 @@
           n 50]
       (dotimes [i n]
         (queue/put-with-delay! q 0 i))
-      (is (= (range n) (#'queue/take-batch! q 100 n 10))))))
+      (is (= (range n) (queue/take-batch! q 100 n 10))))))
 
 (deftest non-delayed-take-batch-test
   (testing "take-batch works with any blocking queue"
@@ -125,5 +125,5 @@
           n 5]
       (dotimes [i n]
         (.offer q i))
-      (is (= [0 1 2] (#'queue/take-batch! q 500 3 10)))
-      (is (= [3 4] (#'queue/take-batch! q 500 3 10))))))
+      (is (= [0 1 2] (queue/take-batch! q 500 3 10)))
+      (is (= [3 4] (queue/take-batch! q 500 3 10))))))
