@@ -433,8 +433,8 @@
                                         :entity-types     ["question"]
                                         :partial-results? true}))))))))))
 
-(deftest repeated-keyword-queries-are-searched-once-test
-  (testing "a repeated keyword query is searched once, so its ranking enters the fusion once"
+(deftest repeated-queries-are-searched-once-test
+  (testing "a repeated keyword or semantic query is searched once, so its ranking enters the fusion once"
     (let [searched (atom [])]
       (mt/with-test-user :rasta
         (do-with-search-stub!
@@ -445,9 +445,10 @@
                                                                     (swap! searched conj search-string)
                                                                     [{:id 1 :model "card" :name "Orders"}])]
              (search/search {:term-queries     ["orders" "orders"]
-                             :semantic-queries []
+                             :semantic-queries ["monthly sales" "monthly sales"]
                              :entity-types     ["question"]})
-             (is (= ["orders"] @searched)))))))))
+             (is (= #{"orders" "monthly sales"} (set @searched)))
+             (is (= 2 (count @searched))))))))))
 
 (deftest ^:parallel keyword-queries-are-capped-test
   (testing "a search takes at most ten keyword queries, since each runs as its own search"
