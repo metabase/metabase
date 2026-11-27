@@ -111,7 +111,10 @@
             ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
         (testing "by default the validation of the query by its import transform refuses the import"
           (mt/with-empty-h2-app-db!
-            (is (ours? (load-failure-messages! (ingestion))))))
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :warn]]
+              (is (ours? (load-failure-messages! (ingestion))))
+              (testing "and the import logs how to skip it"
+                (is (some (comp (partial re-find #"MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION") :message) (messages)))))))
         (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
           (mt/with-empty-h2-app-db!
             (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]

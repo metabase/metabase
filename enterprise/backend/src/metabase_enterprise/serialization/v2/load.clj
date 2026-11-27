@@ -55,12 +55,19 @@
         {settings true
          entities false}       (group-by #(= :model/Setting (first %)) ks)
         _                      (log/infof "Starting deserialization, total %s documents" (count ks))
-        errors                 (into (serialization/load-all entities
-                                                             #(serdes.ingest/ingest-many ingestion %)
-                                                             :continue-on-error      continue-on-error
-                                                             :skip-schema-validation (serialization.settings/serialization-skip-schema-validation))
-                                     (load-settings! (into [] (keep second) (serdes.ingest/ingested ingestion settings))
-                                                     continue-on-error))]
+        errors                 (try
+                                 (into (serialization/load-all entities
+                                                               #(serdes.ingest/ingest-many ingestion %)
+                                                               :continue-on-error      continue-on-error
+                                                               :skip-schema-validation (serialization.settings/serialization-skip-schema-validation))
+                                       (load-settings! (into [] (keep second) (serdes.ingest/ingested ingestion settings))
+                                                       continue-on-error))
+                                 (catch Exception e
+                                   (when (serialization/query-schema-error? e)
+                                     (log/warn (str "Pass continue_on_error to skip the entities whose query this Metabase's query "
+                                                    "schema rejects, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip "
+                                                    "this check for the whole import.")))
+                                   (throw e)))]
     (doseq [e errors]
       (log/warn (u/strip-error e "Skipping deserialization error")))
     (when reindex?

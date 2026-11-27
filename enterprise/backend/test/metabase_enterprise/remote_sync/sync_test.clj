@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.content :as content]
+   [metabase-enterprise.remote-sync.tasks :as tasks]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -222,3 +223,23 @@
         (testing "a push names a goal's measure that isn't synced"
           (is (=? {:status :error :message #"Synced chart uses Measure .+, which isn't synced\..*"}
                   (remote-sync.tu/push! url nil))))))))
+
+(deftest pull-of-query-this-instance-rejects-names-no-import-option-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       card   {:name          "Synced card"
+                                               :collection_id (:id synced)
+                                               :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                "SELECT {{x}}")}]
+        (let [{v1 :version} (remote-sync.tu/push! url nil)
+              path          (remote-sync.tu/entity-path! url "main" card)]
+          (remote-sync.tu/commit! url "main" {path (str/replace (remote-sync.tu/read-file! url "main" path)
+                                                                "type: text" "type: tag-type-from-the-future")})
+          (testing "a pull refuses a query this instance cannot represent without naming SerDes import options"
+            (let [message (try
+                            (:message (remote-sync.tu/pull! url v1))
+                            (catch Exception e
+                              (tasks/error-message e)))]
+              (is (re-find #"does not match this Metabase's query schema" message))
+              (is (not (re-find #"continue_on_error|MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION" message))))))))))

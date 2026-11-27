@@ -96,6 +96,7 @@
   export-mbql
   import-mbql
   mbql-transform
+  query-schema-error?
   recording-card-entity-ids
   serialized-query-source-table
   walk-export
