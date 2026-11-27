@@ -200,7 +200,8 @@
                                (assoc search-tool :inputSchema {:properties {:id     {:type "integer" :description "The ID."}
                                                                              :prompt {:type ["string" "null"]}}})))))))
     (testing "the schema's `:required` is not published"
-      ;; OpenAI clients are sent every argument as required, so a `Required` column would be wrong for them
+      ;; `strict-tool-input-schema` lists every property there so strict clients can send an explicit null, so it
+      ;; can't tell a required argument from an optional one
       (is (not (str/includes? (markdown {:properties {:id {:type "integer"}} :required [:id]}) "Required"))))
     (testing "a pipe in a description doesn't split the row"
       (is (str/includes? (markdown {:properties {:q {:type "string" :description "a | b"}}}) "a \\| b")))

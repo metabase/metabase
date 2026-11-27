@@ -44,9 +44,9 @@
 ;;; ------------------------------------------------ Method dispatch -----------------------------------------------
 
 (defn- handle-tools-list [id _params session-id]
-  (transport/jsonrpc-response id {:tools (registry/list-tools
-                                          {:supports-mcp-ui?      (mcp.session/supports-mcp-ui? session-id)
-                                           :strict-input-schemas? (mcp.session/strict-input-schemas? session-id)})}))
+  (let [options {:supports-mcp-ui?        (mcp.session/supports-mcp-ui? session-id)
+                 :standard-input-schemas? (mcp.session/standard-input-schemas? session-id)}]
+    (transport/jsonrpc-response id {:tools (registry/list-tools options)})))
 
 (defn- step-up-scopes
   "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that

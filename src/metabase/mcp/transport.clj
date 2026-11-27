@@ -83,7 +83,7 @@
   "Substrings of a lowercased `clientInfo.name` that mark a client known to read the standard MCP input schemas."
   ["claude" "codex" "cursor" "visual studio code" "vscode" "zed"])
 
-(defn- standard-input-schemas?
+(defn- standard-input-schema-client?
   "True when `client-name`, from the `initialize` handshake, names a client known to read the standard input schemas.
   Every other client gets the OpenAI strict ones."
   [client-name]
@@ -397,9 +397,10 @@
             ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
             supports-mcp-ui? (and (mcp-app-ui-capability? params)
                                   (mcp/inline-ui-enabled-for-client? client-name))
-            session-id       (mcp.session/create! user-id
-                                                  {:supports-mcp-ui?      supports-mcp-ui?
-                                                   :strict-input-schemas? (not (standard-input-schemas? client-name))})
+            session-id       (mcp.session/create!
+                              user-id
+                              {:supports-mcp-ui?        supports-mcp-ui?
+                               :standard-input-schemas? (standard-input-schema-client? client-name)})
             init-response (handle-initialize (:id body) params capabilities instructions)]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.

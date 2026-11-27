@@ -529,7 +529,7 @@
     (let [free? (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf :allOf) schema)))]
       (is (= []
              (for [{tool-name :name :as tool} (@#'registry/manifest)
-                   schema                     ((juxt :inputSchema ::registry/strict-input-schema :outputSchema) tool)
+                   schema                     ((juxt :inputSchema ::registry/standard-input-schema :outputSchema) tool)
                    :when                      (not (free? schema))]
                tool-name))))))
 
