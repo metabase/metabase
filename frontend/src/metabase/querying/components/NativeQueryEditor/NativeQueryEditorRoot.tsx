@@ -251,6 +251,17 @@ export const NativeQueryEditorRoot = forwardRef<
     runQuery?.();
   }, [handleChange, runQuery]);
 
+  const isRunningRef = useLatest(isRunning);
+  const cancelQueryRef = useLatest(cancelQuery);
+
+  const handleToggleRunQuery = useCallback(() => {
+    if (isRunningRef.current) {
+      cancelQueryRef.current?.();
+    } else {
+      handleRunQuery();
+    }
+  }, [isRunningRef, cancelQueryRef, handleRunQuery]);
+
   const handleBlur = useCallback(() => {
     handleChange.flush();
     onBlur?.();
@@ -410,7 +421,7 @@ export const NativeQueryEditorRoot = forwardRef<
                   extensions={extensions}
                   onBlur={handleBlur}
                   onChange={handleChange}
-                  onRunQuery={handleRunQuery}
+                  onRunQuery={handleToggleRunQuery}
                   onSelectionChange={setNativeEditorSelectedRange}
                   onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                   onRightClickSelection={handleRightClickSelection}
