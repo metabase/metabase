@@ -4,6 +4,9 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.nested-field-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -257,3 +260,25 @@
                   {:expressions {:cap_service [:upper [:field $tips.source.service]]}
                    :aggregation [[:count-where [:= $tips.source.service "facebook"]]]
                    :breakout [:expression :cap_service]}))))))))
+
+(deftest ^:parallel join-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:nested-fields :left-join]})
+    (testing "Nested Field of a joined table that has the same name as another of its columns (QUE-1211)"
+      (mt/dataset geographical-tips
+        (let [mp       (mt/metadata-provider)
+              tips     (lib.metadata/table mp (mt/id :tips))
+              id       (lib.metadata/field mp (mt/id :tips :id))
+              ;; not `(mt/id :tips :venue :id)`, because Mongo changes `:id` to `_id`
+              venue-id (m/find-first #(and (= (:name %) "id")
+                                           (= (:parent-id %) (mt/id :tips :venue)))
+                                     (lib.metadata/fields mp (mt/id :tips)))
+              query    (-> (lib/query mp tips)
+                           (lib/with-fields [id])
+                           (lib/join (-> (lib/join-clause tips [(lib/= id id)])
+                                         (lib/with-join-fields [id venue-id])))
+                           (lib/order-by id)
+                           (lib/limit 2))]
+          (mt/with-native-query-testing-context query
+            (is (= [[1 1 "379af987-ad40-4a93-88a6-0233e1c14649"]
+                    [2 2 "5cc18489-dfaf-417b-900f-5d1d61b961e8"]]
+                   (mt/formatted-rows [int int str] (qp/process-query query))))))))))
