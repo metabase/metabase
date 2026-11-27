@@ -10,6 +10,8 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.global-system.system :as global-system]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -381,3 +383,23 @@
                  {:returned              (#'prometheus/start-system! 0)
                   :seen-while-installing @seen-while-installing
                   :after                 @#'prometheus/system})))))))
+
+(deftest setup-starts-through-the-global-system-test
+  (testing "setup! starts Prometheus through the global system, so a halt stops it, and shutdown! stops it"
+    (let [handle @#'prometheus/system-component
+          stops  (atom 0)
+          halts? #(global-system.tu/halts? handle)]
+      (with-redefs [prometheus/system nil]
+        (global-system.tu/with-root handle nil
+          (mt/with-dynamic-fn-redefs [prometheus/start-system! (constantly ::system)
+                                      prometheus/stop-system!  (fn [_] (swap! stops inc))]
+            (try
+              (prometheus/setup! 0)
+              (let [after-start {:halts? (halts?), :stops @stops}]
+                (prometheus/shutdown!)
+                (is (= {:after-start {:halts? true, :stops 0}
+                        :after-stop  {:halts? false, :stops 1}}
+                       {:after-start after-start
+                        :after-stop  {:halts? (halts?), :stops @stops}})))
+              (finally
+                (global-system/stop! handle)))))))))
