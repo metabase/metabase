@@ -57,7 +57,7 @@
 (defn- complete-pairs
   "Fill in the other half of the two-column choice in `settings`: `is_published`/`collection_id`, kept from `row`, the
   settings as stored, if any."
-  [settings _table row]
+  [settings row]
   (cond-> settings
     (and (contains? settings :collection_id) (not (contains? settings :is_published)))
     (assoc :is_published (boolean (:is_published row)))))
@@ -71,11 +71,6 @@
                  (assoc flag true)))
              settings
              user-settings/table-set-flags))
-
-(defn- pair-columns-written?
-  "Whether `explicit` writes a column whose pair [[complete-pairs]] completes."
-  [explicit]
-  (contains? explicit :collection_id))
 
 (defn- check-publication
   "Throws a 400 when `settings` put a Table in a Collection without publishing it."
@@ -106,24 +101,16 @@
       (run! #(collection/check-allowed-content :table (collections %)) ids))))
 
 (defn- completed-changes
-  "`explicit`, the columns a write sets, with its two-column pairs completed from `table` and from `stored`, the
-  settings as stored, if any, and the flags of what it sets."
-  [explicit table stored]
-  (let [completed (cond-> explicit
-                    (pair-columns-written? explicit) (complete-pairs table stored))]
+  "`explicit`, the columns a write sets, with its two-column pair completed from `stored`, the settings as stored, if
+  any, and the flags of what it sets."
+  [explicit stored]
+  (let [completed (complete-pairs explicit stored)]
     (with-set-flags completed completed explicit)))
 
 (defn- changed-columns
   "The columns of `row` whose values differ from those of `stored`."
   [row stored]
   (into {} (remove (fn [[k v]] (= v (get stored k)))) row))
-
-(defn- tables-for
-  "The Tables, by id, of those of the settings `rows` that write a column of a two-column pair."
-  [rows]
-  (into {}
-        (map (juxt :id identity))
-        (warehouse-schema.db/tables (into #{} (comp (filter pair-columns-written?) (keep :table_id)) rows))))
 
 (def ^:private writes-spec
   "The spec of TableUserSettings for [[metabase.warehouse-schema.user-settings-writes]]."
@@ -167,27 +154,25 @@
     (write-tables! table-rows opts)))
 
 (defn- update-settings!
-  "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pairs completed from its Table
-  among `tables` and its flags set, one update per distinct change, returning `writes` with the updates."
-  [writes stored+rows tables]
+  "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pair completed and its flags
+  set, one update per distinct change, returning `writes` with the updates."
+  [writes stored+rows]
   (let [by-id (into {}
                     (map (fn [[stored row]]
-                           [(:id stored) (merge row (completed-changes (changed-columns row stored) (tables (:table_id stored)) stored))]))
+                           [(:id stored) (merge row (completed-changes (changed-columns row stored) stored))]))
                     stored+rows)]
     (warehouse-schema.db/update-table-user-settings-rows! (mapv (fn [[id changes]] (assoc changes :id id)) by-id))
     (user-settings-writes/add-updated writes writes-spec (map first stored+rows) (comp by-id :id))))
 
 (defn- completed-rows
-  "The new settings `rows` with their two-column pairs completed from their Tables; a Collection that cannot hold Tables
-  throws."
+  "The new settings `rows` with their two-column pair completed; a Collection that cannot hold Tables throws."
   [rows]
   (check-allowed-contents (map :collection_id rows))
-  (let [tables (tables-for rows)]
-    (mapv #(completed-changes % (tables (:table_id %)) nil) rows)))
+  (mapv #(completed-changes % nil) rows))
 
 (mu/defn create-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings]
-  "Insert the TableUserSettings `rows`, their two-column pairs completed from their Tables, write the columns they say a
-  user set onto their Tables, and return the inserted instances; a row that holds no user value is deleted again."
+  "Insert the TableUserSettings `rows`, their two-column pair completed, write the columns they say a user set onto
+  their Tables, and return the inserted instances; a row that holds no user value is deleted again."
   [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.create]]
   (mdb/create-batched! :model/TableUserSettings rows
                        {:before-create completed-rows
@@ -199,20 +184,19 @@
 
 (defn- write-settings-updates!
   "Write each of `rows`, the id of one of the `stored` TableUserSettings, `{id row}`, and the columns to change, with its
-  two-column pairs completed from its Table, and delete the settings it leaves without a user value, returning
-  `writes` with these writes; a Collection that cannot hold Tables throws when a row moves its Table there."
+  two-column pair completed, and delete the settings it leaves without a user value, returning `writes` with these
+  writes; a Collection that cannot hold Tables throws when a row moves its Table there."
   [writes stored rows]
   (check-allowed-contents (for [{:keys [id collection_id]} rows
                                 :when (not= collection_id (:collection_id (stored id)))]
                             collection_id))
-  (let [tables (tables-for (map #(merge (dissoc % :table_id) (select-keys (stored (:id %)) [:table_id])) rows))]
-    (-> writes
-        (update-settings! (map (fn [row] [(stored (:id row)) (dissoc row :id)]) rows) tables)
-        (user-settings-writes/delete-empty! writes-spec (map (comp :table_id stored :id) rows)))))
+  (-> writes
+      (update-settings! (map (fn [row] [(stored (:id row)) (dissoc row :id)]) rows))
+      (user-settings-writes/delete-empty! writes-spec (map (comp :table_id stored :id) rows))))
 
 (mu/defn update-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings.update]
   "Apply each of `rows`, the id of a TableUserSettings and the columns to change, in one transaction and batches of
-  [[mdb/update-partition-size]], their two-column pairs completed from their Tables, write the columns the updated
+  [[mdb/update-partition-size]], their two-column pair completed, write the columns the updated
   settings say a user set onto their Tables, publish one create, update and delete event with `opts`, and return them."
   ([rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
    (update-table-user-settings! rows nil))
@@ -230,21 +214,21 @@
    (vec rows)))
 
 (defn- update-or-insert-settings!
-  "Write `settings` as the user values of the Table with `table-id`, its pairs completed from `stored-table`: as changes
-  to its `stored` settings, or as a new row when there are none, and as changes to the settings a concurrent insert
-  stored first; returns `{:stored s :changes c}` or `{:inserted s}`."
-  [table-id stored settings stored-table]
+  "Write `settings` as the user values of the Table with `table-id`: as changes to its `stored` settings, or as a new
+  row when there are none, and as changes to the settings a concurrent insert stored first; returns
+  `{:stored s :changes c}` or `{:inserted s}`."
+  [table-id stored settings]
   (if stored
     (let [flagged (with-set-flags settings settings settings)
-          changes (merge flagged (completed-changes (changed-columns flagged stored) stored-table stored))]
+          changes (merge flagged (completed-changes (changed-columns flagged stored) stored))]
       (warehouse-schema.db/update-table-user-settings! table-id changes)
       {:stored stored :changes changes})
     (try
       {:inserted (warehouse-schema.db/insert-table-user-settings-row!
-                  (assoc (completed-changes settings stored-table nil) :table_id table-id))}
+                  (assoc (completed-changes settings nil) :table_id table-id))}
       (catch Exception e
         (if-let [stored (when (sql-errors/duplicate-key? e) (warehouse-schema.db/table-user-settings table-id))]
-          (update-or-insert-settings! table-id stored settings stored-table)
+          (update-or-insert-settings! table-id stored settings)
           (throw e))))))
 
 (mu/defn upsert-table-user-settings!
@@ -257,9 +241,8 @@
     (when (seq settings)
       (t2/with-transaction [_conn]
         (check-allowed-contents [(:collection_id settings)])
-        (let [stored-table (when (pair-columns-written? settings) (warehouse-schema.db/table id))
-              {:keys [stored changes inserted]} (update-or-insert-settings!
-                                                 id (warehouse-schema.db/table-user-settings id) settings stored-table)
+        (let [{:keys [stored changes inserted]} (update-or-insert-settings!
+                                                 id (warehouse-schema.db/table-user-settings id) settings)
               writes       (-> (if stored
                                  (user-settings-writes/add-updated {} writes-spec [stored] (constantly changes))
                                  (user-settings-writes/add-created {} [inserted]))
@@ -279,22 +262,18 @@
     (when (and (seq settings) (seq table-ids))
       (t2/with-transaction [_conn]
         (check-allowed-contents [(:collection_id settings)])
-        (let [tables   (if (pair-columns-written? settings)
-                         (u/index-by :id (warehouse-schema.db/tables table-ids))
-                         {})
-              existing (u/index-by :table_id (warehouse-schema.db/table-user-settings-for-tables table-ids))
+        (let [existing (u/index-by :table_id (warehouse-schema.db/table-user-settings-for-tables table-ids))
               writes   (if-let [missing (not-empty (remove existing table-ids))]
                          (user-settings-writes/add-created
                           {}
                           (warehouse-schema.db/insert-table-user-settings-returning-instances!
-                           (mapv #(completed-changes (assoc settings :table_id %) (tables %) nil) missing)))
+                           (mapv #(completed-changes (assoc settings :table_id %) nil) missing)))
                          {})
               writes   (-> writes
                            (update-settings! (for [table-id table-ids
                                                    :let [stored (existing table-id)]
                                                    :when stored]
-                                               [stored (with-set-flags settings settings settings)])
-                                             tables)
+                                               [stored (with-set-flags settings settings settings)]))
                            (user-settings-writes/delete-empty! writes-spec table-ids))]
           (when-let [changes (not-empty (user-settings/table-row-columns settings))]
             (write-tables! (for [id table-ids] (assoc changes :id id)) nil))
@@ -328,7 +307,7 @@
                                      (user-settings/table-set-flags k) (conj [(user-settings/table-set-flags k) false]))))
                       ks)]
         (user-settings-writes/publish-writes! (-> {}
-                                                  (update-settings! [[stored row]] (tables-for [(assoc row :table_id id)]))
+                                                  (update-settings! [[stored row]])
                                                   (user-settings-writes/delete-empty! writes-spec [id]))
                                               writes-spec)))))
 
