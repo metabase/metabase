@@ -192,6 +192,14 @@
     (update x 0 #(expr-subquery ctx %))
     (expr-subquery ctx x)))
 
+(defn- check-ddl-table
+  "Throws when the statement `statement` creates or drops `table`, a table `ctx` filters or substitutes, since its rows
+  are not all the sandbox's to remove."
+  [ctx statement table]
+  (when (or (row-filter ctx table) (substitute ctx table))
+    (throw (ex-info (format "sandbox-query doesn't support %s of a filtered or substituted table" statement)
+                    {:table table}))))
+
 (defn- clause
   "The clause `k` of a query, holding `v`, with every query in it sandboxed by `ctx`."
   [ctx k v]
@@ -221,9 +229,16 @@
              :when-not-matched-insert)
     (expr ctx v)
 
-    (:update :delete-from :merge-into :columns :key :on-conflict :do-nothing :for :limit :offset :create-table
-             :with-columns :engine :character-set :collate :drop-table
-             :analyze-table)
+    :create-table
+    (do (check-ddl-table ctx "CREATE TABLE" (if (vector? v) (first v) v))
+        v)
+
+    :drop-table
+    (do (check-ddl-table ctx "DROP TABLE" (if (vector? v) (peek v) v))
+        v)
+
+    (:update :delete-from :merge-into :columns :key :on-conflict :do-nothing :for :limit :offset :with-columns :engine
+             :character-set :collate :analyze-table)
     v
 
     (throw (ex-info (format "sandbox-query doesn't support the clause %s" (pr-str k)) {:clause k}))))
@@ -286,7 +301,7 @@
   [ctx f relation assignments]
   (check-assignments f assignments)
   (reduce-kv (fn [acc k v]
-               (when-not (simple-keyword? k)
+               (when-not (and (simple-keyword? k) (not (str/includes? (name k) ".")))
                  (throw (ex-info (format "sandbox-query doesn't support the upsert column %s" (pr-str k)) {:column k})))
                (assoc acc k [:case (in-filter ctx f relation) v :else (u/qualified-key relation k)]))
              assignments
