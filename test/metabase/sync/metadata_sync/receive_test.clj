@@ -389,9 +389,9 @@
               #(is (= "Bird Sightings" (:display_name (table %))))]
              ["a position that a 32-bit column cannot hold is left out" #(in-field % :position 99999999999)
               #(is (= 0 (:position (species %))))]
-             ["a data layer it does not know is left out with the visibility type, which goes with it"
-              #(-> % (in-table :visibility_type "hidden") (in-table :data_layer "nonsense"))
-              #(is (=? {:visibility_type nil :data_layer :internal} (table %)))]]]
+             ["a data layer it does not know is left out"
+              #(in-table % :data_layer "nonsense")
+              #(is (=? {:data_layer :internal} (table %)))]]]
       (testing what
         (mt/with-temp [:model/Database {receiver-id :id} {:initial_sync_status "incomplete"}]
           (testing "the Table is inserted with the rest of its values, and the answer counts what it left out"
@@ -592,7 +592,7 @@
             plain     (t2/select-one-pk :model/Table :db_id receiver-id :name "plain")
             species   (field-id sightings "species")]
         (testing "a new Table has a settings row with the flags of the columns the sender's user set"
-          (is (=? {:description_set true :visibility_type_set false :data_layer_set false :data_source_set false}
+          (is (=? {:description_set true :data_layer_set false :data_source_set false}
                   (t2/select-one :model/TableUserSettings :table_id sightings))))
         (testing "a new Field does too"
           (is (=? {:description_set true :semantic_type_set true :fk_target_field_id_set false}

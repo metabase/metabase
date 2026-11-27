@@ -44,8 +44,8 @@
 (deftest ^:parallel table-ids-with-unscanned-fields-test
   (mt/with-temp [:model/Database db       {}
                  :model/Database other-db {}
-                 :model/Table    hidden   {:db_id (:id db) :name "hidden_t" :visibility_type :hidden}
-                 :model/Table    cruft    {:db_id (:id db) :name "cruft_t" :visibility_type :cruft}
+                 :model/Table    hidden   {:db_id (:id db) :name "hidden_t" :data_layer :hidden}
+                 :model/Table    cruft    {:db_id (:id db) :name "cruft_t" :data_layer :hidden}
                  :model/Table    done     {:db_id (:id db) :name "done_t"}
                  :model/Table    inactive {:db_id (:id db) :name "inactive_t" :active false}
                  :model/Table    foreign  {:db_id (:id other-db) :name "foreign_t"}

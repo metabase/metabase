@@ -30,30 +30,23 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-1-id :id} {:db_id db-id}
                    :model/Table    {table-2-id :id} {:db_id db-id}]
-      (testing "updating data_layer syncs to visibility_type for all tables"
-        ;; Update two tables to internal, which should sync to nil visibility_type
+      (testing "updating data_layer applies to all tables"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id table-2-id]
                                :data_layer "internal"})
         (is (= :internal (user-table-fn :data_layer table-1-id)))
-        (is (= nil (user-table-fn :visibility_type table-1-id)))
-        (is (= :internal (user-table-fn :data_layer table-2-id)))
-        (is (= nil (user-table-fn :visibility_type table-2-id))))
-      (testing "updating data_layer to hidden syncs to hidden visibility_type"
-        ;; Update one table back to hidden, which should sync to :hidden
+        (is (= :internal (user-table-fn :data_layer table-2-id))))
+      (testing "updating data_layer to hidden hides the table"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids  [table-1-id]
                                :data_layer "hidden"})
-        (is (= :hidden (user-table-fn :data_layer table-1-id)))
-        (is (= :hidden (user-table-fn :visibility_type table-1-id))))
+        (is (= :hidden (user-table-fn :data_layer table-1-id))))
       (testing "visibility_type is not part of this endpoint, so it is dropped and data_layer alone applies"
         (mt/user-http-request :crowberto :post 200 "data-studio/table/edit"
                               {:table_ids       [table-1-id]
                                :visibility_type "hidden"
                                :data_layer      "final"})
-        ;; had visibility_type been honoured, the model would have refused to update both at once
-        (is (= :final (user-table-fn :data_layer table-1-id)))
-        (is (= nil (user-table-fn :visibility_type table-1-id)))))))
+        (is (= :final (user-table-fn :data_layer table-1-id)))))))
 
 (deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
   (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"

@@ -55,7 +55,7 @@ describe("issue 18384", () => {
     // Hide Reviews table
     cy.request("PUT", "/api/table", {
       ids: [REVIEWS_ID],
-      visibility_type: "hidden",
+      data_layer: "hidden",
     });
   });
 

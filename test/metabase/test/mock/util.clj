@@ -13,7 +13,6 @@
    :active                  true
    :id                      true
    :db_id                   true
-   :visibility_type         nil
    :created_at              true})
 
 (def field-defaults

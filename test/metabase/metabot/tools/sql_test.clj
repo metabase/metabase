@@ -940,7 +940,7 @@
         (is (str/starts-with? (first (warning-lines (create-sql "SELECT COUNT(*) FROM sys.no_such_account")))
                               (table-warning "sys.no_such_account"))))
       (testing "a hidden synced table gives no table warning"
-        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:visibility_type "hidden" :data_layer :hidden}
+        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:data_layer :hidden}
           (let [result (create-sql "SELECT COUNT(*) FROM venues")]
             (is (not (str/includes? (:output result) warning-intro)))
             (is (not (contains? result :non-terminal?))))))
@@ -949,7 +949,7 @@
           (let [result (create-sql "SELECT * FROM core.account")]
             (is (= [true] (mapv #(str/starts-with? % (table-warning "core.account")) (warning-lines result))))
             (is (true? (:non-terminal? result))))))
-      (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "core" :name "account" :visibility_type "hidden"}]
+      (mt/with-temp [:model/Table _ {:db_id (mt/id) :schema "core" :name "account" :data_layer :hidden}]
         (testing "a hidden table row with the same schema and name gives no table warning"
           (is (not (str/includes? (:output (create-sql "SELECT COUNT(*) FROM core.account")) warning-intro))))
         (testing "a bare name matches the default schema only, not a table of the same name in another schema"
@@ -987,7 +987,7 @@
             (is (= [] (warning-lines result)))
             (is (not (contains? result :non-terminal?)))))
         (testing "a hidden synced table"
-          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:visibility_type "hidden" :data_layer :hidden}
+          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:data_layer :hidden}
             (let [result (create-sql "SELECT * FROM venues")]
               (is (= [] (warning-lines result)))
               (is (not (contains? result :non-terminal?))))))

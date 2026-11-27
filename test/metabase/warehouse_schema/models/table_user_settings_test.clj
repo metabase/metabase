@@ -40,13 +40,14 @@
         (is (= :alphabetical (:field_order (user-table table-id))))
         (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id)))))))
 
-(deftest visibility-pair-is-recorded-whole-test
-  (testing "visibility_type and data_layer are one choice, so setting either records both"
+(deftest data-layer-is-recorded-test
+  (testing "setting data_layer records it as the user's choice"
     (mt/with-temp [:model/Table {table-id :id :as table} {}]
-      (table-user-settings/upsert-table-user-settings! table {:visibility_type :hidden})
-      (is (=? {:visibility_type :hidden :data_layer :hidden} (user-table table-id)))
+      (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
+      (is (=? {:data_layer :hidden} (user-table table-id)))
+      (is (true? (t2/select-one-fn :data_layer_set :model/TableUserSettings :table_id table-id)))
       (table-user-settings/upsert-table-user-settings! table {:data_layer :internal})
-      (is (=? {:visibility_type nil :data_layer :internal} (user-table table-id))))))
+      (is (=? {:data_layer :internal} (user-table table-id))))))
 
 (deftest publishing-is-recorded-as-a-pair-test
   (testing "collection_id is only meaningful alongside is_published, which is NOT NULL and answers for the pair"
@@ -126,12 +127,6 @@
         (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "n" :description "d"})
         (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set false})
         (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
-      (testing "both halves of the visibility choice move together"
-        (table-user-settings/update-table-user-settings!
-         [{:id (t2/select-one-pk :model/TableUserSettings :table_id table-id) :visibility_type :hidden}])
-        (is (=? {:visibility_type :hidden :data_layer :hidden
-                 :visibility_type_set true :data_layer_set true}
-                (t2/select-one :model/TableUserSettings :table_id table-id))))
       (testing "a change the Table refuses rolls back its settings too"
         (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative})
         (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
@@ -169,13 +164,6 @@
       (is (=? {:data_authority :authoritative :description "user description" :display_name "User Name"}
               (user-table table-id)))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
-
-(deftest unchanged-half-of-visibility-pair-is-recorded-test
-  (testing "setting data_layer to its current value records visibility_type as set too"
-    (mt/with-temp [:model/Table {table-id :id :as table} {:visibility_type :cruft :data_layer :hidden}]
-      (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
-      (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
-              (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
 (deftest upsert-after-concurrent-insert-updates-stored-row-test
   (testing "settings another writer inserts between the read and the insert are updated, not duplicated"

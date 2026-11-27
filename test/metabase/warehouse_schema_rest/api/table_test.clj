@@ -487,7 +487,6 @@
               {:description     "What a nice table!"
                :entity_type     nil
                :schema          ""
-               :visibility_type "hidden"
                :display_name    "Userz"
                :is_writable     nil
                :data_source      "transform"
@@ -510,12 +509,12 @@
 
 (deftest ^:parallel update-table-test-3
   (testing "PUT /api/table/:id"
-    (testing "Don't change visibility_type when updating properties (#22287)"
+    (testing "Don't change data_layer when updating properties (#22287)"
       (doseq [property [:caveats :points_of_interest :description :display_name]]
-        (mt/with-temp [:model/Table table {:visibility_type "hidden"}]
+        (mt/with-temp [:model/Table table {:data_layer :hidden}]
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {property (mt/random-name)})
-          (is (= :hidden (user-table-fn :visibility_type (:id table)))))))))
+          (is (= :hidden (user-table-fn :data_layer (:id table)))))))))
 
 (deftest ^:parallel update-table-test-4
   (testing "PUT /api/table/:id"
@@ -592,25 +591,23 @@
             (letfn [(set-visibility! [state]
                       (testing (format "Set state => %s" (pr-str state))
                         (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
-                                              {:display_name    "Userz"
-                                               :visibility_type state
-                                               :description     "What a nice table!"})))
+                                              {:display_name "Userz"
+                                               :data_layer   state
+                                               :description  "What a nice table!"})))
                     (set-name! []
                       (testing "set display name"
                         (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
                                               {:display_name (mt/random-name)
                                                :description  "What a nice table!"})))]
               (set-visibility! "hidden")
-              (set-visibility! nil)     ; <- should get synced
+              (set-visibility! "internal") ; <- should get synced
               (is (= 1
                      @called))
               (set-visibility! "hidden")
-              (set-visibility! "cruft")
-              (set-visibility! "technical")
-              (set-visibility! nil)     ; <- should get synced again
+              (set-visibility! "final")    ; <- should get synced again
               (is (= 2
                      @called))
-              (set-visibility! "technical")
+              (set-visibility! "hidden")
               (is (= 2
                      @called))
               (testing "Update table's properties shouldn't trigger sync"
@@ -622,20 +619,20 @@
   (testing "Bulk updating visibility"
     (let [unhidden-ids (atom #{})]
       (mt/with-temp [:model/Table {id-1 :id} {}
-                     :model/Table {id-2 :id} {:visibility_type "hidden"}]
+                     :model/Table {id-2 :id} {:data_layer :hidden}]
         (mt/with-dynamic-fn-redefs [sync/sync-tables-in-background! (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (letfn [(set-many-vis! [ids state]
                     (reset! unhidden-ids #{})
-                    (testing (format "Set visibility type => %s" (pr-str state))
+                    (testing (format "Set data layer => %s" (pr-str state))
                       (mt/user-http-request :crowberto :put 200 "table/"
-                                            {:ids ids :visibility_type state})))]
-            (set-many-vis! [id-1 id-2] nil) ;; unhides only 2
+                                            {:ids ids :data_layer state})))]
+            (set-many-vis! [id-1 id-2] "internal") ;; unhides only 2
             (is (= @unhidden-ids #{id-2}))
             (set-many-vis! [id-1 id-2] "hidden")
             (is (= #{}
                    @unhidden-ids)) ;; no syncing when they are hidden
 
-            (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
+            (set-many-vis! [id-1 id-2] "internal") ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))
 
 (deftest ^:parallel get-fks-test
@@ -1210,46 +1207,17 @@
                  {:display_name "Products"}]
                 (list-tables :term "P" :data-layer "internal")))))))
 
-(deftest ^:parallel update-table-visibility-sync-test
-  (testing "PUT /api/table/:id visibility field synchronization"
+(deftest ^:parallel update-table-data-layer-test
+  (testing "PUT /api/table/:id data_layer"
     (mt/with-temp [:model/Table table {}]
-      (testing "updating visibility_type syncs to data_layer"
+      (testing "updating data_layer to hidden hides the table"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                              {:visibility_type "hidden"})
-        (is (= :hidden (user-table-fn :data_layer (u/the-id table))))
-        (is (= :hidden (user-table-fn :visibility_type (u/the-id table)))))
-      (testing "updating data_layer syncs to visibility_type"
+                              {:data_layer "hidden"})
+        (is (= :hidden (user-table-fn :data_layer (u/the-id table)))))
+      (testing "updating data_layer to internal unhides the table"
         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                               {:data_layer "internal"})
-        (is (= :internal (user-table-fn :data_layer (u/the-id table))))
-        (is (= nil (user-table-fn :visibility_type (u/the-id table)))))
-      (testing "cannot update visibility_type and data_layer to values that disagree"
-        (is (= "visibility_type and data_layer must agree: data_layer is hidden exactly when visibility_type is set"
-               (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
-                                     {:visibility_type "hidden"
-                                      :data_layer      "final"}))))
-      (testing "updating both to values that agree stores both"
-        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                              {:visibility_type "hidden"
-                               :data_layer      "hidden"})
-        (is (= :hidden (user-table-fn :data_layer (u/the-id table))))
-        (is (= :hidden (user-table-fn :visibility_type (u/the-id table))))))))
-
-(deftest update-table-both-visibility-columns-test
-  (mt/with-temp [:model/Table {single :id} {:visibility_type :hidden}
-                 :model/Table {bulk :id}   {:visibility_type :hidden}]
-    (let [state (fn [table-id]
-                  {:table    (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id table-id)
-                   :settings (t2/select-one-fn (juxt :visibility_type :data_layer) :model/TableUserSettings
-                                               :table_id table-id)})]
-      (testing "PUT /api/table/:id stores a visible final pair on the Table and its settings"
-        (is (=? {:visibility_type nil :data_layer "final"}
-                (mt/user-http-request :crowberto :put 200 (format "table/%d" single)
-                                      {:visibility_type nil :data_layer "final"})))
-        (is (= {:table [nil :final] :settings [nil :final]} (state single))))
-      (testing "PUT /api/table stores a visible final pair on the Table and its settings"
-        (mt/user-http-request :crowberto :put 200 "table" {:ids [bulk] :visibility_type nil :data_layer "final"})
-        (is (= {:table [nil :final] :settings [nil :final]} (state bulk)))))))
+        (is (= :internal (user-table-fn :data_layer (u/the-id table))))))))
 
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan-only=true"
@@ -1410,17 +1378,6 @@
       (is (= #{by-email} (listed-table-ids db-id :owner-email "table-owner@example.com")))
       (is (= #{by-other-email} (listed-table-ids db-id :owner-email "other-table-owner@example.com"))))))
 
-(deftest visibility-type-filter-test
-  (testing "GET /api/table?visibility-type="
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {hidden :id} {:db_id db-id :name "table_1" :active true :visibility_type :hidden}
-                   :model/Table {technical :id} {:db_id db-id :name "table_2" :active true
-                                                 :visibility_type :technical}
-                   :model/Table {visible :id} {:db_id db-id :name "table_3" :active true}]
-      (is (= #{hidden technical visible} (listed-table-ids db-id)))
-      (is (= #{hidden} (listed-table-ids db-id :visibility-type "hidden")))
-      (is (= #{technical} (listed-table-ids db-id :visibility-type "technical"))))))
-
 (deftest data-source-filter-test
   (testing "GET /api/table?data-source="
     (mt/with-temp [:model/Database {db-id :id} {}
@@ -1523,17 +1480,17 @@
             (is (map? response))))))))
 
 (deftest bulk-update-tables-visibility-persists-test
-  (testing "PUT /api/table with an ids vector flips visibility_type on every listed table"
-    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id) :visibility_type nil}
-                   :model/Table {t2 :id} {:db_id (mt/id) :visibility_type nil}]
+  (testing "PUT /api/table with an ids vector flips data_layer on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id)}
+                   :model/Table {t2 :id} {:db_id (mt/id)}]
       (mt/user-http-request :crowberto :put 200 "table"
-                            {:ids [t1 t2] :visibility_type "hidden"})
+                            {:ids [t1 t2] :data_layer "hidden"})
       (is (= [:hidden :hidden]
-             (map #(user-table-fn :visibility_type %) [t1 t2])))
+             (map #(user-table-fn :data_layer %) [t1 t2])))
       (mt/user-http-request :crowberto :put 200 "table"
-                            {:ids [t1 t2] :visibility_type nil})
-      (is (= [nil nil]
-             (map #(user-table-fn :visibility_type %) [t1 t2]))))))
+                            {:ids [t1 t2] :data_layer "internal"})
+      (is (= [:internal :internal]
+             (map #(user-table-fn :data_layer %) [t1 t2]))))))
 
 (deftest bulk-update-tables-collection-id-persists-test
   (testing "PUT /api/table with an ids vector moves every listed published table to collection_id"

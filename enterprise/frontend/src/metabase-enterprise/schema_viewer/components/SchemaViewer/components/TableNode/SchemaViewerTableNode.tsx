@@ -23,7 +23,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const isConnectedToSelectedEdge = data.selectedFieldIds.size > 0;
   const isUserSelected = selectedNodeId === id;
 
-  const hasHiddenVisibilityType = data.visibility_type !== null;
+  const isHidden = data.data_layer === "hidden";
 
   const handleDoubleClick = useCallback(() => {
     zoomToNode(id);
@@ -69,7 +69,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         >
           {data.name}
         </Box>
-        {hasHiddenVisibilityType && (
+        {isHidden && (
           <Tooltip label={t`This table is hidden`}>
             <FixedSizeIcon name="eye_crossed_out" c="text-secondary" />
           </Tooltip>

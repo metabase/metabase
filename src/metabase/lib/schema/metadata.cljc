@@ -1053,7 +1053,6 @@
    [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:db-id                   {:optional true} ::lib.schema.id/database]
    [:active                  {:optional true} [:maybe :boolean]]
-   [:visibility-type         {:optional true} [:maybe [:or :keyword :string]]]
    [:database-require-filter {:optional true} [:maybe :boolean]]
    [:description             {:optional true} [:maybe :string]]
    [:entity-type             {:optional true} [:maybe [:or :keyword :string]]]

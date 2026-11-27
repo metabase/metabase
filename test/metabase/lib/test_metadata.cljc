@@ -285,7 +285,6 @@
    :active                  true
    :id                      (id :categories)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Categories"
@@ -434,7 +433,6 @@
    :active                  true
    :id                      (id :checkins)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Checkins"
@@ -595,7 +593,6 @@
    :active                  true
    :id                      (id :users)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Users"
@@ -835,7 +832,6 @@
    :active                  true
    :id                      (id :venues)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Venues"
@@ -1136,7 +1132,6 @@
    :active                  true
    :id                      (id :products)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Products"
@@ -1476,7 +1471,6 @@
    :active                  true
    :id                      (id :orders)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Orders"
@@ -1961,7 +1955,6 @@
    :active                  true
    :id                      (id :people)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "People"
@@ -2196,7 +2189,6 @@
    :active                  true
    :id                      (id :reviews)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :initial-sync-status     "complete"
    :display-name            "Reviews"
@@ -2290,7 +2282,6 @@
    :active                  true
    :id                      (id :ic/accounts)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :is-upload               false
    :initial-sync-status     :complete
@@ -2409,7 +2400,6 @@
    :active                  true
    :id                      (id :ic/reports)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :is-upload               false
    :initial-sync-status     :complete
@@ -2639,7 +2629,6 @@
    :active                  true
    :id                      (id :gh/issues)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :is-upload               false
    :initial-sync-status     :complete
@@ -2771,7 +2760,6 @@
    :active                  true
    :id                      (id :gh/users)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :is-upload               false
    :initial-sync-status     :complete
@@ -2965,7 +2953,6 @@
    :active                  true
    :id                      (id :gh/comments)
    :db-id                   (id)
-   :visibility-type         nil
    :field-order             :database
    :is-upload               false
    :initial-sync-status     :complete
@@ -3177,7 +3164,6 @@
    :id                      (id :feedback)
    :name                    "FEEDBACK"
    :schema                  "PUBLIC"
-   :visibility-type         nil
    :lib/type                :metadata/table})
 
 (defmethod field-metadata-method [:accounts :id]
@@ -3624,7 +3610,6 @@
    :id                      (id :accounts)
    :name                    "ACCOUNTS"
    :schema                  "PUBLIC"
-   :visibility-type         nil
    :lib/type                :metadata/table})
 
 (defmethod field-metadata-method [:analytic-events :id]
@@ -3792,7 +3777,6 @@
    :id                      (id :analytic-events)
    :name                    "ANALYTIC_EVENTS"
    :schema                  "PUBLIC"
-   :visibility-type         nil
    :lib/type                :metadata/table})
 
 (defmethod field-metadata-method [:invoices :id]
@@ -3956,7 +3940,6 @@
    :id                      (id :invoices)
    :name                    "INVOICES"
    :schema                  "PUBLIC"
-   :visibility-type         nil
    :lib/type                :metadata/table})
 
 (def metadata

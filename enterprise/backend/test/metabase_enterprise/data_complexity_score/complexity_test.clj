@@ -317,7 +317,7 @@
           (is (= 1.0 (get-in metabot [:components :size :components :entity-count :measurement])))))))
   (testing "empty scope (or no :metabot-scope opt) still runs enumerate-catalogs with that scope so metabot's table-visibility filter still narrows the catalog"
     ;; Regression: we used to reuse the :universe score verbatim when scope was empty. That hid the
-    ;; fact that Metabot's table visibility (`:visibility_type nil`, non-routed DB) already narrows
+    ;; fact that Metabot's table visibility (not hidden, non-routed DB) already narrows
     ;; the catalog even before Card scoping kicks in.
     (doseq [scope [nil {} {:curated-only? false :collection-id nil}]]
       (let [captured-scope (atom ::not-called)]
@@ -337,7 +337,7 @@
             (is (= 2.0 (get-in universe [:components :size :components :entity-count :measurement])))))))))
 
 (deftest ^:synchronized metabot-catalog-excludes-hidden-tables-test
-  (testing ":metabot tables filter out hidden (`visibility_type` non-nil) and routed-DB tables so the
+  (testing ":metabot tables filter out hidden and routed-DB tables so the
            catalog matches what Metabot/search can actually surface"
     ;; Regression: `:metabot` used to count every active non-audit table, which overcounted on
     ;; instances with hidden tables or routed-database tables — Metabot never surfaces those.
@@ -346,11 +346,9 @@
        :model/Database {routed-db :id} {:name "Routed DB" :router_database_id router-db}
        :model/Database {plain-db :id}  {:name "Plain DB"}
        :model/Table    {visible :id}   {:db_id plain-db  :name "visible_table"
-                                        :active true :visibility_type nil}
+                                        :active true}
        :model/Table    {hidden :id}    {:db_id plain-db  :name "hidden_table"
-                                        :active true :visibility_type "hidden"}
-       :model/Table    {technical :id} {:db_id plain-db  :name "technical_table"
-                                        :active true :visibility_type "technical"}]
+                                        :active true :data_layer :hidden}]
       ;; A table can't exist on a routed (destination) db in production (destinations aren't synced),
       ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
       ;; directly to fabricate the routed table this exclusion test needs.
@@ -364,11 +362,9 @@
             ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"
           (is (contains? ids visible)))
-        (testing "hidden and technical tables are excluded"
+        (testing "hidden tables are excluded"
           (is (not (contains? ids hidden))
-              "tables with visibility_type=hidden are filtered out")
-          (is (not (contains? ids technical))
-              "tables with visibility_type=technical are filtered out"))
+              "tables with data_layer=hidden are filtered out"))
         (testing "tables on a routed database are excluded"
           (is (not (contains? ids routed))
               "tables whose db has router_database_id are filtered out"))))))
@@ -405,7 +401,7 @@
          :model/TableUserSettings _ {:table_id pub-internal :is_published true}
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
          :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
-                                           :visibility_type "hidden" :data_authority :authoritative}]
+                                           :data_layer :hidden :data_authority :authoritative}]
         (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil}))
               in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
           (is (= {:verified-card       true

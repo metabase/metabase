@@ -42,13 +42,6 @@
 
 ;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
-(def visibility-types
-  "Valid values for `Table.visibility_type` (field may also be `nil`).
-   (Basically any non-nil value is a reason for hiding the table.)
-
-  Deprecated and will eventually be replaced by data-layer"
-  #{:hidden :technical :cruft})
-
 (def data-sources
   "Valid values for data source"
   #{:unknown :ingested :metabase-transform :transform :source-data :upload})
@@ -63,20 +56,6 @@
   :internal  - acceptable quality, visible, synced
   :hidden    - low quality, hidden, not synced"
   #{:final :internal :hidden})
-
-(defn visibility-type->data-layer
-  "The data_layer of a Table with `visibility-type`: :hidden for any hidden type, else :internal."
-  [visibility-type]
-  (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
-    :hidden
-    :internal))
-
-(defn data-layer->visibility-type
-  "The visibility_type of a Table with `data-layer`: :hidden for :hidden, else nil."
-  [data-layer]
-  (case data-layer
-    :hidden :hidden
-    nil))
 
 (def field-orderings
   "Valid values for `Table.field_order`.
@@ -146,7 +125,6 @@
 (t2/deftransforms :model/Table
   {:entity_type             mi/transform-keyword
    :show_in_getting_started mi/transform-boolean
-   :visibility_type         mi/transform-keyword
    :data_layer              (mi/transform-validator-with-fixes
                              mi/transform-keyword
                              (partial mi/assert-optional-enum data-layers)
@@ -177,26 +155,7 @@
   (when (and (contains? changes :data_source)
              (= (some-> (:data_source original) keyword) :metabase-transform)
              (not= (some-> (:data_source changes) keyword) :metabase-transform))
-    (throw (ex-info (tru "Cannot change data_source from metabase-transform") {:status-code 400})))
-  (when (and (contains? changes :visibility_type)
-             (contains? changes :data_layer)
-             (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original)))
-             (not= (keyword (:data_layer changes)) (keyword (:data_layer original)))
-             (not= (some? (:visibility_type changes))
-                   (= (keyword (:data_layer changes)) :hidden)))
-    (throw (ex-info (tru "visibility_type and data_layer must agree: data_layer is hidden exactly when visibility_type is set")
-                    {:status-code 400}))))
-
-(defn- visibility-changes
-  "The other half of the `visibility_type`/`data_layer` pair, derived when `changes` changes one half of `original`."
-  [{:keys [visibility_type data_layer] :as changes} original]
-  (let [changed? (fn [k] (and (contains? changes k) (not= (keyword (k changes)) (keyword (k original)))))]
-    (cond
-      (and (changed? :visibility_type) (not (changed? :data_layer)))
-      {:data_layer (visibility-type->data-layer (keyword visibility_type))}
-
-      (and (changed? :data_layer) (not (changed? :visibility_type)))
-      {:visibility_type (data-layer->visibility-type (keyword data_layer))})))
+    (throw (ex-info (tru "Cannot change data_source from metabase-transform") {:status-code 400}))))
 
 (defn- activity-changes
   "The `deactivated_at` and `archived_at` that a change of `active` in `changes` from `original` sets."
@@ -212,10 +171,9 @@
   [table]
   (merge table
          (apply dissoc
-                {:display_name    (humanization/name->human-readable-name (:name table))
-                 :data_layer      (visibility-type->data-layer (some-> (:visibility_type table) keyword))
-                 :visibility_type (data-layer->visibility-type (some-> (:data_layer table) keyword))
-                 :data_authority  :unconfigured}
+                {:display_name   (humanization/name->human-readable-name (:name table))
+                 :data_layer     :internal
+                 :data_authority :unconfigured}
                 (keys table))))
 
 (t2/define-before-update :model/Table
@@ -223,7 +181,7 @@
   (let [changes  (t2/changes table)
         original (t2/original table)]
     (check-changes changes original)
-    (merge table (visibility-changes changes original) (activity-changes changes original))))
+    (merge table (activity-changes changes original))))
 
 (defn- group-perm-defaults
   "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
@@ -657,7 +615,7 @@
    :transform warehouse-schema.app-db-copy/transform-table})
 
 (defmethod change-log/spec :model/Table [_model]
-  {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
+  {:track [:name :description :entity_type :active :db_id :display_name :schema :points_of_interest
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :deactivated_at
            :archived_at :is_writable :data_authority :data_source :data_layer :owner_email :owner_user_id
            :transform_target]
@@ -671,7 +629,7 @@
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
                          :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
-                         :is_defective_duplicate :unique_table_helper :visibility_type]
+                         :is_defective_duplicate :unique_table_helper]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
@@ -690,8 +648,7 @@
                     :database_require_filter :deactivated_at :description :display_name :entity_type
                     :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate
                     :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
-                    :show_in_getting_started :transform_target :unique_table_helper
-                    :visibility_type]
+                    :show_in_getting_started :transform_target :unique_table_helper]
    :skip           [:view_count]
    :topics         {}})
 
@@ -743,7 +700,7 @@
   {:type  :table
    :items warehouse-schema.db/dependency-table-items
 
-   :output-columns #{:name :schema :display_name :active :visibility_type}})
+   :output-columns #{:name :schema :display_name :active :data_layer}})
 
 (defmethod replacement/spec :model/Table [_model]
   {:source-database-id :db_id})

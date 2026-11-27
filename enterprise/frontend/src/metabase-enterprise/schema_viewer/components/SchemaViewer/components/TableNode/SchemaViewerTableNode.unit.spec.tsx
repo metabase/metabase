@@ -2,7 +2,7 @@ import type { NodeProps } from "@xyflow/react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { queryIcon, renderWithProviders, screen } from "__support__/ui";
-import type { TableId, TableVisibilityType } from "metabase-types/api";
+import type { TableDataLayer, TableId } from "metabase-types/api";
 import {
   createMockErdNode,
   createMockErdResponse,
@@ -34,12 +34,12 @@ function nodeProps(
 }
 
 function setup({
-  visibilityType = null,
-}: { visibilityType?: TableVisibilityType } = {}) {
+  dataLayer = "internal",
+}: { dataLayer?: TableDataLayer } = {}) {
   const erdNode = createMockErdNode({
     table_id: 1,
     name: "Orders",
-    visibility_type: visibilityType,
+    data_layer: dataLayer,
   });
   const [node] = toFlowGraph(createMockErdResponse({ nodes: [erdNode] })).nodes;
 
@@ -62,14 +62,14 @@ function setup({
 }
 
 describe("SchemaViewerTableNode", () => {
-  it("renders the hidden indicator for tables with a visibility_type", () => {
-    setup({ visibilityType: "hidden" });
+  it("renders the hidden indicator for hidden tables", () => {
+    setup({ dataLayer: "hidden" });
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(queryIcon("eye_crossed_out")).toBeInTheDocument();
   });
 
   it("does not render the hidden indicator for normal tables", () => {
-    setup({ visibilityType: null });
+    setup({ dataLayer: "internal" });
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(queryIcon("eye_crossed_out")).not.toBeInTheDocument();
   });

@@ -581,7 +581,7 @@
               (let [table-id       #(t2/select-one-pk :model/Table :db_id (u/the-id database) :name %)
                     active-by-name #(t2/select-fn->fn :name :active :model/Field :table_id (table-id %))]
                 (is (= expected (active-by-name visible)))
-                (mt/user-http-request :crowberto :put 200 (format "table/%d" (table-id hidden)) {:visibility_type "hidden"})
+                (mt/user-http-request :crowberto :put 200 (format "table/%d" (table-id hidden)) {:data_layer "hidden"})
                 (sync-metadata/sync-db-metadata! (:id database))
                 (is (= expected (active-by-name visible)))))))))))
 

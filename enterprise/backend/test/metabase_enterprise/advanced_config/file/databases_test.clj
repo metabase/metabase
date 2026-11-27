@@ -285,7 +285,7 @@
         (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
-              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+              vis-types (t2/select-fn-vec :data_layer :model/Table :db_id (u/the-id db))]
           (is (= freq (frequencies vis-types))
               message)))
       (finally
@@ -293,9 +293,9 @@
 
 (deftest sync-cruft-tables-test
   (testing "tables marked crufty should be marked as such in the database"
-    (test-cruft-tables! []           {nil 8}          "No tables marked crufty")
-    (test-cruft-tables! ["^venues$"] {:cruft 1 nil 7} "VENUES table is marked crufty")
-    (test-cruft-tables! ["."]        {:cruft 8}       "All tables marked crufty")))
+    (test-cruft-tables! []           {:internal 8}          "No tables marked crufty")
+    (test-cruft-tables! ["^venues$"] {:hidden 1 :internal 7} "VENUES table is marked crufty")
+    (test-cruft-tables! ["."]        {:hidden 8}            "All tables marked crufty")))
 
 (deftest cruft-hidden-tables-test
   (mt/with-temporary-setting-values [config-from-file-sync-databases nil]
@@ -309,14 +309,14 @@
         (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
-              _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
-              vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+              _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:data_layer :hidden})
+              vis-types (t2/select-fn-vec :data_layer :model/Table :db_id (u/the-id db))]
           ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
           ;; and make sure they are still hidden:
           (is (= {:hidden 8} (frequencies vis-types)))
           (sync-metadata/sync-db-metadata! (:id db))
           (testing "Hidden tables stay hidden"
-            (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
+            (let [vis-types (t2/select-fn-vec :data_layer :model/Table :db_id (u/the-id db))]
               (is (= {:hidden 8} (frequencies vis-types)))))))
       (finally
         (t2/delete! :model/Database :name test-db-name)))))

@@ -101,7 +101,7 @@
                                         :creator_id  (mt/user->id :crowberto)}
                  :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                  :model/Table     hidden-table {:name            "hidden table"
-                                                :visibility_type "hidden"}
+                                                :data_layer :hidden}
                  :model/Card      dataset {:name                   "rand-name"
                                            :type                   :model
                                            :creator_id             (mt/user->id :crowberto)
@@ -168,7 +168,7 @@
                                             :creator_id  (mt/user->id :crowberto)}
                      :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                      :model/Table     hidden-table {:name            "hidden table"
-                                                    :visibility_type "hidden"}
+                                                    :data_layer :hidden}
                      :model/Card      dataset {:name                   "rand-name"
                                                :type                   :model
                                                :creator_id             (mt/user->id :crowberto)
@@ -242,7 +242,7 @@
                                             :creator_id  (mt/user->id :crowberto)}
                      :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                      :model/Table     hidden-table {:name            "hidden table"
-                                                    :visibility_type "hidden"}
+                                                    :data_layer :hidden}
                      :model/Card      dataset {:name                   "rand-name"
                                                :type                   :model
                                                :creator_id             (mt/user->id :crowberto)
@@ -327,7 +327,7 @@
                                                  :archived true}
                  :model/Table     table1 {:name "rand-name" :display_name "rand-name"}
                  :model/Table     hidden-table {:name            "hidden table"
-                                                :visibility_type "hidden"}
+                                                :data_layer :hidden}
                  :model/Table     inactive-table {:name            "inactive table"
                                                   :active false}
                  :model/Card      dataset {:name                   "rand-name"

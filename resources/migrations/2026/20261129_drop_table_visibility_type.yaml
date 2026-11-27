@@ -1,0 +1,133 @@
+## metabase_table.data_layer alone says whether a Table is hidden, so visibility_type goes from metabase_table, and
+## visibility_type and visibility_type_set from metabase_table_user_settings. The two views that read the column come
+## first: v_tables of Usage analytics keeps a visibility_type made from data_layer, and v_worktree_table leaves it out.
+
+databaseChangeLog:
+  - changeSet:
+      id: h5v2kc
+      author: ranquild
+      comment: Usage analytics; make visibility_type of v_tables from data_layer
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/tables/v4/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/tables/v4/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/tables/v4/h2-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/tables/v3/postgres-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/tables/v3/mysql-tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/tables/v3/h2-tables.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: n8r4wd
+      author: ranquild
+      comment: Drop v_worktree_table, which reads visibility_type
+      changes:
+        - sql:
+            sql: DROP VIEW v_worktree_table
+      rollback:
+        - sqlFile:
+            path: ../worktree_views/table/v1/worktree_table.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: y3m7qp
+      author: ranquild
+      comment: Mark data_layer as set by the user for every Table whose user set only visibility_type
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table_user_settings
+              SET data_layer_set = TRUE,
+                  data_layer = CASE WHEN visibility_type IS NOT NULL THEN 'hidden' ELSE COALESCE(data_layer, 'internal') END
+              WHERE visibility_type_set = TRUE
+                AND data_layer_set = FALSE
+      rollback:
+
+  - changeSet:
+      id: c6t9zb
+      author: ranquild
+      comment: Drop metabase_table.visibility_type
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: visibility_type
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: visibility_type
+                  type: varchar(254)
+                  remarks: Why the Table is hidden, or NULL when it is visible
+        - sql:
+            sql: UPDATE metabase_table SET visibility_type = 'hidden' WHERE data_layer = 'hidden'
+
+  - changeSet:
+      id: p2x8jf
+      author: ranquild
+      comment: Drop metabase_table_user_settings.visibility_type
+      changes:
+        - dropColumn:
+            tableName: metabase_table_user_settings
+            columnName: visibility_type
+      rollback:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: visibility_type
+                  type: varchar(254)
+                  remarks: User-set visibility_type for the Table
+        - sql:
+            sql: UPDATE metabase_table_user_settings SET visibility_type = 'hidden' WHERE data_layer_set = TRUE AND data_layer = 'hidden'
+
+  - changeSet:
+      id: k4d1ms
+      author: ranquild
+      comment: Drop metabase_table_user_settings.visibility_type_set
+      changes:
+        - dropColumn:
+            tableName: metabase_table_user_settings
+            columnName: visibility_type_set
+      rollback:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: visibility_type_set
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether the user set visibility_type, so a NULL visibility_type overrides the sync value
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: UPDATE metabase_table_user_settings SET visibility_type_set = data_layer_set
+
+  - changeSet:
+      id: e7g5ua
+      author: ranquild
+      comment: Add v_worktree_table without visibility_type
+      changes:
+        - sqlFile:
+            path: ../worktree_views/table/v2/worktree_table.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_table

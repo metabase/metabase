@@ -46,10 +46,6 @@
 
 (events/derive! :event/table-update :metabase/event)
 
-(def ^:private TableVisibilityType
-  "Schema for a valid table visibility type."
-  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/visibility-types))
-
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
   (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] table/field-orderings))
@@ -90,11 +86,10 @@
   - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
     tables the user can read"
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
+   {:keys [term data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
-       [:visibility-type {:optional true} :string]
        [:data-layer {:optional true} ::data-layers]
        [:data-source {:optional true} ::data-sources]
        [:owner-user-id {:optional true} [:maybe :int]]
@@ -109,7 +104,6 @@
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term
-            :visibility-type            visibility-type
             :data-layer                 data-layer
             :data-source                data-source
             :owner-user-id              owner-user-id
@@ -186,7 +180,6 @@
   "User-settable Table columns, as optional `:map` entries."
   [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
-   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
    [:description             {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
@@ -217,7 +210,7 @@
   (when-let [changes (-> body
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
-                          :present [:description :caveats :points_of_interest :visibility_type
+                          :present [:description :caveats :points_of_interest
                                     :data_layer :data_authority :data_source :owner_email :owner_user_id])
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
@@ -242,15 +235,15 @@
     (api/check-403 (every? mi/can-query? (t2/hydrate tables :can_query)))))
 
 (defn- update-tables!
-  [ids {:keys [collection_id visibility_type] :as body}]
+  [ids {:keys [collection_id data_layer] :as body}]
   (let [existing-tables (warehouse-schema-rest.db/tables-by-ids ids)]
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check (t2/hydrate existing-tables :can_write))
     (when collection_id
       (check-can-publish-tables-to-collection! existing-tables collection_id))
     (let [updated-tables (t2/with-transaction [_conn] (update-existing-tables! existing-tables body))
-          newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
-                           (into [] (filter (comp some? :visibility_type)) existing-tables))]
+          newly-unhidden (when (and (contains? body :data_layer) (not= :hidden (keyword data_layer)))
+                           (into [] (filter #(= :hidden (:data_layer %))) existing-tables))]
       (sync/sync-tables-in-background! newly-unhidden)
       updated-tables)))
 

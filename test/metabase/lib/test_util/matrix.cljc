@@ -53,7 +53,6 @@
              :active true,
              :id 1 ,
              :points-of-interest nil,
-             :visibility-type nil,
              :display-name "Matrix"
              :fields [{:description nil,
                        :lib/type :metadata/column,
@@ -97,7 +96,6 @@
              :active true,
              :id 10,
              :points-of-interest nil,
-             :visibility-type nil,
              :display-name "Support"
              :fields [{:description nil,
                        :lib/type :metadata/column,

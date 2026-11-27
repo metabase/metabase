@@ -22,6 +22,13 @@ summary: Breaking changes to the Metabase API, listed by release.
   `GET /api/database/:id/schema/:schema`. A published table has the collection it is published into as `collection`,
   and a table that isn't published has `collection: null`. Search results and collection items keep both fields.
 
+- Tables no longer have `visibility_type`. The endpoints that return tables, such as `GET /api/table`,
+  `GET /api/table/:id` and `GET /api/database/:id/metadata`, leave it out, and a table is hidden when its `data_layer`
+  is `hidden`. `PUT /api/table/:id` and `PUT /api/table` no longer accept `visibility_type`: send
+  `data_layer: "hidden"` to hide a table and `data_layer: "internal"` to show it. `data_layer` can no longer be
+  `null`. `GET /api/table` no longer accepts the query parameter `visibility-type`; use `data-layer`. The table
+  nodes of `GET /api/ee/erd` have `data_layer` in place of `visibility_type`.
+
 - Tables no longer have `transform_id` in the responses of the endpoints that return them, such as `GET /api/table`
   and `GET /api/table/:id`. The transform that writes to a table is the hydrated `transform` of the table, and a
   transform names its table as `target_table_id`.

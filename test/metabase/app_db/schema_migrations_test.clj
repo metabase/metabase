@@ -5686,3 +5686,47 @@
                (t2/select-one-fn :data_layer :metabase_table :id (table! {})))))
       (testing "null data_layer is rejected"
         (is (thrown? Exception (table! {:data_layer nil})))))))
+
+(deftest drop-table-visibility-type-test
+  (impl/test-migrations ["h5v2kc" "e7g5ua"] [migrate!]
+    (let [db-id     (t2/insert-returning-pk! :metabase_database {:name       "Visibility DB"
+                                                                 :engine     "h2"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now
+                                                                 :details    "{}"})
+          table!    (fn [values]
+                      (t2/insert-returning-pk! :metabase_table (merge {:active     true
+                                                                       :db_id      db-id
+                                                                       :name       (mt/random-name)
+                                                                       :created_at :%now
+                                                                       :updated_at :%now}
+                                                                      values)))
+          settings! (fn [table-id values]
+                      (t2/insert! :metabase_table_user_settings (merge {:table_id   table-id
+                                                                        :created_at :%now
+                                                                        :updated_at :%now}
+                                                                       values)))
+          hidden    (table! {:visibility_type "hidden" :data_layer "hidden"})
+          visible   (table! {:data_layer "final"})
+          user-only (table! {:visibility_type "hidden" :data_layer "hidden"})]
+      (settings! hidden {:visibility_type "hidden" :visibility_type_set true :data_layer "hidden" :data_layer_set true})
+      (settings! user-only {:visibility_type "hidden" :visibility_type_set true})
+      (migrate!)
+      (testing "columns are gone"
+        (is (not (contains? (t2/select-one :metabase_table :id hidden) :visibility_type)))
+        (is (not-any? #{:visibility_type :visibility_type_set}
+                      (keys (t2/select-one :metabase_table_user_settings :table_id hidden)))))
+      (testing "setting of visibility_type alone becomes setting of data_layer"
+        (is (= {hidden ["hidden" true], user-only ["hidden" true]}
+               (t2/select-fn->fn :table_id (juxt :data_layer :data_layer_set) :metabase_table_user_settings
+                                 :table_id [:in [hidden user-only]]))))
+      (testing "usage analytics view keeps visibility_type"
+        (is (= {hidden "hidden", visible nil}
+               (t2/select-fn->fn :entity_id :visibility_type :v_tables :entity_id [:in [hidden visible]]))))
+      (testing "rollback restores columns from data_layer"
+        (migrate! :down 64)
+        (is (= {hidden "hidden", visible nil, user-only "hidden"}
+               (t2/select-pk->fn :visibility_type :metabase_table :id [:in [hidden visible user-only]])))
+        (is (= {hidden ["hidden" true], user-only ["hidden" true]}
+               (t2/select-fn->fn :table_id (juxt :visibility_type :visibility_type_set) :metabase_table_user_settings
+                                 :table_id [:in [hidden user-only]])))))))

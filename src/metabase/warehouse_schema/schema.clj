@@ -248,7 +248,6 @@
    [:display_name            {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:entity_type             {:optional true} [:maybe ::lib.schema.common/keyword]]
-   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
@@ -261,7 +260,6 @@
    [:is_published            {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:description_set         {:optional true} :boolean]
-   [:visibility_type_set     {:optional true} :boolean]
    [:caveats_set             {:optional true} :boolean]
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
@@ -305,7 +303,6 @@
    [:active                  {:optional true} [:maybe :boolean]]
    [:db_id                   {:optional true} [:maybe ::lib.schema.id/database]]
    [:display_name            {:optional true} [:maybe :string]]
-   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:schema                  {:optional true} [:maybe :string]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
@@ -382,10 +379,10 @@
   "A TableUserSettings as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::table-user-settings [:display_name :description :entity_type :visibility_type :field_order
+    [:select-keys ::table-user-settings [:display_name :description :entity_type :field_order
                                          :caveats :points_of_interest :show_in_getting_started :data_authority
                                          :data_source :owner_email :is_published :description_set
-                                         :visibility_type_set :data_layer_set :data_source_set :collection_id
+                                         :data_layer_set :data_source_set :collection_id
                                          :owner_user_id :data_layer :table_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

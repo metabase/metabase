@@ -39,7 +39,6 @@
                 :id              (id :attempts)
                 :name            "ATTEMPTS"
                 :schema          "PUBLIC"
-                :visibility-type nil
                 :lib/type        :metadata/table}]
     :fields   [{:active             true
                 :base-type          :type/BigInteger

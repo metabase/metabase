@@ -486,10 +486,10 @@
 
 (def ^:private table-user-settings-update-keys
   "The columns an insert or update of a TableUserSettings accepts."
-  [:table_id :created_at :updated_at :display_name :description :entity_type :visibility_type :caveats
+  [:table_id :created_at :updated_at :display_name :description :entity_type :caveats
    :points_of_interest :data_layer :data_source :owner_email :owner_user_id :field_order :show_in_getting_started
    :data_authority :is_published :collection_id :description_set
-   :visibility_type_set :data_layer_set :data_source_set])
+   :data_layer_set :data_source_set])
 
 (mu/defn table-user-settings
   "The TableUserSettings of the ::warehouse-schema.schema/table with `table-id`, or nil (also for a nil `table-id`,

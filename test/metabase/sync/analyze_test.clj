@@ -166,13 +166,13 @@
                     :table_id      (u/the-id table)
                     {:order-by [[:last_analyzed :desc]]}))
 
-(defn- set-table-visibility-type-via-api!
-  "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side
+(defn- set-table-data-layer-via-api!
+  "Change the `data-layer` of `table` via an API call. (This is done via the API so we can see which, if any, side
   effects (e.g. analysis) get triggered.)"
-  [table visibility-type]
-  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                             :visibility_type visibility-type
-                                                                             :description     "What a nice table!"}))
+  [table data-layer]
+  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table)) {:display_name "hiddentable"
+                                                                             :data_layer   data-layer
+                                                                             :description  "What a nice table!"}))
 
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
@@ -199,9 +199,9 @@
     (letfn [(tests [sync!*]
               (mt/with-temp [:model/Table table (fake-table)
                              :model/Field field (fake-field table)]
-                (letfn [(set-visibility! [visibility]
-                          (set-table-visibility-type-via-api! table visibility)
-                          (testing "after updating visibility type"
+                (letfn [(set-visibility! [data-layer]
+                          (set-table-data-layer-via-api! table data-layer)
+                          (testing "after updating data layer"
                             (is (= false
                                    (fake-field-was-analyzed? field)))))
                         (sync! []
@@ -212,15 +212,8 @@
                   (testing "visibility -> hidden"
                     (set-visibility! "hidden")
                     (sync!))
-                  (testing "visibility -> cruft"
-                    (set-visibility! "cruft")
-                    (set-visibility! "cruft")
-                    (sync!))
-                  (testing "visibility -> technical"
-                    (set-visibility! "technical")
-                    (sync!))
-                  (testing "visibility -> technical (again)"
-                    (set-visibility! "technical")
+                  (testing "visibility -> hidden (again)"
+                    (set-visibility! "hidden")
                     (sync!)
                     (sync!)))))]
       (tests api-sync!)
@@ -253,21 +246,21 @@
     (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
-        (set-table-visibility-type-via-api! table "hidden")
-        (set-table-visibility-type-via-api! table nil)
+        (set-table-data-layer-via-api! table "hidden")
+        (set-table-data-layer-via-api! table "internal")
         (is (true?
              (fake-field-was-analyzed? field)))))))
 
 (deftest dont-analyze-rehidden-table-test
   (testing "re-hiding a table should not cause it to be analyzed"
     ;; create an initially hidden table
-    (mt/with-temp [:model/Table table (fake-table :visibility_type "hidden")
+    (mt/with-temp [:model/Table table (fake-table :data_layer :hidden)
                    :model/Field _     (fake-field table)]
       ;; switch the table to visible (triggering a sync) and get the last sync time
-      (let [last-sync-time (do (set-table-visibility-type-via-api! table nil)
+      (let [last-sync-time (do (set-table-data-layer-via-api! table "internal")
                                (latest-sync-time table))]
         ;; now make it hidden again
-        (set-table-visibility-type-via-api! table "hidden")
+        (set-table-data-layer-via-api! table "hidden")
         (is (= last-sync-time
                (latest-sync-time table))
             "sync time shouldn't change")))))

@@ -214,7 +214,6 @@
       :entity-type         (keyword v)
       :field-order         (keyword v)
       :initial-sync-status (keyword v)
-      :visibility-type     (keyword v)
       :data-layer          (keyword v)
       v)))
 

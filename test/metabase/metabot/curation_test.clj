@@ -99,7 +99,7 @@
               [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture authoritative" :active true
                                                                                                                               :data_authority :authoritative})])
               [{ht :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture hidden" :active true
-                                                                                                                              :visibility_type :hidden :data_authority :authoritative})])
+                                                                                                                              :data_layer :hidden :data_authority :authoritative})])
               [{xt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture plaintable" :active true})])
               mp     (mt/metadata-provider)
               query  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
