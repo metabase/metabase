@@ -1731,3 +1731,50 @@
                (is (some? e))
                (is (false? (:workspace/cleanup? (ex-data e)))
                    (ex-message e))))))))))
+
+(def ^:private ci-probe-82183-sql
+  "SELECT sleepEachRow(1) FROM numbers(3) SETTINGS max_block_size = 1")
+
+(deftest ^:synchronized ci-probe-82183-set-query-timeout-is-enforced-test
+  (mt/test-driver :clickhouse
+    (sql-jdbc.execute/do-with-connection-with-options
+     :clickhouse (mt/id) nil
+     (fn [^Connection conn]
+       (with-open [stmt (.createStatement conn)]
+         (.setQueryTimeout stmt 1)
+         (let [start   (System/nanoTime)
+               thrown? (try
+                         (with-open [rs (.executeQuery stmt ci-probe-82183-sql)]
+                           (while (.next rs)))
+                         false
+                         (catch Throwable _ true))
+               elapsed (/ (- (System/nanoTime) start) 1e6)]
+           (is (true? thrown?) "a 1 second statement timeout must abort a 3 second query")
+           (is (< elapsed 2500) (str "query ran for " elapsed " ms despite a 1 second statement timeout"))))))))
+
+(deftest ^:synchronized ci-probe-82183-statement-cancel-stops-warehouse-query-test
+  (mt/test-driver :clickhouse
+    (let [marker (str "ci-probe-82183-" (random-uuid))
+          sql    (str ci-probe-82183-sql " /* " marker " */")
+          running (fn []
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     :clickhouse (mt/id) nil
+                     (fn [^Connection conn]
+                       (with-open [stmt (.createStatement conn)
+                                   rs   (.executeQuery stmt (str "SELECT count() FROM system.processes WHERE position(query, '" marker "') > 0 AND position(query, 'system.processes') = 0"))]
+                         (.next rs)
+                         (.getLong rs 1)))))]
+      (sql-jdbc.execute/do-with-connection-with-options
+       :clickhouse (mt/id) nil
+       (fn [^Connection conn]
+         (with-open [stmt (.createStatement conn)]
+           (let [fut (future (try
+                               (with-open [rs (.executeQuery stmt sql)]
+                                 (while (.next rs)))
+                               (catch Throwable _ nil)))]
+             (Thread/sleep 500)
+             (is (= 1 (running)) "probe sanity: the query is running on the warehouse")
+             (.cancel stmt)
+             (Thread/sleep 1700)
+             (is (zero? (running)) "Statement.cancel() must stop the query on the warehouse")
+             (deref fut 5000 nil))))))))
