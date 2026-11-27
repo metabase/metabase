@@ -55,26 +55,29 @@
 
 (defn- prepare-prompt-updates
   "The `rows` of the prompts of `id->stored`, the id of a MetabotPrompt and the columns to set, without any `:model`
-  of their own. Every row of a prompt whose last Card in the batch differs from its stored Card carries that Card's
-  type as its model."
+  of their own. Every row of a prompt the batch gives a Card carries the model of the last such Card: the stored
+  model when it is the stored Card, and its type otherwise."
   [rows id->stored]
   ;; The write function is the only author of the model, as on create. A SerDes import sends the changed columns only,
   ;; and its exported model can differ from the one create derived here; taking it would change the model without the
   ;; Card, which the before-update hook refuses. The rows of one prompt are merged with the last value winning, so
-  ;; every row of a prompt whose Card changes carries the new Card's model. A row of any other prompt carries none,
-  ;; so it cannot write a model read before another writer changed the prompt's Card.
+  ;; every row of a prompt the batch gives a Card carries that Card's model, and the Card and model are written
+  ;; together even when another writer changed them since `id->stored` was read. A row of any other prompt carries
+  ;; no model, so it cannot write one read before such a change.
   (let [rows          (filterv (comp id->stored :id) rows)
         id->last-card (reduce (fn [m {:keys [id] :as row}]
                                 (cond-> m (contains? row :card_id) (assoc id (:card_id row))))
                               {}
                               rows)
-        id->new-card  (into {}
-                            (remove (fn [[id card-id]] (= card-id (:card_id (id->stored id)))))
-                            id->last-card)
-        card-types    (card-types-of (vals id->new-card))]
+        stored-card?  (fn [id] (= (id->last-card id) (:card_id (id->stored id))))
+        card-types    (card-types-of (keep (fn [[id card-id]] (when-not (stored-card? id) card-id)) id->last-card))
+        id->model     (into {}
+                            (map (fn [[id card-id]]
+                                   [id (if (stored-card? id) (:model (id->stored id)) (card-types card-id))]))
+                            id->last-card)]
     (mapv (fn [{:keys [id] :as row}]
-            (if (contains? id->new-card id)
-              (assoc row :model (card-types (id->new-card id)))
+            (if (contains? id->model id)
+              (assoc row :model (id->model id))
               (dissoc row :model)))
           rows)))
 
