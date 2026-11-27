@@ -2004,20 +2004,22 @@
 
 (deftest ci-probe-56883-datetimeoffset-keeps-per-value-dst-offset-test
   (mt/test-driver :sqlserver
-    (test.tz/with-system-timezone-id! "Europe/Paris"
+    (qp.test-util/with-report-timezone-id! "Europe/Paris"
       (let [mp    (mt/metadata-provider)
             sql   (str "select cast('2025-01-01 12:00:00+01:00' as datetimeoffset(0)) as sample_datetime "
                        "union all select cast('2025-04-01 12:00:00+02:00' as datetimeoffset(0)) "
                        "union all select cast('2025-02-01 11:00:00Z' as datetimeoffset(0))")
-            query (lib/native-query mp sql)
-            rows  (mt/rows (qp/process-query query))
-            parts (set (map (fn [[v]]
-                              (let [s (str v)]
-                                (rest (re-find #"T(\d\d):\d\d.*?([+-]\d\d:\d\d|Z)$" s))))
-                            rows))]
-        (is (= #{["12" "+01:00"] ["12" "+02:00"]}
-               (set (map vec parts)))
-            (str "rows were " (pr-str (mapv first rows))))))))
+            rows  (mt/rows (qp/process-query (lib/native-query mp sql)))
+            paris (fn [v]
+                    (str (.toLocalTime (.atZoneSameInstant (java.time.OffsetDateTime/parse (str v))
+                                                           (java.time.ZoneId/of "Europe/Paris")))))]
+        (is (= ["2025-01-01T11:00:00Z" "2025-04-01T10:00:00Z" "2025-02-01T11:00:00Z"]
+               (mapv (comp str first) rows))
+            "instants are right")
+        (is (= ["12:00" "12:00" "12:00"] (mapv (comp paris first) rows))
+            (str "rows were " (pr-str (mapv first rows))))
+        (is (every? #(re-find #"[+-]\d\d:\d\d$" (str (first %))) rows)
+            (str "values carry no per-value offset: " (pr-str (mapv first rows))))))))
 
 (deftest ci-probe-63990-nested-grouped-source-has-no-top-or-order-by-test
   (mt/test-driver :sqlserver
