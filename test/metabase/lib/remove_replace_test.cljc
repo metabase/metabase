@@ -352,6 +352,17 @@
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "a"] 1))
                   (lib/remove-clause 0 expr-a)))))))
 
+(deftest ^:parallel remove-clause-expression-used-in-aggregation-and-breakout-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                (lib/expression q "Item price" 1.23)
+                (lib/aggregate q (lib/sum (lib/expression-ref q "Item price")))
+                (lib/breakout q (lib/expression-ref q "Item price"))
+                (lib/append-stage q))]
+    (is (=? {:stages [{:expressions (symbol "nil #_\"key is not present.\"")
+                       :aggregation (symbol "nil #_\"key is not present.\"")
+                       :breakout    (symbol "nil #_\"key is not present.\"")}]}
+            (lib/remove-clause query 0 (first (lib/expressions query 0)))))))
+
 (deftest ^:parallel replace-clause-order-by-test
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (let [query (-> (lib.tu/venues-query)

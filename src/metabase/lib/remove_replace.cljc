@@ -141,14 +141,16 @@
         target-uuid (lib.options/uuid target-clause)]
     (if (not= query result)
       (match/match-one location
+        ;; Remove the references before the expression, so that each intermediate query stays valid.
         [:expressions]
-        (-> result
+        (-> query
             (remove-local-references
              stage-number
              unmodified-query-for-stage
              :expression
              {}
              (lib.util/expression-name target-clause))
+            (lib.util/update-query-stage stage-number remove-replace-fn location target-clause)
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
