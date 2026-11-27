@@ -37,6 +37,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.public-sharing.test-util :as public-sharing.test-util]
+   [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -5162,22 +5163,31 @@
               (emails-received? "rasta@metabase.com")
               (emails-received? "trashbird@metabase.com"))))))))
 
+(defmacro ^:private with-broken-subscription-emails-sent-at-once
+  "Run `body` with the broken-subscription emails sent where they are scheduled, not on a background thread, and
+  outside with-temp's transaction, which would never commit and so never send them."
+  [& body]
+  `(mt/test-helpers-set-global-values!
+     (mt/with-dynamic-fn-redefs [pulse.broken-subscriptions/send-in-background! (fn [f#] (f#))]
+       ~@body)))
+
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            false
-      :email-body-pattern        "#my-channel"
-      :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            false
-      :email-body-pattern        "href="
-      :match-email-body-pattern? true}))
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
-    (test-handle-broken-subscription-notification!
-     {:disable-links?            true
-      :email-body-pattern        "href="
-      :match-email-body-pattern? false})))
+  (with-broken-subscription-emails-sent-at-once
+    (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+      (test-handle-broken-subscription-notification!
+       {:disable-links?            false
+        :email-body-pattern        "#my-channel"
+        :match-email-body-pattern? true}))
+    (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
+      (test-handle-broken-subscription-notification!
+       {:disable-links?            false
+        :email-body-pattern        "href="
+        :match-email-body-pattern? true}))
+    (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
+      (test-handle-broken-subscription-notification!
+       {:disable-links?            true
+        :email-body-pattern        "href="
+        :match-email-body-pattern? false}))))
 
 (deftest update-response-leaves-out-archived-subscriptions-test
   (testing "a REST save that archives a subscription doesn't return what the archive reports"
