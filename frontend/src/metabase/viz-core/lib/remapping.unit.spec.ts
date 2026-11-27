@@ -113,6 +113,22 @@ describe("extractRemappedColumns", () => {
     );
   });
 
+  it("does not remap values whose remapped value is null", () => {
+    const data = remappedCategoryData();
+    data.rows = [
+      [1, "Team A", 10, "Type A"],
+      [10, "Team B", 20, null],
+    ];
+
+    const result = extractRemappedColumns(data);
+
+    expect(result.rows).toEqual([
+      [1, "Team A", 10],
+      [10, "Team B", 20],
+    ]);
+    expect(result.cols[0]?.remapping).toEqual(new Map([[1, "Type A"]]));
+  });
+
   it("leaves columns without remapped_to unchanged", () => {
     const data = createMockDatasetData({
       cols: [
