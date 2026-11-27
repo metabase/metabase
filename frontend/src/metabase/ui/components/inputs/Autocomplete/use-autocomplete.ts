@@ -16,7 +16,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePrevious } from "react-use";
+import usePrevious from "react-use/esm/usePrevious.js";
 
 type UseAutocompleteProps = {
   value?: string;
