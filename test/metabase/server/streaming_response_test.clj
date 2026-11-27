@@ -22,9 +22,11 @@
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
-   (java.io ByteArrayOutputStream Closeable InputStream)
+   (java.io ByteArrayInputStream ByteArrayOutputStream Closeable EOFException InputStream)
    (java.util.concurrent CountDownLatch Executors Future TimeUnit)
    (java.util.concurrent.atomic AtomicBoolean)
+   (java.util.zip GZIPInputStream)
+   (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)
    (org.apache.commons.lang3.concurrent BasicThreadFactory)))
 
 (set! *warn-on-reflection* true)
@@ -223,6 +225,33 @@
             (is (thrown? Exception (consume))))
           (testing "no JSON error blob is appended to the body"
             (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ "")))))))))))
+
+(deftest gzip-encoded-response-is-complete-test
+  (testing "A gzip-encoded streaming response is complete when the body returns without closing the stream"
+    ;; The body finishes its own gzip stream without closing it, as the serialization export's tar writer does.
+    (let [payload (apply str (repeat 20 "0123456789abcdefghij"))
+          handler (fn [req respond _raise]
+                    (respond
+                     (compojure.response/render
+                      (streaming-response/streaming-response {:content-type "application/gzip"} [os _canceled-chan]
+                        (doto (GzipCompressorOutputStream. os)
+                          (.write (.getBytes payload "UTF-8"))
+                          .finish))
+                      req)))
+          gunzip  (fn [ba]
+                    (when (bytes? ba)
+                      (try
+                        (.readAllBytes (GZIPInputStream. (ByteArrayInputStream. ^bytes ba)))
+                        (catch EOFException _ ::truncated))))]
+      (server.tu/with-test-server [url handler]
+        (doseq [accept-encoding ["identity" "gzip"]]
+          (testing (str "Accept-Encoding: " accept-encoding)
+            (let [res  (server.tu/request url :get "" {:as      :byte-array
+                                                       :headers {"accept-encoding" accept-encoding}})
+                  body (cond-> (:body res)
+                         (= "gzip" (get-in res [:headers "content-encoding"])) gunzip)]
+              (is (= payload
+                     (some-> ^bytes (gunzip body) (String. "UTF-8")))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
