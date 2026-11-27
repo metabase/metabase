@@ -357,7 +357,8 @@
   "The JSON Schema `schema` without the `null` that [[nullable]] adds.
   Takes `null` out of a type array and `nil` out of its `:enum`, or unwraps `{:anyOf [X {:type \"null\"}]}` to X with
   the description put back.
-  Returns any other schema unchanged."
+  Returns any other schema unchanged.
+  A union that [[nullable]] flattened into a type array stays a type array rather than becoming an `anyOf` again."
   [{:keys [type anyOf] :as schema}]
   (cond
     (and (sequential? type) (some #{"null"} type))

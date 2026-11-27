@@ -250,10 +250,8 @@
    (fn [{:keys [properties] :as node}]
      (if (map? properties)
        (let [required? (set (map keyword (:required node)))]
-         (assoc node :properties (into {}
-                                       (map (fn [[k v]]
-                                              [k (cond-> v (not (required? (keyword k))) mu.json-schema/non-nullable)]))
-                                       properties)))
+         (assoc node :properties (u/for-map [[k v] properties]
+                                   [k (cond-> v (not (required? k)) mu.json-schema/non-nullable)])))
        node))
    schema))
 
