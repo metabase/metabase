@@ -216,8 +216,9 @@
    started-run-id                                            :- ::transforms.schema/promise
    {transform-id :id :as transform}                          :- ::transforms.schema/transform]
   (cond
-    (not (transforms.u/check-feature-enabled (transforms.u/->definition transform)))
-    (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
+    (not (transforms.execute/runnable? transform))
+    (log/warnf "Skip running transform %d due to lacking premium features or not being in the default worktree"
+               transform-id)
 
     (transforms.usage/transform-locked? (transforms.u/->definition transform))
     (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)

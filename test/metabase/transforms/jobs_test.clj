@@ -144,9 +144,9 @@
 (deftest run-query-transform-without-features-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
     (mt/with-premium-features #{}
-      (let [query-transform {:id 3 :target {:type "table" :name "t"}
-                             :source (query-source)
-                             :name "Test Query Transform"}
+      (let [query-transform (t2/instance :model/Transform {:id 3 :target {:type "table" :name "t"}
+                                                           :source (query-source)
+                                                           :name "Test Query Transform"})
             run-id 102
             run-called? (atom false)]
         (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
@@ -162,9 +162,9 @@
 
 (deftest run-query-transform-skipped-hosted-without-basic-feature-test
   (mt/with-premium-features #{:hosting}
-    (let [query-transform {:id 1 :target {:type "table" :name "t"}
-                           :source (query-source)
-                           :name "Test Query Transform"}
+    (let [query-transform (t2/instance :model/Transform {:id 1 :target {:type "table" :name "t"}
+                                                         :source (query-source)
+                                                         :name "Test Query Transform"})
           run-id 100]
       (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
         (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)]
@@ -180,9 +180,9 @@
 
 (deftest run-query-transform-with-transforms-basic-feature-test
   (mt/with-premium-features #{:hosting :transforms-basic}
-    (let [query-transform {:id 3 :target {:type "table" :name "t"}
-                           :source (query-source)
-                           :name "Test Query Transform"}
+    (let [query-transform (t2/instance :model/Transform {:id 3 :target {:type "table" :name "t"}
+                                                         :source (query-source)
+                                                         :name "Test Query Transform"})
           run-id 102
           run-called? (atom false)]
       (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
@@ -199,9 +199,9 @@
 (deftest run-query-transform-skipped-when-transforms-enabled-false-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
     (mt/with-premium-features #{:hosting :transforms-basic}
-      (let [query-transform {:id 4 :target {:type "table" :name "t"}
-                             :source (query-source)
-                             :name "Disabled Transform"}
+      (let [query-transform (t2/instance :model/Transform {:id 4 :target {:type "table" :name "t"}
+                                                           :source (query-source)
+                                                           :name "Disabled Transform"})
             run-id 103
             run-called? (atom false)]
         (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
@@ -233,11 +233,11 @@
     (testing "scheduled run-transform! is skipped (with warn log) when the meter is locked"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
-          (let [transform       {:id          7
-                                 :target      {:type "table" :name "t"}
-                                 :source_type :native
-                                 :source      (query-source)
-                                 :name        "Locked Transform"}
+          (let [transform       (t2/instance :model/Transform {:id          7
+                                                               :target      {:type "table" :name "t"}
+                                                               :source_type :native
+                                                               :source      (query-source)
+                                                               :name        "Locked Transform"})
                 run-called?     (atom false)]
             (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
               (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
@@ -253,7 +253,7 @@
     (testing "scheduled run-transform! runs normally when the meter is not locked"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs false}]
-          (let [transform   {:id 8 :target {:type "table" :name "t"} :source_type :native :source (query-source) :name "Unlocked"}
+          (let [transform   (t2/instance :model/Transform {:id 8 :target {:type "table" :name "t"} :source_type :native :source (query-source) :name "Unlocked"})
                 run-called? (atom false)]
             (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
                                         transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
@@ -266,7 +266,7 @@
         (mt/with-premium-features #{:hosting :transforms-basic}
           (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
                                                             :transform-advanced-runs true}]
-            (let [transform   {:id 9 :target {:type "table" :name "t"} :source_type :native :source (query-source) :name "Non-metered"}
+            (let [transform   (t2/instance :model/Transform {:id 9 :target {:type "table" :name "t"} :source_type :native :source (query-source) :name "Non-metered"})
                   run-called? (atom false)]
               (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
                                           transforms.execute/execute! (fn [_ _] (reset! run-called? true))]

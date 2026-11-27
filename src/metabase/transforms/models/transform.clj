@@ -287,7 +287,9 @@
   "The predicate each permission key of a transform is answered with."
   {:can_read    (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))
    :can_write   transform-deletable?
-   :can_query   (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))})
+   :can_query   (fn [transform models-cache _db-perms]
+                  (and (not (mdb/non-default-worktree?))
+                       (transform-readable? transform models-cache)))})
 
 (mu/defn assoc-permissions :- [:sequential [:maybe :map]]
   "Attach each of the permissions `ks` (`:can_read`, `:can_write`, `:can_query`) to each of `transforms`, all
@@ -322,7 +324,8 @@
   (hydrate-permissions transforms [:can_write]))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_query]
-  "Whether the current user can query each of `transforms`, which is whether they can read it."
+  "Whether the current user can run each of `transforms`: they can read it, in the default remote sync worktree, the
+  only one where transforms run."
   [_model _k transforms]
   (hydrate-permissions transforms [:can_query]))
 

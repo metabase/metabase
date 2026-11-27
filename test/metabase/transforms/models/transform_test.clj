@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
@@ -748,3 +750,20 @@
                            (call-count)))]
         (hydrate (transforms 1))
         (is (= (hydrate (transforms 2)) (hydrate (transforms 6))))))))
+
+(deftest transforms-run-only-in-default-worktree-test
+  (when config/ee-available?
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}
+                     :model/Transform          transform         {}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (testing "default worktree"
+            (is (mi/can-query? (t2/hydrate transform :can_query))))
+          (mdb/with-worktree-scope (mdb/worktree-id->scope worktree-id)
+            (testing "transform is read and not run"
+              (is (mi/can-read? (t2/hydrate transform :can_read)))
+              (is (not (mi/can-query? (t2/hydrate transform :can_query)))))
+            (testing "run that reaches executor is refused"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"This transform cannot be run"
+                                    (transforms.core/execute! transform {:run-method :manual}))))))))))
