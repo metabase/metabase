@@ -208,8 +208,11 @@
       (doseq [directive ["img-src" "frame-src"]
               :let      [sources (set (rest (str/split (csp-directive-for uri directive) #" ")))]]
         (is (not (contains? sources "'self'")) directive)
-        (is (not (contains? sources "*")) directive))
-      (is (= "frame-src 'none'" (csp-directive-for uri "frame-src"))))
+        (is (not (contains? sources "*")) directive)))
+    (testing "nested frames may load the allowed iframe hosts, and nothing else"
+      (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.youtube.com"]
+        (is (= "frame-src https://www.metabase.com/ https://metabase.com/ https://youtube.com https://*.youtube.com https://www.youtube.com"
+               (csp-directive-for uri "frame-src")))))
     (testing "an image host the admin allows doesn't open images in the content document"
       (mt/with-temporary-setting-values [csp-img-enabled true
                                          csp-img-allowed-hosts "https://images.example.com"]

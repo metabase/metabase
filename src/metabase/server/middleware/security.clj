@@ -246,11 +246,11 @@
 (defn- permission-preview-sources
   "The `img-src` and `frame-src` of the permission preview content document. They name no `'self'` and no `*`: both
   match the main origin, and the document runs on it with the admin's cookie, which images and nested frames would
-  carry."
+  carry. Nested frames may load the instance's allowed iframe hosts, as they do for the person being previewed."
   []
   {:img-src   (cond-> ["data:" "blob:"]
                 config/is-dev? (conj frontend-address))
-   :frame-src ["'none'"]})
+   :frame-src (remove #{"'self'"} (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))})
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
