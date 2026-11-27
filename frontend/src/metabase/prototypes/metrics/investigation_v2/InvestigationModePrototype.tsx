@@ -84,6 +84,8 @@ type View = {
   delta: number;
   verdict: string;
   scale: number;
+  /** The slice the numbers are for; null when they are the whole node's. */
+  slice: string | null;
 };
 
 function viewOf(node: InvestigationNode, filter: Filter | null): View {
@@ -94,16 +96,46 @@ function viewOf(node: InvestigationNode, filter: Filter | null): View {
         ?.items.find((candidate) => candidate.label === filter.label)
     : undefined;
   if (!item) {
-    return { ...node, delta, verdict: biggestMoveOf(node, delta), scale: 1 };
+    return {
+      ...node,
+      delta,
+      verdict: biggestMoveOf(node, delta),
+      scale: 1,
+      slice: null,
+    };
   }
   const previous = node.previous * item.share;
   return {
     previous,
     current: previous * (1 + item.delta),
     delta: item.delta,
-    verdict: `${formatPct(item.delta, 0)} in ${item.label} vs ${formatPct(delta, 0)} overall`,
+    verdict: `Overall ${formatValue(node, node.current)} · ${formatPct(delta)}`,
     scale: item.share,
+    slice: item.label,
   };
+}
+
+/** The view's monthly values: the node's, scaled to the slice and ending on its number. */
+function seriesOfView(node: InvestigationNode, view: View): number[] {
+  const values = seriesOf(node, view.scale);
+  return [...values.slice(0, -1), view.current];
+}
+
+/** Marks numbers that are for the focused slice, not the whole node. */
+function SliceTag({ label }: { label: string }) {
+  return (
+    <Text
+      className={S.sliceTag}
+      fz="xs"
+      fw={700}
+      lh={1.5}
+      px="xs"
+      bg="core-brand"
+      c="text-primary-inverse"
+    >
+      {label}
+    </Text>
+  );
 }
 
 /** The slice behind most of the change, or the node's own verdict when none stands out. */
@@ -329,6 +361,31 @@ function Investigation() {
                   onChange={(value) => value && setPeriod(value)}
                   leftSection={<FixedSizeIcon name="calendar" />}
                 />
+                {filter && (
+                  <Group
+                    className={S.filterChip}
+                    gap="xs"
+                    pl="md"
+                    pr="xs"
+                    wrap="nowrap"
+                    bg="core-brand"
+                    c="text-primary-inverse"
+                  >
+                    <FixedSizeIcon name="filter" />
+                    <Text fw={700} c="inherit">
+                      {filter.prefix} {filter.label}
+                    </Text>
+                    <UnstyledButton
+                      className={S.filterChipClear}
+                      c="inherit"
+                      p="xs"
+                      aria-label="Clear filter"
+                      onClick={() => setFilter(null)}
+                    >
+                      <FixedSizeIcon name="close" />
+                    </UnstyledButton>
+                  </Group>
+                )}
               </Group>
               <TreeCanvas nodes={graph.nodes} edges={edges} />
             </Box>
@@ -448,20 +505,18 @@ function NodeCard({ data }: NodeProps<CardNode>) {
         <Box fz={16} fw={700} c="text-primary" flex={1} className={T.truncate}>
           {node.name}
         </Box>
+        {view.slice && <SliceTag label={view.slice} />}
       </Group>
       <Group className={T.row} px="lg" py="sm" gap="md" wrap="nowrap">
         <Stack gap={0} flex={1} miw={0}>
           <Text fz={22} fw={700} lh={1.2} c="text-primary">
-            {formatValue(node, node.current)}
+            {formatValue(node, view.current)}
           </Text>
-          <Delta
-            delta={(node.current - node.previous) / node.previous}
-            size="xs"
-          />
+          <Delta delta={view.delta} size="xs" />
         </Stack>
         <Box w={96} c="core-brand">
           <LineChart
-            values={sparklineOf(seriesOf(node, 1))}
+            values={sparklineOf(seriesOfView(node, view))}
             width={96}
             height={32}
             showAxes={false}
@@ -603,9 +658,10 @@ function SidePanel({
         <Stack gap="xs">
           <Group gap="sm" align="baseline">
             <Text fz={24} fw={700} lh={1.1}>
-              {formatValue(node, node.current)}
+              {formatValue(node, view.current)}
             </Text>
-            <Delta delta={(node.current - node.previous) / node.previous} />
+            <Delta delta={view.delta} />
+            {view.slice && <SliceTag label={view.slice} />}
             <Text fz="sm" c="text-secondary">
               vs {comparison}
             </Text>
@@ -784,7 +840,12 @@ function MoverRows({
                 ) : (
                   <Box className={S.sliceSwatch} />
                 )}
-                <Text fz="sm" lh={1.25} className={S.truncate}>
+                <Text
+                  fz="sm"
+                  lh={1.25}
+                  fw={active ? 700 : undefined}
+                  className={S.truncate}
+                >
                   {row.label}
                 </Text>
               </Group>

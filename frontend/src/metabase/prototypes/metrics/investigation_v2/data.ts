@@ -97,6 +97,7 @@ const uniform = (delta: number): BreakoutTab[] => [
     { label: "New customers", share: 0.3, delta: delta - 0.002 },
     { label: "Returning customers", share: 0.7, delta: delta + 0.001 },
     { label: "Enterprise customers", share: 0.35, delta },
+    { label: "EU small businesses", share: 0.14, delta: delta - 0.003 },
   ]),
 ];
 
