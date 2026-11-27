@@ -1,6 +1,7 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
+import { useLatest } from "react-use";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
@@ -30,9 +31,14 @@ import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { useColumnFormulaBar } from "../../ColumnFormulaBar";
 import { ViewFooter } from "../../ViewFooter";
+import {
+  type SummarySidebarOpenedTriggeredFrom,
+  trackSummarySidebarOpened,
+} from "../../sidebars/SummarySidebar/analytics";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
+import { withSummarizeColumnCallback } from "./utils";
 
 interface ViewMainContainerProps {
   question: Question;
@@ -48,6 +54,7 @@ interface ViewMainContainerProps {
   isDirty: boolean;
   isResultDirty: boolean;
 
+  isShowingSummarySidebar: boolean;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
@@ -96,6 +103,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     queryBuilderMode,
     question,
     isDirty,
+    isShowingSummarySidebar,
     showLeftSidebar,
     showRightSidebar,
     parameters,
@@ -109,12 +117,27 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
+  const summaryStateRef = useLatest({ question, isShowingSummarySidebar });
+  const trackSummaryOpened = useCallback(
+    (triggeredFrom: SummarySidebarOpenedTriggeredFrom) => {
+      const { question, isShowingSummarySidebar } = summaryStateRef.current;
+      if (!isShowingSummarySidebar) {
+        trackSummarySidebarOpened(question, triggeredFrom);
+      }
+    },
+    [summaryStateRef],
+  );
+  const handleEditSummary = useCallback(() => {
+    trackSummaryOpened("chart_placeholder");
+    dispatch(editSummary());
+  }, [dispatch, trackSummaryOpened]);
   const handleEditSummaryFormula = useCallback(
     (expression: Lib.ExpressionClause) => {
+      trackSummaryOpened("column_header");
       dispatch(editSummary());
       dispatch(setUIControls({ summaryFormulaToEdit: expression }));
     },
-    [dispatch],
+    [dispatch, trackSummaryOpened],
   );
   const columnFormula = useColumnFormulaBar({
     question,
@@ -135,9 +158,13 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       new Mode(getQueryMode, {
         hasColumnShortcutActions: true,
         onAddColumn,
-        mapActions: mapClickActions,
+        mapActions: (actions, clicked) =>
+          withSummarizeColumnCallback(
+            mapClickActions ? mapClickActions(actions, clicked) : actions,
+            () => trackSummaryOpened("column_header_summarize"),
+          ),
       }),
-    [onAddColumn, mapClickActions],
+    [onAddColumn, mapClickActions, trackSummaryOpened],
   );
 
   if (queryBuilderMode === "notebook") {
@@ -191,6 +218,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
             !isDirty && <HasResultsAlertPrompt question={question} />
           }
           errorAction={<FixSqlQueryButton />}
+          editSummary={handleEditSummary}
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>

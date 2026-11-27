@@ -8,6 +8,7 @@ import {
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import { getFormulaBarLocation } from "../../analytics";
 import type { SummaryWellId } from "../../types";
 import type { SummaryFormula, SummaryFormulaDraft } from "../types";
 
@@ -51,6 +52,7 @@ export function SummaryFormulaEditor({
       initialName={isEdit ? undefined : draft.name}
       sourceStatus={isEdit ? draft.original.status : undefined}
       submitLabel={isEdit ? t`Update` : t`Add`}
+      triggerLocation={getFormulaBarLocation(draft.wellId)}
       onEditorCreate={onEditorCreate}
       onNameChange={isEdit ? undefined : onNameChange}
       onSubmit={onSubmit}

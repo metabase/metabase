@@ -146,6 +146,7 @@ export function SummaryWellInput({
       formulaInput.start(
         result.source,
         inputRef.current,
+        "generated_formula",
         () => {},
         result.name,
       );
@@ -161,7 +162,9 @@ export function SummaryWellInput({
     combobox.closeDropdown();
     if (optionValue === CUSTOM_FORMULA_OPTION_VALUE) {
       if (formulaInput && inputRef.current) {
-        formulaInput.start("", inputRef.current, () => setSearchText(""));
+        formulaInput.start("", inputRef.current, "formula_option", () =>
+          setSearchText(""),
+        );
       }
       return;
     }
@@ -187,7 +190,7 @@ export function SummaryWellInput({
     if (formulaInput && text.startsWith("=") && inputRef.current) {
       setSearchText(text);
       combobox.closeDropdown();
-      formulaInput.start(text.slice(1), inputRef.current, () =>
+      formulaInput.start(text.slice(1), inputRef.current, "equals_sign", () =>
         setSearchText(""),
       );
       return;

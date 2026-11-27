@@ -42,6 +42,7 @@ import {
   getFieldSections,
   getValueItems,
   getWellFieldSections,
+  hasNewSummaryClause,
   replaceWellWithField,
 } from "./utils";
 
@@ -1153,6 +1154,100 @@ describe("replaceWellWithField", () => {
         getDimensionLabels(clearWell(query, STAGE_INDEX, "rows", ROW_KEYS)),
       ).toEqual(["Created At: Month"]);
     });
+  });
+});
+
+describe("hasNewSummaryClause", () => {
+  function createGroupedQuery(unit: "month" | "year") {
+    return createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+          ],
+          breakouts: [
+            { type: "column", name: "CREATED_AT", unit },
+            { type: "column", sourceFieldId: ORDERS.PRODUCT_ID, name: "ID" },
+          ],
+        },
+      ],
+    });
+  }
+
+  function replaceGroupings(query: Lib.Query, fieldName: string) {
+    const next = replaceWellWithField(
+      query,
+      STAGE_INDEX,
+      "columns",
+      findField(getFieldSections(query, STAGE_INDEX), fieldName),
+    );
+    return {
+      labels: getDimensionLabels(next),
+      hasNewClause: hasNewSummaryClause(query, next, STAGE_INDEX, "columns"),
+    };
+  }
+
+  const query = createGroupedQuery("month");
+
+  it("finds a grouping by a column the query didn't group by", () => {
+    expect(replaceGroupings(query, "Category")).toEqual({
+      labels: ["Product → Category"],
+      hasNewClause: true,
+    });
+  });
+
+  it("finds nothing new when a grouping stays and the others go", () => {
+    expect(replaceGroupings(query, "Created At")).toEqual({
+      labels: ["Created At: Month"],
+      hasNewClause: false,
+    });
+  });
+
+  it("finds a grouping by the same column with another unit", () => {
+    expect(replaceGroupings(createGroupedQuery("year"), "Created At")).toEqual({
+      labels: ["Created At: Month"],
+      hasNewClause: true,
+    });
+  });
+
+  it("tells a column from one of the same name in another table", () => {
+    expect(getDimensionLabels(query)).toEqual([
+      "Created At: Month",
+      "Product → ID",
+    ]);
+    expect(replaceGroupings(query, "ID")).toEqual({
+      labels: ["ID"],
+      hasNewClause: true,
+    });
+  });
+
+  it("looks at the values for the values well, and at the groupings for the others", () => {
+    const onlyCount = replaceWellWithField(query, STAGE_INDEX, "values", {
+      kind: "count",
+    });
+    const withSubtotal = addField(
+      query,
+      STAGE_INDEX,
+      "values",
+      findField(getFieldSections(query, STAGE_INDEX), "Subtotal"),
+    );
+
+    expect(getValueLabels(onlyCount)).toEqual([["count", "Count"]]);
+    expect(hasNewSummaryClause(query, onlyCount, STAGE_INDEX, "values")).toBe(
+      false,
+    );
+    expect(
+      hasNewSummaryClause(query, withSubtotal, STAGE_INDEX, "values"),
+    ).toBe(true);
+    expect(
+      hasNewSummaryClause(query, withSubtotal, STAGE_INDEX, "columns"),
+    ).toBe(false);
   });
 });
 

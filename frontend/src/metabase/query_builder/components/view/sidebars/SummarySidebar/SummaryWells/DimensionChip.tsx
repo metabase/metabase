@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
+import { trackSummaryItemRenamed } from "../analytics";
 import type {
   SummaryBucketOption,
   SummaryDimensionItem,
@@ -57,6 +58,7 @@ export function DimensionChip({
       name: displayName,
       onRename: (name) => {
         const nextName = getUniqueExpressionName(query, stageIndex, name);
+        trackSummaryItemRenamed(wellId);
         onChange(
           Lib.replaceClause(
             query,
@@ -103,7 +105,11 @@ export function DimensionChip({
           label={item.label}
           isEditing={isEditing}
           onEdit={() =>
-            formulaInput.edit(expression, wellFieldRef?.current ?? null)
+            formulaInput.edit(
+              expression,
+              wellFieldRef?.current ?? null,
+              "chip_edit",
+            )
           }
           onCancelEdit={() => formulaInput.cancelEdit(expression)}
         >

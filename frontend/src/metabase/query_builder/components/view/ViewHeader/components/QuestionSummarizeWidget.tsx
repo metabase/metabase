@@ -6,9 +6,14 @@ import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import {
+  type SummarySidebarOpenedTriggeredFrom,
+  trackSummarySidebarOpened,
+} from "../../sidebars/SummarySidebar/analytics";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface QuestionSummarizeWidgetProps {
+  question: Question;
   isShowingSummarySidebar: boolean;
   editSummary: () => void;
   onCloseSummary: () => void;
@@ -22,14 +27,16 @@ const SUMMARIZE_ACTIVE_VARS = {
 };
 
 export function QuestionSummarizeWidget({
+  question,
   isShowingSummarySidebar,
   editSummary,
   onCloseSummary,
 }: QuestionSummarizeWidgetProps) {
-  const handleClick = () => {
+  const toggleSummary = (triggeredFrom: SummarySidebarOpenedTriggeredFrom) => {
     if (isShowingSummarySidebar) {
       onCloseSummary();
     } else {
+      trackSummarySidebarOpened(question, triggeredFrom);
       editSummary();
     }
   };
@@ -37,7 +44,7 @@ export function QuestionSummarizeWidget({
   useRegisterShortcut([
     {
       id: "query-builder-toggle-summarize-sidebar",
-      perform: handleClick,
+      perform: () => toggleSummary("keyboard_shortcut"),
     },
   ]);
 
@@ -48,7 +55,7 @@ export function QuestionSummarizeWidget({
         root: isShowingSummarySidebar ? SUMMARIZE_ACTIVE_VARS : {},
       })}
       leftSection={<Icon name="sum" />}
-      onClick={handleClick}
+      onClick={() => toggleSummary("summarize_button")}
       data-active={isShowingSummarySidebar}
       className={ViewTitleHeaderS.SummarizeButton}
       classNames={{

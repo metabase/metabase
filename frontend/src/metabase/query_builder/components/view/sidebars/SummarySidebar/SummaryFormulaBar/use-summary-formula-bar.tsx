@@ -6,18 +6,21 @@ import { hasFeature } from "metabase/databases";
 import {
   type NamedExpression,
   isDefaultFormulaName,
+  trackFormulaBarOpened,
 } from "metabase/querying/components/FormulaEditor";
 import { format } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
 import { FormulaBarFrame, useFormulaBarSlot } from "../../../FormulaBar";
 import type { DraftFormulaChipHandle } from "../SummaryWells/DraftFormulaChip";
+import { getFormulaBarLocation } from "../analytics";
 import type { SummaryWellId } from "../types";
 
 import { SummaryFormulaEditor } from "./SummaryFormulaEditor";
 import type {
   SummaryFormulaBarOptions,
   SummaryFormulaClause,
+  SummaryFormulaEditTrigger,
   SummaryFormulaInput,
 } from "./types";
 import { useEditorSource } from "./use-editor-source";
@@ -102,6 +105,7 @@ export function useSummaryFormulaBar({
     wellId: SummaryWellId,
     clause: SummaryFormulaClause,
     input: HTMLInputElement | null,
+    trigger: SummaryFormulaEditTrigger,
   ) => {
     if (openFormula && Lib.isSameClause(openFormula.clause, clause)) {
       editorSource.focus();
@@ -118,6 +122,7 @@ export function useSummaryFormulaBar({
       source: "",
       original: { status: "loading" },
     });
+    trackFormulaBarOpened(getFormulaBarLocation(wellId), trigger);
     // the bar holds one line, so the printer must not wrap
     format(formula.clause, { query, stageIndex, printWidth: Infinity }).then(
       (source) => {
@@ -145,13 +150,15 @@ export function useSummaryFormulaBar({
       return undefined;
     }
     return {
-      start: (source, input, onReady, name) => {
+      start: (source, input, trigger, onReady, name) => {
         open(input, { kind: "new", wellId, source, name });
+        trackFormulaBarOpened(getFormulaBarLocation(wellId), trigger);
         editorSource.startNew(wellId, source, onReady);
       },
       isPending: () => editorSource.isNewPending(wellId),
       update: (source) => editorSource.updateNew(wellId, source),
-      edit: (clause, input) => editFormula(wellId, clause, input),
+      edit: (clause, input, trigger) =>
+        editFormula(wellId, clause, input, trigger),
       cancelEdit: (clause) => {
         if (openFormula && Lib.isSameClause(openFormula.clause, clause)) {
           close();

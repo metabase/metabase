@@ -10,6 +10,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import {
@@ -105,6 +106,7 @@ async function setup(options: SetupOpts = {}) {
       database={SAMPLE_DATABASE}
       expressionMode="expression"
       submitLabel="Add column"
+      triggerLocation="table"
       onSubmit={onSubmit}
       onCancel={onCancel}
       onEditorCreate={(view) => {
@@ -389,5 +391,68 @@ describe("FormulaEditor", () => {
       await user.keyboard("{Control>}{Enter}{/Control}");
       await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     });
+  });
+});
+
+function setupTracking() {
+  return jest.spyOn(Analytics, "trackSimpleEvent").mockClear();
+}
+
+describe("FormulaEditor analytics", () => {
+  it("tracks a function the database doesn't support", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { onSubmit } = await setup({
+      initialSource: "Median([Total])",
+      expressionMode: "aggregation",
+      database: createDatabaseWithout("percentile-aggregations"),
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "table",
+          event_detail: "new",
+          result: "unsupported_function",
+        },
+      ],
+    ]);
+  });
+
+  it("tracks each try of an edited formula, invalid and then valid", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { view, onSubmit } = await setup({
+      query: createDoubledTotalQuery(),
+      expressionIndex: 0,
+      initialSource: "[Total] *",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    await replaceFormula(view, "[Total] * 3");
+    await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "table",
+          event_detail: "edit",
+          result: "invalid",
+        },
+      ],
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "table",
+          event_detail: "edit",
+          result: "success",
+        },
+      ],
+    ]);
   });
 });

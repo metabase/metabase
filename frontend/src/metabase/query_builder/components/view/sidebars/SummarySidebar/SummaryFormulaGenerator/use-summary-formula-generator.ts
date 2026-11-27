@@ -11,6 +11,7 @@ import { useSetting } from "metabase/settings";
 import * as Lib from "metabase-lib";
 
 import { addSummaryFormula } from "../SummaryFormulaBar/utils";
+import { trackSummaryFormulaGenerated } from "../analytics";
 import type { SummaryWellId } from "../types";
 
 import type {
@@ -78,6 +79,7 @@ export function useSummaryFormulaGenerator({
     if (result.status === "error") {
       return result;
     }
+    const startTime = Date.now();
     const request = generateCustomExpression({
       ...result.request,
       metabot_id: getMetabotEntityId(),
@@ -90,7 +92,9 @@ export function useSummaryFormulaGenerator({
       return { status: "cancelled" };
     }
     setIsGenerating(false);
+    const durationMs = Date.now() - startTime;
     if (data == null) {
+      trackSummaryFormulaGenerated(wellId, "failure", durationMs);
       return {
         status: "error",
         message: truncateGenerateErrorMessage(
@@ -107,8 +111,10 @@ export function useSummaryFormulaGenerator({
       current.database,
     );
     if (expressionClause == null) {
+      trackSummaryFormulaGenerated(wellId, "failure", durationMs);
       return { status: "invalid", source: data.expression, name: data.name };
     }
+    trackSummaryFormulaGenerated(wellId, "success", durationMs);
     current.onAdd(
       addSummaryFormula(current.query, current.stageIndex, wellId, {
         name: data.name,

@@ -58,6 +58,8 @@ export class DiagnosticError extends ExpressionError {
   }
 }
 
+export class UnsupportedFunctionError extends DiagnosticError {}
+
 export function isExpressionError(err: unknown): err is ExpressionError {
   return err !== null && err instanceof ExpressionError;
 }

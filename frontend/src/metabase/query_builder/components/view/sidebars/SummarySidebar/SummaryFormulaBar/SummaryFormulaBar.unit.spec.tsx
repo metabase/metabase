@@ -16,6 +16,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { databaseApi } from "metabase/api";
 import {
   deserializeCardFromUrl,
@@ -1718,5 +1719,124 @@ describe("editing a formula chip", () => {
       screen.getByRole("textbox", { name: "Rename Sum total" }),
     ).toHaveFocus();
     expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
+  });
+});
+
+function setupTracking() {
+  return jest.spyOn(Analytics, "trackSimpleEvent").mockClear();
+}
+
+describe("formula bar analytics", () => {
+  it("tracks a formula typed after an equals sign, from opening to adding", async () => {
+    const trackSimpleEvent = setupTracking();
+    await setup();
+
+    await addFormula("values", "Count()");
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "summary_values",
+          event_detail: "equals_sign",
+        },
+      ],
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "summary_values",
+          event_detail: "new",
+          result: "success",
+        },
+      ],
+    ]);
+  });
+
+  it("tracks the formula option and a formula that isn't valid", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { onQueryChange } = await setup();
+    await userEvent.type(getInput("columns"), "tot");
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Custom column/ }),
+    );
+    await screen.findByRole("textbox", { name: "Formula" });
+
+    await changeFormula("[Missing column] * 2");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(onQueryChange).not.toHaveBeenCalled();
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "summary_columns",
+          event_detail: "formula_option",
+        },
+      ],
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "summary_columns",
+          event_detail: "new",
+          result: "invalid",
+        },
+      ],
+    ]);
+  });
+
+  it("tracks a chip's formula once while it stays open, and its update", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { onQueryChange } = await setupFormulaQuery();
+    await openFormula("Sum total");
+    await userEvent.click(getInput("columns"));
+    await userEvent.click(getFormulaChip("Sum total"));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Formula" })).toHaveFocus(),
+    );
+
+    await changeFormula("Sum([Total]) / Count()");
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
+    await expectClosed();
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "summary_values",
+          event_detail: "chip_edit",
+        },
+      ],
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "summary_values",
+          event_detail: "edit",
+          result: "success",
+        },
+      ],
+    ]);
+  });
+
+  it("tracks a Group by formula that a column header asked for", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { store } = await setupFormulaQuery();
+    const [expression] = Lib.expressions(FORMULA_QUERY, -1);
+    act(() => {
+      store.dispatch(setUIControls({ summaryFormulaToEdit: expression }));
+    });
+
+    await expectFormula('datetimeAdd([Created At], 1, "day")');
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "summary_columns",
+          event_detail: "column_header",
+        },
+      ],
+    ]);
   });
 });

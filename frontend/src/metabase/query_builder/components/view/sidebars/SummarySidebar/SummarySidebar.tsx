@@ -22,6 +22,10 @@ import {
 import { useSummaryFormulaGenerator } from "./SummaryFormulaGenerator";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
+import {
+  type SummaryFieldAddedEventDetail,
+  trackSummaryFieldAdded,
+} from "./analytics";
 import type {
   SummaryField,
   SummaryFieldSection,
@@ -37,6 +41,7 @@ import {
   areQueriesEqual,
   clearWell,
   getFieldSections,
+  hasNewSummaryClause,
   replaceWellWithField,
 } from "./utils";
 
@@ -129,8 +134,20 @@ export function SummarySidebar({
     const nextSummary = isGroupingWithoutValues
       ? Lib.aggregateByCount(nextQuery, stageIndex)
       : nextQuery;
-    if (!areQueriesEqual(query, nextSummary)) {
+    const isChanged = !areQueriesEqual(query, nextSummary);
+    if (isChanged) {
       handleQueryChange(nextSummary, { isFormulaCreated }, wellId);
+    }
+    return isChanged;
+  };
+
+  const handleFieldAdd = (
+    nextQuery: Lib.Query,
+    wellId: SummaryWellId,
+    detail: SummaryFieldAddedEventDetail,
+  ) => {
+    if (handleWellAdd(nextQuery, wellId)) {
+      trackSummaryFieldAdded(wellId, detail);
     }
   };
 
@@ -157,15 +174,28 @@ export function SummarySidebar({
       handleWellAdd(nextQuery, wellId, wellId !== "values"),
   });
 
-  const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
-    handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
+  const handleAdd = (
+    wellId: SummaryWellId,
+    field: SummaryField,
+    detail: SummaryFieldAddedEventDetail,
+  ) =>
+    handleFieldAdd(addField(query, stageIndex, wellId, field), wellId, detail);
 
   const handleFieldSelect = (field: SummaryField) => {
     const wellId = getFieldWellId(field);
-    handleWellAdd(
-      replaceWellWithField(query, stageIndex, wellId, field, layout.rows),
+    const nextQuery = replaceWellWithField(
+      query,
+      stageIndex,
       wellId,
+      field,
+      layout.rows,
     );
+    const isFieldAdded =
+      handleWellAdd(nextQuery, wellId) &&
+      hasNewSummaryClause(query, nextQuery, stageIndex, wellId);
+    if (isFieldAdded) {
+      trackSummaryFieldAdded(wellId, "field_list_click");
+    }
   };
 
   const handleClearAll = () =>
@@ -179,6 +209,8 @@ export function SummarySidebar({
     layout,
     onLayoutChange: changeLayout,
     onWellAdd: handleWellAdd,
+    onFieldAdd: (nextQuery, wellId) =>
+      handleFieldAdd(nextQuery, wellId, "drag_and_drop"),
   });
 
   const [isFieldListOpen, setIsFieldListOpen] = useState(true);
@@ -207,7 +239,7 @@ export function SummarySidebar({
             columnItems={columnItems}
             rowItems={rowItems}
             onPivotToggle={togglePivotMode}
-            onPick={handleAdd}
+            onPick={(wellId, field) => handleAdd(wellId, field, "typeahead")}
             onChange={handleQueryChange}
           />
           <Flex
@@ -249,7 +281,9 @@ export function SummarySidebar({
             stageIndex={stageIndex}
             sections={sections}
             onSelect={handleFieldSelect}
-            onAdd={(field) => handleAdd(getFieldWellId(field), field)}
+            onAdd={(field) =>
+              handleAdd(getFieldWellId(field), field, "field_list_alt_click")
+            }
           />
         </Box>
       </Box>

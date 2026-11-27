@@ -11,6 +11,10 @@ import type {
 } from "../SummaryFormulaBar";
 import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
 import S from "../SummarySidebar.module.css";
+import {
+  type SummaryItemRemovedEventDetail,
+  trackSummaryItemRemoved,
+} from "../analytics";
 import type {
   SummaryDimensionItem,
   SummaryDragItem,
@@ -85,8 +89,14 @@ export function SummaryWells({
     [sections],
   );
 
-  const handleRemove = (clause: Lib.AggregationClause | Lib.BreakoutClause) =>
+  const handleRemove = (
+    wellId: SummaryWellId,
+    clause: Lib.AggregationClause | Lib.BreakoutClause,
+    detail: SummaryItemRemovedEventDetail,
+  ) => {
+    trackSummaryItemRemoved(wellId, detail);
     onChange(Lib.removeClause(query, stageIndex, clause));
+  };
 
   const dropStates = useMemo(() => {
     if (draggedItem == null) {
@@ -121,7 +131,7 @@ export function SummaryWells({
           onRemoveLast={() => {
             const lastItem = valueItems.at(-1);
             if (lastItem) {
-              handleRemove(lastItem.clause);
+              handleRemove("values", lastItem.clause, "backspace");
             }
           }}
         >
@@ -134,7 +144,9 @@ export function SummaryWells({
               isEditing={isEditing(item.clause)}
               formulaInput={formulaInputs?.values}
               onChange={onChange}
-              onRemove={() => handleRemove(item.clause)}
+              onRemove={() =>
+                handleRemove("values", item.clause, "remove_button")
+              }
             />
           ))}
           {draftFormula?.wellId === "values" && (
@@ -162,7 +174,7 @@ export function SummaryWells({
           onRemoveLast={() => {
             const lastItem = columnItems.at(-1);
             if (lastItem) {
-              handleRemove(lastItem.clause);
+              handleRemove("columns", lastItem.clause, "backspace");
             }
           }}
         >
@@ -176,7 +188,9 @@ export function SummaryWells({
               isEditing={isEditing(item.expression)}
               formulaInput={formulaInputs?.columns}
               onChange={onChange}
-              onRemove={() => handleRemove(item.clause)}
+              onRemove={() =>
+                handleRemove("columns", item.clause, "remove_button")
+              }
             />
           ))}
           {draftFormula?.wellId === "columns" && (
@@ -200,7 +214,7 @@ export function SummaryWells({
             onRemoveLast={() => {
               const lastItem = rowItems.at(-1);
               if (lastItem) {
-                handleRemove(lastItem.clause);
+                handleRemove("rows", lastItem.clause, "backspace");
               }
             }}
           >
@@ -214,7 +228,9 @@ export function SummaryWells({
                 isEditing={isEditing(item.expression)}
                 formulaInput={formulaInputs?.rows}
                 onChange={onChange}
-                onRemove={() => handleRemove(item.clause)}
+                onRemove={() =>
+                  handleRemove("rows", item.clause, "remove_button")
+                }
               />
             ))}
             {draftFormula?.wellId === "rows" && (
