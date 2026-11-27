@@ -277,6 +277,7 @@
 (defn- destroy-context!
   "Close a context and drop its ref on the shared engine (closing the engine if it was the last context)."
   [^Context context]
+  (analytics/inc! :metabase-sql-parsing/context-disposals-expired)
   (try (.close context true) (catch Exception _))
   (release-engine!))
 

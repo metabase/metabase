@@ -9,6 +9,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics-interface]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
    [metabase.test :as mt]
@@ -78,6 +79,12 @@
           (is (thrown-with-msg? TimeoutException #"after 1234ms"
                                 (sql-parsing/referenced-tables (sql-parsing/parser :sqlglot) "postgres" "SELECT 1")))))
       (is (= 1234 @timeout-ms)))))
+
+(deftest destroying-context-counts-disposal-test
+  (testing "Disposing a pooled Python context increments the disposal counter (#87247)."
+    (mt/with-prometheus-system! [_ system]
+      (#'graal/destroy-context! (#'graal/generate-context!))
+      (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-sql-parsing/context-disposals-expired))))))
 
 (deftest expected-sqlglot-version-test
   (testing "Sqlglot version is properly parsed from pyproject.toml"
