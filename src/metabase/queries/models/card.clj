@@ -2616,9 +2616,21 @@
   (cache-config/delete-cache-configs! (cache-config/cache-config-ids-for-targets "question" card-ids))
   (delete-notifications-of-cards! card-ids))
 
+(defn- reset-values-sources-of-deleted-cards!
+  "Resets the parameters of the Dashboards and the other Cards that take their values from the Cards with `card-ids`."
+  [card-ids]
+  (let [deleted? (set card-ids)]
+    (reset-values-sources! (into []
+                                 (remove #(and (= :card (:parameterized_object_type %))
+                                               (deleted? (:parameterized_object_id %))))
+                                 (queries.db/parameter-cards-for-cards card-ids))
+                           (fn [param-cards _parameters] (set (map :parameter_id param-cards))))))
+
 (defn- publish-and-delete-card-dependents!
-  "Publish the delete event of the Cards `cards` with `opts`, then delete the rows that depend on them."
+  "Reset the parameters that take their values from the Cards `cards`, publish their delete event with `opts`, then
+  delete the rows that depend on them."
   [cards opts]
+  (reset-values-sources-of-deleted-cards! (mapv :id cards))
   (events/publish-event! :event/card-delete (events/delete-event cards opts))
   (run! delete-card-dependents! (map vec (partition-all mdb/delete-partition-size (map :id cards)))))
 
