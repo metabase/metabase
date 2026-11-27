@@ -8,6 +8,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -51,12 +52,23 @@
   :audit   :getter
   :doc     "When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.")
 
+(mu/defn- check-identity-provider-uri
+  "Throws a 400 unless `uri` is blank or an absolute HTTP(S) URL."
+  [uri :- [:maybe :string]]
+  (when (and (seq uri)
+             (not (u/url? uri)))
+    (throw (ex-info (tru "The identity provider URI must be an absolute URL starting with http:// or https://.")
+                    {:status-code 400}))))
+
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
 using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`")
   :encryption :when-encryption-key-set
   :feature    :sso-saml
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-value]
+                (check-identity-provider-uri new-value)
+                (setting/set-value-of-type! :string :saml-identity-provider-uri new-value)))
 
 (mu/defn- validate-saml-idp-cert
   "Validate that an encoded identity provider certificate is valid, or throw an Exception."
@@ -213,7 +225,10 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   (deferred-tru "URL for JWT-based login page.")
   :encryption :when-encryption-key-set
   :feature    :sso-jwt
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-value]
+                (check-identity-provider-uri new-value)
+                (setting/set-value-of-type! :string :jwt-identity-provider-uri new-value)))
 
 (defsetting jwt-shared-secret
   (deferred-tru (str "String used to seed the private key used to validate JWT messages."
