@@ -1,24 +1,16 @@
 (ns metabase.transforms.execute
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.indexes.models.table-index :as table-index]
-   [metabase.models.interface :as mi]
-   [metabase.request.core :as request]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-(mu/defn can-execute? :- :boolean
-  "Whether `transform` runs at all on this thread, as its `:can_query` answers a superuser, whoever the run is for."
-  [transform :- ::transforms.schema/transform]
-  (request/as-admin
-    (mi/can-query? (t2/hydrate transform :can_query))))
 
 (mu/defn- resolve-target :- ::transforms-base.schema/transform
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
@@ -48,7 +40,8 @@
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
 
 (mu/defn execute! :- :nil
-  "Run `transform` and sync its target table, throwing a 400 unless it is [[can-execute?]].
+  "Run `transform` and sync its target table, which only the default remote sync worktree allows, as the `:can_query`
+  of a Transform says.
 
   Executes synchronously, but the start is observable: once the run row is booked in the database,
   `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
@@ -65,9 +58,7 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       (when-not (can-execute? transform)
-         (throw (ex-info (tru "This transform cannot be run: its kind of transform is not enabled, or this is not the default worktree.")
-                         {:status-code 400 :transform-id (:id transform)})))
+       (mdb/check-default-worktree (tru "Transforms can only be run in the default worktree."))
        ;; the executors log their own failures at ERROR; this one happens before any executor runs
        (transforms.i/execute! (try (resolve-target transform)
                                    (catch Throwable t

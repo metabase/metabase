@@ -765,5 +765,5 @@
               (is (not (mi/can-query? (t2/hydrate transform :can_query)))))
             (testing "run that reaches executor is refused"
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                    #"This transform cannot be run"
+                                    #"Transforms can only be run in the default worktree"
                                     (transforms.core/execute! transform {:run-method :manual}))))))))))
