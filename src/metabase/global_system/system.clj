@@ -365,7 +365,8 @@
 (def ^:private max-wait-ms (quot Long/MAX_VALUE 1000000))
 
 (defn- await-starts!
-  "Wait up to `timeout-ms` for every start in flight to register or fail, and return the keys of those still in flight.
+  "Wait up to `timeout-ms` for every start in flight to register or fail.
+   Returns `:starting`, the keys of those still in flight, and `:interrupted?`, whether an interrupt ended the wait.
    Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
   [timeout-ms]
   ;; polled rather than waited on through each start's slot lock, which has no timed wait
@@ -374,12 +375,18 @@
     (loop []
       (let [starting (keys (:starting @admissions))]
         (if (or (empty? starting) (>= (- (System/nanoTime) start) timeout-ns))
-          (set starting)
-          (do (Thread/sleep 10)
-              (recur)))))))
+          {:starting (set starting), :interrupted? false}
+          (if (try
+                (Thread/sleep 10)
+                true
+                (catch InterruptedException _
+                  false))
+            (recur)
+            {:starting (set (keys (:starting @admissions))), :interrupted? true}))))))
 
 (defn- begin-halt!
   "Refuse every later start, then wait up to `start-timeout-ms` for the starts already in flight to register or fail.
+   Returns whether an interrupt ended that wait, in which case the interrupt is cleared.
    Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
   ([]
    (begin-halt! max-wait-ms))
@@ -387,10 +394,12 @@
    (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
      (throw (ex-info "A component's start cannot halt the system" {})))
    (close-admission!)
-   (when-let [still-starting (not-empty (await-starts! start-timeout-ms))]
-     (log/warnf "Halting while %d components are still starting, which this halt will not stop: %s"
-                (count still-starting)
-                (pr-str (sort-by str still-starting))))))
+   (let [{:keys [starting interrupted?]} (await-starts! start-timeout-ms)]
+     (when (seq starting)
+       (log/warnf "Halting while %d components are still starting, which this halt will not stop: %s"
+                  (count starting)
+                  (pr-str (sort-by str starting))))
+     interrupted?)))
 
 (defn halt!
   "Stop every running component [[start!]] started.
@@ -402,6 +411,7 @@
    It first waits up to `:start-timeout-ms` milliseconds, unbounded by default, for the starts already running, holding
    no lock, so it stops those too; one still running after that is logged and left running.
    It does not wait for a stop already running elsewhere, so it can stop what that component uses while that stop runs.
+   An interrupt during the wait for starts ends that wait; the halt still stops every component, then restores it.
 
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
    Throws after trying every stop if any threw, with each failure under `:failures` of the ex-data."
@@ -410,9 +420,14 @@
   ([dependencies]
    (halt! dependencies {}))
   ([dependencies {:keys [start-timeout-ms], :or {start-timeout-ms Long/MAX_VALUE}}]
-   (let [graph (dependency-graph dependencies)]
-     (begin-halt! (min start-timeout-ms max-wait-ms))
-     (stop-all! (halt-order graph)))))
+   (let [graph        (dependency-graph dependencies)
+         interrupted? (begin-halt! (min start-timeout-ms max-wait-ms))]
+     ;; restored only once the stops have run, since a stop's own waits would throw at once while it is set
+     (try
+       (stop-all! (halt-order graph))
+       (finally
+         (when interrupted?
+           (.interrupt (Thread/currentThread))))))))
 
 (defn reopen!
   "Let components start again after [[halt!]], for a REPL that halts the system and starts it again in one JVM."

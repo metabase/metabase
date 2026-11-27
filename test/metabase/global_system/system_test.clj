@@ -648,6 +648,30 @@
             (system/reopen!)
             (cleanup! [handle])))))))
 
+(deftest ^:synchronized interrupted-halt-stops-waiting-for-starts-test
+  (testing "an interrupt while the halt waits for a start ends the wait, so the halt can go on to stop everything"
+    (let [handle (system/mutable-component-handle ::start-outlasting-an-interrupt (constantly nil))
+          inside (promise)
+          leave  (promise)]
+      (try
+        (let [starter (future (system/ensure-started! handle
+                                                      #(do (deliver inside true) @leave :started)
+                                                      (constantly nil)))
+              _       @inside
+              result  (promise)
+              halter  (doto (Thread. ^Runnable #(deliver result (#'system/begin-halt!)))
+                        (.start))]
+          ;; the halter is polling the start by now, with no timeout to end the wait
+          (Thread/sleep 50)
+          (.interrupt halter)
+          (is (true? (deref result 5000 ::still-waiting)))
+          (deliver leave true)
+          @starter)
+        (finally
+          (deliver leave true)
+          (system/reopen!)
+          (cleanup! [handle]))))))
+
 (deftest ^:synchronized stop-failures-are-logged-as-they-happen-test
   (testing "each failed stop is logged before the next stop runs"
     (mt/with-log-messages-for-level [messages [metabase.global-system.system :error]]
