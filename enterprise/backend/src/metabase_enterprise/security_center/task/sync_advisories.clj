@@ -59,7 +59,7 @@
   "Fetch advisories, re-evaluate all, and send repeat notifications. Records the outcome of the run in
    `security-center-last-sync-attempted-at` and `security-center-last-sync-error`, moves
    `security-center-last-synced-at` only when the fetch succeeds, and records the running version in
-   `security-center-last-evaluated-version` only when the evaluation succeeds."
+   `security-center-last-evaluated-version`."
   []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
@@ -69,22 +69,20 @@
                          nil
                          (catch Exception e
                            (log/error e "Error syncing advisories from HM")
-                           (or (ex-message e) (str e))))
-          evaluated?   (try
-                         (matching/evaluate-all-advisories!)
-                         true
-                         (catch Exception e
-                           (log/warnf "Error re-evaluating advisories: %s" (ex-message e))
-                           false))]
+                           (or (ex-message e) (str e))))]
+      (try
+        (matching/evaluate-all-advisories!)
+        (catch Exception e
+          (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
       (try
         (send-repeat-notifications!)
         (catch Exception e
           (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
       (setting/set-many!
        (cond-> {:security-center-last-sync-attempted-at attempted-at
-                :security-center-last-sync-error        sync-error}
-         (nil? sync-error) (assoc :security-center-last-synced-at attempted-at)
-         evaluated?        (assoc :security-center-last-evaluated-version (:tag config/mb-version-info)))))
+                :security-center-last-sync-error        sync-error
+                :security-center-last-evaluated-version (:tag config/mb-version-info)}
+         (nil? sync-error) (assoc :security-center-last-synced-at attempted-at))))
     (metrics/refresh-metrics!)))
 
 (task/defjob SyncAdvisories
@@ -110,11 +108,16 @@
                      (cron/cron-schedule cron-str)
                      (cron/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger)
+      (let [tag (:tag config/mb-version-info)]
+        (cond
+          ;; first run of the feature: sync right away to seed advisories
+          (not (settings/security-center-last-synced-at))
+          (task/trigger-now! (jobs/key job-key))
+
+          ;; statuses were computed for another version: re-evaluate on this node, which runs the new version
+          (not= tag (settings/security-center-last-evaluated-version))
+          (do (matching/evaluate-all-advisories!)
+              (settings/security-center-last-evaluated-version! tag))))
       ;; Populate metrics from existing appdb state so freshness and vulnerability
       ;; gauges survive restarts without waiting for the next scheduled sync.
-      (metrics/refresh-metrics!)
-      ;; Sync immediately on the first run of the feature, to seed advisories, and after a version change, because
-      ;; the stored match statuses were computed for the version that evaluated them.
-      (when (or (not (settings/security-center-last-synced-at))
-                (not= (:tag config/mb-version-info) (settings/security-center-last-evaluated-version)))
-        (task/trigger-now! (jobs/key job-key))))))
+      (metrics/refresh-metrics!))))

@@ -122,48 +122,46 @@
                 (is (= :active (:match_status updated)))
                 (is (some? (:last_evaluated_at updated)))))))))))
 
-(defn- init-triggered-sync!
-  "Run the job's `task/init!` on version `tag` with the scheduler stubbed out, and return whether it triggered a sync
-  right away."
+(defn- run-init!
+  "Run the job's `task/init!` on version `tag` with the scheduler stubbed out, and return what it ran at startup."
   [tag]
-  (let [triggered? (atom false)]
+  (let [ran (atom #{})]
     (with-redefs [config/mb-version-info {:tag tag}]
       (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                   task/schedule-task!                       (constantly nil)
-                                  task/trigger-now!                         (fn [_] (reset! triggered? true))
+                                  task/trigger-now!                         (fn [_] (swap! ran conj :sync))
+                                  matching/evaluate-all-advisories!         #(swap! ran conj :evaluate)
                                   metrics/refresh-metrics!                  (constantly nil)]
         (task/init! ::sync-advisories/SyncAdvisories)))
-    @triggered?))
+    @ran))
 
-(deftest init-triggers-sync-when-version-changed-test
+(deftest init-reevaluates-when-version-changed-test
   (mt/with-premium-features #{:admin-security-center}
     (testing "never synced: syncs at startup"
       (mt/with-temporary-setting-values [security-center-last-synced-at nil]
-        (is (true? (init-triggered-sync! "v1.64.4")))))
-    (testing "advisories were last evaluated on another version: syncs at startup"
+        (is (= #{:sync} (run-init! "v1.64.4")))))
+    (testing "advisories were last evaluated on another version: re-evaluates on this node, without a sync"
       (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
                                          security-center-last-evaluated-version "v1.64.3"]
-        (is (true? (init-triggered-sync! "v1.64.4")))))
+        (is (= #{:evaluate} (run-init! "v1.64.4")))
+        (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))
     (testing "advisories were last evaluated on this version: waits for the schedule"
       (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
                                          security-center-last-evaluated-version "v1.64.4"]
-        (is (false? (init-triggered-sync! "v1.64.4")))))))
+        (is (= #{} (run-init! "v1.64.4")))))))
 
 (defn- sync-and-evaluate-on!
-  "Run [[sync-advisories/sync-and-evaluate!]] on version `tag`, with `evaluate` standing in for the evaluation."
-  [tag evaluate]
+  "Run [[sync-advisories/sync-and-evaluate!]] on version `tag`, with fetch and evaluation stubbed."
+  [tag]
   (with-redefs [config/mb-version-info {:tag tag}]
     (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                 fetch/sync-advisories!                    (constantly nil)
-                                matching/evaluate-all-advisories!         evaluate]
+                                matching/evaluate-all-advisories!         (constantly nil)]
       (#'sync-advisories/sync-and-evaluate!))))
 
 (deftest sync-and-evaluate-records-evaluated-version-test
   (mt/with-premium-features #{:admin-security-center}
     (mt/with-temporary-setting-values [security-center-last-evaluated-version "v1.64.3"]
-      (testing "a failed evaluation keeps the previous version"
-        (sync-and-evaluate-on! "v1.64.4" #(throw (Exception. "boom")))
-        (is (= "v1.64.3" (settings/security-center-last-evaluated-version))))
-      (testing "a successful evaluation records the running version"
-        (sync-and-evaluate-on! "v1.64.4" (constantly nil))
+      (testing "records the running version"
+        (sync-and-evaluate-on! "v1.64.4")
         (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))))
