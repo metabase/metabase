@@ -250,6 +250,27 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
+export type GenerateCustomExpressionReference = {
+  name: string;
+  type?: string | null;
+};
+
+export type GenerateCustomExpressionRequest = {
+  mode: "aggregation" | "expression";
+  prompt: string;
+  columns: GenerateCustomExpressionReference[];
+  metrics?: GenerateCustomExpressionReference[] | null;
+  measures?: GenerateCustomExpressionReference[] | null;
+  table_name?: string | null;
+  metabot_id: string;
+  database_id: DatabaseId;
+};
+
+export type GenerateCustomExpressionResponse = {
+  expression: string;
+  name: string;
+};
+
 export type MetabotFeedback = {
   message_id: string;
   freeform_feedback?: string;

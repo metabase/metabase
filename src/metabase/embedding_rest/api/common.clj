@@ -5,11 +5,14 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.util :as embedding.util]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.lib.schema.constraints :as lib.schema.constraints]
+   [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
@@ -18,7 +21,9 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.request.core :as request]
@@ -355,22 +360,104 @@
     :json :embedded-json-download
     :embedded-question))
 
-(defn process-query-for-card-with-params
-  "Run the query associated with pre-loaded Card `card` using JWT `token-params`, user-supplied URL `query-params`,
-   an `embedding-params` whitelist, and additional query `options`. Callers are responsible for selecting `card`
-  exactly once per request and threading it here. Returns `StreamingResponse` that should be returned as the API
-  endpoint result."
-  [& {:keys [export-format card embedding-params token-params query-params qp constraints options]
-      :or   {qp qp.card/process-query-for-card-default-qp}}]
-  {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
+(defn- sets-a-value?
+  "Whether parameter value `v` sets anything. An empty value doesn't: `[]` turns a locked filter off."
+  [v]
+  (cond
+    (nil? v)     false
+    (string? v)  (valid-param-value? v)
+    (seqable? v) (boolean (seq v))
+    :else        true))
+
+(defn- signed-parameter-ids
+  "The ids of the `parameters` that `token-params` sign a value for."
+  [parameters token-params]
+  (let [signed-slugs (into #{} (keep (fn [[slug v]] (when (sets-a-value? v) (name slug)))) token-params)]
+    (into #{} (keep (fn [{:keys [slug id]}] (when (signed-slugs slug) id))) parameters)))
+
+;;; ------------------------------------------- Shared chart context resolvers -------------------------------------------
+;;;
+;;; A chart route and its `/goal-values` route resolve their context through the same family resolver (in `embed` and
+;;; `preview-embed`), which ends in [[card-context]] or [[dashcard-context]]. A goal request carries no user params, so
+;;; it passes `{}`; the token is validated against `embedding-params` exactly as for the chart.
+
+(mr/def ::card-context
+  [:map {:closed true}
+   [:card                 ::queries.schema/card]
+   [:parameters           [:maybe ::parameters.schema/parameter-values]]
+   [:signed-parameter-ids [:set :string]]])
+
+(mr/def ::dashcard-context
+  [:map {:closed true}
+   [:dashboard            ::dashboards.schema/dashboard]
+   [:dashcard             ::dashboards.schema/dashboard-card]
+   [:card                 ::queries.schema/card]
+   [:parameters           ::parameters.schema/parameter-values]
+   [:signed-parameter-ids [:set :string]]])
+
+(mu/defn card-context :- ::card-context
+  "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `card`. Throws a 400 on bad
+  params. Returns the card, its query parameters, and the ids of the parameters the token signs a value for."
+  [card             :- ::queries.schema/card
+   embedding-params :- [:maybe ms/EmbeddingParams]
+   token-params     :- SlugValueMap
+   query-params     :- [:or QueryParams ParsedQueryParams]]
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
-    (m/mapply api.public/process-query-for-card-with-id
-              card export-format parameters
-              :context     (get-embed-card-context export-format)
-              :constraints constraints
-              :qp          qp
-              options)))
+        card-parameters    (resolve-card-parameters card)]
+    {:card                 card
+     :parameters           (apply-slug->value card-parameters merged-slug->value)
+     :signed-parameter-ids (signed-parameter-ids card-parameters token-params)}))
+
+(mu/defn dashcard-context :- ::dashcard-context
+  "Validate `token-params` and raw `query-params` against `embedding-params` for pre-loaded `dashboard`, then check that
+  `card` is on `dashcard` on `dashboard`. Throws a 400 on bad params, a 404 on a membership mismatch."
+  [dashboard        :- ::dashboards.schema/dashboard
+   dashcard         :- ::dashboards.schema/dashboard-card
+   card             :- ::queries.schema/card
+   embedding-params :- [:maybe ms/EmbeddingParams]
+   token-params     :- SlugValueMap
+   query-params     :- [:or QueryParams ParsedQueryParams]]
+  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters  (resolve-dashboard-parameters dashboard slug->value)]
+    (qp.dashboard/check-card-and-dashcard-are-in-dashboard (:id dashboard) (:id card) dashcard)
+    {:dashboard            dashboard
+     :dashcard             dashcard
+     :card                 card
+     :parameters           parameters
+     :signed-parameter-ids (signed-parameter-ids (:parameters dashboard) token-params)}))
+
+(mr/def ::query-options
+  "Extra options the embed card routes pass through to the card query."
+  [:map {:closed true}
+   [:qp          {:optional true} [:maybe ifn?]]
+   [:constraints {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:middleware  {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]])
+
+(mr/def ::card-context-options
+  [:map {:closed true}
+   [:export-format {:optional true} [:maybe :keyword]]
+   [:qp            {:optional true} [:maybe ifn?]]
+   [:constraints   {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:options       {:optional true} [:maybe ::query-options]]])
+
+(mu/defn process-query-for-card-context
+  "Run the query of a [[card-context]] with additional query `options`. Returns a `StreamingResponse`."
+  [{:keys [card parameters]} :- ::card-context
+   & {:keys [export-format qp constraints options]
+      :or   {qp qp.card/process-query-for-card-default-qp}} :- [:maybe ::card-context-options]]
+  (m/mapply api.public/process-query-for-card-with-id
+            card export-format parameters
+            :context     (get-embed-card-context export-format)
+            :constraints constraints
+            :qp          qp
+            options))
+
+(mu/defn goal-values-response
+  "The goal values of a resolved [[card-context]] or [[dashcard-context]]. Withheld when the token signs a parameter
+  value. Returns a `StreamingResponse`."
+  [context :- [:or ::card-context ::dashcard-context]]
+  ;; goals run without parameter values
+  (dynamic-goals/chart-context-goal-values-response (dissoc context :parameters)))
 
 (defn- tile-slug->value
   [object-parameters parameter-values]
@@ -428,6 +515,13 @@
         (update :dashcards #(map keep-parameter-mappings %))
         (update :dashcards #(map keep-inline-parameters %)))))
 
+(defn unsigned-token->token-params
+  "Get the signed `:params` map from an unsigned token. Throws a 400 when they are not a map."
+  [unsigned-token]
+  (let [token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api/check-400 (map? token-params) (tru "Token params must be a map."))
+    token-params))
+
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token, translating an `entity_id` to a numeric id if necessary."
   [unsigned-token]
@@ -460,28 +554,29 @@
     :json :embedded-json-download
     :embedded-dashboard))
 
-(defn process-query-for-dashcard
-  "Return results for running the query belonging to a DashboardCard. Callers are responsible for selecting the
-  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Returns a
-  `StreamingResponse`."
-  [& {:keys [dashboard dashcard card export-format embedding-params token-params middleware
-             query-params constraints qp]
+(mr/def ::dashcard-context-options
+  [:map {:closed true}
+   [:export-format {:optional true} [:maybe :keyword]]
+   [:middleware    {:optional true} [:maybe ::lib.schema.middleware-options/middleware-options]]
+   [:constraints   {:optional true} [:maybe ::lib.schema.constraints/constraints]]
+   [:qp            {:optional true} [:maybe ifn?]]])
+
+(mu/defn process-query-for-dashcard-context
+  "Run the query of a [[dashcard-context]]. Returns a `StreamingResponse`."
+  [{:keys [dashboard dashcard card parameters]} :- ::dashcard-context
+   & {:keys [export-format middleware constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp          qp.card/process-query-for-card-default-qp}}]
-  {:pre [(map? dashboard) (map? dashcard) (map? card) (u/maybe? map? embedding-params)
-         (map? token-params) (map? query-params)]}
-  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters  (resolve-dashboard-parameters dashboard slug->value)]
-    (api.public/process-query-for-dashcard
-     :dashboard     dashboard
-     :card          card
-     :dashcard      dashcard
-     :export-format export-format
-     :parameters    parameters
-     :qp            qp
-     :context       (get-embed-dashboard-context export-format)
-     :constraints   constraints
-     :middleware    middleware)))
+             qp          qp.card/process-query-for-card-default-qp}} :- [:maybe ::dashcard-context-options]]
+  (api.public/process-query-for-dashcard
+   :dashboard     dashboard
+   :card          card
+   :dashcard      dashcard
+   :export-format export-format
+   :parameters    parameters
+   :qp            qp
+   :context       (get-embed-dashboard-context export-format)
+   :constraints   constraints
+   :middleware    middleware))
 
 (defn process-tiles-query-for-dashcard
   "Runs [[metabase.public-sharing-rest.api/process-tiles-query-for-dashcard]] for the embed tiles endpoints. Callers

@@ -4,9 +4,9 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -59,11 +59,11 @@
         ci-pattern   (fn [pattern]
                        (case db-type
                          (:h2 :postgres) pattern
-                         [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+                         [:collate pattern "utf8mb4_unicode_ci"]))
         like         (fn [field wrap]
                        [(case db-type (:h2 :postgres) :ilike :like)
                         field
-                        (h2x/like-pattern term (comp ci-pattern wrap glob))])
+                        (funnysql.util/like-pattern term (comp ci-pattern wrap glob))])
         where        (cond-> [:and (if include-transform-targets?
                                      [:or [:= (table-column :active) true] [:= (table-column :transform_target) true]]
                                      [:= (table-column :active) true])]

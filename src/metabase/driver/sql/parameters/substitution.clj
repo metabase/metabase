@@ -275,7 +275,7 @@
 (mu/defn- honeysql->replacement-snippet-info :- ::param-snippet-info
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver    :- :keyword
-   hsql-form :- ::h2x/expr]
+   hsql-form :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
   (let [[snippet & args] (sql.qp/format-honeysql driver hsql-form)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))

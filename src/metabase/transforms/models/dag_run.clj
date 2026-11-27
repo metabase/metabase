@@ -22,6 +22,7 @@
 
 (doto :model/TransformDagRun
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (t2/define-before-update :model/TransformDagRun

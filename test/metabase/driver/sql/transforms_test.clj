@@ -355,11 +355,13 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/dataset transforms-dataset/transforms-test
         ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
-        ;; `rnq_a_b`, so the rename lands on a different table instead of failing
-        (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
+        ;; `rnq_..._a_b`, so the rename lands on a different table instead of failing
+        (doseq [dst-format ["rnq_%s_a`b\\" "rnq-%s-a-b"]
+                :let [suffix (subs (str (random-uuid)) 0 8)
+                      dst    (format dst-format suffix)]]
           (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
             (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
-                  src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
+                  src    (str "rnq_src_" suffix)]
               (try
                 (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
                                       {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})

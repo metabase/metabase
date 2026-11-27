@@ -1,13 +1,26 @@
-import type {
-  BaseCartesianChartModel,
-  BreakoutSeriesModel,
-  ChartBoundsCoords,
-  ChartLayout,
-  Padding,
-  SeriesModel,
-  TicksDimensions,
+import {
+  type BaseCartesianChartModel,
+  type BreakoutSeriesModel,
+  type ChartBoundsCoords,
+  type ChartLayout,
+  DEFAULT_VISUALIZATION_THEME,
+  type Padding,
+  type RenderingContext,
+  type SeriesModel,
+  type TicksDimensions,
 } from "metabase/viz-core";
 import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+
+export const createMockChartContext = (
+  opts?: Partial<RenderingContext>,
+): RenderingContext => ({
+  getColor: (name) => name,
+  measureText: () => 0,
+  measureTextHeight: () => 0,
+  fontFamily: "",
+  theme: DEFAULT_VISUALIZATION_THEME,
+  ...opts,
+});
 
 type MockChartLayoutOpts = Partial<
   Omit<ChartLayout, "ticksDimensions" | "padding" | "bounds">

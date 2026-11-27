@@ -14,6 +14,7 @@
 (methodical/defmethod t2/table-name :model/ResultMetadataStatus [_model] :result_metadata_status)
 
 (derive :model/ResultMetadataStatus :metabase/model)
+(derive :model/ResultMetadataStatus :hook/worktree-id)
 
 (t2/deftransforms :model/ResultMetadataStatus
   {:entity_type mi/transform-keyword})

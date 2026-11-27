@@ -171,7 +171,9 @@
 (defn- run-health-check-collector!
   [& {:keys [complete? enabled?]}]
   (mt/with-dynamic-fn-redefs [init-status/complete?                     (constantly complete?)
-                              premium-features/security-center-enabled? (constantly enabled?)]
+                              premium-features/security-center-enabled? (constantly enabled?)
+                              ;; read-only-connections is paused (GDGT-3564, GDGT-3565): run it here anyway
+                              health-checks/applicable?                 (constantly true)]
     ((:f (analytics.core/pull-collector ::metrics/health-check-gauges)))))
 
 (deftest health-check-gauges-pull-collector-test

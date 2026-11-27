@@ -1,9 +1,49 @@
+import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
 import { SERIES_SETTING_KEY } from "metabase/viz-core";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { getCartesianChartDefinition } from "./definition";
 
+const GOAL_LINE_SETTINGS: VisualizationSettings = {
+  "graph.dimensions": ["month"],
+  "graph.metrics": ["count"],
+  "graph.show_goal": true,
+};
+
+const REFERENCED_GOAL = { type: "card", id: 9, column: "goal" } as const;
+
+const REFERENCED_GOAL_SETTINGS: VisualizationSettings = {
+  ...GOAL_LINE_SETTINGS,
+  "graph.goal_value": REFERENCED_GOAL,
+};
+
 describe("definition", () => {
+  describe("checkRenderable", () => {
+    const { checkRenderable } = getCartesianChartDefinition({});
+
+    describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
+      "goal line of a %s chart",
+      (display) => {
+        it("renders with a goal that reads another entity", () => {
+          const series = createSeries(display);
+
+          expect(() =>
+            checkRenderable(series, REFERENCED_GOAL_SETTINGS),
+          ).not.toThrow();
+        });
+      },
+    );
+  });
+
   describe("onDisplayUpdate", () => {
     const onDisplayUpdate = getCartesianChartDefinition({}).onDisplayUpdate!;
 
@@ -58,3 +98,23 @@ describe("definition", () => {
     });
   });
 });
+
+function createSeries(display: VisualizationDisplay): Series {
+  return [
+    createMockSingleSeries(
+      { display },
+      {
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "month", base_type: "type/Text" }),
+            createMockColumn({ name: "count", base_type: "type/Integer" }),
+          ],
+          rows: [
+            ["Jan", 10],
+            ["Feb", 20],
+          ],
+        }),
+      },
+    ),
+  ];
+}

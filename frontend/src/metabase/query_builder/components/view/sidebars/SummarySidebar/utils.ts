@@ -1,0 +1,763 @@
+import { t } from "ttag";
+import _ from "underscore";
+
+import { getColumnIcon } from "metabase/common/utils/columns";
+import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
+
+import type {
+  BreakoutListItem,
+  SummaryBucketOption,
+  SummaryDimensionItem,
+  SummaryDragItem,
+  SummaryField,
+  SummaryFieldItem,
+  SummaryFieldSection,
+  SummaryOperatorOption,
+  SummaryValueItem,
+  SummaryWellId,
+} from "./types";
+
+const DEFAULT_OPERATOR_SHORT_NAMES = ["sum", "distinct"];
+const COUNT_OPERATOR_SHORT_NAME = "count";
+type DimensionBucketOptions = Pick<
+  SummaryDimensionItem,
+  "bucketOptions" | "initialBucketOptionCount"
+>;
+
+const VALUE_SECTION_KEYS = ["measures", "metrics"];
+const INITIAL_TEMPORAL_OPTION_COUNT = 7;
+const INITIAL_BINNING_OPTION_COUNT = 5;
+const NO_BUCKET_OPTIONS: DimensionBucketOptions = {
+  bucketOptions: [],
+  initialBucketOptionCount: 0,
+};
+
+function toFieldItem(
+  { name, displayName }: { name: string; displayName: string },
+  icon: IconName,
+  field: SummaryField,
+): SummaryFieldItem {
+  return { key: name, name: displayName, icon, field };
+}
+
+function getColumnSections(
+  query: Lib.Query,
+  stageIndex: number,
+): SummaryFieldSection[] {
+  const columns = Lib.breakoutableColumns(query, stageIndex);
+  return Lib.groupColumns(columns).map((group, groupIndex) => ({
+    key: `table-${groupIndex}`,
+    name: Lib.displayInfo(query, stageIndex, group).displayName,
+    items: Lib.getColumnsFromColumnGroup(group).map((column) =>
+      toFieldItem(
+        Lib.displayInfo(query, stageIndex, column),
+        getColumnIcon(column),
+        { kind: "column", column },
+      ),
+    ),
+  }));
+}
+
+function withoutEmptySections(sections: SummaryFieldSection[]) {
+  return sections.filter((section) => section.items.length > 0);
+}
+
+export function getFieldSections(
+  query: Lib.Query,
+  stageIndex: number,
+): SummaryFieldSection[] {
+  return withoutEmptySections([
+    {
+      key: "measures",
+      name: t`Measures`,
+      items: Lib.availableMeasures(query, stageIndex).map((measure) =>
+        toFieldItem(Lib.displayInfo(query, stageIndex, measure), "ruler", {
+          kind: "measure",
+          measure,
+        }),
+      ),
+    },
+    {
+      key: "metrics",
+      name: t`Metrics`,
+      items: Lib.availableMetrics(query, stageIndex).map((metric) =>
+        toFieldItem(Lib.displayInfo(query, stageIndex, metric), "metric", {
+          kind: "metric",
+          metric,
+        }),
+      ),
+    },
+    ...getColumnSections(query, stageIndex),
+  ]);
+}
+
+export function getWellFieldSections(
+  sections: SummaryFieldSection[],
+  wellId: SummaryWellId,
+): SummaryFieldSection[] {
+  const [valueSections, columnSections] = _.partition(sections, (section) =>
+    VALUE_SECTION_KEYS.includes(section.key),
+  );
+  if (wellId !== "values") {
+    return columnSections;
+  }
+  const countSection: SummaryFieldSection = {
+    key: "count",
+    name: t`Basic`,
+    items: [
+      {
+        key: "count",
+        name: t`Count of rows`,
+        icon: "sum",
+        field: { kind: "count" },
+      },
+    ],
+  };
+  return [countSection, ...valueSections, ...columnSections];
+}
+
+export function filterFieldSections(
+  sections: SummaryFieldSection[],
+  searchText: string,
+): SummaryFieldSection[] {
+  const needle = searchText.trim().toLowerCase();
+  if (needle.length === 0) {
+    return sections;
+  }
+  return withoutEmptySections(
+    sections.map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        item.name.toLowerCase().includes(needle),
+      ),
+    })),
+  );
+}
+
+function findOperatorColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  operator: Lib.AggregationOperator,
+  column: Lib.ColumnMetadata,
+): Lib.ColumnMetadata | null {
+  return Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.aggregationOperatorColumns(operator),
+  );
+}
+
+function getColumnOperatorOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  operators: Lib.AggregationOperator[],
+  column: Lib.ColumnMetadata,
+): SummaryOperatorOption[] {
+  return operators
+    .map((operator) => ({
+      operator,
+      info: Lib.displayInfo(query, stageIndex, operator),
+    }))
+    .filter(
+      ({ operator, info }) =>
+        info.requiresColumn &&
+        findOperatorColumn(query, stageIndex, operator, column) != null,
+    )
+    .map(({ operator, info }) => ({
+      operator,
+      shortName: info.shortName,
+      displayName: info.displayName,
+      isSelected: info.selected === true,
+    }));
+}
+
+function getDefaultOperatorOption(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): SummaryOperatorOption | null {
+  const options = getColumnOperatorOptions(
+    query,
+    stageIndex,
+    Lib.availableAggregationOperators(query, stageIndex),
+    column,
+  );
+  const preferredOptions = DEFAULT_OPERATOR_SHORT_NAMES.map((shortName) =>
+    options.find((option) => option.shortName === shortName),
+  );
+  return [...preferredOptions, options[0]].find((option) => option) ?? null;
+}
+
+function getColumnAggregation(
+  query: Lib.Query,
+  stageIndex: number,
+  operator: Lib.AggregationOperator,
+  column: Lib.ColumnMetadata,
+): Lib.AggregationClause | null {
+  const operatorColumn = findOperatorColumn(
+    query,
+    stageIndex,
+    operator,
+    column,
+  );
+  return operatorColumn
+    ? Lib.aggregationClause(operator, operatorColumn)
+    : null;
+}
+
+export function getResultColumnNames(query: Lib.Query, stageIndex: number) {
+  const infos = Lib.returnedColumns(query, stageIndex).map((column) =>
+    Lib.displayInfo(query, stageIndex, column),
+  );
+  return {
+    breakoutNames: infos.filter((info) => info.isBreakout).map((i) => i.name),
+    aggregationNames: infos
+      .filter((info) => info.isAggregation)
+      .map((info) => info.name),
+  };
+}
+
+function getValueItem(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.AggregationClause,
+  key: string,
+  operators: Lib.AggregationOperator[],
+  entityKind: "metric" | "measure" | null,
+): SummaryValueItem {
+  const { displayName, isNamed } = Lib.displayInfo(query, stageIndex, clause);
+  const base = { clause, key, label: displayName, isNamed: isNamed === true };
+  const clauseOperators = Lib.selectedAggregationOperators(operators, clause);
+  const selectedOperator = clauseOperators.find(
+    (operator) => Lib.displayInfo(query, stageIndex, operator).selected,
+  );
+  if (selectedOperator == null) {
+    return { ...base, kind: entityKind ?? "expression" };
+  }
+  if (!Lib.displayInfo(query, stageIndex, selectedOperator).requiresColumn) {
+    return { ...base, kind: "count" };
+  }
+  // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column
+  const column = Lib.aggregationOperatorColumns(selectedOperator).find(
+    (column) => Lib.displayInfo(query, stageIndex, column).selected,
+  );
+  if (column == null) {
+    // the operator aggregates a formula, like `Sum([Total] * 2)`
+    return { ...base, kind: "expression" };
+  }
+  return {
+    ...base,
+    kind: "column",
+    column,
+    operatorOptions: getColumnOperatorOptions(
+      query,
+      stageIndex,
+      clauseOperators,
+      column,
+    ),
+  };
+}
+
+/** Value chips that come from a formula: expression aggregations and named ones. */
+export function isFormulaValue(item: SummaryValueItem): boolean {
+  return item.kind === "expression" || item.isNamed;
+}
+
+export function getValueItems(
+  query: Lib.Query,
+  stageIndex: number,
+): SummaryValueItem[] {
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
+  const metricPositions = new Set(
+    Lib.availableMetrics(query, stageIndex).map(
+      (metric) =>
+        Lib.displayInfo(query, stageIndex, metric).aggregationPosition,
+    ),
+  );
+  const measurePositions = new Set(
+    Lib.availableMeasures(query, stageIndex).flatMap(
+      (measure) =>
+        Lib.displayInfo(query, stageIndex, measure).aggregationPositions ?? [],
+    ),
+  );
+  const getEntityKind = (index: number) => {
+    if (metricPositions.has(index)) {
+      return "metric";
+    }
+    return measurePositions.has(index) ? "measure" : null;
+  };
+  const { aggregationNames } = getResultColumnNames(query, stageIndex);
+  return Lib.aggregations(query, stageIndex).map((clause, index) =>
+    getValueItem(
+      query,
+      stageIndex,
+      clause,
+      aggregationNames[index],
+      operators,
+      getEntityKind(index),
+    ),
+  );
+}
+
+function getBucketOption(
+  query: Lib.Query,
+  stageIndex: number,
+  bucket: Lib.Bucket,
+  column: Lib.ColumnMetadata,
+): SummaryBucketOption {
+  const info = Lib.displayInfo(query, stageIndex, bucket);
+  return {
+    displayName: info.displayName,
+    isSelected: info.selected === true,
+    column,
+  };
+}
+
+function getBucketOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.BreakoutClause,
+): DimensionBucketOptions {
+  const column = Lib.breakoutColumn(query, stageIndex, clause);
+  if (column == null) {
+    return NO_BUCKET_OPTIONS;
+  }
+  const strategies = Lib.availableBinningStrategies(query, stageIndex, column);
+  if (strategies.length > 0) {
+    return {
+      bucketOptions: [
+        ...strategies.map((strategy) =>
+          getBucketOption(
+            query,
+            stageIndex,
+            strategy,
+            Lib.withBinning(column, strategy),
+          ),
+        ),
+        {
+          displayName: t`Don't bin`,
+          isSelected: Lib.binning(column) == null,
+          column: Lib.withBinning(column, null),
+        },
+      ],
+      initialBucketOptionCount: INITIAL_BINNING_OPTION_COUNT,
+    };
+  }
+  const units = Lib.availableTemporalBuckets(query, stageIndex, column);
+  if (units.length > 0) {
+    const selectedUnit = Lib.temporalBucket(column);
+    return {
+      bucketOptions: [
+        ...units.map((unit) =>
+          getBucketOption(
+            query,
+            stageIndex,
+            unit,
+            Lib.withTemporalBucket(column, unit),
+          ),
+        ),
+        {
+          displayName: t`Don't bin`,
+          isSelected:
+            selectedUnit == null ||
+            Lib.displayInfo(query, stageIndex, selectedUnit).shortName ===
+              "default",
+          // an explicit default keeps the column from getting its default unit back
+          column: Lib.withTemporalBucket(column, "default"),
+        },
+      ],
+      initialBucketOptionCount: INITIAL_TEMPORAL_OPTION_COUNT,
+    };
+  }
+  return NO_BUCKET_OPTIONS;
+}
+
+export function getDimensionItems(
+  query: Lib.Query,
+  stageIndex: number,
+): SummaryDimensionItem[] {
+  const { breakoutNames } = getResultColumnNames(query, stageIndex);
+  const expressions = Lib.expressions(query, stageIndex);
+  return Lib.breakouts(query, stageIndex).map((clause, index) => {
+    const info = Lib.displayInfo(query, stageIndex, clause);
+    const column = Lib.breakoutColumn(query, stageIndex, clause);
+    const columnInfo = column && Lib.displayInfo(query, stageIndex, column);
+    const expression = columnInfo?.isCalculated
+      ? expressions.find(
+          (expression) =>
+            Lib.displayInfo(query, stageIndex, expression).displayName ===
+            columnInfo.name,
+        )
+      : undefined;
+    return {
+      clause,
+      expression,
+      key: breakoutNames[index],
+      label: info.longDisplayName,
+      ...getBucketOptions(query, stageIndex, clause),
+    };
+  });
+}
+
+function findBreakoutableColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.ColumnMetadata | null {
+  return Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.breakoutableColumns(query, stageIndex),
+  );
+}
+
+function hasBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): boolean {
+  const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
+  return breakoutPositions.length > 0;
+}
+
+function getMetricKey(
+  query: Lib.Query,
+  stageIndex: number,
+  metric: Lib.MetricMetadata,
+): string {
+  return Lib.displayInfo(query, stageIndex, metric).name;
+}
+
+function getMeasureKey(
+  query: Lib.Query,
+  stageIndex: number,
+  measure: Lib.MeasureMetadata,
+): string {
+  return Lib.displayInfo(query, stageIndex, measure).name;
+}
+
+function hasCountOfRows(query: Lib.Query, stageIndex: number): boolean {
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
+  return Lib.aggregations(query, stageIndex).some((clause) =>
+    Lib.selectedAggregationOperators(operators, clause).some((operator) => {
+      const info = Lib.displayInfo(query, stageIndex, operator);
+      return info.selected && info.shortName === COUNT_OPERATOR_SHORT_NAME;
+    }),
+  );
+}
+
+function hasValue(
+  query: Lib.Query,
+  stageIndex: number,
+  field: Exclude<SummaryField, { kind: "column" }>,
+): boolean {
+  switch (field.kind) {
+    case "count":
+      return hasCountOfRows(query, stageIndex);
+    case "metric": {
+      const key = getMetricKey(query, stageIndex, field.metric);
+      return Lib.availableMetrics(query, stageIndex).some(
+        (metric) =>
+          getMetricKey(query, stageIndex, metric) === key &&
+          Lib.displayInfo(query, stageIndex, metric).aggregationPosition !=
+            null,
+      );
+    }
+    case "measure": {
+      const key = getMeasureKey(query, stageIndex, field.measure);
+      return Lib.availableMeasures(query, stageIndex).some((measure) => {
+        const { aggregationPositions = [] } = Lib.displayInfo(
+          query,
+          stageIndex,
+          measure,
+        );
+        return (
+          getMeasureKey(query, stageIndex, measure) === key &&
+          aggregationPositions.length > 0
+        );
+      });
+    }
+  }
+}
+
+/** The default first, then coarser, then finer, then the parts of a date. */
+function sortBucketsForRegrouping(
+  query: Lib.Query,
+  stageIndex: number,
+  buckets: Lib.Bucket[],
+): Lib.Bucket[] {
+  const [extractions, ranges] = _.partition(
+    buckets,
+    (bucket) =>
+      Lib.displayInfo(query, stageIndex, bucket).isTemporalExtraction === true,
+  );
+  const defaultIndex = Math.max(
+    ranges.findIndex(
+      (bucket) => Lib.displayInfo(query, stageIndex, bucket).default === true,
+    ),
+    0,
+  );
+  return [
+    ...ranges.slice(defaultIndex),
+    ...ranges.slice(0, defaultIndex).reverse(),
+    ...extractions,
+  ];
+}
+
+function getRegroupingColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.ColumnMetadata[] {
+  const strategies = Lib.availableBinningStrategies(query, stageIndex, column);
+  if (strategies.length > 0) {
+    return sortBucketsForRegrouping(query, stageIndex, strategies).map(
+      (strategy) => Lib.withBinning(column, strategy),
+    );
+  }
+  const units = Lib.availableTemporalBuckets(query, stageIndex, column);
+  return sortBucketsForRegrouping(query, stageIndex, units).map((unit) =>
+    Lib.withTemporalBucket(column, unit),
+  );
+}
+
+function breakoutAgain(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): Lib.Query {
+  const breakoutCount = Lib.breakouts(query, stageIndex).length;
+  const nextColumn = getRegroupingColumns(query, stageIndex, column).find(
+    (bucketedColumn) =>
+      Lib.breakouts(Lib.breakout(query, stageIndex, bucketedColumn), stageIndex)
+        .length > breakoutCount,
+  );
+  return nextColumn ? Lib.breakout(query, stageIndex, nextColumn) : query;
+}
+
+export function areQueriesEqual(query: Lib.Query, other: Lib.Query): boolean {
+  return (
+    query === other ||
+    Lib.areQueriesEqual(Lib.toJsQuery(query), Lib.toJsQuery(other))
+  );
+}
+
+export function addField(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+  field: SummaryField,
+): Lib.Query {
+  if (wellId !== "values") {
+    const column =
+      field.kind === "column"
+        ? findBreakoutableColumn(query, stageIndex, field.column)
+        : null;
+    if (column == null) {
+      return query;
+    }
+    if (hasBreakout(query, stageIndex, column)) {
+      return breakoutAgain(query, stageIndex, column);
+    }
+    return Lib.breakout(
+      query,
+      stageIndex,
+      Lib.withDefaultBucket(query, stageIndex, column),
+    );
+  }
+  switch (field.kind) {
+    case "column": {
+      const option = getDefaultOperatorOption(query, stageIndex, field.column);
+      const clause =
+        option &&
+        getColumnAggregation(query, stageIndex, option.operator, field.column);
+      return clause ? Lib.aggregate(query, stageIndex, clause) : query;
+    }
+    case "count":
+      return hasValue(query, stageIndex, field)
+        ? query
+        : Lib.aggregateByCount(query, stageIndex);
+    case "metric":
+      return hasValue(query, stageIndex, field)
+        ? query
+        : Lib.aggregate(query, stageIndex, field.metric);
+    case "measure":
+      return hasValue(query, stageIndex, field)
+        ? query
+        : Lib.aggregate(query, stageIndex, field.measure);
+  }
+}
+
+function getWellClauses(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+  rowKeys: string[],
+): (Lib.AggregationClause | Lib.BreakoutClause)[] {
+  if (wellId === "values") {
+    return Lib.aggregations(query, stageIndex);
+  }
+  const { breakoutNames } = getResultColumnNames(query, stageIndex);
+  return Lib.breakouts(query, stageIndex).filter(
+    (_clause, index) =>
+      rowKeys.includes(breakoutNames[index]) === (wellId === "rows"),
+  );
+}
+
+/** `rowKeys` are the keys of the groupings in Rows. Without them, Columns holds every grouping. */
+export function clearWell(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+  rowKeys: string[] = [],
+): Lib.Query {
+  return getWellClauses(query, stageIndex, wellId, rowKeys).reduce(
+    (query, clause) => Lib.removeClause(query, stageIndex, clause),
+    query,
+  );
+}
+
+/** Returns `query` itself when the field can't be added, so the well keeps its content. */
+export function replaceWellWithField(
+  query: Lib.Query,
+  stageIndex: number,
+  wellId: SummaryWellId,
+  field: SummaryField,
+  rowKeys: string[] = [],
+): Lib.Query {
+  const clearedQuery = clearWell(query, stageIndex, wellId, rowKeys);
+  const nextQuery = addField(clearedQuery, stageIndex, wellId, field);
+  return nextQuery !== clearedQuery ? nextQuery : query;
+}
+
+export function getDragItem(data: unknown): SummaryDragItem | null {
+  if (typeof data !== "object" || data == null || !("kind" in data)) {
+    return null;
+  }
+  // only the sidebar's draggables register data, always a SummaryDragItem
+  return data as SummaryDragItem;
+}
+
+export function getDragItemLabel(drag: SummaryDragItem): string {
+  return drag.kind === "field" ? drag.label : drag.item.label;
+}
+
+function getDragField(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+): SummaryField | null {
+  switch (drag.kind) {
+    case "field":
+      return drag.field;
+    case "value":
+      return drag.item.kind === "column"
+        ? { kind: "column", column: drag.item.column }
+        : null;
+    case "dimension": {
+      const column = Lib.breakoutColumn(query, stageIndex, drag.item.clause);
+      return column ? { kind: "column", column } : null;
+    }
+  }
+}
+
+function getDragSourceWellId(drag: SummaryDragItem): SummaryWellId | null {
+  switch (drag.kind) {
+    case "field":
+      return null;
+    case "value":
+      return "values";
+    case "dimension":
+      return drag.wellId;
+  }
+}
+
+export function canDropOnWell(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+  wellId: SummaryWellId,
+): boolean {
+  if (getDragSourceWellId(drag) === wellId) {
+    return false;
+  }
+  const field = getDragField(query, stageIndex, drag);
+  return field != null && (wellId === "values" || field.kind === "column");
+}
+
+/** Returns `query` itself when the drop isn't possible or changes nothing, so a chip is never lost. */
+export function dropOnWell(
+  query: Lib.Query,
+  stageIndex: number,
+  drag: SummaryDragItem,
+  wellId: SummaryWellId,
+): Lib.Query {
+  const field = getDragField(query, stageIndex, drag);
+  const isMoveBetweenGroupingWells =
+    drag.kind === "dimension" && wellId !== "values";
+  if (
+    field == null ||
+    isMoveBetweenGroupingWells ||
+    !canDropOnWell(query, stageIndex, drag, wellId)
+  ) {
+    return query;
+  }
+  const withoutSource =
+    drag.kind === "field"
+      ? query
+      : Lib.removeClause(query, stageIndex, drag.item.clause);
+  const nextQuery = addField(withoutSource, stageIndex, wellId, field);
+  return nextQuery !== withoutSource ? nextQuery : query;
+}
+
+export function changeValueOperator(
+  query: Lib.Query,
+  stageIndex: number,
+  item: Extract<SummaryValueItem, { kind: "column" }>,
+  operator: Lib.AggregationOperator,
+): Lib.Query {
+  const clause = getColumnAggregation(query, stageIndex, operator, item.column);
+  return clause
+    ? Lib.replaceClause(query, stageIndex, item.clause, clause)
+    : query;
+}
+
+/**
+ * Returns `query` itself when the bucket changes nothing: it's the one in use, or another
+ * grouping of the column already has it and the change is dropped.
+ */
+export function changeDimensionBucket(
+  query: Lib.Query,
+  stageIndex: number,
+  item: SummaryDimensionItem,
+  option: SummaryBucketOption,
+): Lib.Query {
+  const nextQuery = Lib.replaceClause(
+    query,
+    stageIndex,
+    item.clause,
+    option.column,
+  );
+  return areQueriesEqual(query, nextQuery) ? query : nextQuery;
+}
+
+export function getBreakoutListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  breakout: Lib.BreakoutClause,
+): BreakoutListItem | undefined {
+  const column = Lib.breakoutColumn(query, stageIndex, breakout);
+  if (column == null) {
+    return;
+  }
+
+  const columnWithoutBucketing = Lib.withBinning(
+    Lib.withTemporalBucket(column, null),
+    null,
+  );
+  const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBucketing);
+  return { ...columnInfo, column, breakout };
+}

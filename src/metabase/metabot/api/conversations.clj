@@ -205,7 +205,7 @@
    _query-params
    {:keys [chart_id card]} :- SaveEntityBody]
   (api/read-check :model/MetabotConversation id)
-  (query-perms/check-run-permissions-for-query (:dataset_query card))
+  (query-perms/check-run-permissions-for-queries [(:dataset_query card)])
   (if-let [dashboard-id (:dashboard_id card)]
     (let [dashboard-collection-id (:collection_id (api/write-check :model/Dashboard dashboard-id))
           [_ specified-collection-id :as specified?] (find card :collection_id)]
@@ -223,12 +223,13 @@
                                        :dashboard_id :dashboard_tab_id])
                     (update :display keyword)
                     (update :visualization_settings #(or % {})))
+        _       (queries.card/check-new-card-goal-references row)
         _       (queries.card/check-new-dashboard-questions-timeline-permissions [row])
         created (t2/with-transaction [_conn]
                   (let [[created] (queries.card/create-cards!
                                    [(queries.card/new-card-row row api/*current-user-id*)])]
                     (queries.card/place-new-dashboard-questions! [created] [row])
-                    (queries.card/link-to-metabot-conversation! (:id created) id chart_id)
+                    (queries.card/link-to-metabot-conversation! id [[(:id created) chart_id]])
                     created))]
     (assoc created
            :metabot_conversation_id id

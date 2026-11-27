@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.collection.graph :refer [update-graph!]]
    [metabase.permissions.models.collection.graph-test :refer [graph]]
@@ -19,6 +20,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -26,12 +28,16 @@
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
 (deftest audit-db-view-names-test
-  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
-    (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
+  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`, but the remote sync worktree views"
+    (let [view-query {:select [:table_name]
+                      :from   [:information_schema.views]
+                      :where  [:like :table_name "v\\_%"]}]
       (is (set/superset?
            audit-app.permissions/audit-db-view-names
            (into #{}
-                 (map :table_name (t2/query view-query))))))))
+                 (comp (map :table_name)
+                       (remove #(str/starts-with? (u/lower-case-en %) "v_worktree_")))
+                 (t2/query view-query)))))))
 
 (deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!
@@ -139,6 +145,151 @@
           (is (= :unrestricted (get (data-perms/table-permissions-for-groups #{group-id} :perms/view-data {(:id view-table) database-id}) (:id view-table))))
           (is (= :query-builder (get (data-perms/table-permissions-for-groups #{group-id} :perms/create-queries {(:id view-table) database-id}) (:id view-table)))))))))
 
+(defn- call-with-groups!
+  "Call `f` with the ids of `group-count` new groups, deleting them afterwards."
+  [group-count f]
+  (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                            (repeatedly group-count #(mt/with-temp-defaults :model/PermissionsGroup)))]
+    (try
+      (f group-ids)
+      (finally
+        (t2/delete! :model/PermissionsGroup :id [:in group-ids])))))
+
+(defn- call-with-audit-database!
+  "Call `f` with the id of a new audit Database holding a Table for each of `table-names`, its analytics Collection, a
+  plain Collection and the ids of `group-count` new groups, with the audit Database and Collection redefined to them."
+  [table-names group-count f]
+  (mt/with-temp [:model/Database   {db-id :id}  {:is_audit true}
+                 :model/Collection audit-coll   {:namespace "analytics"}
+                 :model/Collection {plain :id}  {}]
+    (t2/insert! :model/Table (for [table-name table-names]
+                               {:db_id db-id :name table-name :display_name table-name :schema "PUBLIC" :active true}))
+    (call-with-groups! group-count
+                       (fn [group-ids]
+                         (with-redefs [audit/audit-db-id db-id]
+                           (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly audit-coll)]
+                             (f db-id (:id audit-coll) plain group-ids)))))))
+
+(defn- data-permission-rows
+  "The data permissions of the groups with `group-ids` on the Database with `db-id`, without their ids, as
+  frequencies."
+  [group-ids db-id]
+  (frequencies (t2/select-fn-vec #(select-keys % [:group_id :perm_type :perm_value :db_id :table_id :schema_name])
+                                 :model/DataPermissions :db_id db-id :group_id [:in group-ids])))
+
+(defn- restore-data-permissions!
+  "Replace the data permissions of the groups with `group-ids` on the Database with `db-id` by `rows`."
+  [group-ids db-id rows]
+  (t2/delete! :model/DataPermissions :db_id db-id :group_id [:in group-ids])
+  (t2/insert! :model/DataPermissions (map #(dissoc % :id) rows)))
+
+(defn- set-view-tables-one-at-a-time!
+  "Set create-queries on each audit view Table of the Database with `db-id`, one Table at a time, for the group of each
+  `[group-id access]` of `audit-accesses`: `:no` for `:none`, else `:query-builder`."
+  [db-id audit-accesses]
+  (let [view-tables (t2/select :model/Table :db_id db-id :name [:in audit-app.permissions/audit-db-view-names])]
+    (doseq [[group-id access] audit-accesses
+            table             view-tables]
+      (data-perms/set-table-permission! group-id table :perms/create-queries (if (= access :none) :no :query-builder)))))
+
+(defn- revision-after
+  "The `:after` of a graph revision that records `changes`."
+  [changes]
+  (into {} (for [[group-id accesses] changes]
+             [(keyword (str group-id)) (into {} (for [[collection-id access] accesses]
+                                                  [(keyword (str collection-id)) (name access)]))])))
+
+(deftest audit-collection-graph-update-writes-same-data-permissions-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-test-user :crowberto
+      (mt/with-model-cleanup [:model/CollectionPermissionGraphRevision]
+        (doseq [table-names [["v_users" "v_content" "v_tables"]
+                             ["v_users" "v_content" "v_tables" "core_user"]]
+                group-count [1 6]]
+          (testing (format "Tables %s, %d groups" table-names group-count)
+            (call-with-audit-database!
+             table-names 6
+             (fn [db-id audit-coll plain [g1 g2 g3 g4 g5 g6 :as group-ids]]
+               (let [view-table (t2/select-one :model/Table :db_id db-id :name "v_users")]
+                 (perms/grant-collection-read-permissions! g3 audit-coll)
+                 (data-perms/set-table-permission! g3 view-table :perms/create-queries :query-builder)
+                 (perms/grant-collection-read-permissions! g4 audit-coll)
+                 (data-perms/set-database-permission! g4 db-id :perms/create-queries :query-builder)
+                 (perms/grant-collection-read-permissions! g6 audit-coll))
+               (let [changes        (cond-> {g1 {audit-coll :read}}
+                                      (> group-count 1) (assoc g2 {audit-coll :write}
+                                                               g3 {audit-coll :none}
+                                                               g4 {audit-coll :write}
+                                                               g5 {plain :read}))
+                     audit-changes  (keep (fn [[group-id accesses]]
+                                            (when-let [access (get accesses audit-coll)]
+                                              [group-id access]))
+                                          changes)
+                     before         (t2/select :model/DataPermissions :db_id db-id :group_id [:in group-ids])
+                     expected       (do (set-view-tables-one-at-a-time! db-id audit-changes)
+                                        (data-permission-rows group-ids db-id))
+                     _              (restore-data-permissions! group-ids db-id before)
+                     _              (is (= (frequencies (map #(dissoc % :id) before))
+                                           (frequencies (map #(dissoc % :id)
+                                                             (t2/select :model/DataPermissions :db_id db-id
+                                                                        :group_id [:in group-ids])))))
+                     graph-update   (update-graph! nil {:revision 0
+                                                        :groups   (assoc changes g6 {audit-coll :read})}
+                                                   true)]
+                 @graph-update
+                 (testing "data permissions are those a one-Table-at-a-time update writes"
+                   (is (= expected (data-permission-rows group-ids db-id))))
+                 (testing "audit Collection write is stored as read"
+                   (is (= (if (> group-count 1)
+                            {g1 {audit-coll :read}, g2 {audit-coll :read}, g4 {audit-coll :read}, g5 {plain :read}
+                             g6 {audit-coll :read}}
+                            {g1 {audit-coll :read}, g3 {audit-coll :read}, g4 {audit-coll :read}
+                             g6 {audit-coll :read}})
+                          (select-keys (:groups (graph :collections [audit-coll plain] :groups group-ids))
+                                       group-ids))))
+                 (testing "revision records changes as requested"
+                   (is (= (revision-after changes)
+                          (:after (t2/select-one :model/CollectionPermissionGraphRevision
+                                                 {:order-by [[:id :desc]]}))))))))))))))
+
+(defn- graph-update-statement-count!
+  "The number of app-DB statements a graph update takes that grants each of `group-ids` read on the Collection with
+  `collection-id`."
+  [collection-id group-ids]
+  (t2/with-call-count [call-count]
+    @(update-graph! nil {:revision 0 :groups (into {} (for [group-id group-ids] [group-id {collection-id :read}]))} true)
+    (call-count)))
+
+(deftest audit-collection-graph-update-statement-count-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-test-user :crowberto
+      (mt/with-model-cleanup [:model/CollectionPermissionGraphRevision]
+        (let [statements (fn [table-names group-count]
+                           (call-with-audit-database!
+                            table-names group-count
+                            (fn [_db-id audit-coll _plain group-ids]
+                              (graph-update-statement-count! audit-coll group-ids))))
+              views      (fn [n] (take n (sort audit-app.permissions/audit-db-view-names)))]
+          (statements (views 2) 2)
+          (testing "granting read on audit Collection takes as many statements for 6 view Tables as for 2"
+            (is (= (statements (views 2) 2)
+                   (statements (views 6) 2))))
+          (testing "each group granted read on audit Collection adds as many statements for 6 view Tables as for 2"
+            (is (= (- (statements (views 2) 4) (statements (views 2) 2))
+                   (- (statements (views 6) 4) (statements (views 6) 2))))))))))
+
+(deftest plain-collection-graph-update-statement-count-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-test-user :crowberto
+      (mt/with-temporary-setting-values [last-analytics-checksum 1]
+        (mt/with-model-cleanup [:model/CollectionPermissionGraphRevision]
+          (mt/with-temp [:model/Collection {collection-id :id} {}]
+            (let [statements (fn [group-count]
+                               (call-with-groups! group-count #(graph-update-statement-count! collection-id %)))]
+              (statements 2)
+              (testing "granting read on plain Collection takes as many statements for 6 groups as for 2"
+                (is (= (statements 2) (statements 6)))))))))))
+
 ;; TODO: re-enable these tests once they're no longer flaky
 (defn install-audit-db-if-needed!
   "Checks if there's an audit-db. if not, it will create it and serialize audit content, including the
@@ -220,3 +371,34 @@
         (let [resp (mt/user-http-request :crowberto :get 200 "permissions/graph")]
           (is (every? #(not (contains? % audit/audit-db-id))
                       (vals (:groups resp)))))))))
+
+(deftest public-dynamic-goal-on-audit-card-needs-audit-app-test
+  (testing "a public chart's dynamic goal on an audit DB card is checked like any other audit query"
+    (audit-test/with-audit-db-restoration!
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (let [audit-view (->> (t2/select-one :model/Table
+                                             :db_id audit/audit-db-id
+                                             {:where [:in [:lower :name] audit-app.permissions/audit-db-view-names]})
+                              (tu/poll-until 5000))
+              mp         (mt/metadata-provider)
+              chart      (fn [goal-id]
+                           {:dataset_query          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                        (lib/aggregate (lib/count)))
+                            :display                :line
+                            :public_uuid            (str (random-uuid))
+                            :visualization_settings {:graph.show_goal  true
+                                                     :graph.goal_value {:id goal-id :type "card" :column "count"}}})]
+          (mt/with-temp [:model/Card {goal-id :id} {:database_id   audit/audit-db-id
+                                                    :dataset_query {:database audit/audit-db-id
+                                                                    :type     :query
+                                                                    :query    {:source-table (u/the-id audit-view)
+                                                                               :aggregation  [[:count]]}}}]
+            (mt/with-temp [:model/Card {uuid :public_uuid} (chart goal-id)]
+              (let [goal! #(get-in (client/client :get 202 (str "public/card/" uuid "/goal-values")) [:card goal-id])]
+                (testing "with the audit-app feature, the goal resolves"
+                  (mt/with-premium-features #{:audit-app}
+                    (is (=? {:status "completed"} (goal!)))))
+                (testing "without it, the goal fails and the chart still renders"
+                  (mt/with-premium-features #{}
+                    (is (=? {:status "failed"} (goal!)))
+                    (is (= "completed" (:status (client/client :get 202 (str "public/card/" uuid "/query")))))))))))))))

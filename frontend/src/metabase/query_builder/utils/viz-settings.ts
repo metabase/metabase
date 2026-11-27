@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import { isNotNull } from "metabase/utils/types";
 import {
   adoptLegacyCustomVizSettings,
   getPersistableDefaultSettingsForSeries,
@@ -36,6 +37,40 @@ export function getQuestionWithDefaultVisualizationSettings(
   } else {
     return question;
   }
+}
+
+/**
+ * Whether `rawSeries` holds the results of the question's query, and not of an earlier query.
+ * Settings that are computed from results, such as the pivot table's column split, are only
+ * right when the results are of the same query.
+ */
+export function hasResultsOfQuestion(
+  question: Question,
+  rawSeries: Series | null | undefined,
+) {
+  const lastRunQuery = rawSeries?.[0]?.card.dataset_query;
+  return (
+    isNotNull(lastRunQuery) &&
+    Lib.areQueriesEqual(question.datasetQuery(), lastRunQuery)
+  );
+}
+
+/**
+ * Returns `questionWithDefaults` with the pivot table's column split of `question` when `rawSeries`
+ * holds the results of an earlier query. The defaults computed from such results drop the columns
+ * that only the question's query has.
+ */
+export function keepPivotColumnSplitOfChangedQuery(
+  question: Question,
+  questionWithDefaults: Question,
+  rawSeries: Series | null | undefined,
+) {
+  const key = "pivot_table.column_split";
+  const columnSplit = question.settings()[key];
+  if (!columnSplit || hasResultsOfQuestion(question, rawSeries)) {
+    return questionWithDefaults;
+  }
+  return questionWithDefaults.updateSettings({ [key]: columnSplit });
 }
 
 export function getAdHocQuestionWithVizSettings(options: {

@@ -3337,7 +3337,7 @@
                                :display       :table)]
           ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
           ;; model hooks. This simulates a card whose query became malformed after migrations.
-          (t2/query {:update :report_card
+          (t2/query {:update (t2/table-name :model/Card)
                      :set    {:dataset_query (json/encode {:broken true})}
                      :where  [:= :id (:id card)]})
           (let [serialized (into [] (serdes.extract/extract {:include-h2? true}))
@@ -3415,7 +3415,7 @@
               (mt/with-user-locale import-locale
                 (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized)))
               (is (= "Library"
-                     (t2/select-one-fn :name :collection :entity_id collection/library-entity-id))))))))))
+                     (t2/select-one-fn :name (t2/table-name :model/Collection) :entity_id collection/library-entity-id))))))))))
 
 (deftest library-import-preserves-existing-permissions-test
   (testing "Importing library subcollections does not overwrite existing permissions on destination"
@@ -3466,6 +3466,110 @@
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
 
+(deftest dynamic-goals-round-trip-test
+  (testing "a card goal referencing another card round-trips onto the destination card's id"
+    (let [serialized (atom nil)
+          source1s   (atom nil)
+          card1s     (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [coll (ts/create! :model/Collection :name "Goals")]
+            (reset! source1s (ts/create! :model/Card :name "Target Revenue" :collection_id (:id coll)))
+            (reset! card1s   (ts/create! :model/Card
+                                         :name "Revenue"
+                                         :collection_id (:id coll)
+                                         :visualization_settings
+                                         {:graph.goal_value {:id (:id @source1s) :type "card" :column "total"}})))
+          (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true}))))
+        (let [exported-card (first (filter #(= "Revenue" (:name %)) (by-model @serialized "Card")))]
+          (testing "the exported goal carries the referenced card's entity id"
+            (is (= {:id (:entity_id @source1s) :type "card" :column "total"}
+                   (-> exported-card :visualization_settings :graph.goal_value))))
+          (testing "the referenced card is declared as a dependency"
+            (is (contains? (first (serialization/import-dependencies :model/Card [exported-card]))
+                           [:model/Card (:entity_id @source1s)]))))
+        (testing "loading remaps the goal onto the destination card's id"
+          (ts/with-db dest-db
+            ;; one filler per source card pushes every loaded card's id past the source's, so a goal id left raw
+            ;; can't land on the right card by coincidence
+            (dotimes [_ 2] (ts/create! :model/Card :name "Filler"))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [source1d (t2/select-one :model/Card :name "Target Revenue")
+                  card1d   (t2/select-one :model/Card :name "Revenue")]
+              (is (not= (:id @source1s) (:id source1d)))
+              (is (= {:id (:id source1d) :type "card" :column "total"}
+                     (:graph.goal_value (:visualization_settings card1d)))))))))))
+
+(deftest card-dynamic-goal-round-trip-test
+  ;; root-collection cards: a card-targeted export doesn't carry the card's collection
+  (testing "exporting a card brings along the card its goal reads from"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [source (ts/create! :model/Card :name "Target Revenue")
+                card   (ts/create! :model/Card
+                                   :name "Revenue"
+                                   :visualization_settings
+                                   {:graph.goal_value {:id (:id source) :type "card" :column "total"}})]
+            (reset! serialized (into [] (serdes.extract/extract {:targets       [[:model/Card (:id card)]]
+                                                                 :include-h2?   true
+                                                                 :no-settings   true
+                                                                 :no-data-model true
+                                                                 :no-transforms true})))))
+        (testing "loading remaps the goal onto the imported source card's id"
+          (ts/with-db dest-db
+            ;; push loaded ids past the source's so a goal id left raw can't land on the right card by coincidence
+            (dotimes [_ 2] (ts/create! :model/Card :name "Filler"))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [source-d (t2/select-one :model/Card :name "Target Revenue")]
+              (is (pos-int? (:id source-d)))
+              (is (= {:id (:id source-d) :type "card" :column "total"}
+                     (:graph.goal_value (:visualization_settings
+                                         (t2/select-one :model/Card :name "Revenue"))))))))))))
+
+(deftest visualizer-dashcard-dynamic-goals-round-trip-test
+  (testing "a goal nested in a visualizer dashcard round-trips onto the destination card's id"
+    (let [serialized (atom nil)
+          source1s   (atom nil)
+          goal       (fn [card] {:id (:id card) :type "card" :column "total"})
+          nested     (fn [dashcard] (get-in dashcard [:visualization_settings :visualization :settings]))]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [coll  (ts/create! :model/Collection :name "Goals")
+                card1 (ts/create! :model/Card :name "Revenue" :collection_id (:id coll))
+                dash1 (ts/create! :model/Dashboard :name "Viz goal" :collection_id (:id coll))]
+            (reset! source1s (ts/create! :model/Card :name "Target Revenue" :collection_id (:id coll)))
+            (ts/create! :model/DashboardCard
+                        :dashboard_id (:id dash1)
+                        :card_id      (:id card1)
+                        :visualization_settings
+                        {:visualization {:display             "line"
+                                         :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" (:id card1))
+                                                                           :originalName "TOTAL"
+                                                                           :name         "COLUMN_1"}]}
+                                         :settings            {:graph.show_goal  true
+                                                               :graph.goal_value (goal @source1s)}}}))
+          (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true}))))
+        (let [exported-dash (first (filter #(= "Viz goal" (:name %)) (by-model @serialized "Dashboard")))]
+          (testing "the exported goal carries the referenced card's entity id"
+            (is (= {:id (:entity_id @source1s) :type "card" :column "total"}
+                   (-> exported-dash :dashcards first nested :graph.goal_value))))
+          (testing "the referenced card is declared as a dependency"
+            (is (contains? (first (serialization/import-dependencies :model/Dashboard [exported-dash]))
+                           [:model/Card (:entity_id @source1s)]))))
+        (testing "loading remaps the goal onto the destination card's id"
+          (ts/with-db dest-db
+            ;; one filler per source card pushes every loaded card's id past the source's, so a goal id left raw
+            ;; can't land on the right card by coincidence
+            (dotimes [_ 2] (ts/create! :model/Card :name "Filler"))
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [source1d (t2/select-one :model/Card :name "Target Revenue")
+                  dash1d   (t2/select-one :model/Dashboard :name "Viz goal")]
+              (is (not= (:id @source1s) (:id source1d)))
+              (is (= (goal source1d)
+                     (:graph.goal_value (nested (t2/select-one :model/DashboardCard
+                                                               :dashboard_id (:id dash1d)))))))))))))
+
 (deftest glossary-round-trip-test
   (let [serialized (atom nil)
         eid        (atom nil)]
@@ -3504,11 +3608,11 @@
                       (t2/select-one [:model/TransformJob :active :built_in_type] :id job-id))]
         (testing "an import keeps active on an existing built-in job"
           (is (=? {:active false :built_in_type "hourly"} (import! built-in-id true)))
-          (t2/update! :transform_job :id built-in-id {:active true})
+          (t2/update! (t2/table-name :model/TransformJob) :id built-in-id {:active true})
           (is (=? {:active true :built_in_type "hourly"} (import! built-in-id false))))
         (testing "an import keeps active on an existing custom job"
           (is (=? {:active false :built_in_type nil} (import! custom-id true)))
-          (t2/update! :transform_job :id custom-id {:active true})
+          (t2/update! (t2/table-name :model/TransformJob) :id custom-id {:active true})
           (is (=? {:active true :built_in_type nil} (import! custom-id false))))
         (testing "an import inserts a job with the column default for active"
           (let [extracted (assoc (ts/extract-one "TransformJob" custom-id) :active false)]
@@ -3594,7 +3698,7 @@
   (testing "settings the model cannot decrypt are their ciphertext string, which an export and an import pass through"
     (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
       ;; what the column holds when it was encrypted with a key this instance does not have
-      (t2/update! :metabase_database :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
+      (t2/update! (t2/table-name :model/Database) :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
       (let [ciphertext (t2/select-one-fn :settings :model/Database :id db-id)
             extracted  (ts/extract-one "Database" db-id)]
         (is (string? ciphertext))
@@ -3602,7 +3706,7 @@
         (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
         (is (= ciphertext (t2/select-one-fn :settings :model/Database :id db-id)))
         (testing "an import of map settings over a Database whose settings cannot be decrypted"
-          (t2/update! :metabase_database :id db-id {:settings ciphertext})
+          (t2/update! (t2/table-name :model/Database) :id db-id {:settings ciphertext})
           (serdes.load/load-metabase!
            (ts/ingestion-in-memory [(assoc extracted :settings {:database-enable-actions false})]))
           (is (= {:database-enable-actions false} (t2/select-one-fn :settings :model/Database :id db-id))))))))

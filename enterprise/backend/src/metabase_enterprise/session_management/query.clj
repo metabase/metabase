@@ -6,18 +6,22 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.session-management.schema :as sm.schema]
+   [metabase.funnysql.schema :as funnysql.schema]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.session.core :as session]
    [metabase.session.schema :as session.schema]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def session-list-from-and-joins
+(defn session-list-from-and-joins
   "[[metabase.session.core/session-from-and-joins]] plus the `lh` alias for the device columns. `login_history` has at
   most one row per session, so this cannot multiply rows."
+  []
   ;; kept separate because the per-request auth lookup runs on every API call and must not pay for this join
-  (update session/session-from-and-joins :left-join into [[:login_history :lh] [:= :lh.session_id :session.id]]))
+  (update (session/session-from-and-joins) :left-join into [[(t2/table-name :model/LoginHistory) :lh]
+                                                            [:= :lh.session_id :session.id]]))
 
 (def last-active-expr
   "`last_active_at`, falling back to `created_at` for a session that has never been touched. The same expression the
@@ -26,13 +30,13 @@
 
 (def provider-expr
   "The provider as callers see it: a session with no auth identity row reads as `unknown` rather than null."
-  [:coalesce :auth_identity.provider (h2x/literal "unknown")])
+  [:coalesce :auth_identity.provider [:literal "unknown"]])
 
 (def type-expr
   "The session type as callers see it. Derived from whether the row carries an anti-CSRF token, so that
   `anti_csrf_token` itself never has to leave the database."
-  [:case [:= :session.anti_csrf_token nil] (h2x/literal "normal")
-   :else (h2x/literal "full-app-embed")])
+  [:case [:= :session.anti_csrf_token nil] [:literal "normal"]
+   :else [:literal "full-app-embed"]])
 
 (defn- provider-where
   "The predicate for a set of auth methods. `unknown` is the bucket for sessions with no auth identity row rather than
@@ -54,7 +58,7 @@
   [search]
   (into [:and]
         (for [term (str/split (str/trim search) #"\s+")
-              :let [wildcard (h2x/like-substring term)]]
+              :let [wildcard (funnysql.util/like-substring term)]]
           [:or
            [:like [:lower :user.first_name] wildcard]
            [:like [:lower :user.last_name] wildcard]
@@ -125,14 +129,14 @@
     ended-after        (conj [:>= :session.ended_at ended-after])
     ended-before       (conj [:< :session.ended_at ended-before])))
 
-(mu/defn session-where :- ::h2x/honeysql-expr
+(mu/defn session-where :- ::funnysql.schema/expr
   "The `:where` for a session-management query: the sessions of the `status` in `filters` (live by default) matching
   the rest of `filters`."
   [liveness :- ::session.schema/liveness-params
    filters  :- ::sm.schema/session-filters]
   (into [:and] cat [(status-conditions liveness (:status filters)) (filters->where filters)]))
 
-(mu/defn revoke-where :- ::h2x/honeysql-expr
+(mu/defn revoke-where :- ::funnysql.schema/expr
   "The predicates a `core_session` row must satisfy to be revoked by these criteria: live (whatever `status` says: an
   ended session cannot be revoked, or removed early), matching `filters`, and — when `exclude-current?` — not the
   session `current-key-hash` identifies. The hash is only ever compared in SQL, so `key_hashed` never leaves the

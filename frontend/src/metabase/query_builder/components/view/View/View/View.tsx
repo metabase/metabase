@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- FIXME: any-typed values */
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { type ComponentProps, forwardRef } from "react";
 import { match } from "ts-pattern";
@@ -39,6 +40,8 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { FormulaBarSlotProvider } from "../../FormulaBar";
+import { ResizableSummaryPanel } from "../../ResizableSummaryPanel";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -96,6 +99,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
   function ViewInnerImpl(propsIn, ref) {
     const dispatch = useDispatch();
     const setCollection = useSetCollection();
+    const { ref: contentRef, width: contentWidth } = useElementSize();
     const props: ViewProps = {
       ...propsIn,
       onMove: async (question, newCollection) => {
@@ -243,13 +247,15 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
 
+    const isShowingStructuredSummarySidebar =
+      !isNative && isShowingSummarySidebar;
     const showLeftSidebar =
       isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
     const showRightSidebar =
       isShowingTimelineSidebar ||
       isShowingQuestionInfoSidebar ||
       isShowingQuestionSettingsSidebar ||
-      (!isNative && isShowingSummarySidebar) ||
+      isShowingStructuredSummarySidebar ||
       (isNative &&
         (isShowingTemplateTagsEditor ||
           isShowingDataReference ||
@@ -264,7 +270,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
-    return (
+    const content = (
       <div className={CS.fullHeight} ref={ref}>
         <Flex
           className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
@@ -272,7 +278,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
         >
           {isHeaderVisible && <ViewHeaderContainer {...props} />}
 
-          <Flex className={S.QueryBuilderContentContainer}>
+          <Flex ref={contentRef} className={S.QueryBuilderContentContainer}>
             {!isNative && (
               <NotebookContainer
                 isOpen={isNotebookContainerOpen}
@@ -301,13 +307,22 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               showLeftSidebar={showLeftSidebar}
               showRightSidebar={showRightSidebar}
             />
-            <ViewSidebar
-              side="right"
-              isOpen={showRightSidebar}
-              width={rightSidebarWidth}
-            >
-              <ViewRightSidebarContainer {...props} />
-            </ViewSidebar>
+            {isShowingStructuredSummarySidebar ? (
+              <ResizableSummaryPanel
+                containerWidth={contentWidth}
+                data-testid="sidebar-right"
+              >
+                <ViewRightSidebarContainer {...props} />
+              </ResizableSummaryPanel>
+            ) : (
+              <ViewSidebar
+                side="right"
+                isOpen={showRightSidebar}
+                width={rightSidebarWidth}
+              >
+                <ViewRightSidebarContainer {...props} />
+              </ViewSidebar>
+            )}
           </Flex>
         </Flex>
 
@@ -341,6 +356,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
         />
       </div>
     );
+    return <FormulaBarSlotProvider>{content}</FormulaBarSlotProvider>;
   },
 );
 

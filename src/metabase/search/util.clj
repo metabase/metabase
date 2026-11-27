@@ -6,7 +6,6 @@
    [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as u.str]))
 
@@ -119,11 +118,14 @@
 (defn- quote* [s]
   (str "'" (str/replace s "'" "''") "'"))
 
+(defn negated-term?
+  "Whether a search term starts with a hyphen followed by a word character, including Unicode letters and numbers."
+  [term]
+  (boolean (re-find #"^-[\p{L}\p{N}_]" term)))
+
 (defn- process-phrase [word-or-phrase]
   ;; a phrase is quoted even if the closing quotation mark has not been typed yet
   (cond
-    ;; trailing quotation mark
-    (= word-or-phrase "\"") nil
     ;; quoted phrases must be matched sequentially
     (str/starts-with? word-or-phrase "\"")
     (as-> word-or-phrase <>
@@ -135,7 +137,7 @@
       (str/join " <-> " <>))
 
     ;; negation
-    (re-find #"^-\w" word-or-phrase)
+    (negated-term? word-or-phrase)
     (str "!" (quote* (subs word-or-phrase 1)))
 
     ;; just a regular word
@@ -149,7 +151,6 @@
 
 (defn- process-clause [words-and-phrases]
   (->> words-and-phrases
-       (remove #{"and"})
        (map process-phrase)
        (remove str/blank?)
        (str/join " & ")))
@@ -158,6 +159,17 @@
   "Add wildcards at the end of the final word, so that we match ts completions."
   [expression]
   (str/replace expression #"(\S+)(?=\s*$)" "$1:*"))
+
+(defn search-clauses
+  "Split a search query into OR clauses of required words and quoted phrases, discarding unquoted AND."
+  [input]
+  (->> (split-preserving-quotes (or input ""))
+       (remove str/blank?)
+       (partition-by #{"or"})
+       (remove #(= (first %) "or"))
+       (map #(remove #{"and" "\""} %))
+       (remove empty?)
+       (mapv vec)))
 
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
@@ -169,10 +181,7 @@
            ;; TODO also only complete if the :context is appropriate
            maybe-complete (if complete? complete-last-word identity)]
        (->> (str/replace trimmed "\\" "\\\\")
-            split-preserving-quotes
-            (remove str/blank?)
-            (partition-by #{"or"})
-            (remove #(= (first %) "or"))
+            search-clauses
             (map process-clause)
             (remove str/blank?)
             (str/join " | ")
@@ -188,6 +197,6 @@
    ;; `lang` is a `regconfig` and `weight` is a `"char"`; both have to be real SQL literals, since Postgres cannot
    ;; resolve either overload from an `?` parameter bound as `varchar`
    [:setweight
-    [:to_tsvector (h2x/literal lang)
+    [:to_tsvector [:literal lang]
      [:cast (u.str/limit-bytes text search.ingestion.query/max-searchable-value-length) :text]]
-    (h2x/literal weight)]))
+    [:literal weight]]))

@@ -39,7 +39,7 @@
   some."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (if (seq card-ids)
-    (group-by :card_id (mdb/select-batched #(t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in [:auto/param %]])
+    (group-by :card_id (mdb/select-batched #(t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in %])
                                            card-ids))
     {}))
 
@@ -49,8 +49,8 @@
   (t2/select :model/Sandbox
              {:select    [[:pgm.group_id :group_id]
                           [:s.*]]
-              :from      [[:permissions_group_membership :pgm]]
-              :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
+              :from      [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+              :left-join [[(t2/table-name :model/Sandbox) :s] [:= :s.group_id :pgm.group_id]]
               :where     [:and
                           [:= :pgm.user_id user-id]]}))
 
@@ -64,7 +64,7 @@
   (letfn [(select-sandboxes [group-ids]
             (t2/select :model/Sandbox
                        {:select [:s.group_id :s.table_id :t.db_id :t.schema]
-                        :from   [[:sandboxes :s]]
+                        :from   [[(t2/table-name :model/Sandbox) :s]]
                         :join   [[(t2/table-name :model/Table) :t]
                                  [:= :s.table_id :t.id]]
                         :where  [:and
@@ -84,23 +84,23 @@
   (mdb/select-batched
    (fn [ids]
      (mdb/query
-      {:select    [[:sandboxes.id :id]
-                   [:sandboxes.group_id :group_id]
-                   [:sandboxes.table_id :table_id]
+      {:select    [[(u/qualified-key (t2/table-name :model/Sandbox) :id) :id]
+                   [(u/qualified-key (t2/table-name :model/Sandbox) :group_id) :group_id]
+                   [(u/qualified-key (t2/table-name :model/Sandbox) :table_id) :table_id]
                    [:table.db_id :db_id]
                    [:table.schema :schema]]
-       :from      [[:sandboxes]]
+       :from      [[(t2/table-name :model/Sandbox)]]
        :left-join [[(t2/table-name :model/Table) :table]
-                   [:= :sandboxes.table_id :table.id]]
+                   [:= (u/qualified-key (t2/table-name :model/Sandbox) :table_id) :table.id]]
        :where     [:and
-                   [:in :sandboxes.group_id group-ids]
+                   [:in (u/qualified-key (t2/table-name :model/Sandbox) :group_id) group-ids]
                    [:in :table.db_id ids]]}))
    db-ids))
 
 (mu/defn sandboxes-by-ids :- [:map-of ::lib.schema.id/sandbox ::sandbox.schema/sandbox]
   "The map from id to Sandbox of the Sandboxes with `sandbox-ids`."
   [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Sandbox :id [:in %])
                           sandbox-ids))
 
 (mu/defn impersonations-for-groups
@@ -152,7 +152,7 @@
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each Table with an id among `table-ids`, by Table id."
   [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
-  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn database-of-table
   "The Database of the Table with `table-id`, or nil."
@@ -176,7 +176,7 @@
 (mu/defn cards-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::queries.schema/card.result-metadata]]
   "The result metadata of each Card with an id among `card-ids`, by Card id."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (mdb/select-batched-map #(t2/select-pk->fn :result_metadata :model/Card :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn :result_metadata :model/Card :id [:in %])
                           card-ids))
 
 (mu/defn sandboxing-cards
@@ -196,6 +196,13 @@
   id as text: all of them for a superuser, none for anyone else."
   [{:keys [is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when is-superuser?
-    (let [id-text [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
-      {:select [[:sandboxes.id :entity_id] [id-text :name] [id-text :location]]
-       :from   [:sandboxes]})))
+    (let [id-text [:cast (u/qualified-key (t2/table-name :model/Sandbox) :id) (if (= :mysql (mdb/db-type)) :char :text)]]
+      {:select [[(u/qualified-key (t2/table-name :model/Sandbox) :id) :entity_id] [id-text :name] [id-text :location]]
+       :from   [(t2/table-name :model/Sandbox)]})))
+
+(mu/defn default-worktree-cards-exist? :- :boolean
+  "Whether every one of `card-ids` names a Card of the default worktree."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (let [card-ids (distinct card-ids)]
+    (= (count card-ids)
+       (t2/count :model/Card :id [:in card-ids] :worktree_id mdb/default-worktree-id))))

@@ -22,6 +22,7 @@
    :observation_type mi/transform-keyword})
 
 (derive :model/SourceDimensionProfileDaily :metabase/model)
+(derive :model/SourceDimensionProfileDaily :hook/worktree-id)
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

@@ -20,14 +20,14 @@
   "A reducible of the distinct Collection id and type of the unarchived Cards."
   []
   (t2/reducible-query {:select-distinct [:collection_id :type]
-                       :from            [:report_card]
+                       :from            [(t2/table-name :model/Card)]
                        :where           [:= :archived false]}))
 
 (mu/defn unarchived-action-collection-ids
   "The distinct `:collection_id`s of the unarchived Actions."
   []
   (t2/query {:select-distinct [:collection_id]
-             :from            [:action]
+             :from            [(t2/table-name :model/Action)]
              :where           [:and
                                [:= :archived false]
                                [:not= :collection_id nil]]}))

@@ -1576,16 +1576,12 @@
 (defn- table-and-column-of-type
   [ttype]
   (->> (t2/query
-        [(case (mdb/db-type)
-           :postgres
-           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
-                   ttype)
-           :mysql
-           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
-                   ttype (-> (mdb/data-source) .getConnection .getCatalog))
-           :h2
-           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s';"
-                   ttype))])
+        {:select [:table_name :column_name :is_nullable]
+         :from   [:information_schema.columns]
+         :where  (case (mdb/db-type)
+                   :postgres [:and [:= :data_type ttype] [:= :table_schema "public"]]
+                   :mysql    [:and [:= :data_type ttype] [:= :table_schema (-> (mdb/data-source) .getConnection .getCatalog)]]
+                   :h2       [:= :data_type ttype])})
        (map (fn [{:keys [table_name column_name is_nullable]}]
               [(keyword (u/lower-case-en table_name)) (keyword (u/lower-case-en column_name)) (= is_nullable "YES")]))
        set))
@@ -2007,7 +2003,7 @@
                   (m/index-by :id (t2/select :metabase_database)))))))))
 
 (defn- sample-content-created? []
-  (boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce Insights'"))))
+  (boolean (not-empty (t2/query {:select [:*] :from [:report_dashboard] :where [:= :name "E-commerce Insights"]}))))
 
 (deftest ^:mb/old-migrations-test decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
@@ -2197,7 +2193,7 @@
       (t2/query {:delete-from :metabase_database})
       (migrate!)
       (is (false? (sample-content-created?)))
-      (is (empty? (t2/query "SELECT * FROM metabase_database"))
+      (is (empty? (t2/query {:select [:*] :from [:metabase_database]}))
           "No database should have been created"))))
 
 (deftest ^:mb/old-migrations-test create-sample-content-test-3
@@ -2219,7 +2215,7 @@
   (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (migrate!)
-      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
+      (let [fields (t2/query {:select [:name :base_type :effective_type] :from [:metabase_field]})]
         (is (seq fields))
         (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
 

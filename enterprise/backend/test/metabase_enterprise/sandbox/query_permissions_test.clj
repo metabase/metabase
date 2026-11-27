@@ -39,7 +39,7 @@
               queries [[:mbql-sandboxed     (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
                        [:native-sandboxed   (lib/native-query mp "SELECT 1")]
                        [:native-unsandboxed (lib/native-query mp-b "SELECT 1")]]
-              single  (into {} (map (fn [[k q]] [k (run-check-outcome #(query-perms/check-run-permissions-for-query q))]))
+              single  (into {} (map (fn [[k q]] [k (run-check-outcome #(query-perms/check-run-permissions-for-queries [q]))]))
                             queries)]
           (testing "a native query is refused only on the Database with the sandbox"
             (is (= #{:mbql-sandboxed :native-unsandboxed}
@@ -55,6 +55,32 @@
             (is (= (single :native-sandboxed)
                    (run-check-outcome #(query-perms/check-run-permissions-for-queries (mapv second queries)))))))))))
 
+(deftest query-run-answers-sandboxed-user-matches-one-query-calls-test
+  (testing "for a sandboxed user each query of a batch is answered exactly as when it is asked on its own"
+    (met/with-gtaps! {:gtaps {:venues {}}}
+      (mt/with-temp [:model/Database {db-b-id :id} {:engine :h2 :details (:details (mt/db))}]
+        (grant-native! &group (mt/id))
+        (grant-native! &group db-b-id)
+        (let [mp      (lib-be/application-database-metadata-provider (mt/id))
+              mp-b    (lib-be/application-database-metadata-provider db-b-id)
+              queries [(lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/native-query mp "SELECT 1")
+                       (lib/native-query mp-b "SELECT 1")]
+              answers (fn []
+                        [(mapv #(first (query-perms/query-run-answers [%])) queries)
+                         (query-perms/query-run-answers queries)])]
+          (testing "with the sandbox enforced, a native query is refused only on the Database with the sandbox"
+            (is (= [[true false true] [true false true]]
+                   (answers))))
+          (testing "with the sandbox lifted by a second group with unrestricted data access, every query may run"
+            (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                           :model/PermissionsGroupMembership _              {:group_id group-id
+                                                                             :user_id  (mt/user->id :rasta)}]
+              (grant-native! group-id (mt/id))
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (= [[true true true] [true true true]]
+                       (answers)))))))))))
+
 (deftest check-run-permissions-for-queries-sandboxed-user-statement-count-test
   (testing "for a sandboxed user, only preprocessing grows the run permissions of native queries with their Databases"
     (met/with-gtaps! {:gtaps {:venues {}}}
@@ -66,13 +92,20 @@
                      :model/Database {db-6 :id} {:engine :h2 :details (:details (mt/db))}]
         (let [db-ids [db-1 db-2 db-3 db-4 db-5 db-6]]
           (run! #(grant-native! &group %) db-ids)
-          (let [queries     (mapv #(lib/native-query (lib-be/application-database-metadata-provider %) "SELECT 1") db-ids)
-                count!      (fn [f n]
-                              (f queries)
-                              (t2/with-call-count [call-count]
-                                (f (take n queries))
-                                (call-count)))
-                check!      (partial count! query-perms/check-run-permissions-for-queries)
-                preprocess! (partial count! #(request/as-admin (run! qp.preprocess/preprocess %)))]
-            (is (= (- (check! 6) (check! 2))
-                   (- (preprocess! 6) (preprocess! 2))))))))))
+          (let [queries    (mapv #(lib/native-query (lib-be/application-database-metadata-provider %) "SELECT 1") db-ids)
+                count!     (fn [cache? f n]
+                             (let [run (fn []
+                                         (f queries)
+                                         (t2/with-call-count [call-count]
+                                           (f (take n queries))
+                                           (call-count)))]
+                               (if cache?
+                                 (lib-be/with-metadata-provider-cache (run))
+                                 (run))))
+                growth     (fn [cache? f] (- (count! cache? f 6) (count! cache? f 2)))
+                check      query-perms/check-run-permissions-for-queries
+                preprocess #(request/as-admin (run! qp.preprocess/preprocess %))]
+            (testing "inside a metadata provider cache"
+              (is (= (growth true check) (growth true preprocess))))
+            (testing "with the queries' own warm providers and no cache"
+              (is (= (growth false check) (growth false preprocess))))))))))

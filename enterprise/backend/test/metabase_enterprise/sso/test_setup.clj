@@ -92,7 +92,7 @@
    Includes premium features, model cleanup, other SSO types disabled, login attributes cleanup, and default JWT config."
   [& body]
   `(mt/test-helpers-set-global-values!
-     (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+     (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
        (mt/with-premium-features #{:audit-app}
          (do-with-other-sso-types-disabled!
           (fn []

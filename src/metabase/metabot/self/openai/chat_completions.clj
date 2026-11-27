@@ -80,7 +80,10 @@
   "Merge consecutive assistant messages.
 
   Chat Completions allows text + tool_calls on a single assistant message, so
-  when we see a :text part followed by :tool-input parts we fold them together."
+  when we see a :text part followed by :tool-input parts we fold them together.
+  Two texts of one group, such as two text blocks of one response, are joined
+  with a blank line between them: `\"First.\"` and `\"Second.\"` become
+  `\"First.\\n\\nSecond.\"`."
   [messages]
   (into [] (comp (partition-by :role)
                  (mapcat (fn [group]
@@ -99,14 +102,17 @@
                                    ;; Vector (chunk-array) content exists only when the reasoning
                                    ;; replay hook of [[parts->cc-messages]] produced it — today
                                    ;; only Mistral's think chunks. Every other provider's members
-                                   ;; are strings or nil, so they always take the original string
-                                   ;; join below.
+                                   ;; are strings or nil, so they always take the string join below.
+                                   ;; Each text part is a whole text block (memory and storage merge
+                                   ;; only the deltas of one block), so a blank line separates blocks
+                                   ;; and never splits one. Empty contents are left out: the reasoning
+                                   ;; messages of Moonshot and Ollama carry `:content ""`.
                                    content    (if (some (comp vector? :content) group)
                                                 (into [] (mapcat (fn [{c :content}]
                                                                    (cond (vector? c)   c
                                                                          (not-empty c) [{:type "text" :text c}])))
                                                       group)
-                                                (->> group (keep :content) (str/join "")))]
+                                                (->> group (keep (comp not-empty :content)) (str/join "\n\n")))]
                                ;; :content should be always there, even if empty/nil
                                [(cond-> {:role "assistant" :content content}
                                   (seq tool-calls)      (assoc :tool_calls tool-calls)
@@ -158,10 +164,7 @@
                                                                         (json/encode (or args {}))))}}]}
                   :tool-output {:role         "tool"
                                 :tool_call_id (:id part)
-                                :content      (or (get-in part [:result :output])
-                                                  (when-let [err (:error part)]
-                                                    (str "Error: " (:message err)))
-                                                  (pr-str (:result part)))}
+                                :content      (core/tool-result-text (:result part))}
                   ;; User messages pass through
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))
@@ -356,11 +359,10 @@
                                      (delta-reasoning delta)) :reasoning
                                 :else                         nil)]
             (cond-> result
-              ;; Emit :start on first chunk
-              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                   (u/prog1
-                                                                     (vreset! message-id id)
-                                                                     (vreset! model-name model)))
+              ;; Emit :start on the first chunk, with a minted id when the chunk has none. Persistence stores each
+              ;; :start as the `step-start` that history replay splits a turn's LLM calls at.
+              (not @message-id)                                (-> (rf {:type :start :messageId (vreset! message-id (or id (core/mkid)))})
+                                                                   (u/prog1 (vreset! model-name model)))
               ;; Close the open text or reasoning block when the content type changes
               (and @current-type
                    chunk-type

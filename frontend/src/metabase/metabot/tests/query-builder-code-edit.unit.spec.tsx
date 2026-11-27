@@ -120,7 +120,7 @@ describe("query builder code edits from omnibot", () => {
       requestBody = request.body;
 
       callbacks?.onStart?.({ type: "start", messageId: "msg_test_code_edit" });
-      callbacks?.onTextPart?.("Reviewing the query.");
+      callbacks?.onTextPart?.("Reviewing the query.", "t1");
       callbacks?.onDataPart?.({
         type: "data-code_edit",
         data: {

@@ -1,39 +1,22 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { UnarchiveCollectionButton } from "metabase/common/collections/components/UnarchiveCollectionButton";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import type { TreeItem } from "metabase/data-studio/common/types";
-import {
-  isCollectionData,
-  isEmptyStateData,
-} from "metabase/data-studio/common/utils";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import {
-  ActionIcon,
-  Card,
-  Center,
-  EntityNameCell,
-  FixedSizeIcon,
-  Icon,
-  Stack,
-  TextInput,
-  Tooltip,
-  TreeTable,
-  type TreeTableColumnDef,
-  useTreeTableInstance,
-} from "metabase/ui";
+import { Card, Center, Icon, Stack, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
+
+import { ArchivedActionTable } from "./ArchivedActionTable";
 
 export function ArchivedActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,47 +38,6 @@ export function ArchivedActionListPage() {
     },
     [sendErrorToast, sendSuccessToast, updateAction],
   );
-
-  const columns = useMemo<TreeTableColumnDef<TreeItem>[]>(
-    () => [
-      {
-        id: "name",
-        header: t`Name`,
-        enableSorting: true,
-        accessorKey: "name",
-        minWidth: 200,
-        cell: ({ row }) => (
-          <EntityNameCell
-            data-testid={`${row.original.model}-name`}
-            icon={row.original.icon}
-            name={row.original.name}
-          />
-        ),
-      },
-      {
-        id: "actions",
-        width: 48,
-        cell: ({ row }) => (
-          <ArchivedItemMenu
-            treeItem={row.original}
-            readOnly={remoteSyncReadOnly}
-            onUnarchive={handleUnarchive}
-          />
-        ),
-      },
-    ],
-    [handleUnarchive, remoteSyncReadOnly],
-  );
-
-  const treeTableInstance = useTreeTableInstance({
-    data: tree,
-    columns,
-    getSubRows: (node) => node.children,
-    getNodeId: (node) => node.id,
-    globalFilter: searchQuery,
-    onGlobalFilterChange: setSearchQuery,
-    defaultExpanded: true,
-  });
 
   if (isLoading || error) {
     return (
@@ -132,64 +74,15 @@ export function ArchivedActionListPage() {
           onChange={(event) => setSearchQuery(event.target.value)}
         />
         <Card withBorder p={0}>
-          <TreeTable
-            instance={treeTableInstance}
-            emptyState={t`No archived actions`}
-            onRowClick={(row) => {
-              if (row.getCanExpand()) {
-                row.toggleExpanded();
-              }
-            }}
-            renderRowLink={(row, props) => {
-              const { data } = row.original;
-              return data.model === "action" ? (
-                <Link to={Urls.dataStudioAction(Number(data.id))} {...props} />
-              ) : (
-                props.children
-              );
-            }}
+          <ArchivedActionTable
+            tree={tree}
+            searchQuery={searchQuery}
+            readOnly={remoteSyncReadOnly}
+            onSearchQueryChange={setSearchQuery}
+            onUnarchive={handleUnarchive}
           />
         </Card>
       </Stack>
     </SectionLayout>
-  );
-}
-
-type ArchivedItemMenuProps = {
-  treeItem: TreeItem;
-  readOnly: boolean;
-  onUnarchive: (item: { id: number; name: string }) => void;
-};
-
-function ArchivedItemMenu({
-  treeItem,
-  readOnly,
-  onUnarchive,
-}: ArchivedItemMenuProps) {
-  const { data } = treeItem;
-
-  if (readOnly || isEmptyStateData(data) || !data.can_write) {
-    return null;
-  }
-
-  if (isCollectionData(data)) {
-    return <UnarchiveCollectionButton collection={data} />;
-  }
-
-  return (
-    <Tooltip label={t`Unarchive action`}>
-      <ActionIcon
-        variant="subtle"
-        aria-label={t`Unarchive action`}
-        size="md"
-        onClick={(event) => {
-          event.stopPropagation();
-          event.preventDefault();
-          onUnarchive({ id: Number(data.id), name: data.name });
-        }}
-      >
-        <FixedSizeIcon name="unarchive" c="text-primary" />
-      </ActionIcon>
-    </Tooltip>
   );
 }

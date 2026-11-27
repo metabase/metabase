@@ -1,4 +1,5 @@
 import type { Widget } from "metabase/viz-core";
+import type { ExpressionClause } from "metabase-lib";
 import type {
   Card,
   CollectionItemModel,
@@ -47,6 +48,12 @@ export type Range = {
   end: Position;
 };
 
+export type SummaryGeneratedExpression = {
+  stageIndex: number;
+  name: string;
+  clause: ExpressionClause;
+};
+
 export interface QueryBuilderUIControls {
   isModifiedFromNotebook: boolean;
   isShowingDataReference: boolean;
@@ -54,6 +61,8 @@ export interface QueryBuilderUIControls {
   isShowingNewbModal: boolean;
   isRunning: boolean;
   isShowingSummarySidebar: boolean;
+  summaryGeneratedExpressions: SummaryGeneratedExpression[];
+  summaryFormulaToEdit?: ExpressionClause;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;

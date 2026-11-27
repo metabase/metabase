@@ -213,7 +213,7 @@
                  (every-readable? audited? card)
                  ;; throw on a calculation failure, so it lands in the catch below as a check we
                  ;; could not make rather than reading as a denial
-                 (query-perms/can-run-query? normalized false true))
+                 (first (query-perms/query-run-answers [normalized] false true)))
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
           (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))

@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 ;; Keep these in sync with the CASE branches in the LATEST version of:
-;;   resources/migrations/instance_analytics_views/ai_usage_log/v6/{h2,mysql,postgres}-ai_usage_log.sql
+;;   resources/migrations/instance_analytics_views/ai_usage_log/v7/{h2,mysql,postgres}-ai_usage_log.sql
 ;;   resources/migrations/instance_analytics_views/metabot_conversations/v8/{h2,mysql,postgres}-metabot_conversations.sql
 ;; When adding a value here, create a new view version (vN+1) with the extra CASE branches plus a migration
 ;; that reinstalls the views, so users see a nicer name in ai analytics. Parity is enforced by
@@ -26,6 +26,7 @@
   #{"metabot_agent"
     "contextual_interestingness"
     "conversation_title"
+    "custom_expression_generate"
     "document_generate_content"
     "example_question_generation_batch"
     "exploration"
@@ -37,10 +38,10 @@
     "user-intent-classification"})
 
 (def ^:private message-sources
-  "The sources whose agent loops count as messages under a message limit: a chat turn, a Slack turn and a document
-  generation, each a prompt the user sent. Every other source runs through the limit check but never adds to the
-  count."
-  #{"metabot_agent" "slackbot" "document_generate_content"})
+  "The sources whose agent loops count as messages under a message limit: a chat turn, a Slack turn, a document
+  generation and a custom expression generation, each a prompt the user sent. Every other source runs through the
+  limit check but never adds to the count."
+  #{"metabot_agent" "slackbot" "document_generate_content" "custom_expression_generate"})
 
 (def ^:private known-profile-ids
   #{"internal"
@@ -110,7 +111,8 @@
 
 (defn- usage-query
   "Query ai_usage_log for current-period usage, narrowed by the optional `user-id` and `tenant-id`.
-  Returns a token sum or a message count depending on `metabot-limit-unit`. A message count leaves out the agent
+  Returns a token sum or a message count depending on `metabot-limit-unit`. A token sum leaves out the tokens read
+  from the provider prompt cache, see [[metabot.db/usage-token-sum]]. A message count leaves out the agent
   loop that asks, `request-id`, see [[metabot.db/usage-message-count]]."
   [& {:keys [user-id tenant-id request-id]}]
   (let [limit-type (metabot.settings/metabot-limit-unit)

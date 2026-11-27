@@ -39,6 +39,7 @@
     :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
+    :model/ChangeLog
     :model/AuthIdentity
     :model/ImplicitAction
     :model/QueryAction
@@ -47,6 +48,8 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    :model/CardFavorite
+    :model/CardLabel
     :model/ChannelTemplate
     :model/CollectionBookmark
     ;; Content Diagnostics findings are scan-snapshot runtime data (its `entity_id` column is a
@@ -54,6 +57,7 @@
     :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DashboardFavorite
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
@@ -121,6 +125,8 @@
     :model/RecentViews
     :model/ReplacementRun
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
+    :model/RemoteSyncWorktreeUser
     :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking

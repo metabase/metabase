@@ -4,8 +4,20 @@ import type { CacheConfig } from "metabase-types/api";
 export function setupPerformanceEndpoints(cacheConfigs: CacheConfig[]) {
   let configs = [...cacheConfigs];
 
-  fetchMock.get("path:/api/cache", () => {
-    return { data: configs };
+  // Mirrors GET /api/cache: `model` defaults to ["root"] and `id` narrows to
+  // one model_id, so a request for the wrong models gets the wrong answer.
+  fetchMock.get("path:/api/cache", ({ url }) => {
+    const params = new URL(url, "http://localhost").searchParams;
+    const models = params.getAll("model");
+    const requestedModels = models.length > 0 ? models : ["root"];
+    const id = params.get("id");
+    return {
+      data: configs.filter(
+        (config) =>
+          requestedModels.includes(config.model) &&
+          (id === null || config.model_id === Number(id)),
+      ),
+    };
   });
 
   fetchMock.put("path:/api/cache", ({ options }) => {

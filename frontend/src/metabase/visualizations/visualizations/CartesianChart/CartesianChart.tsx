@@ -12,8 +12,11 @@ import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
+import { useReportGoalWarning } from "metabase/visualizations/hooks/use-report-goal-warning";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -70,10 +73,11 @@ function CartesianChartInner(props: VisualizationProps) {
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
     onSeeAllEvents,
+    onUpdateGoalWarning,
     selectedTimelineEventIds,
   } = props;
 
-  const settings = useMemo(
+  const adjustedSettings = useMemo(
     () =>
       getSizeAdjustedSettings({
         settings: originalSettings,
@@ -83,6 +87,13 @@ function CartesianChartInner(props: VisualizationProps) {
       }),
     [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
+
+  const {
+    status: goalStatus,
+    settings,
+    errors: goalErrors,
+  } = useResolvedGoalSettings(card, rawSeries[0].data, adjustedSettings);
+  useReportGoalWarning(goalErrors.length > 0, onUpdateGoalWarning);
 
   const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
     settings["legend.position"],
@@ -190,7 +201,7 @@ function CartesianChartInner(props: VisualizationProps) {
       option,
       renderingContext,
       hovered,
-      props,
+      { ...props, settings },
       chartInstance,
     );
 
@@ -248,55 +259,59 @@ function CartesianChartInner(props: VisualizationProps) {
           titleMenuItems={titleMenuItems}
         />
       )}
-      <CartesianChartLegendLayout
-        isReversed={settings["legend.is_reversed"]}
-        hasLegend={hasLegend}
-        legendPosition={settings["legend.position"]}
-        alwaysVisible={isVisualizer}
-        items={legendItems}
-        actionButtons={!showTitle ? actionButtons : undefined}
-        hovered={hovered}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        fontFamily={renderingContext.fontFamily}
-        measureText={renderingContext.measureText}
-        onSelectSeries={onSelectSeries}
-        getSeriesHref={getSeriesHref}
-        onToggleSeriesVisibility={
-          canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
-        }
-        onHoverChange={onHoverChange}
-        width={outerWidth}
-        height={outerHeight}
-        chart={legendChart}
-      >
-        <ResponsiveEChartsRenderer
-          ref={containerRef}
-          option={option}
-          eventHandlers={eventHandlers}
-          onResize={handleResize}
-          onInit={handleInit}
+      {goalStatus === "resolving" ? (
+        <GoalResolvingState />
+      ) : (
+        <CartesianChartLegendLayout
+          isReversed={settings["legend.is_reversed"]}
+          hasLegend={hasLegend}
+          legendPosition={settings["legend.position"]}
+          alwaysVisible={isVisualizer}
+          items={legendItems}
+          actionButtons={!showTitle ? actionButtons : undefined}
+          hovered={hovered}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          fontFamily={renderingContext.fontFamily}
+          measureText={renderingContext.measureText}
+          onSelectSeries={onSelectSeries}
+          getSeriesHref={getSeriesHref}
+          onToggleSeriesVisibility={
+            canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
+          }
+          onHoverChange={onHoverChange}
+          width={outerWidth}
+          height={outerHeight}
+          chart={legendChart}
         >
-          <DataPointsVisiblePopover
-            isDashboard={isDashboard}
-            isVisualizer={isVisualizer}
-            chartInstance={chartInstance}
-          />
-          <TimelineEventsBand
-            chartInstance={chartInstance}
-            chartSize={chartSize}
-            timelineEventsModel={timelineEventsModel}
-            chartLayout={chartLayout}
-            xAxisIndex={timelineEventsXAxisIndex}
-            selectedTimelineEventIds={selectedTimelineEventIds}
-            onGroupHover={setHoveredTimelineEventGroup}
-            onOpenTimelines={onOpenTimelines}
-            onSelectTimelineEvents={onSelectTimelineEvents}
-            onDeselectTimelineEvents={onDeselectTimelineEvents}
-            onSeeAllEvents={onSeeAllEvents}
-          />
-        </ResponsiveEChartsRenderer>
-      </CartesianChartLegendLayout>
+          <ResponsiveEChartsRenderer
+            ref={containerRef}
+            option={option}
+            eventHandlers={eventHandlers}
+            onResize={handleResize}
+            onInit={handleInit}
+          >
+            <DataPointsVisiblePopover
+              isDashboard={isDashboard}
+              isVisualizer={isVisualizer}
+              chartInstance={chartInstance}
+            />
+            <TimelineEventsBand
+              chartInstance={chartInstance}
+              chartSize={chartSize}
+              timelineEventsModel={timelineEventsModel}
+              chartLayout={chartLayout}
+              xAxisIndex={timelineEventsXAxisIndex}
+              selectedTimelineEventIds={selectedTimelineEventIds}
+              onGroupHover={setHoveredTimelineEventGroup}
+              onOpenTimelines={onOpenTimelines}
+              onSelectTimelineEvents={onSelectTimelineEvents}
+              onDeselectTimelineEvents={onDeselectTimelineEvents}
+              onSeeAllEvents={onSeeAllEvents}
+            />
+          </ResponsiveEChartsRenderer>
+        </CartesianChartLegendLayout>
+      )}
       {seriesColorsCss}
     </CartesianChartRoot>
   );

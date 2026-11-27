@@ -6,6 +6,7 @@ memory: project
 skills:
   - backend-module-conventions
   - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on Metabase's AI backend: the Metabot agent loop, its tools and prompts, LLM provider adapters, and the external Agent API and MCP surfaces. You handle one self-contained question or change. Return a summary the caller can act on. Do not drive multi-step plans.

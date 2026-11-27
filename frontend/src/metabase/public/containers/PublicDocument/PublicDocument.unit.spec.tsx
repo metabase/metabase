@@ -11,6 +11,7 @@ import {
   setupPublicDocumentErrorEndpoint,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
+import type { MockResponse } from "__support__/server-mocks/types";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
@@ -24,6 +25,7 @@ import {
 } from "__support__/ui";
 import * as embeddingConfig from "metabase/embedding/config";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset, DocumentContent } from "metabase-types/api";
 import {
@@ -33,6 +35,7 @@ import {
   createMockDatetimeColumn,
   createMockDocument,
   createMockDocumentContent,
+  createMockGoalSourceResults,
   createMockNumericColumn,
   createMockTimeline,
   createMockTimelineEvent,
@@ -141,7 +144,7 @@ interface SetupOpts {
   content: DocumentContent;
   hideEmbedBranding?: boolean;
   card?: Card;
-  dataset?: Dataset;
+  dataset?: MockResponse<Dataset>;
 }
 
 const setup = ({
@@ -259,6 +262,49 @@ describe("PublicDocument", () => {
     expect(screen.getByText(".xlsx")).toBeInTheDocument();
     expect(screen.getByText(".json")).toBeInTheDocument();
     expect(screen.getByTestId("download-results-button")).toBeInTheDocument();
+  });
+
+  it("fetches the goal source results of a card from its public goal values route, next to its query", async () => {
+    const goalValuesPath = `path:/api/public/document/${PUBLIC_UUID}/card/${CARD.id}/goal-values`;
+    fetchMock.get(goalValuesPath, createMockGoalSourceResults({ value: 250 }));
+    const datasetResponse = defer<Dataset>();
+    setup({
+      content: CARD_CONTENT,
+      card: createMockCard({
+        id: CARD.id,
+        name: "Orders",
+        display: "progress",
+        visualization_settings: {
+          "progress.goal": { type: "card", id: 9, column: "goal" },
+        },
+      }),
+      dataset: () => datasetResponse.promise,
+    });
+    expect(
+      await within(await getDocumentContent()).findByTestId("card-embed-title"),
+    ).toHaveTextContent("Orders");
+    setIntersecting(true);
+
+    // the card query is still running
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls(goalValuesPath)).toHaveLength(1),
+    );
+    datasetResponse.resolve(
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [createMockNumericColumn({ name: "count" })],
+          rows: [[50]],
+        }),
+      }),
+    );
+
+    expect(
+      await within(await getDocumentContent()).findByText("Goal 250"),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls(goalValuesPath)).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/dynamic-goal/values"),
+    ).toHaveLength(0);
   });
 
   it("shows the 'Powered by Metabase' link when embed branding is not hidden", async () => {

@@ -109,7 +109,7 @@
                    :model/Document {doc2-id :id} {:name "Document in Active Collection"
                                                   :collection_id active-coll-id
                                                   :archived false}]
-      (t2/update! :collection :id archived-coll-id {:archived true})
+      (t2/update! (t2/table-name :model/Collection) :id archived-coll-id {:archived true})
       (let [results (documents.db/recent-view-documents [doc1-id doc2-id])]
         (is (= 2 (count results)))
         ;; Document from archived collection should have nil collection info

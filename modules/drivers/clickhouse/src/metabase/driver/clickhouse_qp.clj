@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [some]])
   (:import
    [java.net Inet4Address Inet6Address]
@@ -78,18 +79,72 @@
   "Temporal truncation units whose ClickHouse result is a `Date` (not a `DateTime`)."
   #{:week :month :quarter :year})
 
+(defn- cast-json-path
+  "Cast `subcolumn`, a JSON path, to the ClickHouse type for `base-type`. JSON paths that are not typed are `Dynamic`,
+  which ClickHouse does not allow in GROUP BY, ORDER BY or aggregations. A row can have a value of a different type than
+  `base-type`. `accurateCastOrNull` gives NULL for it, but `CAST` can throw (an array, or a string that is not a
+  boolean) or give a wrong number (a `UInt64` that does not fit in `Int64`)."
+  [base-type subcolumn]
+  (if-let [cast-type (condp #(isa? %2 %1) base-type
+                       :type/Boolean "Bool"
+                       :type/Integer "Int64"
+                       :type/Number  "Float64"
+                       nil)]
+    (-> [:'accurateCastOrNull subcolumn (h2x/literal cast-type)]
+        (h2x/with-database-type-info (format "Nullable(%s)" cast-type)))
+    (h2x/cast "Nullable(String)" subcolumn)))
+
+(defmethod sql.qp/json-query :clickhouse
+  [_driver unwrapped-identifier nfc-field]
+  {:pre [(h2x/identifier? unwrapped-identifier)]}
+  (let [parent    (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+        ;; `t.j.a.b` reads only the subcolumn of the path; `getSubcolumn(t.j, 'a.b')` reads the whole JSON column
+        subcolumn (apply h2x/identifier :field (concat (h2x/identifier->components parent) (rest (:nfc-path nfc-field))))
+        base-type (:base-type nfc-field)]
+    (cond
+      (isa? base-type :type/DateTime)
+      (-> [:'parseDateTime64BestEffortOrNull (h2x/cast "Nullable(String)" subcolumn) [:inline 3]]
+          (h2x/with-database-type-info "Nullable(DateTime64(3))"))
+
+      (or (isa? base-type :type/Array) (isa? base-type :type/Structured))
+      (-> [:'toJSONString subcolumn]
+          (h2x/with-database-type-info "String"))
+
+      :else
+      (cast-json-path base-type subcolumn))))
+
+(defn- json-field->honeysql
+  [driver [_ opts _id-or-name] stored-field honeysql-expr]
+  (cond
+    (or (::sql.qp/forced-alias opts)
+        (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
+    (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+    ;; through a join the join subquery already projects the extracted path (#73198)
+    (string? (driver-api/qp.add.source-table opts))
+    honeysql-expr
+
+    :else
+    (match/replace-all honeysql-expr
+      #'h2x/identifier? (sql.qp/json-query driver &match stored-field))))
+
 (defmethod sql.qp/->honeysql [:clickhouse :field]
-  [driver clause]
+  [driver [_ _opts id-or-name :as clause]]
   ;; MBQL preserves a column's `:effective-type` through temporal truncation, but ClickHouse's
   ;; `toStartOfWeek`/`Month`/`Quarter`/`Year` return `Date`, not `DateTime`. When such a ref reaches an
   ;; outer stage, downgrade a DateTime-derived effective type to `:type/Date` so `in-report-timezone`
   ;; doesn't wrap a `Date` in `toTimeZone` (ClickHouse rejects that with Code 43). See #79648.
   (let [{:keys [inherited-temporal-unit effective-type base-type]} (lib.options/options clause)
-        clause (cond-> clause
-                 (and (contains? date-granular-truncation-units inherited-temporal-unit)
-                      (isa? (or effective-type base-type) :type/DateTime))
-                 (lib.options/update-options assoc :effective-type :type/Date :base-type :type/Date))]
-    ((get-method sql.qp/->honeysql [:sql :field]) driver clause)))
+        clause        (cond-> clause
+                        (and (contains? date-granular-truncation-units inherited-temporal-unit)
+                             (isa? (or effective-type base-type) :type/DateTime))
+                        (lib.options/update-options assoc :effective-type :type/Date :base-type :type/Date))
+        stored-field  (when (integer? id-or-name)
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
+        honeysql-expr ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
+    (if (driver-api/json-field? stored-field)
+      (json-field->honeysql driver clause stored-field honeysql-expr)
+      honeysql-expr)))
 
 (defn- in-report-timezone
   [expr]

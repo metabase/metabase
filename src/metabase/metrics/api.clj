@@ -83,7 +83,7 @@
 (mu/defn- hydrated-metric [id :- ms/PositiveInt
                            include-orphaned? :- :boolean]
   (api/read-check (metrics.db/metric-card id))
-  (metrics/sync-dimensions! :metadata/metric id)
+  (metrics/sync-dimensions! :metadata/metric [id])
   (cond-> (-> (metrics.db/metric-card id)
               metrics.perms/filter-dimensions-for-user
               (update :dimensions #(or % []))
@@ -370,7 +370,7 @@
                                                      [:with-addable     {:optional true} [:maybe ms/BooleanValue]]
                                                      [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (read-check-metric! id)
-  (metrics/sync-dimensions! :metadata/metric id)
+  (metrics/sync-dimensions! :metadata/metric [id])
   (metrics/list-dimensions :metadata/metric id {:query             query
                                                 :with-addable?     (boolean with-addable)
                                                 :include-orphaned? (boolean include-orphaned)}))

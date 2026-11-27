@@ -4,6 +4,7 @@
    [metabase-enterprise.tenants.models :as tenants.model]
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
@@ -397,3 +398,11 @@
     (tenants.model/update-tenants! [{:id first-id :name "Chain Second"} {:id second-id :name "Chain Third"}])
     (is (= ["Chain Second" "Chain Third"]
            (mapv #(t2/select-one-fn :name :model/Tenant :id %) [first-id second-id])))))
+
+(deftest tenants-are-not-created-in-worktree-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+        (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenants can only be created in the default worktree"
+                                (tenants.model/create-tenants! [{:name "Test Tenant" :slug "test-tenant"}]))))))))

@@ -13,13 +13,11 @@
   queue job-group ([[queue-job-group]]) is gated; every other Quartz job (sync, pulses, …) is acquired
   exactly as before."
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.classloader.core :as classloader]
    [metabase.util.log :as log])
   (:import
    (java.math BigDecimal)
-   (java.net URL)
    (java.sql Connection PreparedStatement ResultSet)
    (org.quartz TriggerKey)
    (org.quartz.impl.jdbcjobstore Constants StdJDBCConstants)))
@@ -129,21 +127,19 @@
     (catch ClassNotFoundException _ false)))
 
 (defn- compile-delegate! [ns-sym]
-  ;; compile into a temp dir added to the (dynamic) classpath, so the gen-class is loadable by name
-  (let [dir (io/file (System/getProperty "java.io.tmpdir") "mb-quartz-delegate")]
-    (.mkdirs dir)
-    (classloader/add-url-to-classpath! ^URL (-> dir .toURI .toURL))
-    (binding [*compile-path* (str dir)]
-      (compile ns-sym))))
+  (classloader/compile-to-temp-dir! "mb-quartz-delegate" ns-sym))
 
 (defn ensure-delegate-loadable!
-  "Ensure the affinity `DriverDelegate` subclass for `db-type` is loadable — already AOT-compiled in
-  the uberjar, runtime-compiled into the classpath in dev — and return its class name. No global side
-  effects beyond adding the compiled class to the classpath (idempotent)."
+  "Ensure the affinity `DriverDelegate` subclass for `db-type` is loadable, and return its class name.
+  The uberjar has it AOT-compiled; in dev it is compiled at runtime into a temp dir on the classpath.
+  Throws when the class still cannot be loaded after compiling."
   [db-type]
   (let [class-name (get delegate-class-name db-type default-delegate-class-name)]
     (when-not (class-loadable? class-name)
       (compile-delegate! (delegate-ns class-name))
+      (when-not (class-loadable? class-name)
+        (throw (ex-info (str "Compiled " (delegate-ns class-name) ", but " class-name " still cannot be loaded")
+                        {:class class-name})))
       (log/infof "Compiled Quartz queue-affinity delegate %s" class-name))
     class-name))
 

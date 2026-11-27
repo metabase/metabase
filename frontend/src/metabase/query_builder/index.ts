@@ -38,8 +38,8 @@ export { ChartTypeSettings } from "./components/chart-type-selector/ChartTypeSet
 export { useQuestionVisualizationState } from "./components/chart-type-selector/use-question-visualization-state";
 export { PublicOrEmbeddedQuestionDownloadPopover } from "./components/QuestionDownloadPopover/QuestionDownloadPopover";
 export { QuestionHashRedirect } from "./components/QuestionHashRedirect";
-export { getBreakoutListItem } from "./components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util";
-export type { ListItem as BreakoutListItem } from "./components/view/sidebars/SummarizeSidebar/BreakoutColumnList/types";
+export { getBreakoutListItem } from "./components/view/sidebars/SummarySidebar/utils";
+export type { BreakoutListItem } from "./components/view/sidebars/SummarySidebar/types";
 export {
   getAdHocQuestionDescription,
   shouldRenderAdhocDescription,

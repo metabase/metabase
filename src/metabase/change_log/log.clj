@@ -27,21 +27,22 @@
     (throw (ex-info message {}))))
 
 (defn log!
-  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering, sending a row key that is not an
-  integer to [[throw-or-log]] and giving it no entry."
+  "Logs `changes`, a seq of `[table-name row-ids action]`, and wakes the numbering when the write commits, sending a
+  row key that is not an integer to [[throw-or-log]] and giving it no entry."
   [changes]
   (doseq [[table-name row-ids action] changes
           :let  [n (count (remove integer? row-ids))]
           :when (pos? n)]
     (throw-or-log (format "Not logging %d %s on %s to the change log: row key missing or not an integer. See %s."
                           n action table-name "metabase.change-log.core")))
-  (run! (comp change-log.db/insert-entries! vec)
-        (partition-all app-db/create-partition-size (for [[table-name row-ids action] changes
-                                                          id                          row-ids
-                                                          :when                       (integer? id)]
-                                                      {:table_name table-name, :row_id id, :action action})))
-  (when-not config/is-test?
-    (change-log.numbering/stay-awake!)))
+  (let [entries (for [[table-name row-ids action] changes
+                      id                          row-ids
+                      :when                       (integer? id)]
+                  {:table_name table-name, :row_id id, :action action})]
+    (run! (comp change-log.db/insert-entries! vec) (partition-all app-db/create-partition-size entries))
+    ;; Tests number the entries themselves.
+    (when (and (seq entries) (not config/is-test?))
+      (app-db/do-after-commit change-log.numbering/stay-awake!))))
 
 (mu/defn log-rows!
   "Logs `action` on the rows of `model` that match `conditions`, what `t2/select` takes after the model and usually the

@@ -13,6 +13,7 @@ type DefaultDisplay = {
 export const defaultDisplay = (
   query: Lib.Query,
   resultColumns?: readonly DatasetColumn[],
+  stageIndex = -1,
 ): DefaultDisplay => {
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -20,7 +21,6 @@ export const defaultDisplay = (
     return { display: "table" };
   }
 
-  const stageIndex = -1;
   const aggregations = Lib.aggregations(query, stageIndex);
   const breakouts = Lib.breakouts(query, stageIndex);
 

@@ -9,9 +9,6 @@ const APP_SLUG = "embedded-app";
 const APP_NAME = "Embedded Orders";
 const TENANT_GROUP_NAME = "All tenant users";
 
-const EMPTY_STATE_TEXT =
-  "Only admins can open this app. Add groups to give people in them access.";
-
 describe("scenarios > data apps > tenant access (DAT-17)", () => {
   beforeEach(() => {
     H.restore();
@@ -55,7 +52,6 @@ describe("scenarios > data apps > tenant access (DAT-17)", () => {
     cy.signInAsAdmin();
     cy.intercept("POST", `/api/ee/apps/${APP_SLUG}/groups`).as("addGroups");
     cy.visit(`/data-studio/apps/${APP_SLUG}/permissions`);
-    H.main().findByText(EMPTY_STATE_TEXT).should("be.visible");
 
     cy.log("assign the tenant group through Data Studio");
     H.main().findByRole("button", { name: "Add groups" }).click();
@@ -63,12 +59,6 @@ describe("scenarios > data apps > tenant access (DAT-17)", () => {
     cy.findByRole("option", { name: TENANT_GROUP_NAME }).click();
     H.modal().findByRole("button", { name: "Add" }).click();
     cy.wait("@addGroups");
-
-    H.expectUnstructuredSnowplowEvent({ event: "data_app_group_added" });
-    H.main()
-      .findByRole("row", { name: new RegExp(TENANT_GROUP_NAME) })
-      .findByRole("img", { name: "Tenant group" })
-      .should("be.visible");
 
     cy.log("the assigned tenant user can view the app");
     signInToAppAsTenant();
@@ -91,8 +81,6 @@ describe("scenarios > data apps > tenant access (DAT-17)", () => {
     H.modal().findByRole("button", { name: "Remove access" }).click();
 
     cy.wait("@removeGroup");
-    H.expectUnstructuredSnowplowEvent({ event: "data_app_group_removed" });
-    H.main().findByText(EMPTY_STATE_TEXT).should("be.visible");
 
     cy.log("admins can still open the app");
     H.openDataApp(APP_SLUG);

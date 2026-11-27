@@ -11,7 +11,7 @@ import {
 } from "metabase-enterprise/api";
 
 import { trackPullChanges } from "../../analytics";
-import { getIsRemoteSyncVisible } from "../../selectors";
+import { getCurrentWorktree, getIsRemoteSyncVisible } from "../../selectors";
 import { SyncTaskModal } from "../SyncTaskModal";
 
 import { PullModal } from "./PullModal";
@@ -26,7 +26,9 @@ type ControlsModal =
 
 export function AppBarControls() {
   const isVisible = useSelector(getIsRemoteSyncVisible);
-  const branch = useSetting("remote-sync-branch");
+  const worktree = useSelector(getCurrentWorktree);
+  const settingBranch = useSetting("remote-sync-branch");
+  const branch = worktree != null ? worktree.branch : settingBranch;
 
   if (!isVisible || !branch) {
     return null;

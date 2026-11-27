@@ -35,7 +35,7 @@
                    (public-sharing.db/unarchived-cards-by-public-uuid-prefix {:raw "(SELECT 1)"}))))))
 
 (deftest prefix-lookups-bind-the-prefix-without-the-schema-test
-  (testing "GHY-4587: with the schema off, the marker rejects an operator-shaped prefix instead of compiling it into the WHERE"
+  (testing "GHY-4587: with the schema off, the check rejects an operator-shaped prefix instead of compiling it into the WHERE"
     ;; An unmarked `[:not= "x"]` in the kv-arg slot compiles to `public_uuid_prefix <> 'x'` and matches every shared row.
     (mt/with-temp [:model/Card      _ {:public_uuid (str (random-uuid))}
                    :model/Dashboard _ {:public_uuid (str (random-uuid))}
@@ -49,5 +49,5 @@
                         public-sharing.db/unarchived-dashboards-by-public-uuid-prefix
                         public-sharing.db/unarchived-actions-by-public-uuid-prefix
                         public-sharing.db/unarchived-documents-by-public-uuid-prefix]]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"prefix must be a string"
                                 (doall (lookup [:not= "zzzzzzzz"])))))))))

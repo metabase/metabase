@@ -26,6 +26,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metrics.core :as metrics]
@@ -56,6 +57,7 @@
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
@@ -67,11 +69,12 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
@@ -169,16 +172,32 @@
 
 (doto :model/Card
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
 (defn- summary-card-snapshots
-  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
-  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
-  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
-  [card document]
-  (when (and (:exploration_id document) (:id card))
-    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
+  "The snapshots of those of `cards` that are ephemeral Cards of an exploration Summary, which render only their own
+  snapshots, by Card id, read together; `document-id` finds the parent Document of a Card in `documents`."
+  [cards document-id documents]
+  (let [card-ids (into []
+                       (comp (filter #(and (:id %) (:exploration_id (get documents (document-id %)))))
+                             (map :id)
+                             (distinct))
+                       cards)]
+    (if (seq card-ids)
+      (into {}
+            (filter (comp seq val))
+            (queries.db/stored-result-gate-inputs-for-cards card-ids))
+      {})))
+
+(defn- snapshot-verdicts
+  "Whether the current user may be served each of the snapshots in `id->snapshots`, by snapshot, answered together."
+  [id->snapshots]
+  (let [snapshots (into [] (comp (mapcat val) (distinct)) id->snapshots)]
+    (zipmap snapshots (cached-result/cached-result-view-answers
+                       snapshots
+                       {:share-token-reads? true}))))
 
 (defn- parent-documents
   "The parent Documents of `cards`, hydrated with the permission `k`, as `{:document-id f, :documents {id document}}`,
@@ -220,7 +239,11 @@
         {:keys [document-id documents]} (parent-documents rows :can_read)
         summary-readable                (delay (collection/content-readable-collection-ids
                                                 (map :collection_id (vals documents))
-                                                {:root-namespace nil, :audit-rules? false}))]
+                                                {:root-namespace nil, :audit-rules? false}))
+        id->snapshots                   (summary-card-snapshots (filter #(contains? readable (:collection_id %)) rows)
+                                                                document-id
+                                                                documents)
+        verdicts                        (delay (snapshot-verdicts id->snapshots))]
     (for [card cards]
       (when card
         (vary-meta card assoc :can_read
@@ -229,9 +252,9 @@
                          (let [id (document-id card)]
                            (or (nil? id)
                                (when-let [document (get documents id)]
-                                 (if-let [snapshots (summary-card-snapshots card document)]
+                                 (if-let [snapshots (get id->snapshots (:id card))]
                                    (and (contains? @summary-readable (:collection_id document))
-                                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                                        (every? @verdicts snapshots))
                                    (mi/can-read? document))))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_query]
@@ -277,10 +300,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
-                                                                                                :include-archived-items    :exclude
-                                                                                                :permission-level          :read
-                                                                                                :root-namespace            nil})])
+   (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Card) :collection_id) (api/current-user-info) {:include-trash-collection? false
+                                                                                                                                  :include-archived-items    :exclude
+                                                                                                                                  :permission-level          :read
+                                                                                                                                  :root-namespace            nil})])
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
@@ -869,13 +892,17 @@
   [card previous-card]
   (timelines-readable? (revealed-timeline-ids card previous-card)))
 
+(declare copied-goal-entries goal-references-readable?)
+
 (defn can-create-all?
   "Whether the current user can create each of `entries`, `[card copy-source]` pairs, as [[mi/can-create?]] answers
-  for one Card, from one read of their Collections and one of the timelines they newly show, false when one cannot or
-  a Collection does not exist, which asking one by one answers with its error."
+  for one Card, from one read of their Collections, one of the timelines they newly show and one per type of the
+  entities their goals newly reference, false when one cannot or a Collection does not exist, which asking one by one
+  answers with its error."
   [entries]
   (and (collection/can-write-all-collections-or-root? (map (comp :collection_id first) entries) {:root-namespace nil})
-       (timelines-readable? (into #{} (mapcat (fn [[card copy-source]] (revealed-timeline-ids card copy-source))) entries))))
+       (timelines-readable? (into #{} (mapcat (fn [[card copy-source]] (revealed-timeline-ids card copy-source))) entries))
+       (goal-references-readable? (copied-goal-entries entries))))
 
 (defn readable-cards-by-id
   "A map of id to the Card, hydrated with `:can_read`, for the Cards with `card-ids`, from one read, or nil when one does
@@ -903,6 +930,15 @@
         (some? (:action_id dashcard))
         (some? (:virtual_card settings)))))
 
+(defn- shared-dashboard? [dashboard]
+  (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+
+(defn- newly-placed-card-ids
+  "The ids `card-ids-xf` yields from `new-dashcards` but not from `existing-dashcards`."
+  [card-ids-xf existing-dashcards new-dashcards]
+  (let [existing-card-ids (into #{} card-ids-xf existing-dashcards)]
+    (into #{} (comp card-ids-xf (remove existing-card-ids)) new-dashcards)))
+
 (defn- shared-dashboards-timelines-readable?
   "Whether the current user reads the timelines that the public or embedded Dashboards of `dashboard-cards`,
   `[dashboard cards]` pairs, show to anyone for their `cards`, with the timelines read together."
@@ -919,7 +955,7 @@
   publicly shared or embedded, so the current user needs read access to those timelines."
   [dashboard cards]
   (when (and api/*current-user-id*
-             (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+             (shared-dashboard? dashboard))
     (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
       (doseq [timeline (t2/hydrate (queries.db/timelines timeline-ids) :can_read)]
         (api/read-check timeline)))))
@@ -951,23 +987,258 @@
   is grandfathered only when `existing-dashcards` already shows its events, so turning a dashcard that hides them
   into one that shows them is checked like any other placement."
   [dashboard existing-dashcards new-dashcards]
-  (let [exposed-card-ids  (comp (remove dashcard-hides-card-events?) (keep :card_id))
-        existing-card-ids (into #{} exposed-card-ids existing-dashcards)
-        new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
-    (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
+  (check-shared-dashboard-timeline-permissions-for-card-ids!
+   dashboard
+   (newly-placed-card-ids (comp (remove dashcard-hides-card-events?) (keep :card_id))
+                          existing-dashcards
+                          new-dashcards)))
+
+(defn- reads-parameter-tag?
+  [query]
+  (boolean (perf/some qp.card/parameter-template-tag? (lib/all-template-tags query))))
+
+(defn card-reads-parameters?
+  "Whether running `card`'s saved query needs parameter values: `card` has parameters, or its query or that of any card
+  it reads, at any depth, has a template tag that becomes one."
+  [{:keys [parameters dataset_query]}]
+  (boolean
+   (or (seq parameters)
+       (when (seq dataset_query)
+         (let [query (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
+                                dataset_query)]
+           (or (reads-parameter-tag? query)
+               ;; source cards, `{{#123}}` tags and metrics; the walk keeps a visited set, so a cycle ends
+               (perf/some (fn [card-id]
+                            (some-> (lib.metadata/card query card-id)
+                                    :dataset-query
+                                    perf/not-empty
+                                    reads-parameter-tag?))
+                          (lib/all-source-card-ids-recursive query))))))))
+
+(defn- resolvable-goal-references
+  [viz-settings]
+  ;; goals of any other type are dropped at run time too, so they reach nothing
+  (into #{} (filter (comp dynamic-goals/goal-entity-types first)) (dynamic-goals/goal-references viz-settings)))
+
+(defn- new-goal-references
+  "The `[entity-type id]` of each entity a goal in `viz-settings` reads a column of that no `previous-viz-settings`
+  reads. A column counts on its own: public pages return only the columns goals name."
+  [viz-settings previous-viz-settings]
+  (let [refs (resolvable-goal-references viz-settings)]
+    ;; most settings carry no goals, so skip scanning the previous ones (a whole dashboard's, for a new dashcard)
+    (if (empty? refs)
+      #{}
+      (into #{} (map pop) (set/difference refs (into #{} (mapcat resolvable-goal-references) previous-viz-settings))))))
+
+(defn- entries-goal-references
+  "The new goal references of `entries`, `[viz-settings previous-viz-settings]` pairs, in the order of `entries`."
+  [entries]
+  (into [] (comp (mapcat (fn [[viz-settings previous]] (new-goal-references viz-settings previous))) (distinct))
+        entries))
+
+(defn- new-goal-entry
+  "The `[viz-settings previous-viz-settings]` entry of `card` with no previous settings, so that every goal reference
+  it has counts as new."
+  [card]
+  [(:visualization_settings card) nil])
+
+(defn- goal-sources
+  "The entities that `refs`, `[entity-type id]` pairs, name, as `{entity-type {id entity}}` hydrated with `:can_read`,
+  read once per entity type. `::queryable-table-ids` holds the Tables of those Measures that the current user can
+  query."
+  [refs]
+  (let [ids      (fn [entity-type]
+                   (into #{} (keep (fn [[t id]] (when (and (= entity-type t) (pos-int? id)) id))) refs))
+        measures (when-let [measure-ids (not-empty (ids "measure"))]
+                   (t2/hydrate (queries.db/measures measure-ids) :can_read))]
+    {"card"                (when-let [card-ids (not-empty (ids "card"))]
+                             (u/index-by :id (t2/hydrate (queries.db/cards card-ids) :can_read)))
+     "measure"             (u/index-by :id measures)
+     ::queryable-table-ids (when (seq measures)
+                             (into #{}
+                                   (comp (filter mi/can-query?) (map :id))
+                                   (t2/hydrate (into []
+                                                     (comp (map (fn [{:keys [table_id definition]}]
+                                                                  {:id table_id :db_id (:database definition)}))
+                                                           (distinct)
+                                                           (map #(t2/instance :model/Table %)))
+                                                     measures)
+                                               :can_query)))}))
+
+(defn- unqueryable-measure?
+  "Whether `entity`, of goal entity type `entity-type`, is a Measure on a Table the current user can't query, given
+  `sources`, as [[goal-sources]] returns them."
+  [sources entity-type entity]
+  ;; a measure's value is its table's data, while reading a Table only takes metadata access
+  (and (= "measure" entity-type)
+       (not (contains? (::queryable-table-ids sources) (:table_id entity)))))
+
+(defn- goal-access-problem
+  "What keeps the current user from using `entity`, of goal entity type `entity-type`, as a goal source, given
+  `sources`, as [[goal-sources]] returns them: `:unreadable` or `:unqueryable-measure`, or nil."
+  [sources entity-type entity]
+  (cond
+    (not (mi/can-read? entity))                       :unreadable
+    (unqueryable-measure? sources entity-type entity) :unqueryable-measure))
+
+(defn- goal-reference-problem
+  "What is wrong with the goal reference `[entity-type id]` given its `sources`, as [[goal-sources]] returns them:
+  `:malformed`, `:missing`, `:unreadable`, `:unqueryable-measure`, `:model` or `:reads-parameters`, or nil."
+  [sources [entity-type id]]
+  (let [entity (get-in sources [entity-type id])]
+    (cond
+      (not (pos-int? id))                              :malformed
+      (nil? entity)                                    :missing
+      :else
+      (or (goal-access-problem sources entity-type entity)
+          (cond
+            (dynamic-goals/model-source? entity-type entity) :model
+            ;; a goal runs its source with no parameter values, so it'd get each one's default or none
+            (and (= "card" entity-type) (card-reads-parameters? entity))
+            :reads-parameters)))))
+
+(defn- goal-references-readable?
+  "Whether the current user can read every entity that the new goal references of `entries` name, and query the Table
+  of each Measure among them. True when no user is bound. A malformed or missing reference passes here:
+  [[check-new-goal-references]] refuses it."
+  [entries]
+  (let [refs (entries-goal-references entries)]
+    (or (empty? refs)
+        (not api/*current-user-id*)
+        (let [sources (goal-sources refs)]
+          (not-any? (fn [[entity-type id]]
+                      (some->> (get-in sources [entity-type id]) (goal-access-problem sources entity-type)))
+                    refs)))))
+
+(defn check-new-goal-references
+  "Throws for the first new goal reference of `entries`, `[viz-settings previous-viz-settings]` pairs, that the current
+  user may not save:
+  - a malformed id (400) or a missing entity (404);
+  - an entity they can't read, or a Measure on a Table they can't query (403);
+  - a model, or a card whose query reads parameters (400).
+  Does nothing when no user is bound."
+  [entries]
+  ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
+  ;; because a not-yet-issued id would point at whatever gets created next.
+  (when-let [refs (and api/*current-user-id* (not-empty (entries-goal-references entries)))]
+    (let [sources (goal-sources refs)]
+      (when-let [[[entity-type id :as ref] problem] (some (fn [ref]
+                                                            (when-let [problem (goal-reference-problem sources ref)]
+                                                              [ref problem]))
+                                                          refs)]
+        (case problem
+          :malformed           (api/check-400 false (tru "A goal must reference an entity by its integer ID."))
+          (:missing :unreadable) (api/read-check (get-in sources [entity-type id]))
+          :model               (api/check-400 false (tru "A model can''t be a goal."))
+          :unqueryable-measure (api/check false
+                                          [403 (tru "You must have data permissions to use this measure as a goal.")])
+          :reads-parameters    (api/check-400
+                                false
+                                (tru "This question uses variables, directly or through a question it''s built on, so it can''t be a goal."))
+          (throw (ex-info "Unknown goal reference problem" {:ref ref :problem problem})))))))
+
+(defn copied-goal-entries
+  "The `[viz-settings previous-viz-settings]` entry of each of `pairs`, `[card copy-source]` pairs where `copy-source`
+  is nil for a Card that copies none. A copy counts only the goal references its source lacks as new, unless it goes
+  into a public Document, which shows its goals to anyone."
+  [pairs]
+  (let [document-ids (into #{}
+                           (keep (fn [[card copy-source]]
+                                   (when (and copy-source
+                                              (:document_id card)
+                                              (seq (resolvable-goal-references (:visualization_settings card))))
+                                     (:document_id card))))
+                           pairs)
+        public?      (if (seq document-ids) (queries.db/public-document-ids document-ids) #{})]
+    (mapv (fn [[card copy-source]]
+            [(:visualization_settings card)
+             (when (and copy-source (not (contains? public? (:document_id card))))
+               [(:visualization_settings copy-source)])])
+          pairs)))
+
+(defn check-shared-dashboard-goal-permissions!
+  "Placing `cards` on `dashboard` resolves their goals for anyone who opens it when the dashboard is publicly shared or
+  embedded, so the current user needs to be able to read what those goals reference."
+  [dashboard cards]
+  (when (shared-dashboard? dashboard)
+    (check-new-goal-references (mapv new-goal-entry cards))))
+
+(defn- dashcard-card-ids
+  "The card and series cards `dashcard` runs. Series are maps or bare ids, depending on the caller."
+  [dashcard]
+  (cons (:card_id dashcard) (map #(cond-> % (map? %) :id) (:series dashcard))))
+
+(defn check-newly-exposed-dashcards-goal-permissions!
+  "[[check-shared-dashboard-goal-permissions!]] for the cards `new-dashcards` newly place on `dashboard`, as a card or
+  a series."
+  [dashboard existing-dashcards new-dashcards]
+  (when (shared-dashboard? dashboard)
+    ;; unlike timeline events, a visualizer dashcard's cards still resolve their own goals, so no dashcard is skipped
+    (when-let [new-card-ids (not-empty (newly-placed-card-ids (comp (mapcat dashcard-card-ids) (filter pos-int?))
+                                                              existing-dashcards
+                                                              new-dashcards))]
+      (check-shared-dashboard-goal-permissions! dashboard (queries.db/cards new-card-ids)))))
+
+(defn check-new-dashboard-questions-goal-permissions
+  "[[check-shared-dashboard-goal-permissions!]] for those of `rows`, Cards about to be created, that are dashboard
+  questions of a publicly shared or embedded Dashboard."
+  [rows]
+  (when-let [rows (not-empty (filterv :dashboard_id rows))]
+    (let [dashboards (u/index-by :id (queries.db/dashboards (into #{} (map :dashboard_id) rows)))]
+      (check-new-goal-references
+       (into [] (keep (fn [row]
+                        (when (shared-dashboard? (get dashboards (:dashboard_id row)))
+                          (new-goal-entry row))))
+             rows)))))
+
+(defn- shared-dashboards-goals-readable?
+  "[[goal-references-readable?]] for the goals of the cards in `dashboard-cards`, `[dashboard cards]` pairs, that go
+  on a public or embedded Dashboard."
+  [dashboard-cards]
+  (goal-references-readable?
+   (into []
+         (comp (filter (comp shared-dashboard? first))
+               (mapcat second)
+               (map new-goal-entry))
+         dashboard-cards)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-source-card*
   "The Card a new Card is being copied from, if any, bound because the create check takes only the new Card, so that
-  the timelines the source already selects need no read access."
+  the timelines the source already selects, and its goal references unless the copy goes into a public Document, need
+  no read access."
   nil)
 
 (defmacro with-copy-source-card
   "Runs `body`, treating a Card created within it as a copy of `source-card`, so that an inherited timeline selection
-  does not require read access to those timelines, where `source-card` must be a Card the current user has already
+  or goal reference does not require read access, where `source-card` must be a Card the current user has already
   passed a read check on and `body` should perform only the create permission check and the single copy insert."
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
+
+(defn check-new-cards-goal-references
+  "[[check-new-goal-references]] for the Cards about to be created in `pairs`, `[card copy-source]` pairs as
+  [[can-create-all?]] takes them."
+  [pairs]
+  (check-new-goal-references (copied-goal-entries pairs)))
+
+(defn check-new-card-goal-references
+  "[[check-new-cards-goal-references]] for `card`, a Card about to be created, which copies the Card bound to
+  [[*copy-source-card*]], if any."
+  [card]
+  (check-new-cards-goal-references [[card *copy-source-card*]]))
+
+(defn- updated-goal-entries
+  "The `[viz-settings previous-viz-settings]` entry of each of `card-changes`, `[card changes]` pairs."
+  [card-changes]
+  (mapv (fn [[card changes]]
+          [(:visualization_settings (merge card changes)) [(:visualization_settings card)]])
+        card-changes))
+
+(defn check-updated-goal-references
+  "[[check-new-goal-references]] for the goals that the changes of `card-changes`, `[card changes]` pairs, add."
+  [card-changes]
+  (check-new-goal-references (updated-goal-entries card-changes)))
 
 (defenterprise sandboxes-allow-card-update?
   "Whether sandboxing lets the current user apply `changes`, the guarded columns of a Card that really change, to
@@ -1073,12 +1344,14 @@
 (defmethod mi/can-create? :model/Card
   [_model {collection-id :collection_id :as card}]
   (and (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
-       (timeline-selection-readable? card *copy-source-card*)))
+       (timeline-selection-readable? card *copy-source-card*)
+       (goal-references-readable? (copied-goal-entries [[card *copy-source-card*]]))))
 
 (defn- dashboards-move-permitted?
   "Whether the current user may do what the changes of each of `card-changes`, `[card changes]` pairs, do to the
-  Dashboard of the Card: write the Dashboards it appears in, and read the timelines it shows on the Dashboard it moves
-  into when that is shared, with the Dashboards each way and the timelines read together."
+  Dashboard of the Card: write the Dashboards it appears in, and read the timelines it shows and what its goals
+  reference on the Dashboard it moves into when that is shared, with the Dashboards each way, the timelines and the
+  goal entities read together."
   [card-changes]
   (let [moving (filterv (fn [[card changes]]
                           (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
@@ -1087,10 +1360,16 @@
         (let [in-dashboards (t2/hydrate (mapv first moving) :in_dashboards)
               targets       (u/index-by :id (queries.db/dashboards (into #{} (keep (comp :dashboard_id second)) moving)))]
           (and (every? mi/can-write? (t2/hydrate (vec (vals (u/index-by :id (mapcat :in_dashboards in-dashboards)))) :can_write))
-               (shared-dashboards-timelines-readable?
-                (mapv (fn [[card changes]]
-                        [(get targets (:dashboard_id changes)) [(merge card changes)]])
-                      moving)))))))
+               (let [dashboard-cards (mapv (fn [[card changes]]
+                                             [(get targets (:dashboard_id changes)) [(merge card changes)]])
+                                           moving)]
+                 (and (shared-dashboards-timelines-readable? dashboard-cards)
+                      (shared-dashboards-goals-readable? dashboard-cards))))))))
+
+(defn- updated-goals-readable?
+  "[[goal-references-readable?]] for the goals that the changes of `card-changes`, `[card changes]` pairs, add."
+  [card-changes]
+  (goal-references-readable? (updated-goal-entries card-changes)))
 
 (defn- summary-owner-writable
   "A function from one of the cards of `card-changes`, `[card changes]` pairs, to whether the current user writes the
@@ -1114,14 +1393,16 @@
 (defn- can-update-apart-from-collection-and-sandboxes?
   "Whether the current user may apply `changes` to `card` as far as every rule but where its Collection changes and
   sandboxing go, where `summary-owner-writable` answers an archive or restore of a Summary Card, which no user writes,
-  at its Exploration, and `dashboard-move-permitted` is whether they may do what `changes` do to its Dashboard."
-  [card changes summary-owner-writable dashboard-move-permitted]
+  at its Exploration, `dashboard-move-permitted` is whether they may do what `changes` do to its Dashboard, and
+  `goals-readable` is whether they read what the goals `changes` add reference."
+  [card changes summary-owner-writable dashboard-move-permitted goals-readable]
   (and (let [owner-writable (when (mi/changes-only-archived? card changes) (summary-owner-writable card))]
          (if (some? owner-writable)
            owner-writable
            (or (changes-only-public-link? card changes) (mi/can-write? card))))
        (can-change-public-link? card changes)
        dashboard-move-permitted
+       goals-readable
        (can-change-embedding? card changes)
        (timeline-selection-readable? (merge card changes) card)))
 
@@ -1129,7 +1410,8 @@
   [card changes]
   (and (can-update-apart-from-collection-and-sandboxes? card changes
                                                         (summary-owner-writable [[card changes]])
-                                                        (dashboards-move-permitted? [[card changes]]))
+                                                        (dashboards-move-permitted? [[card changes]])
+                                                        (updated-goals-readable? [[card changes]]))
        (collection/can-move? card changes)
        (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
@@ -1138,9 +1420,11 @@
   `:can_write`, its own changes, as [[mi/can-update?]] answers for one, with what the Cards depend on read together."
   [card-changes]
   (and (let [owner-writable        (summary-owner-writable card-changes)
-             dashboard-move-permitted (dashboards-move-permitted? card-changes)]
+             dashboard-move-permitted (dashboards-move-permitted? card-changes)
+             goals-readable           (updated-goals-readable? card-changes)]
          (every? (fn [[card changes]]
-                   (can-update-apart-from-collection-and-sandboxes? card changes owner-writable dashboard-move-permitted))
+                   (can-update-apart-from-collection-and-sandboxes? card changes owner-writable dashboard-move-permitted
+                                                                    goals-readable))
                  card-changes))
        (every? (fn [[_ group]] (collection/can-move-all? (mapv first group) (second (first group))))
                (group-by (comp #(select-keys % [:collection_id]) second) card-changes))
@@ -1158,7 +1442,8 @@
           (cond
             (not (can-update-apart-from-collection-and-sandboxes? card changes
                                                                   (summary-owner-writable [pair])
-                                                                  (dashboards-move-permitted? [pair])))
+                                                                  (dashboards-move-permitted? [pair])
+                                                                  (updated-goals-readable? [pair])))
             pair
 
             (= :not-found move) (api/check-404 nil)
@@ -1346,7 +1631,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Card
   [_model alias]
-  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
+  [:not= (u/qualified-key alias :creator_id) config/internal-mb-user-id])
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."
@@ -2454,14 +2739,17 @@
   (invalidate-cached-results! card-ids invalidated-at))
 
 (mu/defn link-to-metabot-conversation! :- :int
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`, in
-  the change log and in one statement that publishes no event, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id        :- :string]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Card :update :id card-id)
-    (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+  "Record that the Card of each `[card-id chart-id]` of `card-chart-ids` was saved from the MetabotConversation with
+  `conversation-id` as its chart, in the change log and in one statement per Card that publishes no event, returning
+  the number updated."
+  [conversation-id :- :string
+   card-chart-ids  :- [:sequential [:tuple ::lib.schema.id/card :string]]]
+  (if (empty? card-chart-ids)
+    0
+    (t2/with-transaction [_conn]
+      (change-log/log-changes! :model/Card :update (mapv (fn [[card-id _]] {:id card-id}) card-chart-ids))
+      (transduce (map (fn [[card-id chart-id]] (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+                 + 0 card-chart-ids))))
 
 (defmethod qp.card-writes/touch-last-used! :model/Card
   [_model card-id->timestamp]
@@ -2678,6 +2966,7 @@
   "The `snapshot` of a Card revision to write to the card `card-id`, after the permission check that a revert needs."
   [card-id _user-id snapshot]
   (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
+  (check-updated-goal-references [[(first (queries.db/cards #{card-id})) snapshot]])
   snapshot)
 
 (defmethod public-sharing/shown-card-ids :model/Card
@@ -2798,9 +3087,11 @@
    :dependencies queries.dependencies/dependencies
    :analysis     queries.dependencies/analysis
 
-   :dependency-columns #{:type :dataset_query :dimension_mappings :parameters}
-   :analysis-columns   #{:type :dataset_query}
-   :output-columns     #{:type :result_metadata}})
+   :dependency-columns       #{:type :dataset_query :dimension_mappings :parameters :visualization_settings}
+   ;; the dynamic goal sources are the only dependencies viz settings hold
+   :dependency-column-values {:visualization_settings queries.dependencies/goal-dependencies}
+   :analysis-columns         #{:type :dataset_query}
+   :output-columns           #{:type :result_metadata}})
 
 (defmethod replacement/spec :model/Card [_model]
   {:source-database-id :database_id

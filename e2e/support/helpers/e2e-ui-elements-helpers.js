@@ -462,8 +462,8 @@ export const editingDashboardParametersContainer = () => {
   return cy.findByTestId("edit-dashboard-parameters-widget-container");
 };
 
-export const undoToast = () => {
-  return cy.findByTestId("toast-undo");
+export const undoToast = (options = {}) => {
+  return cy.findByTestId("toast-undo", options);
 };
 
 export const undoToastList = () => {
@@ -586,10 +586,6 @@ export function tableHeaderClick(headerString) {
 
 export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
   return popover({ testId: "click-actions-popover", skipVisibilityCheck });
-}
-
-export function segmentEditorPopover() {
-  return popover({ testId: "segment-popover" });
 }
 
 /**

@@ -1,16 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { addLocale, useLocale } from "ttag";
 
 import { screen, waitFor, within } from "__support__/ui";
 import type { DashboardSubscription } from "metabase-types/api";
 import {
+  createMockCard,
   createMockChannel,
+  createMockDashboardCard,
   createMockDashboardSubscription,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import {
   dashcard,
   hasBasicFilterOptions,
+  pickFrequency,
   selectScheduleTime,
   setup,
   user,
@@ -283,6 +288,47 @@ describe("DashboardSubscriptionsSidebar", () => {
       ).toBeInTheDocument();
     });
 
+    it("should enable 'Done' and 'Send to Slack now' only after a channel is picked, and save the channel id (metabase#14494, metabase#14515)", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Send to Slack now" }),
+      ).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByPlaceholderText("Pick a user or channel..."),
+      );
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("#random"),
+      );
+
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Send to Slack now" }),
+      ).toBeEnabled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/pulse", { method: "POST" }),
+        ).toHaveLength(1),
+      );
+      const payload: unknown = await fetchMock.callHistory
+        .lastCall("path:/api/pulse", { method: "POST" })
+        ?.request?.json();
+      expect(payload).toMatchObject({
+        channels: [
+          {
+            channel_type: "slack",
+            details: { channel: "#random", channel_id: "C002" },
+          },
+        ],
+      });
+    });
+
     it("should send the include_pdf channel detail to the backend when the PDF switch is on", async () => {
       setup({ isAdmin: false, email: false, slack: true });
 
@@ -360,23 +406,30 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(payload.cards[0].id).toEqual(dashcard.id);
     });
 
-    it("should keep 'Send email now' enabled when the frequency change clears the time", async () => {
+    it("should not enable 'Done' without a recipient, and keep 'Send email now' enabled when the frequency change clears the time (metabase#17657)", async () => {
       setup();
 
       await userEvent.click(await screen.findByText("Email it"));
-      await userEvent.click(
-        await screen.findByPlaceholderText(
-          "Enter user names or email addresses",
-        ),
+      const recipientInput = await screen.findByPlaceholderText(
+        "Enter user names or email addresses",
       );
+      expect(recipientInput).toBeVisible();
+
+      await pickFrequency("monthly");
+      await selectScheduleTime();
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+
+      await userEvent.click(recipientInput);
       await userEvent.click(
         await screen.findByText(`${user.first_name} ${user.last_name}`),
       );
+      await userEvent.keyboard("{Escape}");
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
 
-      await userEvent.click(screen.getByTestId("select-frequency"));
-      await userEvent.click(
-        within(await screen.findByRole("listbox")).getByText("weekly"),
-      );
+      await pickFrequency("hourly");
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+
+      await pickFrequency("weekly");
 
       const sendNowButton = screen.getByRole("button", {
         name: "Send email now",
@@ -386,9 +439,24 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(sendNowButton);
 
-      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
-      const payload = await lastCall?.request?.json();
-      expect(payload.channels).toHaveLength(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/pulse/test"),
+        ).toHaveLength(1),
+      );
+      const payload: unknown = await fetchMock.callHistory
+        .lastCall("path:/api/pulse/test")
+        ?.request?.json();
+      expect(payload).toMatchObject({
+        channels: [
+          {
+            channel_type: "email",
+            schedule_type: "weekly",
+            schedule_hour: null,
+            recipients: [expect.objectContaining({ id: user.id })],
+          },
+        ],
+      });
     });
 
     it("should persist the include_pdf channel detail when the PDF switch is toggled on", async () => {
@@ -419,6 +487,317 @@ describe("DashboardSubscriptionsSidebar", () => {
       const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
       const payload = await lastCall?.request?.json();
       expect(payload.channels[0].details.include_pdf).toBe(true);
+    });
+
+    it("should keep the typed text and add no recipient when Escape closes the people dropdown (metabase#17186, metabase#24629)", async () => {
+      const otherUser = createMockUser({
+        id: 2,
+        first_name: "Bobby",
+        last_name: "Kessler",
+        common_name: "Bobby Kessler",
+        email: "bobby@example.com",
+      });
+      setup({ recipients: [user, otherUser] });
+
+      await userEvent.click(await screen.findByText("Email it"));
+      const recipientInput = await screen.findByPlaceholderText(
+        "Enter user names or email addresses",
+      );
+      await userEvent.click(recipientInput);
+      expect(await screen.findByRole("listbox")).toHaveTextContent(
+        user.first_name ?? "",
+      );
+
+      await userEvent.type(recipientInput, "Bobby");
+      expect(
+        within(screen.getByRole("listbox")).getByText("Bobby Kessler"),
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("listbox")).queryByText(
+          `${user.first_name} ${user.last_name}`,
+        ),
+      ).not.toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() =>
+        expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+      );
+      expect(recipientInput).toBeVisible();
+      expect(recipientInput).toHaveValue("Bobby");
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
+
+    it("should handle a saved subscription without recipients (metabase#17657)", async () => {
+      const pulse = createMockDashboardSubscription({
+        id: 10,
+        channels: [
+          createMockChannel({
+            schedule_type: "monthly",
+            schedule_day: "mon",
+            schedule_hour: 8,
+            schedule_frame: "first",
+            recipients: [],
+          }),
+        ],
+      });
+      fetchMock.put("path:/api/pulse/10", async ({ options }) => {
+        const body: unknown = JSON.parse(String(options.body));
+        return body;
+      });
+      setup({ pulses: [pulse] });
+
+      await userEvent.click(await screen.findByText(/^Emailed monthly/));
+      expect(
+        await screen.findByRole("button", { name: "Done" }),
+      ).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByPlaceholderText("Enter user names or email addresses"),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls("path:/api/pulse/10")).toHaveLength(
+          1,
+        ),
+      );
+      const payload: unknown = await fetchMock.callHistory
+        .lastCall("path:/api/pulse/10")
+        ?.request?.json();
+      expect(payload).toMatchObject({
+        channels: [
+          {
+            schedule_type: "monthly",
+            schedule_frame: "first",
+            recipients: [expect.objectContaining({ id: user.id })],
+          },
+        ],
+      });
+    });
+
+    it("should open the email form for a non-admin who adds another subscription", async () => {
+      setup({ isAdmin: false, email: true, slack: false });
+
+      await screen.findByText("Email this dashboard");
+      await userEvent.click(
+        screen.getByPlaceholderText("Enter user names or email addresses"),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      const payload: unknown = await fetchMock.callHistory
+        .lastCall("path:/api/pulse", { method: "POST" })
+        ?.request?.json();
+      expect(payload).toMatchObject({
+        channels: [
+          {
+            channel_type: "email",
+            recipients: [expect.objectContaining({ id: user.id })],
+          },
+        ],
+      });
+
+      await userEvent.click(screen.getByLabelText("add icon"));
+      expect(await screen.findByText("Email this dashboard")).toBeVisible();
+    });
+
+    it("should reset the new subscription form on cancel and persist the attachments of a saved one (metabase#30314, metabase#14117)", async () => {
+      const ordersDashcard = createMockDashboardCard({
+        id: 11,
+        card_id: 21,
+        card: createMockCard({ id: 21, name: "Orders", display: "table" }),
+      });
+      const productsDashcard = createMockDashboardCard({
+        id: 12,
+        card_id: 22,
+        card: createMockCard({ id: 22, name: "Products", display: "table" }),
+      });
+      setup({ isAdmin: true, dashcards: [ordersDashcard, productsDashcard] });
+
+      await userEvent.click(await screen.findByText("Email it"));
+      const attachResults = await screen.findByLabelText("Attach results");
+      expect(attachResults).not.toBeChecked();
+      await userEvent.click(attachResults);
+      const questionsToAttach = await screen.findByLabelText(
+        "Questions to attach",
+      );
+      expect(questionsToAttach).not.toBeChecked();
+      await userEvent.click(questionsToAttach);
+      expect(screen.getByLabelText("Products")).toBeChecked();
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(await screen.findByText("Email it"));
+
+      expect(await screen.findByLabelText("Attach results")).not.toBeChecked();
+      expect(screen.queryByText("Questions to attach")).not.toBeInTheDocument();
+      expect(screen.queryByText(".xlsx")).not.toBeInTheDocument();
+      expect(screen.queryByText(".csv")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByPlaceholderText("Enter user names or email addresses"),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      await userEvent.keyboard("{Escape}");
+
+      await userEvent.click(screen.getByLabelText("Attach results"));
+      await userEvent.click(await screen.findByText("Questions to attach"));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      expect(await screen.findByText("Subscriptions")).toBeInTheDocument();
+      const payload: unknown = await fetchMock.callHistory
+        .lastCall("path:/api/pulse", { method: "POST" })
+        ?.request?.json();
+      expect(payload).toMatchObject({
+        cards: [
+          { id: 21, dashboard_card_id: 11, include_csv: true },
+          { id: 22, dashboard_card_id: 12, include_csv: true },
+        ],
+      });
+
+      await userEvent.click(screen.getByText("Emailed hourly"));
+      expect(await screen.findByText("Questions to attach")).toBeVisible();
+      expect(screen.getByLabelText("Orders")).toBeChecked();
+      expect(screen.getByLabelText("Products")).toBeChecked();
+    });
+
+    it("should not describe a monthly schedule with a 'null' day of the week (metabase#14405)", async () => {
+      setup({ isAdmin: false, email: true, slack: false });
+
+      await screen.findByText("Email this dashboard");
+      await userEvent.click(
+        screen.getByPlaceholderText("Enter user names or email addresses"),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      await userEvent.click(screen.getByText("To"));
+
+      await pickFrequency("monthly");
+      await userEvent.click(screen.getByTestId("select-frame"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("15th"),
+      );
+      await userEvent.click(screen.getByTestId("select-frame"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("first"),
+      );
+      await selectScheduleTime();
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      const description = await screen.findByText(
+        /^Emailed monthly on the first/,
+      );
+      expect(description).toHaveTextContent(
+        "Emailed monthly on the first calendar day at 8:00 AM",
+      );
+      expect(description).not.toHaveTextContent(/null/);
+      const payload: unknown = await fetchMock.callHistory
+        .lastCall("path:/api/pulse", { method: "POST" })
+        ?.request?.json();
+      expect(payload).toMatchObject({
+        channels: [
+          {
+            schedule_type: "monthly",
+            schedule_frame: "first",
+            schedule_hour: 8,
+          },
+        ],
+      });
+    });
+
+    it("should list exactly the recipients the server returns", async () => {
+      const recipients = [
+        createMockUser({
+          id: 1,
+          first_name: "Ada",
+          last_name: "Lovelace",
+          common_name: "Ada Lovelace",
+        }),
+        createMockUser({
+          id: 2,
+          first_name: "Bobby",
+          last_name: "Kessler",
+          common_name: "Bobby Kessler",
+        }),
+        createMockUser({
+          id: 3,
+          first_name: "Corbin",
+          last_name: "Mertz",
+          common_name: "Corbin Mertz",
+        }),
+      ];
+      setup({ isAdmin: false, email: true, slack: false, recipients });
+
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      const listbox = await screen.findByRole("listbox");
+      const options = within(listbox).getAllByRole("option");
+      expect(options).toHaveLength(3);
+      recipients.forEach(({ common_name }) =>
+        expect(
+          within(listbox).getByRole("option", {
+            name: new RegExp(common_name),
+          }),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    describe("with a non-English locale", () => {
+      beforeEach(() => {
+        addLocale("zz-fake", {
+          headers: { "plural-forms": "nplurals=2; plural=(n != 1);" },
+          translations: {
+            "": {
+              hourly: { msgid: "hourly", msgstr: ["[zz] hourly"] },
+              "Delete this subscription": {
+                msgid: "Delete this subscription",
+                msgstr: ["[zz] Delete this subscription"],
+              },
+            },
+            adverb: {
+              hourly: { msgid: "hourly", msgstr: ["[zz] hourly"] },
+            },
+          },
+        });
+        useLocale("zz-fake");
+      });
+
+      afterEach(() => {
+        useLocale("en");
+      });
+
+      it("should localize the schedule type in the delete confirmation modal", async () => {
+        const pulse = createMockDashboardSubscription({
+          id: 10,
+          channels: [
+            createMockChannel({ schedule_type: "hourly", recipients: [user] }),
+          ],
+        });
+        setup({ pulses: [pulse] });
+
+        await userEvent.click(await screen.findByText(/\[zz\] hourly/));
+        await userEvent.click(
+          await screen.findByText("[zz] Delete this subscription"),
+        );
+
+        const modal = await screen.findByTestId(
+          "delete-confirmation-modal-pulse",
+        );
+        expect(within(modal).getByText("[zz] hourly")).toBeVisible();
+      });
     });
 
     describe("subject", () => {

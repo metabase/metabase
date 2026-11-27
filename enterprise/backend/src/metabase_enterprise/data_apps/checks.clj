@@ -104,6 +104,13 @@
     (check-app-query data-app query))
   nil)
 
+(defn- card-refusal
+  "The message refusing `data-app` the card with `card-id`."
+  [data-app card-id]
+  (if (preview? data-app)
+    (tru "A data app''s dev preview cannot run saved cards, not the card {0}." (str card-id))
+    (tru "A data app can run only the cards in its own collection, not the card {0}." (str card-id))))
+
 (defenterprise-schema check-card :- :nil
   "Throws a 400 unless `data-app` is an app and the card with `card-id` is in its collection, after a read check of the
   card; a dev preview runs no saved card."
@@ -111,12 +118,29 @@
   [data-app :- ::data-apps.schema/data-app-info
    card-id  :- ::lib.schema.id/card]
   (let [card (api/read-check :model/Card card-id)]
-    (when (preview? data-app)
-      (throw (data-app-error (tru "A data app''s dev preview cannot run saved cards, not the card {0}." (str card-id)))))
-    (when-not (in-app-collection? data-app card)
-      (throw (data-app-error (tru "A data app can run only the cards in its own collection, not the card {0}."
-                                  (str card-id))))))
+    (when (or (preview? data-app) (not (in-app-collection? data-app card)))
+      (throw (data-app-error (card-refusal data-app card-id)))))
   nil)
+
+(defenterprise-schema goal-source-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the dynamic goal `sources` that `data-app` may not run, keyed by `[type id]`: a dev preview runs
+  no card, an app only the cards in its collection and no measure, as in [[check-adhoc-query]]."
+  :feature :data-apps
+  [data-app :- ::data-apps.schema/data-app-info
+   sources  :- [:sequential [:map [:type :string] [:id :int]]]]
+  (let [ids-of   (fn [source-type] (keep #(when (= source-type (:type %)) (:id %)) sources))
+        {card-ids true, invalid-ids false} (group-by pos-int? (ids-of "card"))
+        external (if (preview? data-app)
+                   card-ids
+                   (some->> (not-empty (set card-ids))
+                            (data-apps.db/external-card-ids (app-collection-id data-app))))
+        measures (when-not (preview? data-app) (ids-of "measure"))]
+    (into {}
+          (concat (map (fn [card-id] [["card" card-id] (card-refusal data-app card-id)]) (concat invalid-ids external))
+                  (map (fn [measure-id]
+                         [["measure" measure-id]
+                          (tru "A data app cannot use measures, not the measure {0}." (str measure-id))])
+                       measures)))))
 
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` is an app and the action with `action-id` is in its collection, after a read check of

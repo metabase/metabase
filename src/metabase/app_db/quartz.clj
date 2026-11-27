@@ -82,6 +82,7 @@
   registered via [[register-jdbc-property-setter!]]. A registered setter that throws is logged and
   skipped so the scheduler still gets a working delegate."
   [db-type]
+  ;; outside the `try` below on purpose: if the secure delegate cannot be installed, the scheduler does not start
   (secure-delegate/install! db-type)
   (doseq [setter @jdbc-property-setters]
     (try

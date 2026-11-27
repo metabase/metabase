@@ -409,7 +409,7 @@ describe("scenarios > visualizations > table", () => {
 
     H.summarize();
 
-    cy.findAllByTestId("dimension-list-item-name").contains(ccName).click();
+    H.clickSummaryField(ccName);
 
     cy.wait("@dataset");
 
@@ -460,12 +460,9 @@ describe("scenarios > visualizations > table", () => {
 
     H.summarize();
 
-    cy.findAllByTestId("dimension-list-item")
-      .contains("ID")
-      .parents("[data-testid='dimension-list-item']")
-      .within(() => {
-        cy.findByLabelText("More info").realHover();
-      });
+    H.summaryField("ID", { section: "Orders" }).within(() => {
+      cy.findByLabelText("More info").realHover();
+    });
 
     H.hovercard().within(() => {
       cy.contains("Entity Key");
@@ -687,10 +684,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByTestId("qb-header")
         .button(/Summarize/)
         .click();
-      H.rightSidebar()
-        .findByLabelText("Source")
-        .findByRole("button", { name: "Remove dimension" })
-        .click();
+      H.removeSummaryItem("Source");
 
       cy.findAllByTestId("header-cell")
         .should("have.length", 2)

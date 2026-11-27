@@ -13,12 +13,12 @@ on:
       hours:
         description: 'TTL in hours for per-run garbage (minimum 4)'
         required: false
-        default: '12'
+        default: '4'
         type: string
 
 # `inputs.*` is empty on the scheduled run, so each falls back to the nightly value.
 env:
-  GC_HOURS: ${{ inputs.hours || 12 }} # for temp data
+  GC_HOURS: ${{ inputs.hours || 4 }} # for temp data
   GC_DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift,motherduck' }}
 
 concurrency:

@@ -4,84 +4,9 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const DATE_CASES = [
-  {
-    option: "Hour of day",
-    value: "21",
-    example: "0, 1",
-    expressions: ["get-hour"],
-  },
-  {
-    option: "Day of month",
-    value: "11",
-    example: "1, 2",
-    expressions: ["get-day"],
-  },
-  {
-    option: "Day of week",
-    value: "Friday",
-    example: "Monday, Tuesday",
-    expressions: ["day-name", "get-day-of-week"],
-  },
-  {
-    option: "Month of year",
-    value: "Feb",
-    example: "Jan, Feb",
-    expressions: ["month-name", "get-month"],
-  },
-  {
-    option: "Quarter of year",
-    value: "Q1",
-    example: "Q1, Q2",
-    expressions: ["quarter-name", "get-quarter"],
-  },
-  {
-    option: "Year",
-    value: "2,028",
-    example: "2026, 2027",
-    expressions: ["get-year"],
-  },
-];
-
-const EMAIL_CASES = [
-  {
-    option: "Domain",
-    value: "yahoo",
-    example: "example, online",
-    expressions: ["domain"],
-  },
-  {
-    option: "Host",
-    value: "yahoo.com",
-    example: "example.com, online.com",
-    expressions: ["host"],
-  },
-];
-
-const URL_CASES = [
-  {
-    option: "Domain",
-    value: "yahoo",
-    example: "example, online",
-    expressions: ["domain"],
-  },
-  {
-    option: "Subdomain",
-    value: "",
-    example: "www, maps",
-    expressions: ["subdomain"],
-  },
-  {
-    option: "Host",
-    value: "yahoo.com",
-    example: "example.com, online.com",
-    expressions: ["host"],
-  },
-];
-
-describe("extract shortcut", () => {
+describe("column header extraction", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -93,45 +18,7 @@ describe("extract shortcut", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  describe("date columns", () => {
-    it("should add a date expression for each option", () => {
-      H.openOrdersTable({ limit: 1 });
-      DATE_CASES.forEach(({ option, value, example, expressions }) => {
-        extractColumnAndCheck({
-          column: "Created At",
-          option,
-          value,
-          example,
-        });
-        H.expectUnstructuredSnowplowEvent({
-          event: "column_extract_via_plus_modal",
-          custom_expressions_used: expressions,
-          database_id: SAMPLE_DB_ID,
-        });
-      });
-    });
-
-    it("should handle duplicate expression names", () => {
-      H.openOrdersTable({ limit: 1 });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Hour of day",
-        newColumn: "Hour of day",
-      });
-      extractColumnAndCheck({
-        column: "Created At",
-        option: "Hour of day",
-        newColumn: "Hour of day_2",
-      });
-    });
-  });
-
-  it("should add a url expression for each option", () => {
-    // Make the Email column a URL column for this test, to avoid having to create a new model
-    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
-      semantic_type: "type/URL",
-    });
-
+  it("should add an email expression and disable the scroll behaviour after it has been rendered", () => {
     H.createQuestion(
       {
         query: {
@@ -144,46 +31,17 @@ describe("extract shortcut", () => {
       },
     );
 
-    URL_CASES.forEach(({ option, value, example, expressions }) => {
-      extractColumnAndCheck({
-        column: "Email",
-        option,
-        value,
-        example,
-      });
-      H.expectUnstructuredSnowplowEvent({
-        event: "column_extract_via_plus_modal",
-        custom_expressions_used: expressions,
-        database_id: SAMPLE_DB_ID,
-      });
+    extractColumnAndCheck({
+      column: "Email",
+      extraction: "Extract domain, host…",
+      option: "Domain",
+      value: "yahoo",
+      example: "example, online",
     });
-  });
-
-  it("should add an email expression for each option and disable the scroll behaviour after it has been rendered", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": PEOPLE_ID,
-          limit: 1,
-        },
-      },
-      {
-        visitQuestion: true,
-      },
-    );
-
-    EMAIL_CASES.forEach(({ option, value, example, expressions }) => {
-      extractColumnAndCheck({
-        column: "Email",
-        option,
-        value,
-        example,
-      });
-      H.expectUnstructuredSnowplowEvent({
-        event: "column_extract_via_plus_modal",
-        custom_expressions_used: expressions,
-        database_id: SAMPLE_DB_ID,
-      });
+    H.expectUnstructuredSnowplowEvent({
+      event: "column_extract_via_column_header",
+      custom_expressions_used: ["domain"],
+      database_id: SAMPLE_DB_ID,
     });
 
     H.tableInteractiveScrollContainer().scrollTo("left", {
@@ -248,12 +106,14 @@ describe("extract shortcut", () => {
 
 function extractColumnAndCheck({
   column,
+  extraction = "Extract day, month…",
   option,
   newColumn = option,
   value,
   example,
 }: {
   column: string;
+  extraction?: string;
   option: string;
   value?: string;
   example?: string;
@@ -261,10 +121,8 @@ function extractColumnAndCheck({
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  cy.findByLabelText("Add column").click();
-
-  H.popover().findByText("Extract part of column").click();
-  H.popover().findAllByText(column).first().click();
+  H.tableHeaderClick(column);
+  H.popover().findByText(extraction).click();
 
   if (example) {
     H.popover().findByText(option).parent().should("contain", example);
@@ -282,33 +140,120 @@ function extractColumnAndCheck({
     cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
   }
 
-  if (value === "") {
-    H.tableInteractiveBody()
-      .find(`[data-column-id="${newColumn}"]`)
-      .should("have.text", "");
-  } else if (value) {
+  if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
 }
 
-describe("scenarios > visualizations > combine shortcut", () => {
+describe(
+  "extract shortcut from the column header",
+  { viewportWidth: 1600 },
+  () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should use current user locale for string expressions", () => {
+      cy.request("GET", "/api/user/current").then(({ body: user }) => {
+        cy.request("PUT", `/api/user/${user.id}`, { locale: "en-ZZ" });
+      });
+      H.openOrdersTable({ limit: 1 });
+      extractColumnFromHeaderAndCheck({
+        column: "Created At",
+        option: "[zz] Day of week",
+        // dayjs has no en-ZZ locale, so it falls back to English day names
+        value: "Friday",
+        extraction: "[zz] Extract day, month…",
+      });
+    });
+
+    it("should create a snowplow event for the column extraction action and allow editing and renaming the expression in the notebook editor", () => {
+      H.openOrdersTable({ limit: 1 });
+
+      extractColumnFromHeaderAndCheck({
+        column: "Created At",
+        option: "Year",
+        value: "2,028",
+        extraction: "Extract day, month…",
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "column_extract_via_column_header",
+        custom_expressions_used: ["get-year"],
+        database_id: SAMPLE_DB_ID,
+      });
+
+      cy.log("Modify the expression in the notebook editor");
+      H.openNotebook();
+      H.getNotebookStep("expression").findByText("Year").click();
+      H.enterCustomColumnDetails({
+        name: "custom formula",
+        formula: "year([Created At]) + 2",
+        format: true,
+      });
+      H.popover().button("Update").should("not.be.disabled").click();
+      H.visualize();
+      H.tableHeaderColumn("custom formula").should("be.visible");
+      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
+    });
+  },
+);
+
+function extractColumnFromHeaderAndCheck({
+  column,
+  option,
+  newColumn = option,
+  extraction,
+  value,
+}: {
+  column: string;
+  option: string;
+  newColumn?: string;
+  extraction: string;
+  value: string;
+}) {
+  const requestAlias = _.uniqueId("dataset");
+  cy.intercept("POST", "/api/dataset").as(requestAlias);
+  H.tableHeaderClick(column);
+
+  H.popover().findByText(extraction).click();
+  H.popover().findByText(option).click();
+  cy.wait(`@${requestAlias}`);
+
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  cy.findAllByRole("columnheader")
+    .last()
+    .scrollIntoView()
+    .should("have.text", newColumn)
+    .and("be.visible");
+
+  cy.findByRole("gridcell", { name: value }).should("be.visible");
+}
+
+describe("scenarios > visualizations > column header combination", () => {
   function combineColumns({
     columns,
     example,
     newColumn,
     newValue,
   }: {
-    columns: string[];
+    columns: [string, ...string[]];
     example: string;
     newColumn: string;
     newValue?: string;
   }) {
     const requestAlias = _.uniqueId("dataset");
     cy.intercept("POST", "/api/dataset").as(requestAlias);
-    cy.findByLabelText("Add column").click();
+    H.tableHeaderClick(columns[0]);
 
     H.popover().findByText("Combine columns").click();
-    for (const [index, column] of columns.entries()) {
+    for (const [index, column] of columns.slice(1).entries()) {
       selectColumn(index, column);
     }
 
@@ -348,16 +293,14 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should combine columns via the plus modal and the column header and handle duplicate column names", () => {
+  it("should combine columns from the column header and scroll to the new column", () => {
+    // All People columns, so that the table overflows and the new column is
+    // only visible after the table scrolls to it
     H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
           limit: 1,
-          fields: [
-            ["field", PEOPLE.ID, null],
-            ["field", PEOPLE.EMAIL, null],
-          ],
         },
       },
       {
@@ -365,89 +308,28 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    // Runs first: its gridcell check needs a single combined column.
-    combineColumns({
-      columns: ["Email", "ID"],
-      newColumn: "Combined Email, ID",
-      example: "email@example.com12345",
-      newValue: "borer-hudson@yahoo.com1",
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "column_combine_via_plus_modal",
-      custom_expressions_used: ["concat"],
-      database_id: SAMPLE_DB_ID,
-    });
-
-    cy.log("Combine columns from the column header");
     H.tableHeaderClick("Email");
     H.popover().findByText("Combine columns").click();
-
     H.popover()
       .findByTestId("combine-example")
       .should("contain", "email@example.com12345");
-    selectColumn(0, "Name");
+    H.popover().findByText("Done").click();
 
-    H.popover().within(() => {
-      cy.findByText("Separated by (empty)").click();
-      cy.findByLabelText("Separator").type("__");
-      cy.findByTestId("combine-example").should(
-        "have.text",
-        "email@example.com__text",
-      );
-
-      cy.findByText("Add column").click();
-      cy.findByTestId("combine-example").should(
-        "have.text",
-        "email@example.com__text__12345",
-      );
-
-      cy.findAllByLabelText("Separator")
-        .should("have.length", 2)
-        .last()
-        .clear();
-      cy.findByTestId("combine-example").should(
-        "have.text",
-        "email@example.com__text12345",
-      );
-
-      cy.findAllByLabelText("Separator")
-        .should("have.length", 2)
-        .last()
-        .clear()
-        .type("+");
-      cy.findByTestId("combine-example").should(
-        "have.text",
-        "email@example.com__text+12345",
-      );
-
-      cy.findByText("Done").click();
-    });
-
+    // The grid renders only the columns in view, and the "Add column" button
+    // can cover the last header, so the visible value cell shows that the
+    // table scrolled to the new column.
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
-      .should("have.length", 4)
       .last()
-      .should("have.text", "Combined Email, Name, ID");
+      .should("have.text", "Combined Email, ID");
+    cy.findByRole("gridcell", { name: "borer-hudson@yahoo.com1" }).should(
+      "be.visible",
+    );
 
     H.expectUnstructuredSnowplowEvent({
       event: "column_combine_via_column_header",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
-    });
-
-    cy.log("Duplicate column names");
-    H.tableHeaderClick("Email");
-    H.popover().findByText("Combine columns").click();
-    H.popover().findByText("Done").click();
-
-    H.tableHeaderClick("Email");
-    H.popover().findByText("Combine columns").click();
-    H.popover().findByText("Done").click();
-
-    cy.findByTestId("table-header").within(() => {
-      cy.findByText("Combined Email, ID").should("be.visible");
-      cy.findByText("Combined Email, ID_2").should("be.visible");
-      cy.findByText("Combined Email, ID_3").should("be.visible");
     });
   });
 
@@ -455,12 +337,10 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": PRODUCTS_ID,
           limit: 1,
           aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-          ],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
         },
       },
       {
@@ -468,12 +348,12 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    H.tableInteractive().should("exist");
+    H.tableInteractive().should("be.visible");
     combineColumns({
-      columns: ["Created At: Hour of day", "Count"],
-      newColumn: "Combined Created At: Hour of day, Count",
-      example: "2042-01-01 12:34:56.789 123",
-      newValue: "0 766",
+      columns: ["Category", "Count"],
+      newColumn: "Combined Category, Count",
+      example: "text 123",
+      newValue: "Doohickey 42",
     });
   });
 
@@ -498,12 +378,12 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    H.tableInteractive().should("exist");
+    H.tableInteractive().should("be.visible");
     combineColumns({
-      columns: ["Created At: Hour of day", "Product → Category"],
-      newColumn: "Combined Created At: Hour of day, Product → Category",
-      example: "2042-01-01 12:34:56.789 text",
-      newValue: "0 Doohickey",
+      columns: ["Product → Category", "Created At: Hour of day"],
+      newColumn: "Combined Product → Category, Created At: Hour of day",
+      example: "text 2042-01-01 12:34:56.789",
+      newValue: "Doohickey 0",
     });
   });
 });

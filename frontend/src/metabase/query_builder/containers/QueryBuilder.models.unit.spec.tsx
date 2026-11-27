@@ -780,13 +780,12 @@ describe("QueryBuilder > structured models", () => {
           name: /Summarize/,
         }),
       );
-      const sidebar = await screen.findByTestId("sidebar-right");
+      const fieldList = await screen.findByTestId("summary-field-list");
       // The model's own column, listed before "Product → Created At"
-      const [createdAt] = within(sidebar).getAllByText("Created At");
+      const [createdAt] = within(fieldList).getAllByRole("button", {
+        name: "Created At",
+      });
       await userEvent.click(createdAt);
-      await userEvent.click(
-        within(sidebar).getByRole("button", { name: "Done" }),
-      );
       await waitForBreakoutRunAfter(0);
       await expectSelectedDisplay({ selected: "Line", other: "Table" });
 
@@ -1039,6 +1038,10 @@ describe("QueryBuilder > models", () => {
 
       expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
       expect(screen.queryByTestId("table-root")).not.toBeInTheDocument();
+      const timeseriesChrome = await screen.findByTestId("timeseries-chrome");
+      for (const text of ["View", "All time", "by", "Year"]) {
+        expect(within(timeseriesChrome).getByText(text)).toBeInTheDocument();
+      }
 
       const menu = await openActionsMenu();
       await userEvent.click(
@@ -1056,6 +1059,8 @@ describe("QueryBuilder > models", () => {
       });
       expect(await screen.findByTestId("table-root")).toBeInTheDocument();
       expect(screen.queryByTestId("chart-container")).not.toBeInTheDocument();
+      // metabase#28599
+      expect(screen.queryByTestId("timeseries-chrome")).not.toBeInTheDocument();
       await expectToBeModel();
 
       const toast = await screen.findByTestId("toast-undo");
@@ -1493,14 +1498,11 @@ describe("QueryBuilder > questions based on a model", () => {
 
     const filteredRuns = getDatasetQueries().length;
     await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
-    const sidebar = await screen.findByTestId("sidebar-right");
-    const [createdAtItem] = within(sidebar)
-      .getAllByTestId("dimension-list-item")
-      .filter((item) => within(item).queryByText("Created At"));
-    await userEvent.click(within(createdAtItem).getByText("Created At"));
-    await userEvent.click(
-      within(sidebar).getByRole("button", { name: "Done" }),
-    );
+    const fieldList = await screen.findByTestId("summary-field-list");
+    const [createdAt] = within(fieldList).getAllByRole("button", {
+      name: "Created At",
+    });
+    await userEvent.click(createdAt);
 
     expect(
       await within(screen.getByTestId("qb-header")).findByText(

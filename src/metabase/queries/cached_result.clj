@@ -40,11 +40,66 @@
       (log/debugf e "Cached result %s: computing the resolved source ids threw; denying" id)
       nil)))
 
+(defn- verified-source-ids
+  "The resolved source ids stored with `stored-result` when they were stamped from its query, `::unverifiable` when
+  checking that throws, or nil."
+  [{:keys [id dataset_query resolved_source_ids]}]
+  (try
+    (query-perms/verified-resolved-source-ids dataset_query resolved_source_ids)
+    (catch Exception e
+      (log/debugf "Cached result %s: computing the resolved source ids threw; denying: %s" id (ex-message e))
+      ::unverifiable)))
+
+(defn- live-source-ids-answers
+  "The resolved source ids of each of `queries`, or what resolving it throws, by query, resolved together, or nil when
+  resolving them together throws an `Exception`, so that each is then resolved on its own."
+  [queries]
+  (try
+    (zipmap queries (query-perms/resolved-source-ids-answers queries))
+    (catch Exception e
+      (log/debugf "Could not resolve the source ids of %d cached results together: %s" (count queries) (ex-message e))
+      nil)))
+
+(defn- stored-results->resolved-source-ids
+  "[[stored-result->resolved-source-ids]] of each of `stored-results`, those without a verified stored value resolved
+  together."
+  [stored-results]
+  (let [verified (mapv verified-source-ids stored-results)
+        live     (into []
+                       (comp (filter (comp nil? first))
+                             (map (comp :dataset_query second))
+                             (distinct))
+                       (map vector verified stored-results))
+        resolved (live-source-ids-answers live)]
+    (mapv (fn [{:keys [id dataset_query] :as stored-result} verified]
+            (let [answer (get resolved dataset_query ::unresolved)]
+              (cond
+                (= ::unverifiable verified)
+                nil
+
+                (some? verified)
+                (not-empty verified)
+
+                (= ::unresolved answer)
+                (stored-result->resolved-source-ids stored-result)
+
+                (instance? Exception answer)
+                (do (log/debugf "Cached result %s: computing the resolved source ids threw; denying: %s"
+                                id (ex-message answer))
+                    nil)
+
+                (instance? Throwable answer)
+                (throw answer)
+
+                :else
+                (not-empty answer))))
+          stored-results verified)))
+
 (defn- viewer-lens-compatible?
   "True when the current user's effective data-access lens (sandbox / impersonation / routing) is
   compatible with the lens the `stored-result` blob was computed under — i.e. the viewer may be
   served the creator's snapshot. See [[metabase.permissions.data-access-token]]. Only ever reached
-  for non-superusers — [[cached-result-blocked-reason]] passes superusers before any lens check.
+  for non-superusers — [[cached-results-blocked-reasons]] passes superusers before any lens check.
 
   When both the token and the query are present we compare lenses strictly. Two degenerate cases
   make that comparison impossible, and both deny (the viewer here is a non-admin):
@@ -57,7 +112,7 @@
       not run the query themselves either.
 
   A missing `:dataset_query` is not a degenerate case but a caller bug — the schema forbids NULL —
-  and [[cached-result-blocked-reason]] throws on it before we get here."
+  and [[cached-results-blocked-reasons]] throws on it before we get here."
   [stored-result resolved-source-ids data-access-token-reader]
   (if (nil? (:data_access_token stored-result))
     (do
@@ -76,23 +131,33 @@
 
 (defn- viewer-can-run-underlying-query?
   "Whether the current user holds the data perms to run the snapshot's own query. Only ever reached
-  for non-superusers — [[cached-result-blocked-reason]] passes superusers before any check.
+  for non-superusers — [[cached-results-blocked-reasons]] passes superusers before any check.
 
   The check absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
   throws — a stored query malformed enough to trip its `:- :map` schema, a source table that no
   longer exists — must not escape an authorization gate as a 500: deny instead."
   [stored-result resolved-source-ids]
   (try
-    (query-perms/can-run-query-with-resolved-source-ids? (:dataset_query stored-result) resolved-source-ids)
+    (first (query-perms/resolved-query-run-answers [(:dataset_query stored-result)] [resolved-source-ids]))
     (catch Exception e
       (log/debugf e "Cached result %s: the data-perms check threw; denying" (:id stored-result))
       false)))
 
-(defn- cached-result-blocked-reason
-  "If the current user must NOT be served the cached blob for `stored-result`, return a keyword
-  describing why. Returns nil when the cached blob is safe to stream.
+(defn- viewer-run-answers
+  "[[viewer-can-run-underlying-query?]] of each of `stored-results` with the same element of `resolved-source-ids`,
+  read for all of them together, or one by one when that throws."
+  [stored-results resolved-source-ids]
+  (try
+    (query-perms/resolved-query-run-answers (mapv :dataset_query stored-results) resolved-source-ids)
+    (catch Exception _
+      (mapv viewer-can-run-underlying-query? stored-results resolved-source-ids))))
 
-  Throws when `stored-result` has no `:dataset_query` (this should never happen).
+(defn- cached-results-blocked-reasons
+  "For each of `stored-results`, nil when the current user may be served its cached blob, else a keyword describing
+  why not, with the data perms of all of them read together and, with `share-token-reads?`, their lenses through one
+  [[perms/data-access-token-reader]].
+
+  Throws for the first of them that has no `:dataset_query` (this should never happen).
 
   Superusers pass unconditionally — \"superusers see every exploration\" is a deliberate product
   exemption from the same-lens rule. They hold every data perm, so the bypass skips nothing
@@ -102,37 +167,53 @@
     `:no-data-perms`        — current user lacks the data perms required to run the underlying query.
     `:incompatible-context` — current user's sandbox/impersonation/routing lens differs from the
                               lens the snapshot was computed under."
-  ([stored-result]
-   (cached-result-blocked-reason stored-result {}))
-  ([stored-result {:keys [data-access-token-reader] :or {data-access-token-reader perms/data-access-token}}]
-   (when (nil? (:dataset_query stored-result))
-     (throw (ex-info "stored-result is missing its dataset_query"
-                     {:stored-result-id (:id stored-result)})))
-   (if api/*is-superuser?*
-     nil
-     (let [resolved-source-ids (stored-result->resolved-source-ids stored-result)]
-       (cond
-         (nil? resolved-source-ids)
-         :no-data-perms
+  [stored-results {:keys [data-access-token-reader share-token-reads?]}]
+  (doseq [stored-result stored-results]
+    (when (nil? (:dataset_query stored-result))
+      (throw (ex-info "stored-result is missing its dataset_query"
+                      {:stored-result-id (:id stored-result)}))))
+  (if api/*is-superuser?*
+    (mapv (constantly nil) stored-results)
+    (let [resolved                 (stored-results->resolved-source-ids stored-results)
+          indexes                  (filterv #(some? (nth resolved %)) (range (count stored-results)))
+          runnable                 (zipmap indexes (viewer-run-answers (mapv #(nth stored-results %) indexes)
+                                                                       (mapv #(nth resolved %) indexes)))
+          data-access-token-reader (cond
+                                     data-access-token-reader data-access-token-reader
+                                     share-token-reads?       (perms/data-access-token-reader
+                                                               (keep (fn [i]
+                                                                       (when (get runnable i)
+                                                                         {:database-id (:database_id (nth stored-results i))
+                                                                          :table-ids   (:table-ids (nth resolved i))}))
+                                                                     indexes))
+                                     :else                    perms/data-access-token)]
+      (mapv (fn [i stored-result resolved-source-ids]
+              (cond
+                (nil? resolved-source-ids)
+                :no-data-perms
 
-         (not (viewer-can-run-underlying-query? stored-result resolved-source-ids))
-         :no-data-perms
+                (not (get runnable i))
+                :no-data-perms
 
-         (not (viewer-lens-compatible? stored-result resolved-source-ids data-access-token-reader))
-         :incompatible-context)))))
+                (not (viewer-lens-compatible? stored-result resolved-source-ids data-access-token-reader))
+                :incompatible-context))
+            (range) stored-results resolved))))
 
-(defn viewer-can-view-cached-result?
-  "Boolean form of [[assert-can-view-cached-result!]]: true when the current user may be served the
-  blob for `stored-result`."
-  ([stored-result]
-   (viewer-can-view-cached-result? stored-result {}))
-  ([stored-result opts]
-   (nil? (cached-result-blocked-reason stored-result opts))))
+(defn cached-result-view-answers
+  "Whether the current user may be served the blob of each of `stored-results`, in order, answered together, with
+  `opts` as [[cached-results-blocked-reasons]] takes them."
+  ([stored-results]
+   (cached-result-view-answers stored-results {}))
+  ([stored-results opts]
+   (mapv nil? (cached-results-blocked-reasons stored-results opts))))
 
-(defn assert-can-view-cached-result!
-  "Throw a 403 if the current user must not see the cached blob for `stored-result`."
-  [stored-result]
-  (when-let [reason (cached-result-blocked-reason stored-result)]
+(defn check-can-view-cached-results
+  "Throw a 403 for the first of `stored-results` whose cached blob the current user must not see, with their data
+  perms read together after the source ids of all of them are resolved, so that an `Error` resolving a later one is
+  thrown before an earlier one's 403."
+  [stored-results]
+  (doseq [[stored-result reason] (map vector stored-results (cached-results-blocked-reasons stored-results {}))
+          :when                  reason]
     (throw (ex-info (case reason
                       :no-data-perms        (tru "You do not have permissions to view the data underlying this cached result.")
                       :incompatible-context (tru "Cannot show cached results: your data access differs from the user who generated them.")
@@ -140,6 +221,11 @@
                     {:status-code      403
                      :reason           reason
                      :stored-result-id (:id stored-result)}))))
+
+(defn assert-can-view-cached-result!
+  "[[check-can-view-cached-results]] of `stored-result` alone."
+  [stored-result]
+  (check-can-view-cached-results [stored-result]))
 
 (defn deserialize-cached-result
   "Pull the QP result map out of a worker-serialized blob produced by

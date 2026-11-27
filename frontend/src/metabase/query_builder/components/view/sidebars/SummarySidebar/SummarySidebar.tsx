@@ -1,0 +1,259 @@
+import { DndContext } from "@dnd-kit/core";
+import { useId, useMemo, useState } from "react";
+import { t } from "ttag";
+
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
+import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
+
+import type { UpdateQueryHookProps } from "../../../../hooks/types";
+import { getSummaryGeneratedExpressions } from "../../../../store/selectors";
+
+import { SummaryDragPreview } from "./SummaryDragPreview";
+import { SummaryFieldList } from "./SummaryFieldList";
+import {
+  useRequestedFormulaEdit,
+  useSummaryFormulaBar,
+} from "./SummaryFormulaBar";
+import { useSummaryFormulaGenerator } from "./SummaryFormulaGenerator";
+import S from "./SummarySidebar.module.css";
+import { SummaryWells } from "./SummaryWells";
+import type {
+  SummaryField,
+  SummaryFieldSection,
+  SummaryPivotChange,
+  SummaryQueryChangeOptions,
+  SummaryWellId,
+} from "./types";
+import { updateSummaryFormula } from "./update-summary-formula";
+import { useSummaryDragAndDrop } from "./use-summary-drag-and-drop";
+import { useSummaryPivotLayout } from "./use-summary-pivot-layout";
+import {
+  addField,
+  areQueriesEqual,
+  clearWell,
+  getFieldSections,
+  replaceWellWithField,
+} from "./utils";
+
+function translateSections(
+  sections: SummaryFieldSection[],
+  tc: ContentTranslationFunction,
+): SummaryFieldSection[] {
+  return sections.map((section) => ({
+    ...section,
+    name: tc(section.name),
+    items: section.items.map((item) => ({ ...item, name: tc(item.name) })),
+  }));
+}
+
+function getFieldWellId(field: SummaryField): SummaryWellId {
+  return field.kind === "column" ? "columns" : "values";
+}
+
+type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
+  canPivot?: boolean;
+  pivotColumnSplit?: ColumnNameColumnSplitSetting;
+  onQueryChange: (
+    nextQuery: Lib.Query,
+    pivotChange?: SummaryPivotChange,
+  ) => void;
+};
+
+export function SummarySidebar({
+  query,
+  canPivot = true,
+  pivotColumnSplit,
+  onQueryChange,
+  stageIndex,
+}: SummarySidebarProps) {
+  const dispatch = useDispatch();
+  const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
+  const {
+    layout,
+    valueItems,
+    columnItems,
+    rowItems,
+    isPivotMode,
+    syncLayoutWithQuery,
+    changeLayout,
+    togglePivotMode,
+  } = useSummaryPivotLayout({
+    query,
+    stageIndex,
+    canPivot,
+    pivotColumnSplit,
+    onPivotChange: (pivotChange) => onQueryChange(query, pivotChange),
+  });
+
+  const handleQueryChange = (
+    nextQuery: Lib.Query,
+    options?: SummaryQueryChangeOptions,
+    addedWellId?: SummaryWellId,
+  ) => {
+    const result = updateSummaryFormula({
+      query,
+      nextQuery,
+      stageIndex,
+      generatedExpressions,
+      ...options,
+    });
+    dispatch(
+      setUIControls({
+        summaryGeneratedExpressions: result.generatedExpressions,
+      }),
+    );
+    onQueryChange(result.query, syncLayoutWithQuery(result.query, addedWellId));
+  };
+  const tc = useTranslateContent();
+  const sections = useMemo(
+    () => translateSections(getFieldSections(query, stageIndex), tc),
+    [query, stageIndex, tc],
+  );
+  const hasItems =
+    Lib.aggregations(query, stageIndex).length > 0 ||
+    Lib.breakouts(query, stageIndex).length > 0;
+
+  const handleWellAdd = (
+    nextQuery: Lib.Query,
+    wellId: SummaryWellId,
+    isFormulaCreated = false,
+  ) => {
+    const isGroupingWithoutValues =
+      wellId !== "values" &&
+      Lib.aggregations(nextQuery, stageIndex).length === 0;
+    const nextSummary = isGroupingWithoutValues
+      ? Lib.aggregateByCount(nextQuery, stageIndex)
+      : nextQuery;
+    if (!areQueriesEqual(query, nextSummary)) {
+      handleQueryChange(nextSummary, { isFormulaCreated }, wellId);
+    }
+  };
+
+  const { bar, formulaInputs, draftFormula, editingFormulaClause } =
+    useSummaryFormulaBar({
+      query,
+      stageIndex,
+      isPivotMode,
+      onAdd: (nextQuery, wellId) =>
+        handleWellAdd(nextQuery, wellId, wellId !== "values"),
+      onEdit: (nextQuery, options) => {
+        if (!areQueriesEqual(query, nextQuery)) {
+          handleQueryChange(nextQuery, options);
+        }
+      },
+    });
+  useRequestedFormulaEdit(query, stageIndex, formulaInputs.columns);
+
+  const formulaGenerator = useSummaryFormulaGenerator({
+    query,
+    stageIndex,
+    isEnabled: Object.values(formulaInputs).some(Boolean),
+    onAdd: (nextQuery, wellId) =>
+      handleWellAdd(nextQuery, wellId, wellId !== "values"),
+  });
+
+  const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
+    handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
+
+  const handleFieldSelect = (field: SummaryField) => {
+    const wellId = getFieldWellId(field);
+    handleWellAdd(
+      replaceWellWithField(query, stageIndex, wellId, field, layout.rows),
+      wellId,
+    );
+  };
+
+  const handleClearAll = () =>
+    handleQueryChange(
+      clearWell(clearWell(query, stageIndex, "columns"), stageIndex, "values"),
+    );
+
+  const { draggedItem, dndContextProps } = useSummaryDragAndDrop({
+    query,
+    stageIndex,
+    layout,
+    onLayoutChange: changeLayout,
+    onWellAdd: handleWellAdd,
+  });
+
+  const [isFieldListOpen, setIsFieldListOpen] = useState(true);
+  const fieldListDrawerId = useId();
+  const fieldListToggleLabel = isFieldListOpen
+    ? t`Hide fields`
+    : t`Show fields`;
+
+  return (
+    <DndContext {...dndContextProps}>
+      <Box className={S.sidebar} data-testid="summary-sidebar">
+        {bar}
+        <Box className={S.wellsColumn}>
+          <SummaryWells
+            query={query}
+            stageIndex={stageIndex}
+            sections={sections}
+            draggedItem={draggedItem}
+            formulaInputs={formulaInputs}
+            formulaGenerator={formulaGenerator}
+            draftFormula={draftFormula}
+            editingFormulaClause={editingFormulaClause}
+            canPivot={canPivot}
+            isPivotMode={isPivotMode}
+            valueItems={valueItems}
+            columnItems={columnItems}
+            rowItems={rowItems}
+            onPivotToggle={togglePivotMode}
+            onPick={handleAdd}
+            onChange={handleQueryChange}
+          />
+          <Flex
+            className={S.wellsFooter}
+            align="center"
+            justify="space-between"
+          >
+            <Button
+              variant="subtle"
+              size="compact-sm"
+              disabled={!hasItems}
+              onClick={handleClearAll}
+            >
+              {t`Clear all`}
+            </Button>
+            <Tooltip label={fieldListToggleLabel}>
+              <ActionIcon
+                variant="subtle"
+                aria-label={fieldListToggleLabel}
+                aria-expanded={isFieldListOpen}
+                aria-controls={fieldListDrawerId}
+                onClick={() => setIsFieldListOpen(!isFieldListOpen)}
+              >
+                <Icon
+                  name={isFieldListOpen ? "sidebar_open" : "sidebar_closed"}
+                />
+              </ActionIcon>
+            </Tooltip>
+          </Flex>
+        </Box>
+        <Box
+          id={fieldListDrawerId}
+          className={S.fieldListDrawer}
+          data-open={isFieldListOpen || undefined}
+          data-testid="summary-field-list-drawer"
+        >
+          <SummaryFieldList
+            query={query}
+            stageIndex={stageIndex}
+            sections={sections}
+            onSelect={handleFieldSelect}
+            onAdd={(field) => handleAdd(getFieldWellId(field), field)}
+          />
+        </Box>
+      </Box>
+      <SummaryDragPreview draggedItem={draggedItem} />
+    </DndContext>
+  );
+}

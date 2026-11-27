@@ -6,6 +6,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -262,7 +264,7 @@
                                              :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-        (t2/query-one {:update :metabase_fieldvalues
+        (t2/query-one {:update (t2/table-name :model/FieldValues)
                        :where [:and
                                [:= :field_id (mt/id :categories :name)]
                                [:= :type "full"]]
@@ -435,7 +437,7 @@
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
                                           :values   (json/encode ["1" "2" "3"])}]
-      (is (t2/query-one {:update :metabase_fieldvalues
+      (is (t2/query-one {:update (t2/table-name :model/FieldValues)
                          :set    {:human_readable_values (json/encode {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
@@ -986,3 +988,13 @@
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
               (is (every? string? values)))))))))
+
+(deftest display-values-are-not-changed-in-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Display values can only be changed in the default worktree"
+                              (mt/with-temp [:model/FieldValues _ {:field_id              (mt/id :venues :price)
+                                                                   :type                  :full
+                                                                   :values                [1 2]
+                                                                   :human_readable_values ["one" "two"]}])))))))

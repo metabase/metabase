@@ -43,10 +43,10 @@
 (defn- logged-by
   "The `[table_name row_id action]` of the change log rows that `thunk` writes."
   [thunk]
-  (let [top (or (:id (t2/query-one ["SELECT MAX(id) AS id FROM change_log"])) 0)]
+  (let [top (or (:id (t2/query-one {:select [[[:max :id] :id]] :from [(t2/table-name :model/ChangeLog)]})) 0)]
     (thunk)
     (mapv (juxt :table_name :row_id :action)
-          (t2/query ["SELECT table_name, row_id, action FROM change_log WHERE id > ? ORDER BY id" top]))))
+          (t2/query {:select [:table_name :row_id :action] :from [(t2/table-name :model/ChangeLog)] :where [:> :id top] :order-by [:id]}))))
 
 (deftest log-test
   (when config/ee-available?
@@ -84,6 +84,7 @@
             (is (= [["pulse" (:id pulse) "update"]]
                    (logged-by #(models.pulse/update-pulses! [{:id (:id pulse) :name "After"}]))))))
         (testing "an update that sets only ignored columns logs nothing"
+          (is (= [] (logged-by #(table/update-tables! [{:id (:id t) :estimated_row_count 5}]))))
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [] (logged-by #(field/update-fields! [{:id (:id f) :fingerprint_version 99}]))))
             (is (= 99 (t2/select-one-fn :fingerprint_version :model/Field :id (:id f))))
@@ -138,14 +139,28 @@
               (is (= 3 @calls)))))))))
 
 (deftest wake-numbering-test
-  (testing "a log wakes the numbering, but not in tests"
-    (let [woken (atom 0)]
-      (mt/with-dynamic-fn-redefs [change-log.numbering/stay-awake! #(swap! woken inc)]
-        (#'change-log.log/log! [])
-        (is (= 0 @woken))
+  (let [woken (atom 0)
+        log!  #(#'change-log.log/log! [["test_table" % "update"]])]
+    (mt/with-dynamic-fn-redefs [change-log.numbering/stay-awake! #(swap! woken inc)]
+      (try
+        (testing "a log does not wake the numbering in tests"
+          (log! [1])
+          (is (= 0 @woken)))
         (with-redefs [config/is-test? false]
-          (#'change-log.log/log! []))
-        (is (= 1 @woken))))))
+          (testing "a log wakes the numbering when its transaction commits"
+            (t2/with-transaction [_conn]
+              (log! [1])
+              (is (= 0 @woken)))
+            (is (= 1 @woken)))
+          (testing "a log that rolls back does not wake it"
+            (t2/with-transaction [_conn nil {:rollback-only true}]
+              (log! [1]))
+            (is (= 1 @woken)))
+          (testing "a log with no entries does not wake it"
+            (log! [])
+            (is (= 1 @woken))))
+        (finally
+          (t2/delete! :change_log :table_name "test_table"))))))
 
 (deftest card-writes-are-logged-and-keep-model-hooks-test
   (testing "a Card is logged, and its model hooks still run"
@@ -182,7 +197,7 @@
                        :model/Table    t  {:db_id (:id db)}
                        :model/Field    f1 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}
                        :model/Field    f2 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}]
-          (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
+          (t2/update! (t2/table-name :model/Field) :id (:id f2) {:effective_type "type/Integer"})
           (is (= [["metabase_field" (:id f1) "update"]
                   ["metabase_field" (:id f2) "update"]]
                  (sort (logged-by #(field/update-fields! (for [id [(:id f1) (:id f2)]] {:id id :description "x"})))))))))))
@@ -205,7 +220,7 @@
         (mt/with-temp [:model/User             user  {}
                        :model/PermissionsGroup group {}]
           (testing "without `log-rows!`, a write that bypasses the model is not logged"
-            (is (= [] (logged-by #(t2/update! :permissions_group :id (:id group) {:name "raw"})))))
+            (is (= [] (logged-by #(t2/update! (t2/table-name :model/PermissionsGroup) :id (:id group) {:name "raw"})))))
           (testing "a group membership added"
             (let [rows (logged-by #(perms-group-membership/add-users-to-groups! [{:user user :group group}]))]
               (is (= [["permissions_group_membership"
@@ -222,7 +237,7 @@
           (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}
                          :model/Card                card                 {}]
             (is (= [["report_card" (:id card) "update"]]
-                   (logged-by #(card/link-to-metabot-conversation! (:id card) conversation-id "chart"))))))
+                   (logged-by #(card/link-to-metabot-conversation! conversation-id [[(:id card) "chart"]]))))))
         (testing "the classifier's data sensitivity cleared, for a table and then for its database"
           (mt/with-temp [:model/Database db      {}
                          :model/Table    table-a {:db_id (:id db)}
@@ -260,7 +275,7 @@
       (is (= :set-null (edge "report_card" "report_card" :source_card_id)))
       (testing "including those that reference a table that is not tracked"
         (is (= :cascade (edge "report_dashboardcard" "pulse_card" :dashboard_card_id)))
-        (is (= :set-null (edge "collection" "report_card" :collection_id))))
+        (is (= :cascade (edge "collection" "report_card" :collection_id))))
       (testing "including a cascade to a table that is not tracked, when one of these references that table"
         (is (= :cascade (edge "report_dashboard" "report_dashboardcard" :dashboard_id))))
       (testing "and none to a table that is not tracked and that none of these references"
@@ -340,12 +355,15 @@
     :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
+    :model/ChangeLog
     :model/ApplicationPermissionsRevision
     :model/AuditLog
     :model/AuthIdentity
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    :model/CardFavorite
+    :model/CardLabel
     :model/CardTest
     :model/Channel
     :model/ChannelTemplate
@@ -360,6 +378,7 @@
     :model/ContentTranslation
     :model/CustomVizPlugin
     :model/DashboardBookmark
+    :model/DashboardFavorite
     :model/DashboardCard
     :model/DashboardCardSeries
     :model/DashboardTab
@@ -427,6 +446,8 @@
     :model/QueryTable
     :model/RecentViews
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
+    :model/RemoteSyncWorktreeUser
     :model/ReplacementRun
     :model/ResultMetadataStatus
     :model/Revision
@@ -518,7 +539,7 @@
                      :model/Database          other   {}
                      :model/Table             other-t {:db_id (:id other)}
                      :model/Field             fk      {:table_id (:id other-t)}]
-        (t2/update! :metabase_field :id (:id fk) {:fk_target_field_id (:id f)})
+        (t2/update! (t2/table-name :model/Field) :id (:id fk) {:fk_target_field_id (:id f)})
         (testing "a delete logs the rows ON DELETE CASCADE deletes, at any depth, and those ON DELETE SET NULL updates"
           (let [logged (set (logged-by #(do (events/publish-event! :event/database-delete
                                                                    (events/delete-event

@@ -106,6 +106,16 @@ describe("ActionListPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows an empty state without collection rows when there are no actions", async () => {
+    setup({});
+
+    const emptyState = await screen.findByTestId("empty-state-row");
+    expect(
+      within(emptyState).getByText("Queries that change data"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("collection-name")).not.toBeInTheDocument();
+  });
+
   it("offers new actions and collections with native write on an actions-enabled database", async () => {
     setup({});
 

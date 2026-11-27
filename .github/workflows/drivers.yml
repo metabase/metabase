@@ -683,12 +683,34 @@ jobs:
         junit-name: 'be-tests-motherduck-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
-          :exclude-tags [:mb/transforms-python-test]
+          :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
         runner-index: ${{ matrix.runner-index }}
         runner-count: ${{ strategy.job-total }}
         jvms-per-runner: '2'
         heap-per-jvm: '4g'
         artifact-suffix: runner-${{ matrix.runner-index }}
+
+  be-tests-motherduck-upload-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.motherduck-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DRIVERS: motherduck
+      MB_MOTHERDUCK_TEST_TOKEN: ${{ secrets.MB_MOTHERDUCK_TEST_TOKEN }}
+    name: MotherDuck Upload Tests
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test MotherDuck driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        # The same junit-name as the job above, to share quarantine history in ci-conductor.
+        junit-name: 'be-tests-motherduck-ee'
+        test-args: >-
+          :only-tags [:mb/upload-tests]
+        artifact-suffix: upload
 
   be-tests-motherduck-transforms-python-ee:
     needs: determine-driver-skips
@@ -1469,6 +1491,7 @@ jobs:
       - be-tests-mongo-sharded-cluster-ee
       - be-tests-mongo-ssl
       - be-tests-motherduck-ee
+      - be-tests-motherduck-upload-ee
       - be-tests-motherduck-transforms-python-ee
       - be-tests-mysql-mariadb
       - be-tests-oracle

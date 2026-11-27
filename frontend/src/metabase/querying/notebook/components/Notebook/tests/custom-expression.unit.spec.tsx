@@ -19,7 +19,9 @@ import {
   createMockCard,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
+  PEOPLE,
   PEOPLE_ID,
   PRODUCTS_ID,
   createSampleDatabase,
@@ -505,6 +507,169 @@ describe("Notebook > custom aggregation", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+  });
+});
+
+describe("Notebook > sorting by a custom aggregation", () => {
+  it("should sort by a custom aggregation and toggle its direction (metabase#6239)", async () => {
+    const { getRecentQuery } = setup({ tableId: ORDERS_ID });
+
+    await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
+    await userEvent.click(await screen.findByText("Custom Expression"));
+    await enterFormula("CountIf([Total] > 0)");
+    await userEvent.tab();
+    await userEvent.type(screen.getByTestId("expression-name"), "CE");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    await userEvent.click(doneButton);
+    const summarizeStep = getStep("step-summarize-0-0");
+    expect(await within(summarizeStep).findByText("CE")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(summarizeStep).getByText("Pick a column to group by"),
+    );
+    const breakoutPopover = await screen.findByTestId("clause-popover");
+    const [createdAt] = within(breakoutPopover).getAllByText("Created At");
+    await userEvent.click(createdAt);
+    expect(
+      await within(summarizeStep).findByText("Created At: Month"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sort" }));
+    const sortPopover = await screen.findByTestId("clause-popover");
+    await userEvent.click(await within(sortPopover).findByText("CE"));
+
+    const sortStep = getStep("step-sort-0-0");
+    expect(await within(sortStep).findByText("CE")).toBeInTheDocument();
+    expect(within(sortStep).getByLabelText("arrow_up icon")).toBeVisible();
+    expect(getOrderByInfo(getRecentQuery())).toEqual({
+      displayName: "CE",
+      direction: "asc",
+      isAggregation: true,
+    });
+
+    await userEvent.click(within(sortStep).getByLabelText("arrow_up icon"));
+    expect(
+      await within(sortStep).findByLabelText("arrow_down icon"),
+    ).toBeVisible();
+    expect(
+      within(sortStep).queryByLabelText("arrow_up icon"),
+    ).not.toBeInTheDocument();
+    expect(getOrderByInfo(getRecentQuery())).toEqual({
+      displayName: "CE",
+      direction: "desc",
+      isAggregation: true,
+    });
+  });
+
+  function getOrderByInfo(query: Lib.Query) {
+    const orderBys = Lib.orderBys(query, 0);
+    expect(orderBys).toHaveLength(1);
+    const { displayName, direction } = Lib.displayInfo(query, 0, orderBys[0]);
+    const sortedColumn = Lib.orderableColumns(query, 0)
+      .map((column) => Lib.displayInfo(query, 0, column))
+      .find((info) => info.orderByPosition === 0);
+    return {
+      displayName,
+      direction,
+      isAggregation: sortedColumn?.isAggregation,
+    };
+  }
+});
+
+describe("Notebook > follow-up stage of a summarized query", () => {
+  it("should show the aggregation name in the filter picker and add a filter on it (metabase#27104)", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            {
+              type: "column",
+              fieldId: PEOPLE.SOURCE,
+              sourceFieldId: ORDERS.USER_ID,
+            },
+          ],
+        },
+      ],
+    });
+    const { getRecentQuery } = setup({ query });
+
+    await userEvent.click(
+      within(getStep("step-summarize-0-0")).getByRole("button", {
+        name: "Filter",
+      }),
+    );
+    const popover = await screen.findByTestId("clause-popover");
+    expect(
+      await within(popover).findByText("User → Source"),
+    ).toBeInTheDocument();
+    await userEvent.click(within(popover).getByText("Count"));
+    expect(
+      await within(popover).findByRole("button", { name: "Back" }),
+    ).toHaveTextContent(/^Count$/);
+
+    await userEvent.click(within(popover).getByLabelText("Filter operator"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Greater than" }),
+    );
+    const input = within(popover).getByPlaceholderText("Enter a number");
+    await userEvent.type(input, "0");
+    await userEvent.tab();
+    await userEvent.click(
+      within(popover).getByRole("button", { name: "Add filter" }),
+    );
+
+    expect(
+      await within(getStep("step-filter-1-0")).findByText(
+        "Count is greater than 0",
+      ),
+    ).toBeInTheDocument();
+    const nextQuery = getRecentQuery();
+    expect(Lib.stageCount(nextQuery)).toBe(2);
+    const filters = Lib.filters(nextQuery, 1);
+    expect(filters).toHaveLength(1);
+    const parts = checkNotNull(Lib.numberFilterParts(nextQuery, 1, filters[0]));
+    expect(parts).toMatchObject({ operator: ">", values: [0] });
+    expect(Lib.displayInfo(nextQuery, 1, parts.column)).toMatchObject({
+      displayName: "Count",
+      isFromPreviousStage: true,
+    });
+  });
+
+  it("should summarize an aggregation of the previous stage (metabase#27462)", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: PRODUCTS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CATEGORY" }],
+        },
+      ],
+    });
+    const { getRecentQuery } = setup({ query });
+
+    await userEvent.click(screen.getByRole("button", { name: "Summarize" }));
+    const popover = await screen.findByTestId("clause-popover");
+    await userEvent.click(await within(popover).findByText("Sum of ..."));
+    await userEvent.click(await within(popover).findByText("Count"));
+
+    expect(
+      await within(getStep("step-summarize-1-0")).findByText("Sum of Count"),
+    ).toBeInTheDocument();
+    const nextQuery = getRecentQuery();
+    expect(Lib.stageCount(nextQuery)).toBe(2);
+    const aggregations = Lib.aggregations(nextQuery, 1);
+    expect(aggregations).toHaveLength(1);
+    const parts = getOperatorParts(
+      Lib.expressionParts(nextQuery, 1, aggregations[0]),
+    );
+    expect(parts.operator).toBe("sum");
+    expect(parts.args).toHaveLength(1);
+    expect(
+      Lib.displayInfo(nextQuery, 1, getColumn(parts.args[0])),
+    ).toMatchObject({ displayName: "Count", isFromPreviousStage: true });
   });
 });
 

@@ -14,13 +14,11 @@
   Quartz's `driverDelegateClass`; it must run before the scheduler initializes (see
   `metabase.app-db.quartz`)."
   (:require
-   [clojure.java.io :as io]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util.deserialization-allowlist :as deserialization-allowlist]
    [metabase.util.log :as log])
   (:import
-   (java.net URL)
    (java.sql Blob ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -69,33 +67,30 @@
     (catch ClassNotFoundException _ false)))
 
 (defn- dev-compile-delegate!
-  "SOURCE-ONLY. Compile the gen-class `ns-sym` to a temp dir and add that dir to the classpath so
-  `the-classloader` can find the class by name. A plain `require` won't do — it defines the class into a
-  *child* of `the-classloader` that Quartz can't see. Asserts we're not in a jar, so this never compiles
-  bytecode or mutates the classpath in a shipped uberjar (there the class is AOT-compiled)."
+  "SOURCE-ONLY. Compile the gen-class `ns-sym` with [[classloader/compile-to-temp-dir!]], so that
+  `the-classloader`, and so Quartz, can find the class by name.
+  Asserts we're not in a jar, so this never compiles bytecode or mutates the classpath in a shipped uberjar (there the
+  class is AOT-compiled)."
   [ns-sym]
   (assert (not (config/jar?)) "dev-compile-delegate! must not run from a jar")
-  (let [dir (io/file (System/getProperty "java.io.tmpdir") "mb-quartz-secure-delegate")]
-    (.mkdirs dir)
-    (classloader/add-url-to-classpath! ^URL (-> dir .toURI .toURL))
-    (binding [*compile-path* (str dir)]
-      (compile ns-sym))))
+  (classloader/compile-to-temp-dir! "mb-quartz-secure-delegate" ns-sym))
 
 (defn install!
-  "Set Quartz's `driverDelegateClass` to the secure delegate for `db-type`. Must run before the
-  scheduler initializes. Returns the installed class name.
-
-  From a jar (prod, e2e) the class is AOT-compiled and already present. From source (dev, test) it is
-  compiled on demand ([[dev-compile-delegate!]]). If it's missing from a jar, that's an AOT build
-  problem, so we throw rather than compile at runtime."
+  "Set Quartz's `driverDelegateClass` to the secure delegate for `db-type`, and return its class name.
+  Must run before the scheduler initializes.
+  From a jar the class is AOT-compiled; from source it is compiled on demand ([[dev-compile-delegate!]]).
+  Throws when the class is missing from a jar, or still cannot be loaded after compiling from source."
   [db-type]
   (let [{:keys [class ns]} (get delegate db-type (:default delegate))]
     (when-not (class-loadable? class)
+      ;; missing from a jar is an AOT build problem, so throw rather than compile at runtime
       (when (config/jar?)
         (throw (ex-info (str "Quartz secure delegate " class " is missing from the jar; it should be "
                              "AOT-compiled at build time. This is a build problem.")
                         {:class class})))
       (log/infof "Compiling Quartz secure delegate %s (running from source, no AOT)" class)
-      (dev-compile-delegate! ns))
+      (dev-compile-delegate! ns)
+      (when-not (class-loadable? class)
+        (throw (ex-info (str "Compiled " ns ", but " class " still cannot be loaded") {:class class}))))
     (System/setProperty driver-delegate-property class)
     class))

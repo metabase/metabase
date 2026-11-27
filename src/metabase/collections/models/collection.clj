@@ -17,6 +17,7 @@
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -27,7 +28,6 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -106,18 +106,31 @@
   (collections.db/collection-of-type trash-collection-type))
 
 (let [get-trash (mdb/memoize-for-application-db
-                 (fn []
+                 (fn [_scope]
                    (u/prog1 (trash-collection*)
                      (when-not <>
                        (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
   (defn trash-collection
-    "Get the (memoized) trash collection"
+    "Get the trash collection of the remote sync worktree this thread works in, memoized per worktree."
     []
-    (assoc (get-trash) :name (deferred-tru "Trash"))))
+    (assoc (get-trash (mdb/worktree-scope)) :name (deferred-tru "Trash"))))
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
+
+(defn ensure-trash-collection!
+  "Create the Trash collection of the remote sync worktree this thread works in, as the migration that added it created
+  the main app's, unless it has one, retrying once after a concurrent call created it."
+  []
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (when-not (trash-collection*)
+        (collections.db/insert-collections! [{:name      "Trash"
+                                              :slug      "trash"
+                                              :entity_id "trashtrashtrashtrasht"
+                                              :type      trash-collection-type}]))))
+  nil)
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -325,6 +338,7 @@
 
 (doto :model/Collection
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id))
 
 (defn- default-audit-collection?
@@ -1150,11 +1164,11 @@
         [:like (->col "location") (str (children-location parent-coll) "%")]
         ;; but NOT a child of any OTHER visible collection.
         [:not [:exists ^:allow-subquery {:select 1
-                                         :from [[:collection :c2]]
+                                         :from [[(t2/table-name :model/Collection) :c2]]
                                          :where [:and
                                                  (perms/visible-collections-filter-clause :c2.id (api/current-user-info)
                                                                                           visibility-config)
-                                                 [:= (->col "location") [:concat :c2.location :c2.id (h2x/literal "/")]]
+                                                 [:= (->col "location") [:concat :c2.location :c2.id [:literal "/"]]]
                                                  (when-not (collection.root/is-root-collection? parent-coll)
                                                    [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
@@ -1362,7 +1376,7 @@
   [collection             :- CollectionWithLocationAndIDOrRoot
    collection-table-alias :- :keyword
    visibility-config      :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
+   & additional-honeysql-where-clauses :- [:* ::funnysql.schema/expr]]
   (into
    [:and
     (effective-child-of-filter-clause collection collection-table-alias visibility-config)
@@ -1400,9 +1414,9 @@
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
+   & additional-honeysql-where-clauses :- [:* ::funnysql.schema/expr]]
   ^:allow-subquery {:select [:id :name :description :type]
-                    :from   [[:collection :col]]
+                    :from   [[(t2/table-name :model/Collection) :col]]
                     :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
@@ -1929,7 +1943,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Collection
   [_model alias]
-  (let [maybe-alias #(h2x/identifier :field (name alias) %)]
+  (let [maybe-alias #(u/qualified-key (name alias) %)]
     [:and
      [:or [:= (maybe-alias :type) nil]
       [:and
@@ -2447,8 +2461,8 @@
   (let [ids (into [] (remove nil?) collection-ids)]
     (cond
       (empty? ids)                        [:= :collection_id nil]
-      (not-any? nil? collection-ids)      [:in :collection_id [:auto/param ids]]
-      :else                               [:or [:= :collection_id nil] [:in :collection_id [:auto/param ids]]])))
+      (not-any? nil? collection-ids)      [:in :collection_id ids]
+      :else                               [:or [:= :collection_id nil] [:in :collection_id ids]])))
 
 (defn- shift-after-move
   "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the
@@ -2676,9 +2690,10 @@
 (defn- copy-collection-permissions!
   "Grants each target Collection of `source+targets`, the pairs `[source target-id]`, the permissions of its source, a
   Collection, an id or the root, to every group with read permissions for the source, and write permissions for
-  every group with write permissions for it, and records a new revision of the permission graph."
+  every group with write permissions for it, and records a new revision of the permission graph, but in a remote sync
+  worktree, whose Collections have no Permissions, since those every worktree shares are of the default worktree."
   [source+targets]
-  (when (seq source+targets)
+  (when (and (seq source+targets) (not (mdb/non-default-worktree?)))
     (let [groups (collections.db/group-ids-by-permission-object
                   (vec (into #{} (mapcat (fn [[source _]] [(perms/collection-read-path source)
                                                            (perms/collection-readwrite-path source)]))
@@ -3171,7 +3186,8 @@
 (defmethod remote-sync/spec :model/Collection
   [_model]
   {:synced-items         collections.db/synced-collection-items
-   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
+   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))
+   :ensure-built-ins     ensure-trash-collection!})
 
 (defmethod search/spec :model/Collection
   [_model]

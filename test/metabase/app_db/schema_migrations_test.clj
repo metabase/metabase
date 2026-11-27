@@ -29,7 +29,6 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.liquibase.rollback :as rollback]
    [metabase.app-db.liquibase.versions :as versions]
-   [metabase.app-db.query :as mdb.query]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
@@ -331,11 +330,11 @@
         ;; Two rows are present in `sandboxes`
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}
                 {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}]
-               (mdb.query/query {:select [:*] :from [:sandboxes]})))
+               (mdb/query {:select [:*] :from [:sandboxes]})))
         (migrate!)
         ;; Only the sandbox with a corresponding `Permissions` row is present
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
-               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+               (mdb/query {:select [:*] :from [:sandboxes]})))))))
 
 ;;;
 ;;; 47 tests
@@ -417,9 +416,9 @@
       (migrate!)
       (is (= [{:first_name "Cam", :sso_source nil}
               {:first_name "Google Cam", :sso_source "google"}]
-             (mdb.query/query {:select   [:first_name :sso_source]
-                               :from     [:core_user]
-                               :order-by [[:id :asc]]}))))))
+             (mdb/query {:select   [:first_name :sso_source]
+                         :from     [:core_user]
+                         :order-by [[:id :asc]]}))))))
 
 (deftest ^:mb/old-migrations-test migrate-ldap-auth-test
   (testing "Migration v47.00-013 and v47.00-014: migrate ldap_auth into sso_source"
@@ -442,9 +441,9 @@
       (migrate!)
       (is (= [{:first_name "Cam", :sso_source nil}
               {:first_name "LDAP Cam", :sso_source "ldap"}]
-             (mdb.query/query {:select   [:first_name :sso_source]
-                               :from     [:core_user]
-                               :order-by [[:id :asc]]}))))))
+             (mdb/query {:select   [:first_name :sso_source]
+                         :from     [:core_user]
+                         :order-by [[:id :asc]]}))))))
 
 (deftest ^:mb/old-migrations-test migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
@@ -596,14 +595,14 @@
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
             ;; Just assert that something was returned by the query and no exception was thrown
-            (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+            (is (partial= [] (t2/query {:select [[[:inline 1] :one]] :from [(keyword view-name)]})))))
         #_#_;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
             (migrate! :down 47)
           (testing "Views should be removed when downgrading"
             (doseq [view-name new-view-names]
               (is (thrown?
                    clojure.lang.ExceptionInfo
-                   (t2/query (str "SELECT 1 FROM " view-name))))))))))
+                   (t2/query {:select [[[:inline 1] :one]] :from [(keyword view-name)]})))))))))
 
 (deftest ^:mb/old-migrations-test activity-data-migration-postgres-mysql-test
   (testing "Migration v48.00-049"
@@ -805,12 +804,22 @@
            (:count
             (t2/query-one
              (case (mdb/db-type)
-               :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
-                           tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
-               :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
+               :postgres {:select [[[:count :*] :count]]
+                          :from   [:pg_indexes]
+                          :where  [:and
+                                   [:= :tablename "databasechangelog"]
+                                   [:= :indexname "idx_databasechangelog_id_author_filename"]]}
+               :mysql    {:select [[[:count :*] :count]]
+                          :from   [:information_schema.statistics]
+                          :where  [:and
+                                   [:= :table_name "DATABASECHANGELOG"]
+                                   [:= :index_name "idx_databasechangelog_id_author_filename"]]}
                ;; h2 has a strange way of naming constraint
-               :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
-                           WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
+               :h2       {:select [[[:count :*] :count]]
+                          :from   [:information_schema.indexes]
+                          :where  [:and
+                                   [:= :table_name "DATABASECHANGELOG"]
+                                   [:= :index_name "IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1"]]}))))))))
 
 (deftest ^:mb/old-migrations-test enable-public-sharing-default-test
   (testing "enable-public-sharing is not set for new instances"
@@ -1620,7 +1629,7 @@
 (deftest ^:mb/old-migrations-test create-internal-user-test
   (testing "The internal user is created if it doesn't already exist"
     (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
-      (let [get-users #(t2/query "SELECT * FROM core_user")]
+      (let [get-users #(t2/query {:select [:*] :from [:core_user]})]
         (is (= [] (get-users)))
         (migrate!)
         (is (=? [{:id               config/internal-mb-user-id
@@ -1655,7 +1664,7 @@
         :sso_source       nil
         :type             "internal"
         :date_joined      :%now})
-      (let [get-users    #(t2/query "SELECT * FROM core_user")
+      (let [get-users    #(t2/query {:select [:*] :from [:core_user]})
             users-before (get-users)]
         (migrate!)
         (is (= users-before (get-users)))))))
@@ -2733,11 +2742,11 @@
                                     :password_salt nil}]})
       (migrate!)
       ;; Verify password user has auth_identity
-      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
-                                      :from   [[:core_user :u]]
-                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
-                                      :where  [:in :u.email ["password@example.com" "nopass@example.com"]]
-                                      :order-by [[:u.id :asc]]})]
+      (let [results (mdb/query {:select [:u.first_name :a.provider]
+                                :from   [[:core_user :u]]
+                                :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                :where  [:in :u.email ["password@example.com" "nopass@example.com"]]
+                                :order-by [[:u.id :asc]]})]
         (is (= [{:first_name "Password" :provider "password"}
                 {:first_name "NoPassword" :provider nil}]
                results))))))
@@ -2760,11 +2769,11 @@
                                     :sso_source    nil}]})
       (migrate!)
       ;; Verify LDAP user has auth_identity
-      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
-                                      :from   [[:core_user :u]]
-                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
-                                      :where  [:in :u.email ["ldap@example.com" "noldap@example.com"]]
-                                      :order-by [[:u.id :asc]]})]
+      (let [results (mdb/query {:select [:u.first_name :a.provider]
+                                :from   [[:core_user :u]]
+                                :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                :where  [:in :u.email ["ldap@example.com" "noldap@example.com"]]
+                                :order-by [[:u.id :asc]]})]
         (is (= [{:first_name "LDAP" :provider "ldap"}
                 {:first_name "NoLDAP" :provider nil}]
                results))))))
@@ -2786,11 +2795,11 @@
                                     :sso_source    nil}]})
       (migrate!)
       ;; Verify Google user has auth_identity
-      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
-                                      :from   [[:core_user :u]]
-                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
-                                      :where  [:in :u.email ["google@example.com" "nosso@example.com"]]
-                                      :order-by [[:u.id :asc]]})]
+      (let [results (mdb/query {:select [:u.first_name :a.provider]
+                                :from   [[:core_user :u]]
+                                :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                :where  [:in :u.email ["google@example.com" "nosso@example.com"]]
+                                :order-by [[:u.id :asc]]})]
         (is (= [{:first_name "Google" :provider "google"}
                 {:first_name "NoSSO" :provider nil}]
                results))))))
@@ -2812,11 +2821,11 @@
                                     :sso_source    "jwt"}]})
       (migrate!)
       ;; Verify SAML and JWT users have auth_identity
-      (let [results (mdb.query/query {:select [:u.first_name :a.provider]
-                                      :from   [[:core_user :u]]
-                                      :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
-                                      :where  [:in :u.email ["saml@example.com" "jwt@example.com"]]
-                                      :order-by [[:u.id :asc]]})]
+      (let [results (mdb/query {:select [:u.first_name :a.provider]
+                                :from   [[:core_user :u]]
+                                :left-join [[:auth_identity :a] [:= :u.id :a.user_id]]
+                                :where  [:in :u.email ["saml@example.com" "jwt@example.com"]]
+                                :order-by [[:u.id :asc]]})]
         (is (= [{:first_name "SAML" :provider "saml"}
                 {:first_name "JWT" :provider "jwt"}]
                results))))))
@@ -3021,17 +3030,17 @@
         (migrate!)
         ;; 1. Old workspace_input data is dropped (table recreated with new schema)
         (testing "workspace_input table is empty after drop/recreate"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input]})))))
+          (is (= 0 (count (mdb/query {:select [:id] :from [:workspace_input]})))))
         ;; 2. ref_id and transform_version columns no longer exist
         (testing "ref_id column removed"
           (is (thrown? Exception
-                       (mdb.query/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
+                       (mdb/query {:select [:ref_id] :from [:workspace_input] :limit 1}))))
         (testing "transform_version column removed"
           (is (thrown? Exception
-                       (mdb.query/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
+                       (mdb/query {:select [:transform_version] :from [:workspace_input] :limit 1}))))
         ;; 3. workspace_input_transform table exists
         (testing "workspace_input_transform table created"
-          (is (= 0 (count (mdb.query/query {:select [:id] :from [:workspace_input_transform]})))))
+          (is (= 0 (count (mdb/query {:select [:id] :from [:workspace_input_transform]})))))
         ;; 4. New unique constraint on (workspace_id, db_id, schema, table)
         (testing "can insert into new schema"
           (t2/insert-returning-pks! :workspace_input
@@ -3488,12 +3497,7 @@
       (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
             last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
             v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]
-            column?    #(seq (t2/query [(str "SELECT column_name FROM information_schema.columns"
-                                             " WHERE lower(table_name) = 'auth_identity' AND lower(column_name) = 'confirmed_at'"
-                                             (case (mdb/db-type)
-                                               :mysql    " AND table_schema = database()"
-                                               :postgres " AND table_schema = current_schema()"
-                                               :h2       ""))]))]
+            column?    #(seq (t2/query {:select [:column_name] :from [:information_schema.columns] :where (cond-> [:and [:= [:lower :table_name] "auth_identity"] [:= [:lower :column_name] "confirmed_at"]] (= :mysql (mdb/db-type)) (conj [:= :table_schema :%database]) (= :postgres (mdb/db-type)) (conj [:= :table_schema :%current_schema]))}))]
         ;; simulate an instance upgraded by the code that shipped these changesets under v59 ids
         (t2/query ["ALTER TABLE auth_identity ADD COLUMN confirmed_at TIMESTAMP NULL"])
         (t2/insert! clog (map-indexed (fn [i id]
@@ -3581,7 +3585,7 @@
             "user rows are skipped")
         (is (nil? (t2/select-one-fn :state :metabot_message :id b-assistant))
             "conversations without a blob are untouched")
-        (is (thrown? Exception (t2/query "SELECT state FROM metabot_conversation"))
+        (is (thrown? Exception (t2/query {:select [:state] :from [:metabot_conversation]}))
             "metabot_conversation.state is gone")))))
 
 (deftest add-field-data-sensitivity-test
@@ -3899,12 +3903,7 @@
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
         (testing "the changes were skipped, not re-applied"
           ;; information_schema spans every database on a shared MySQL server, so scope to this app db's schema
-          (is (empty? (t2/query [(str "SELECT column_name FROM information_schema.columns"
-                                      " WHERE lower(table_name) = 'glossary' AND lower(column_name) = 'entity_id'"
-                                      (case (mdb/db-type)
-                                        :mysql    " AND table_schema = database()"
-                                        :postgres " AND table_schema = current_schema()"
-                                        :h2       ""))]))))))))
+          (is (empty? (t2/query {:select [:column_name] :from [:information_schema.columns] :where (cond-> [:and [:= [:lower :table_name] "glossary"] [:= [:lower :column_name] "entity_id"]] (= :mysql (mdb/db-type)) (conj [:= :table_schema :%database]) (= :postgres (mdb/db-type)) (conj [:= :table_schema :%current_schema]))}))))))))
 
 (deftest action-collection-id-backfill-test
   (testing "v65.2026-10-02T00:00:06: each action takes its model's collection, model_id becomes nullable, and
@@ -4986,7 +4985,7 @@
           (when (= :postgres (mdb/db-type))
             (testing "the id sequence follows the table name"
               (is (= "data_test_run_id_seq"
-                     (:seq (t2/query-one ["SELECT to_regclass('data_test_run_id_seq')::text AS seq"]))))))
+                     (:seq (t2/query-one {:select [[[:cast [:to_regclass "data_test_run_id_seq"] :text] :seq]]}))))))
           (let [card-run (t2/select-one-pk :data_test_run :test_type "card")]
             (is (some? card-run))
             (with-open [conn (.getConnection (mdb/data-source))]
@@ -5000,7 +4999,7 @@
               (is (=? {:transform_test_id nil} (t2/select-one :transform_test_run :id deleted-run)))
               (when (= :postgres (mdb/db-type))
                 (is (= "transform_test_run_id_seq"
-                       (:seq (t2/query-one ["SELECT to_regclass('transform_test_run_id_seq')::text AS seq"]))))))
+                       (:seq (t2/query-one {:select [[[:cast [:to_regclass "transform_test_run_id_seq"] :text] :seq]]}))))))
             (testing "rollback deletes the runs of other test types, and nulls an id that names no transform test"
               (is (= 3 (t2/count :transform_test_run)) "the card run is gone")
               (is (nil? (t2/select-one-fn :transform_test_id :transform_test_run :id dangling-run))))
@@ -5086,8 +5085,9 @@
             (is (thrown? Exception (t2/insert! :card_test (assoc (card-test (u/generate-nano-id)) :card_id Integer/MAX_VALUE)))))
           (when (= :postgres (mdb/db-type))
             (testing "entity_id compares byte by byte"
-              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
-                                                          WHERE table_name = 'card_test' AND column_name = 'entity_id'"]))))))
+              (is (= "C" (:collation_name (t2/query-one {:select [:collation_name]
+                                                         :from   [:information_schema.columns]
+                                                         :where  [:and [:= :table_name "card_test"] [:= :column_name "entity_id"]]}))))))
           (testing "deleting the card deletes its tests"
             (t2/delete! :report_card :id card-id)
             (is (nil? (t2/select-one :card_test :id test-id)))))
@@ -5217,8 +5217,9 @@
                                                                     :segment_id Integer/MAX_VALUE)))))
           (when (= :postgres (mdb/db-type))
             (testing "entity_id compares byte by byte"
-              (is (= "C" (:collation_name (t2/query-one ["SELECT collation_name FROM information_schema.columns
-                                                          WHERE table_name = 'segment_test' AND column_name = 'entity_id'"]))))))
+              (is (= "C" (:collation_name (t2/query-one {:select [:collation_name]
+                                                         :from   [:information_schema.columns]
+                                                         :where  [:and [:= :table_name "segment_test"] [:= :column_name "entity_id"]]}))))))
           (testing "deleting the segment deletes its tests"
             (t2/delete! :segment :id segment-id)
             (is (nil? (t2/select-one :segment_test :id test-id)))))

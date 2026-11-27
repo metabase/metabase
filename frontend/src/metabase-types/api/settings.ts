@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { ColorSettings } from "./color-settings";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
@@ -615,6 +616,7 @@ interface PublicSettings {
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
   "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-mini-model-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "mfa-enforcement": MfaEnforcement;
@@ -759,29 +761,11 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
-type ColorSettingsAccentIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
-
-export type ColorSettingsAccentKey =
-  | `accent${ColorSettingsAccentIndex}`
-  | `accent${ColorSettingsAccentIndex}-light`
-  | `accent${ColorSettingsAccentIndex}-dark`;
-
-/** Keys that the `application-colors` setting stores. */
-export type ColorSettingsKey =
-  | "brand"
-  | "filter"
-  | "summarize"
-  | ColorSettingsAccentKey;
-
-/**
- * The raw `application-colors` setting. Its keys are not color token names:
- * translate it with `mapWhitelabelColorsToTokens` before you use it as a `ColorPalette`.
- */
-export type ColorSettings = Partial<Record<ColorSettingsKey, string>> & {
-  "core-brand"?: never;
-  "core-filter"?: never;
-  "core-summarize"?: never;
-};
+export type {
+  ColorSettings,
+  ColorSettingsAccentKey,
+  ColorSettingsKey,
+} from "./color-settings";
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
