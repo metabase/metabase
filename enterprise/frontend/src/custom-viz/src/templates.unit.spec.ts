@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { version } from "../package.json";
 
 import {
+  generateIconSvg,
   generateIndexTsx,
   generateManifest,
   generatePackageJson,
@@ -27,5 +28,11 @@ describe("text templates", () => {
   it("generateManifest substitutes name", () => {
     const manifest = JSON.parse(generateManifest("my-viz"));
     expect(manifest.name).toBe("my-viz");
+  });
+
+  it("generateIconSvg strokes with current color", () => {
+    const svg = generateIconSvg();
+    expect(svg).toContain('stroke="currentColor"');
+    expect(svg).not.toContain('stroke="black"');
   });
 });
