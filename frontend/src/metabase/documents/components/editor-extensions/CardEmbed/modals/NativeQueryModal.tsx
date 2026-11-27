@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import { isAbortError } from "metabase/api/client";
 import { datasetApi } from "metabase/api/dataset";
 import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
@@ -130,8 +131,11 @@ export const NativeQueryModal = ({
 
   const [
     triggerQuery,
-    { data: queryResult, isLoading, isFetching, error: queryError, reset },
+    { data: queryResult, isLoading, isFetching, error: queryResultError },
   ] = datasetApi.useLazyGetAdhocQueryQuery();
+  const queryError = isAbortError(queryResultError)
+    ? undefined
+    : queryResultError;
 
   const [currentQueryPromise, setCurrentQueryPromise] = useState<ReturnType<
     typeof triggerQuery
@@ -195,13 +199,11 @@ export const NativeQueryModal = ({
       return;
     }
 
-    reset();
-
     const datasetQuery = modifiedQuestion.datasetQuery();
     const queryPromise = triggerQuery(datasetQuery);
     setCurrentQueryPromise(queryPromise);
     setHasExecutedQuery(true);
-  }, [modifiedQuestion, triggerQuery, reset]);
+  }, [modifiedQuestion, triggerQuery]);
 
   const handleCancelQuery = useCallback(() => {
     if (currentQueryPromise) {
