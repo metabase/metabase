@@ -168,6 +168,10 @@
    "release migration locks"      #{"halt the global system"}})
 
 ;; how long the halt waits for a start in flight, out of the 30 seconds the process has to shut down
+;; Other steps wait too, each against the same 30 seconds and each set on its own: the web server up to
+;; MB_JETTY_STOP_TIMEOUT (5 seconds by default), each queue listener up to 10 seconds, notifications up to
+;; MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS (20 by default) and the migration locks up to 20 seconds.
+;; Together they can outlast the 30 seconds, though each waits its full time only for work still in flight.
 (def ^:private halt-options {:start-timeout-ms 5000})
 
 (defn- halt-global-system!
