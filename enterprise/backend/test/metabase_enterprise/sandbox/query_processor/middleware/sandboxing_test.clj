@@ -9,6 +9,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
+   [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -2603,3 +2604,20 @@
         (is (=? {:status :completed, :data {:is_sandboxed true}} result))
         (is (seq (mt/cols result)))
         (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest explicit-fields-not-exposed-by-sandbox-card-test
+  (testing "a query selecting a field that the sandbox card does not expose still runs (#66617)"
+    (mt/test-drivers #{:h2}
+      (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}
+                                              :query      (mt.tu/restricted-column-query (mt/id))}}
+                        :attributes {"cat" 50}}
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                        (lib/with-fields [(lib.metadata/field mp (mt/id :venues :id))
+                                          (lib.metadata/field mp (mt/id :venues :name))
+                                          (lib.metadata/field mp (mt/id :venues :price))]))]
+          (is (= [:id :name]
+                 (->> (qp/process-query query)
+                      mt/cols
+                      (map (comp keyword u/lower-case-en :name)))))
+          (is (= 2 (count (first (mt/rows (qp/process-query query)))))))))))
