@@ -2258,6 +2258,40 @@
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
 
+(deftest force-cancel-transform-run-endpoint-test
+  (testing "POST /api/transform/:id/cancel?force=true"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      ;; A run that is active and that no process executes: what a process killed while it ran a transform leaves.
+      (mt/with-temp [:model/Transform    {id :id}     {:source {:type  :query
+                                                                :query (lib/query (mt/metadata-provider)
+                                                                                  (lib.metadata/table (mt/metadata-provider)
+                                                                                                      (mt/id :venues)))}}
+                     :model/TransformRun {run-id :id} {:transform_id id
+                                                       :status       :started
+                                                       :is_active    true
+                                                       :run_method   :manual
+                                                       :start_time   (parse-instant "2025-09-01T10:00:00")}]
+        (let [run    #(t2/select-one [:model/TransformRun :status :is_active :message] :id run-id)
+              cancel (fn [user status & params]
+                       (apply mt/user-http-request user :post status (format "transform/%s/cancel" id) params))]
+          (with-transform-db-perms!
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (testing "a cancel is only a request, which no process acts on, so the run stays active"
+                (cancel :lucky 204)
+                (is (true? (:is_active (run))))
+                (is (some? (transforms.core/running-run-for-transform-id id))))
+              (testing "a user who may cancel a run may not force it unless they are a superuser"
+                (cancel :lucky 403 :force true)
+                (is (true? (:is_active (run)))))))
+          (testing "a forced cancel finishes the run, so the transform can run again"
+            (cancel :crowberto 204 :force true)
+            (is (= {:status :canceled, :is_active nil, :message "Canceled by force"}
+                   (run)))
+            (is (nil? (transforms.core/running-run-for-transform-id id)))
+            (is (not (t2/exists? :model/TransformRunCancelation :run_id run-id))))
+          (testing "with no active run it is a 404, forced or not"
+            (cancel :crowberto 404 :force true)))))))
+
 ;;; ------------------------------------------------------------
 ;;; DELETE /api/transform/collection/:id
 ;;; ------------------------------------------------------------

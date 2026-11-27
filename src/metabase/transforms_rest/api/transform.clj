@@ -338,17 +338,29 @@
   transform)
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
-  "Cancel the current run for a given transform."
+  "Cancel the current run for a given transform.
+
+  A cancel is a request, which the process that executes the run acts on. With `force`, the run is finished at once,
+  with no wait for that process. That is for a run whose process is gone, which nothing else finishes on an instance
+  that runs with its scheduler disabled; until it is finished, the transform can not run again. Only a superuser may
+  force: a forced run that a live process still executes is marked canceled while its work goes on."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   {:keys [force]} :- [:map {:closed true}
+                       [:force {:default false} [:maybe ms/BooleanValue]]]]
   (let [transform (check-can-query (api/read-check :model/Transform id))
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
-    (transform-run-cancelation/mark-cancel-started-run! (:id run))
-    (when (transforms-base.u/python-transform? transform)
-      ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
-      ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of
-      ;; getting the exact timestamp back out of the DB.
-      (transforms.core/cancel-run! run (OffsetDateTime/now))))
+    (if force
+      (do
+        (api/check-superuser)
+        (transforms.core/force-cancel-run! run))
+      (do
+        (transform-run-cancelation/mark-cancel-started-run! (:id run))
+        (when (transforms-base.u/python-transform? transform)
+          ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
+          ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of
+          ;; getting the exact timestamp back out of the DB.
+          (transforms.core/cancel-run! run (OffsetDateTime/now))))))
   nil)
 
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
