@@ -65,7 +65,17 @@ export const createDraftSuggestion = <F>({
     clientRect,
     command,
   }: SuggestionProps<DraftPick<F>, DraftPick<F>>) =>
-    onChange({ editor, range, query, getCaretRect: clientRect, pick: command });
+    onChange({
+      editor,
+      range,
+      query,
+      getCaretRect: () => {
+        const caret = editor.view.dom.querySelector("[data-caret-frame]");
+        const frame = caret?.closest("[data-editing]") ?? caret;
+        return frame?.getBoundingClientRect() ?? clientRect?.() ?? null;
+      },
+      pick: command,
+    });
 
   return Extension.create({
     name: "draftSuggestion",

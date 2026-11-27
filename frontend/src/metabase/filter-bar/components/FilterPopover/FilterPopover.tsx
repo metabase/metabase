@@ -106,7 +106,7 @@ export const FilterPopover = <F,>({
     <Popover
       opened={hasFilterEditor || listView !== null}
       position="bottom-start"
-      offset={4}
+      offset={{ mainAxis: 8, crossAxis: -8 }}
       trapFocus={false}
       returnFocus={false}
       onDismiss={onDismiss}

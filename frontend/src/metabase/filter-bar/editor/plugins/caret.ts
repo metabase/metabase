@@ -15,6 +15,9 @@ export const createCaret = (className: string) =>
             const createElement = () => {
               const element = document.createElement("span");
               element.className = className;
+              const frame = document.createElement("span");
+              frame.dataset.caretFrame = "";
+              element.append(frame);
               return element;
             };
             return DecorationSet.create(doc, [

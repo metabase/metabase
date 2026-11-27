@@ -1,5 +1,6 @@
 .editor {
   --row-height: 2.125rem;
+  --pill-height: 1.625rem;
 
   flex: 1;
   min-width: 0;
@@ -54,6 +55,15 @@
   width: 0;
   height: 1lh;
   vertical-align: top;
+
+  & > [data-caret-frame] {
+    position: absolute;
+    top: 50%;
+    left: var(--mantine-spacing-xxs);
+    width: 0;
+    height: var(--pill-height);
+    transform: translateY(-50%);
+  }
 
   &::after {
     content: "";

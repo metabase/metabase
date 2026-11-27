@@ -1,4 +1,5 @@
 .frame {
+  height: var(--pill-height);
   box-shadow: var(--mantine-shadow-xs_outline);
   cursor: pointer;
   transition: box-shadow 120ms;
