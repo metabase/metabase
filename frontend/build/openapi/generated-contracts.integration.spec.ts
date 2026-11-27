@@ -59,7 +59,7 @@ test("checks the client against generated backend operations", () => {
   const expected = {
     "api:missingMeasureBody:request.body": "mismatch",
     "api:optionalDashboardBody:request.body": "compatible",
-    "api:dashboardPage:request.query": "compatible",
+    "api:dashboardPage:request.query": "mismatch",
     "api:timezones:request.path.0": "compatible",
     "api:deleteAction:response.204": "compatible",
     "api:archived:request.query": "compatible",

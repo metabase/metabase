@@ -3,7 +3,9 @@ import ts from "typescript";
 import {
   type ClientRequest,
   type SentPart,
+  UNENCODED_PATH_DELIMITER,
   modelClientRequest,
+  pathTextChangesSegment,
 } from "./client-request";
 import {
   type RtkRequest,
@@ -649,6 +651,7 @@ function checkPathParameters(
         return [
           {
             source: "literal path segment",
+            encoded: false,
             values: [{ kind: "text" as const, text }],
             notes: [],
             unverified: undefined,
@@ -699,10 +702,46 @@ function checkPathParameters(
   });
 }
 
-function hasUnrestrictedStringText(type: ts.Type): boolean {
-  return type.isIntersection()
-    ? type.types.some(hasUnrestrictedStringText)
-    : (type.flags & ts.TypeFlags.String) !== 0;
+function hasUnverifiedPathText(
+  type: ts.Type,
+  encoded: boolean,
+  fragment = false,
+): boolean {
+  if (type.isUnionOrIntersection()) {
+    return type.types.some((part) =>
+      hasUnverifiedPathText(part, encoded, fragment),
+    );
+  }
+  if (type.flags & ts.TypeFlags.TemplateLiteral) {
+    // TypeScript tags TemplateLiteralType with the TemplateLiteral flag.
+    const { texts, types } = type as ts.TemplateLiteralType;
+    if (encoded && texts.some((text) => /[^.]/.test(text))) {
+      // A fixed non-dot character excludes empty and dot segments after encoding.
+      return false;
+    }
+    return (
+      (!encoded && texts.some((text) => UNENCODED_PATH_DELIMITER.test(text))) ||
+      types.some((part) => hasUnverifiedPathText(part, encoded, true))
+    );
+  }
+  if (type.flags & ts.TypeFlags.StringMapping) {
+    // TypeScript tags StringMappingType with the StringMapping flag.
+    const mapping = type as ts.StringMappingType;
+    return hasUnverifiedPathText(mapping.type, encoded, fragment);
+  }
+  if (type.isStringLiteral()) {
+    return fragment
+      ? !encoded && UNENCODED_PATH_DELIMITER.test(type.value)
+      : pathTextChangesSegment(type.value, encoded);
+  }
+  return (
+    (type.flags &
+      (ts.TypeFlags.String |
+        ts.TypeFlags.Any |
+        ts.TypeFlags.Unknown |
+        ts.TypeFlags.TypeParameter)) !==
+    0
+  );
 }
 
 function pathParameterVerdict(
@@ -733,15 +772,13 @@ function pathParameterVerdict(
     parameter.values.some(
       (value) =>
         value.kind === "type" &&
-        unionMembers(context.checker, value.type).some(
-          hasUnrestrictedStringText,
-        ),
+        hasUnverifiedPathText(value.type, parameter.encoded),
     )
   ) {
     verdicts.push({
       status: "unverified",
       diagnostics: [
-        `$: ${parameter.source} accepts unrestricted strings, including empty and dot segments that change the route`,
+        `$: ${parameter.source} may contain text that changes the route, so the checker cannot verify that it stays in one path segment`,
       ],
     });
   }

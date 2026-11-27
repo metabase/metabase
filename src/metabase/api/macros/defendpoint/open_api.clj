@@ -183,6 +183,18 @@
    "4XX" {:description "Client error response"}
    "5XX" {:description "Server error response"}})
 
+(defn- paging-params
+  [form query-params]
+  (when-let [paging (get-in form [:metadata :paging])]
+    (let [declared (into #{} (map :name) query-params)]
+      (for [param paging
+            :let [param-name (name param)]
+            :when (not (declared param-name))]
+        {:in :query, :name param-name, :required false, :schema {:type :integer}
+         :description (case param
+                        :limit "The maximum number of results to return."
+                        :offset "The number of results to skip.")}))))
+
 (mr/def ::response-override
   "The `:openapi/response` property of a response schema.
   It describes the response on the wire, where that differs from the value the handler returns."
@@ -236,7 +248,8 @@
           params          (concat
                            (for [param route-params]
                              (assoc param :in :path))
-                           query-params)
+                           query-params
+                           (paging-params form query-params))
           ctype           (if (get-in form [:metadata :multipart])
                             "multipart/form-data"
                             "application/json")

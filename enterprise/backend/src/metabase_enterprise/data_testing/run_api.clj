@@ -39,6 +39,7 @@
 (api.macros/defendpoint :get "/" :- ::data-testing.schema/data-test-runs.response
   "List the runs of the tests of `test-type` that the caller can read, newest first. With `test-id`, only the runs of
   that test. Without it, the caller needs Data Studio access. The runs of a test that was deleted are not listed."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [test-type test-id statuses start-time end-time]}
    :- [:map {:closed true}

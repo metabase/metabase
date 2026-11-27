@@ -59,6 +59,7 @@ export interface SentPart {
 
 interface SentPathParameter {
   source: string;
+  encoded: boolean;
   values: Shape[];
   notes: string[];
   unverified: string | undefined;
@@ -870,36 +871,41 @@ function encodedArgument(
     : undefined;
 }
 
-function knownTexts(
-  checker: ts.TypeChecker,
-  values: Shape[],
-): string[] | undefined {
-  const texts = values.flatMap((value) => {
+function knownTexts(checker: ts.TypeChecker, values: Shape[]): string[] {
+  return values.flatMap((value) => {
     if (value.kind === "text") {
       return [value.text];
     }
     const type = plainType(value);
     return type
-      ? unionMembers(checker, type).map((part) =>
-          part.isStringLiteral() ? part.value : undefined,
+      ? unionMembers(checker, type).flatMap((part) =>
+          part.isStringLiteral() ? [part.value] : [],
         )
-      : [undefined];
+      : [];
   });
-  return texts.every((text) => text !== undefined) ? texts : undefined;
 }
 
-// `new URL` resolves "." and ".." segments, and an unencoded "/", "\\", "?", "#" or "%" changes the URL itself (ApiClient.buildUrl).
+export const UNENCODED_PATH_DELIMITER = /[/\\?#%\t\r\n]/;
+
+export function pathTextChangesSegment(
+  text: string,
+  encoded: boolean,
+): boolean {
+  return (
+    text === "." ||
+    text === ".." ||
+    (!encoded && UNENCODED_PATH_DELIMITER.test(text))
+  );
+}
+
 function pathTextUnverified(
   checker: ts.TypeChecker,
   source: string,
   values: Shape[],
   encoded: boolean,
 ): string | undefined {
-  const text = (knownTexts(checker, values) ?? []).find(
-    (candidate) =>
-      candidate === "." ||
-      candidate === ".." ||
-      (!encoded && /[/\\?#%]/.test(candidate)),
+  const text = knownTexts(checker, values).find((candidate) =>
+    pathTextChangesSegment(candidate, encoded),
   );
   return text === undefined
     ? undefined
@@ -911,7 +917,7 @@ function substituteTag(
   name: string,
   params: Payload,
   hasBody: boolean,
-): Omit<SentPathParameter, "source"> & { params: Payload } {
+): Omit<SentPathParameter, "source" | "encoded"> & { params: Payload } {
   const field =
     params.kind === "object"
       ? params.fields.find((field) => field.name === name)
@@ -992,6 +998,7 @@ function substituteTags(
     );
     return {
       source: `:${slot.name}`,
+      encoded: true,
       values: sent.values,
       notes: [...new Set([...notes, ...sent.notes])],
       unverified:
@@ -1020,6 +1027,7 @@ function spanParameter(
   );
   return {
     source: "template expression",
+    encoded: argument !== undefined,
     values,
     notes,
     unverified:

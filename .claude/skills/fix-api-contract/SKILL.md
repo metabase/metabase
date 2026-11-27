@@ -56,7 +56,10 @@ correct. Existing behaviour is evidence but may itself contain a bug.
   including optional nested fields, must be supported by the backend schema; omitting backend fields is allowed.
 - Requests compare the expressions actually sent in URL parameters, `params` and `body`.
   The RTK argument type may differ from the wire request because the query function transforms it.
-- For pagination, the offset-paging middleware reads integer `limit` and `offset` before endpoint validation. Check whether the handler uses them before changing a caller. The generated spec includes these middleware parameters.
+- For a pagination mismatch, trace `limit` and `offset` through the handler and its helpers. The
+  middleware parses both globally. Declare the ones the endpoint uses in its `defendpoint` metadata
+  with `{:paging [:limit :offset]}` or `{:paging [:limit]}`. Remove a parameter from the caller if
+  the endpoint ignores it.
 - A JavaScript `number` in a JSON body can serialize to `null` for `NaN` or infinity. Check the caller and the API’s intended numeric domain before widening a backend schema.
 - Distinguish absent keys from nullable values. A key always emitted with a possible null value
   is required and nullable, not optional. Check conditional responses and error variants too.

@@ -328,7 +328,8 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  {:scope api-scope/data-app}
+  {:paging [:limit :offset]
+   :scope api-scope/data-app}
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))
@@ -360,6 +361,7 @@
     as that user, so a `not-permitted` result means *they* can't see the item.
 
   Not supported for `indexed-entity` (its id is compound)."
+  {:paging [:limit :offset]}
   [_route-params
    {expected-result-type :expected_result_type
     expected-result-id   :expected_result_id

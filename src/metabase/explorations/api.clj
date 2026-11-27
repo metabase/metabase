@@ -765,6 +765,7 @@
   creation — see [[metabase.explorations.db/my-explorations]]. Explorations that were moved into a
   collection the user can no longer read are excluded, as are archived ones. Returns the
   collection-items envelope: `{:total :limit :offset :data}`."
+  {:paging [:limit :offset]}
   []
   (let [limit  (request/limit)
         offset (request/offset)

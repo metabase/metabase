@@ -1249,7 +1249,13 @@ describe("request comparison rules", () => {
     expect(resultFor(results, "request.path.0")?.status).toBe("mismatch");
   });
 
-  it.each(["string", 'string & { readonly brand: "Name" }'])(
+  it.each([
+    "string",
+    'string & { readonly brand: "Name" }',
+    "`id-${string}`",
+    "Uppercase<string>",
+    "`id-${Uppercase<string>}`",
+  ])(
     "should leave a path parameter of type %s unverified when its text is unrestricted",
     (argumentType) => {
       const results = check({
@@ -1263,6 +1269,52 @@ describe("request comparison rules", () => {
       expect(resultFor(results, "request.path.0")?.status).toBe("unverified");
     },
   );
+
+  it.each([
+    ["`id-${number}`", "name", "compatible"],
+    ["`id/${number}`", "name", "unverified"],
+    ["`id?${number}`", "name", "unverified"],
+    ["`id-${string}`", "encodeURIComponent(name)", "compatible"],
+    ["`id/${string}`", "encodeURIComponent(name)", "compatible"],
+    ["`id?${number}`", "encodeURIComponent(name)", "compatible"],
+    ["`.${string}`", "encodeURIComponent(name)", "unverified"],
+    ["Uppercase<string>", "encodeURIComponent(name)", "unverified"],
+    ['"." | `id-${number}`', "name", "unverified"],
+    ['".." | `id-${number}`', "encodeURIComponent(name)", "unverified"],
+    ['".\\t" | `id-${number}`', "name", "unverified"],
+    ['".\\t" | `id-${number}`', "encodeURIComponent(name)", "compatible"],
+  ])(
+    "should check the path segment for %s interpolated as %s",
+    (argumentType, expression, status) => {
+      const results = check({
+        frontend,
+        backend: operation({
+          url: "/api/user/{name}",
+          path: "path: {name: string}",
+        }),
+        endpoint: request(
+          argumentType,
+          `name => \`/api/user/\${${expression}}\``,
+        ),
+      });
+      expect(resultFor(results, "request.path.0")?.status).toBe(status);
+    },
+  );
+
+  it("should verify template text encoded by a URL tag with a fixed prefix", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        url: "/api/user/{name}",
+        path: "path: {name: string}",
+      }),
+      endpoint: request(
+        "`id/${string}`",
+        'name => ({ url: "/api/user/:name", params: { name } })',
+      ),
+    });
+    expect(resultFor(results, "request.path.0")?.status).toBe("compatible");
+  });
 
   it("should model a module-local FormData namesake as a plain object", () => {
     const results = check({

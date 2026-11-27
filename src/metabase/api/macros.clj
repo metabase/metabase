@@ -839,6 +839,8 @@
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
    [:deprecated  {:optional true} [:or :boolean :string]]
+   ;; The offset-paging middleware parses these arguments before the endpoint's query schema.
+   [:paging      {:optional true} [:enum [:limit] [:limit :offset]]]
    [:tool        {:optional true} [:map {:closed true}
                                    [:name         :string]
                                    [:title        {:optional true} :string]

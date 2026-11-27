@@ -65,6 +65,7 @@
 
 (api.macros/defendpoint :get "/" :- [:map {:closed true} [:data [:sequential Tenant]]]
   "Get all tenants"
+  {:paging [:limit :offset]}
   [_
    {:keys [status]} :- [:map {:closed true}
                         [:status {:default "all"} [:enum "all" "deactivated" "active"]]]

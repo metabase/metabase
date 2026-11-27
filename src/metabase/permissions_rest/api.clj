@@ -152,6 +152,7 @@
   - `tenancy=external`: Returns only tenant groups (where `is_tenant_group = true`)
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
   - No `tenancy` parameter: Returns all groups (default behavior)"
+  {:paging [:limit :offset]}
   [_route_params
    {:keys [tenancy]} :- [:map {:closed true}
                          [:tenancy {:optional true} [:enum "external" "internal"]]]]

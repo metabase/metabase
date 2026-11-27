@@ -277,6 +277,7 @@
   tab). `creatorless=false` selects the inverse.
 
   `channel` accepts a single string or a repeated query param for multi-select (OR logic)."
+  {:paging [:limit :offset]}
   [_route
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            last_check_status query sort_column sort_direction]} :-

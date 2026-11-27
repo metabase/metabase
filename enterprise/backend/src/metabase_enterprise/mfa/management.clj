@@ -255,6 +255,7 @@
   locked-out user.
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [query]} :- [:map {:closed true} [:query {:optional true} [:maybe :string]]]]
   (api/check-superuser)
@@ -266,6 +267,7 @@
   challenges them — their identity provider owns MFA. Never feature-gated, as above.
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [query]} :- [:map {:closed true} [:query {:optional true} [:maybe :string]]]]
   (api/check-superuser)

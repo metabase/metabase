@@ -199,16 +199,6 @@
   [handler spec-fn]
   (->HandlerWithOpenAPISpec handler spec-fn (meta handler)))
 
-(defn- with-paging-parameters
-  "Offset-paging middleware accepts these query parameters before endpoint validation.
-  A handler decides whether to apply them to its results."
-  [operation]
-  (let [declared (into #{} (comp (filter #(= :query (:in %))) (map :name)) (:parameters operation))]
-    (update operation :parameters
-            #(into (vec %) (for [k ["limit" "offset"] :when (not (declared k))]
-                             {:in :query, :name k, :required false, :schema {:type :integer}
-                              :description "Read by offset-paging middleware; affects results on paginated endpoints."})))))
-
 (mu/defn root-open-api-object :- ::spec
   "Generate base object for OpenAPI (/paths and /components/schemas)
 
@@ -217,7 +207,6 @@
   {:closed true}
   (let [base-spec (open-api-spec handler "/api")]
     (-> base-spec
-        (update :paths update-vals #(update-vals % with-paging-parameters))
         (assoc :openapi "3.1.0"
                :info    {:title   "Metabase API"
                          :version (:tag config/mb-version-info)

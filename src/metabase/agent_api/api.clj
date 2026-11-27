@@ -168,7 +168,8 @@
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
-  {:deprecated true
+  {:paging [:limit]
+   :deprecated true
    :scope metabot/agent-search
    :tool  {:name "search"
            :title "Search Metabase Content"

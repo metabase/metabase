@@ -46,6 +46,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
+  {:paging [:limit :offset]}
   []
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (vec (model-persistence.db/persisted-database-ids))

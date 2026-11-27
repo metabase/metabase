@@ -213,6 +213,7 @@
   already `ended`, with those three null. `status=all` lists both. `total` counts whatever the filters match.
 
   Superuser only."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [sort-column sort-direction] :as params} :- [:maybe ::ListParams]
    _body

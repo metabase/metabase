@@ -96,6 +96,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
   "Return the prompt suggestions for a Metabot primary key or entity ID."
+  {:paging [:limit :offset]}
   [{:keys [id]} :- [:map {:closed true} [:id [:or pos-int? :string]]]
    {:keys [sample model model_id]} :- [:map {:closed true}
                                        [:sample {:optional true} :boolean]

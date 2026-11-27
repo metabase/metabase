@@ -78,6 +78,7 @@
 (api.macros/defendpoint :get "/" :- ::cache-config-list-response
   "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,
    and sorting via `sort_column` and `sort_direction`."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [model collection id] :as params}
    :- [:merge
