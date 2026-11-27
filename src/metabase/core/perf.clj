@@ -208,6 +208,6 @@
 (defn stop-monitoring!
   "Stops and closes the JFR recording if one is active."
   []
-  ;; a start that threw part way registered nothing, but may have left a recording running
+  ;; a failed start registers nothing and stops what it began, but that stop can fail too and leave a recording set
   (when-not (global-system/stop! recording-component)
     (stop-recording!)))
