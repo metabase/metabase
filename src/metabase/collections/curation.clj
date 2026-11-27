@@ -25,8 +25,8 @@
 
 (defn curated?
   "Whether the given curation-signal map is curated. THIS IS THE AUTHORITATIVE RULE.
-  Reads `:model` `:verified` `:official_collection` `:is_published` `:root_collection_type`
-  `:data_layer`; text signals may be strings or keywords.
+  Reads `:model` `:verified` `:official_collection` `:is_published` `:root_collection_type` `:data_layer`.
+  Text signals may be strings or keywords.
 
   Several places re-encode or apply this rule and MUST be kept in sync when it changes:
     - [[curated-honeysql]] — SQL mirror of this predicate (used by the semantic backfill)

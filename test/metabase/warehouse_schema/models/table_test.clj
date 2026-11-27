@@ -758,8 +758,7 @@
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
 
 (deftest retired-authoritative-data-authority-serdes-import-test
-  (testing "Importing an export holding the retired authoritative data_authority maps it as the app DB migration did
-            (BOT-2735)"
+  (testing "Importing the retired authoritative data_authority maps it as the app DB migration does (BOT-2735)"
     (mt/with-temp [:model/Database {db-id :id}   {}
                    :model/Table    {upload :id}  {:db_id db-id :is_upload true}
                    :model/Table    {regular :id} {:db_id db-id}

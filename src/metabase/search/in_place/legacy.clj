@@ -293,8 +293,8 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
-                               ;; data_layer is a curation signal, not a name/text field —
-                               ;; exclude it from exact-match ranking (and to keep in-place ordering stable).
+                               ;; data_layer is a curation signal, not a name/text field: exclude it from
+                               ;; exact-match ranking, and to keep in-place ordering stable.
                                ;; data_app_slug repeats a data app's slug.
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location

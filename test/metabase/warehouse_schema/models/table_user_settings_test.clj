@@ -193,8 +193,7 @@
       (is (= "User Description" (:description (user-table table-id)))))))
 
 (deftest retired-authoritative-data-authority-serdes-import-test
-  (testing "Importing settings holding the retired authoritative data_authority imports it as not set by a user, so the
-            Table keeps its own value (BOT-2735)"
+  (testing "Importing the retired authoritative data_authority in settings keeps the Table's own value (BOT-2735)"
     (mt/with-temp [:model/Table {table-id :id :as table} {:is_upload true :data_authority :ingested}]
       (table-user-settings/upsert-table-user-settings! table {:data_authority :ingested})
       (let [settings  (t2/select-one :model/TableUserSettings :table_id table-id)

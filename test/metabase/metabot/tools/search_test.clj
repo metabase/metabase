@@ -475,8 +475,7 @@
               :collection     {:id 3 :name "Official" :authority_level "official"}})))))
 
 (deftest ^:parallel search-result-xml-renders-curation-signals-test
-  (testing "the XML the LLM actually sees carries curated/data_layer for a table result, and no data_authority —
-            the render path that was a no-op until these reached search results (BOT-1570, BOT-2735)"
+  (testing "the XML the LLM sees carries curated and data_layer for a table result, and no data_authority"
     (let [result (#'search/postprocess-search-result
                   {:model          "table"
                    :id             9

@@ -201,8 +201,7 @@
                  (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true)))))))))
 
 (deftest in-place-curated-table-filter-test
-  (testing "the in-place curated table filter counts only tables published at the final layer, mirroring
-            collections.curation/curated? (BOT-2735)"
+  (testing "the in-place curated table filter counts only tables published at the final layer (BOT-2735)"
     (mt/with-premium-features #{:library}
       (is (= [:and
               [:= :table_settings.is_published true]

@@ -528,8 +528,7 @@
                      rows-by-id)))))))))
 
 (deftest curated-table-ids-test
-  (testing "the table curation backfills sweep only active published-final tables — others are implicitly not
-            curated (table curation never uses root_collection_type)"
+  (testing "the table curation backfills sweep only active published-final tables"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {pub :id}      {:db_id db-id :active true :data_layer :final}
                    :model/TableUserSettings _ {:table_id pub :is_published true}

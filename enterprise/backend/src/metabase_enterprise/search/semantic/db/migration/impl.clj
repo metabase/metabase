@@ -317,14 +317,15 @@
   Non-table rows compute `curated` from index columns via [[metabase.collections.curation/curated-honeysql]]
   (is_published forced false — the index lacks it), covering verified cards, official cards, and library
   content via `root_collection_type`. Two bounded appdb sweeps fix what the index columns can't express for
-  existing rows: tables are curated only when published-final (the index's
-  `root_collection_type` isn't is_published-gated for tables, so it's never used for table curation), and
-  official-only dashboards (whose official_collection column is new and unset on existing rows).
+  existing rows: tables are curated only when published-final (the index's `root_collection_type` isn't
+  is_published-gated for tables, so it's never used for table curation), and official-only dashboards (whose
+  official_collection column is new and unset on existing rows).
   Empty (freshly migrated, not-yet-populated) index tables are skipped, since ingestion populates them.
   Known limitation: the backfill writes the `curated` column (used for filtering) but not `legacy_input`, from
-  which results are reconstructed — so migrated rows surface the new is_curated/data_layer LLM annotations only
-  after their next reindex; the curated *filter* is correct immediately. Changing the rule needs a new migration
-  to recompute this, as [[uncurate-authoritative-tables!]] does."
+  which results are reconstructed.
+  So migrated rows surface the new is_curated/data_layer LLM annotations only after their next reindex, while
+  the curated *filter* is correct immediately.
+  Changing the rule needs a new migration to recompute this, as [[uncurate-authoritative-tables!]] does."
   [tx index-metadata]
   (let [curated-expr (collections.curation/curated-honeysql
                       (fn [signal] (if (= signal :is_published) [:inline false] signal)))
@@ -392,12 +393,13 @@
                                   (semantic.util/quote-ident final-name))])))))
 
 (defn- uncurate-authoritative-tables!
-  "Migration 7: stop counting tables indexed as authoritative as curated.
-  An `authoritative` data authority used to make a table curated. The value is gone from the appdb, so those rows
-  lose `curated` unless they are published-final, and their `data_authority` is cleared.
+  "Migration 7: un-curate the table rows indexed as `authoritative`.
+  An `authoritative` data authority used to make a table curated.
+  The value is gone from the appdb, so those rows lose `curated` unless they are published-final, and their
+  `data_authority` is cleared.
   Only those rows change; other table rows already have the right `curated`.
-  Both the `curated` column (used for filtering) and `legacy_input` (from which results are reconstructed) change,
-  so results stop showing those tables as curated before their next reindex.
+  Both the `curated` column (used for filtering) and `legacy_input` (from which results are reconstructed)
+  change, so results stop showing those tables as curated before their next reindex.
   Empty (freshly migrated, not-yet-populated) index tables are skipped, since ingestion populates them."
   [tx index-metadata]
   (let [;; resolved lazily so the appdb sweep only runs once a non-empty index table is found
@@ -418,7 +420,7 @@
      (fn [execute! table-name]
        (let [kw-tbl (keyword table-name)]
          (when-not (index-empty? execute! kw-tbl)
-           ;; the published-final ones first, since clearing data_authority takes a row out of the second update
+           ;; published-final rows first: clearing data_authority takes a row out of the second update
            (update-model-rows-in-batches! execute! kw-tbl "table" @tables (set-curated true) authoritative)
            (execute! {:update kw-tbl
                       :set    (set-curated false)
