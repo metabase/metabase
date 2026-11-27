@@ -666,12 +666,12 @@
 (defmethod serialization/spec :model/Table [_]
   {:schema              ::warehouse-schema.schema/external-table
    :identity            [:db_id :schema :name]
-   :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
+   :copy                [:name :description :entity_type :active :display_name :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
                          :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
-                         :is_defective_duplicate :unique_table_helper]
+                         :is_defective_duplicate :unique_table_helper :visibility_type]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform

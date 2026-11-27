@@ -757,6 +757,24 @@
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
 
+(deftest hidden-table-serdes-import-over-unhidden-table-test
+  (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
+                 :model/Table {table-id :id} {:db_id db-id :data_layer :hidden}]
+    (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id table-id)]))
+          unhide!   #(t2/update! :model/Table :id table-id {:data_layer :internal})
+          layer     #(t2/select-one-fn :data_layer :model/Table :id table-id)]
+      (testing "export carries data_layer only"
+        (is (=? {:data_layer :hidden} extracted))
+        (is (not (contains? extracted :visibility_type))))
+      (testing "import hides unhidden table"
+        (unhide!)
+        (serialization/load :model/Table [extracted])
+        (is (= :hidden (layer))))
+      (testing "import of older export with visibility_type hides unhidden table"
+        (unhide!)
+        (serialization/load :model/Table [(assoc extracted :visibility_type "hidden")])
+        (is (= :hidden (layer)))))))
+
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
     (testing "via the model before-insert (the path sync uses)"

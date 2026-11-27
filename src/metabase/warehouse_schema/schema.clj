@@ -394,7 +394,7 @@
   "A Table as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::table [:name :description :entity_type :active :display_name :visibility_type :schema
+    [:select-keys ::table [:name :description :entity_type :active :display_name :schema
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :data_layer :db_id
