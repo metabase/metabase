@@ -46,4 +46,15 @@ describe("SnippetDescriptionSection", () => {
     expect(screen.getByText("italic text").tagName).toBe("EM");
     expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
   });
+
+  it("keeps focus and inserts new line when Enter is pressed", async () => {
+    setup({ description: "" });
+
+    await userEvent.click(screen.getByTestId("editable-text"));
+    const input = screen.getByPlaceholderText("No description");
+    await userEvent.type(input, "# Heading{Enter}second line");
+
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("# Heading\nsecond line");
+  });
 });

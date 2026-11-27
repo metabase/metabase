@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
+import { Markdown } from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import { Button, Ellipsified, Flex, Icon } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -86,7 +87,9 @@ export function SnippetRow({
       {isOpen && (
         <div className={cx(CS.px3, CS.pb2, CS.pt1)}>
           {description && (
-            <p className={cx(CS.textMedium, CS.mt0)}>{description}</p>
+            <Markdown className={CS.mb1} c="text-secondary">
+              {description}
+            </Markdown>
           )}
           <pre
             className={cx(
