@@ -399,8 +399,8 @@
    Otherwise components stop in the reverse of the order they first started in, as far as the dependencies allow.
 
    From the moment it begins, every start throws until [[reopen!]], so a stop cannot restart what the halt stopped.
-   It first waits up to `:start-timeout-ms` of `opts`, unbounded by default, for the starts already running, holding no
-   lock, so it stops those too; one still running after that is logged and left running.
+   It first waits up to `:start-timeout-ms` milliseconds, unbounded by default, for the starts already running, holding
+   no lock, so it stops those too; one still running after that is logged and left running.
    It does not wait for a stop already running elsewhere, so it can stop what that component uses while that stop runs.
 
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
