@@ -37,8 +37,10 @@
   (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.date-time :as lib.date-time]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -136,7 +138,11 @@
         new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
         stage-number           (lib.underlying/top-level-stage-number query)
         resolved-column        (lib.drill-thru.common/breakout->resolved-column
-                                query stage-number column {:preserve-type? true})]
+                                query stage-number column {:preserve-type? true})
+        filter-clause          (lib.filter/= resolved-column value)]
     (-> query
-        (lib.filter/filter stage-number (lib.filter/= resolved-column value))
+        (lib.filter/filter stage-number
+                           (cond-> filter-clause
+                             (lib.fe-util/expandable-temporal-expression? filter-clause)
+                             (->> (lib.fe-util/expand-temporal-expression (lib.date-time/config query)))))
         (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))
