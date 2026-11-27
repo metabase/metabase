@@ -418,12 +418,8 @@
     (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
 
 (defmethod sql.qp/date [:sqlite :week-of-year-iso]
-  [driver _ expr]
-  ;; Maybe we can follow the algorithm here https://en.wikipedia.org/wiki/ISO_week_date#Algorithms
-  (throw (ex-info (tru "Sqlite doesn''t support extract isoweek")
-                  {:driver driver
-                   :form   expr
-                   :type   driver-api/qp.error-type.invalid-query})))
+  [_driver _ expr]
+  (h2x/->integer (strftime "%V" expr)))
 
 (defmethod sql.qp/date [:sqlite :month]
   [_driver _ expr]
