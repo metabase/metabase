@@ -113,6 +113,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "lodash.debounce": "^4.0.8",
+    "lucide-react": "^1.73.0",
     "marked": "18.0.6",
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
@@ -531,6 +532,7 @@
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator --typeScript frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts",
     "build-emoji-data": "bun bin/build-emoji-data.ts",
+    "build-lucide-custom-icons": "bun bin/build-lucide-custom-icons.ts",
     "generate-license-disclaimer": "node bin/generate-license-disclaimer.js",
     "cloud:dev": "bun install && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && bun run concurrently -n 'FE,BE' -c 'blue,green' 'bun run build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'",
     "lint-oxlint-fix": "bun run lint-oxlint --fix"
