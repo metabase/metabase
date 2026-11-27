@@ -190,4 +190,43 @@ describe("mergeVisualizerData", () => {
 
     expect(result.results_timezone).toBe("America/Los_Angeles");
   });
+
+  it("should leave out subtotal and grand total rows of pivot datasets (#59656)", () => {
+    const result = mergeVisualizerData({
+      columns: [
+        createMockColumn(StringColumn({ name: "COLUMN_1" })),
+        createMockColumn(NumberColumn({ name: "COLUMN_2" })),
+      ],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "CATEGORY", name: "COLUMN_1" },
+        ],
+        COLUMN_2: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_2" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [
+              createMockColumn(StringColumn({ name: "CATEGORY" })),
+              createMockColumn(NumberColumn({ name: "pivot-grouping" })),
+              createMockColumn(NumberColumn({ name: "count" })),
+            ],
+            rows: [
+              ["Gadget", 0, 10],
+              ["Widget", 0, 20],
+              [null, 1, 30],
+            ],
+          },
+        }),
+      },
+      dataSources: [],
+    });
+
+    expect(result.rows).toEqual([
+      ["Gadget", 10],
+      ["Widget", 20],
+    ]);
+  });
 });
