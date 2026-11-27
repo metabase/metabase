@@ -3,11 +3,13 @@ import fetchMock, { type CallLog, type UserRouteConfig } from "fetch-mock";
 import type {
   CardQueryMetadata,
   Dataset,
+  FieldValue,
   NativeDatasetResponse,
   ParameterValues,
 } from "metabase-types/api";
 import type { MockDatasetOpts } from "metabase-types/api/mocks";
 import { createMockDataset } from "metabase-types/api/mocks";
+import { isObject } from "metabase-types/guards";
 
 type AdhocQueryResponse = Dataset | Response;
 
@@ -69,4 +71,17 @@ export function setupNativeDatasetEndpoint(
   response: NativeDatasetResponse = { query: "SELECT 1", params: null },
 ) {
   fetchMock.post("path:/api/dataset/native", response);
+}
+
+/**
+ * Like the real API, returns the remapped value for a known value, and the value alone otherwise.
+ */
+export function setupParameterRemappingEndpoint(remappings: FieldValue[]) {
+  fetchMock.post("path:/api/dataset/parameter/remapping", (call) => {
+    const body: unknown = JSON.parse(String(call.options.body));
+    const value = isObject(body) ? body.value : undefined;
+    return (
+      remappings.find(([remappedValue]) => remappedValue === value) ?? [value]
+    );
+  });
 }
