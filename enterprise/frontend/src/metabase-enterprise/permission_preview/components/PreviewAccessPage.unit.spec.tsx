@@ -429,7 +429,7 @@ describe("PreviewAccessPage", () => {
     expect(screen.getByLabelText("Address")).toHaveValue("/dashboard/12");
   });
 
-  it("keeps the loading caption up while a dashboard's frame shows only its Back header", async () => {
+  it("keeps the loading caption up while a dashboard's frame shows only its Back to collections header", async () => {
     setup();
     await userEvent.click(await screen.findByText("Sandy Sales"));
     await getFrame();
@@ -444,7 +444,7 @@ describe("PreviewAccessPage", () => {
     ).toBeVisible();
     loadFrame(tinaFrame);
     await act(async () => {
-      tinaFrame.contentDocument?.body.append("Back");
+      tinaFrame.contentDocument?.body.append("Back to collections");
     });
 
     expect(screen.getByText("Loading Tina Tenant's view…")).toBeVisible();

@@ -78,7 +78,7 @@ export function PreviewContent({
               leftSection={<Icon name="chevronleft" />}
               onClick={() => setOpenItem(null)}
             >
-              {t`Back`}
+              {t`Back to collections`}
             </Button>
           </Box>
           <Box flex={1} mih={0}>

@@ -124,7 +124,9 @@ describe("PreviewContent", () => {
     const { onNavigate } = await setup({ initialItem: "question/7" });
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(screen.getByRole("button", { name: /Back$/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Back to collections$/ }),
+    );
 
     expect(onNavigate).toHaveBeenCalledWith("collection/all");
   });

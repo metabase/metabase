@@ -58,7 +58,7 @@ export function PreviewFrame({
 
   // The frame loads before it has the token, and paints its own loader until its
   // item has text. The caller keeps its loading state up until then. The frame's
-  // own "Back" header paints first, so it does not count.
+  // own "Back to collections" header paints first, so it does not count.
   function handleLoad() {
     const frameBody = frameRef.current?.contentDocument?.body;
     if (!frameBody) {
@@ -99,5 +99,5 @@ export function PreviewFrame({
 }
 
 function hasItemContent(body: HTMLElement) {
-  return body.innerText.replace(t`Back`, "").trim() !== "";
+  return body.innerText.replace(t`Back to collections`, "").trim() !== "";
 }
