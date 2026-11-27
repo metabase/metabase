@@ -11,6 +11,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.test-util.metadata-providers.remap :as lib.tu.remap]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
@@ -38,6 +39,7 @@
             :fk-field-id (meta/id :orders :product-id)}]
           (#'qp.add-implicit-joins/fk-field-infos->joins
            meta/metadata-provider
+           {}
            [{:fk-field-id (meta/id :orders :id)}
             {:fk-field-id (meta/id :orders :product-id)}]))))
 
@@ -1190,3 +1192,32 @@
                ;; `:source-field-name`
                ]
               (get-in (qp.preprocess/preprocess q) [:stages 0 :fields]))))))
+
+(deftest ^:parallel native-model-fk-without-underlying-fk-test
+  (testing "Implicit join through a native model column that is an FK only in model metadata (#82791)"
+    (let [orders-product-id (meta/field-metadata :orders :product-id)
+          model-col         (assoc orders-product-id
+                                   :lib/source :source/native
+                                   :fk-target-field-id (meta/id :products :id)
+                                   :semantic-type :type/FK)
+          base-mp           (merged-mock/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:fields [{:id                 (meta/id :orders :product-id)
+                                        :semantic-type      nil
+                                        :fk-target-field-id nil}]})
+          mp                (lib.tu/mock-metadata-provider
+                             base-mp
+                             {:cards  [{:id              1
+                                        :type            :model
+                                        :name            "Orders model"
+                                        :database-id     (meta/id)
+                                        :dataset-query   (lib/native-query base-mp "SELECT * FROM ORDERS")
+                                        :result-metadata [model-col]}]})
+          category          (-> (lib.metadata/field mp (meta/id :products :category))
+                                lib/ref
+                                (lib/update-options assoc :source-field (meta/id :orders :product-id)))
+          query             (-> (lib/query mp (lib.metadata/card mp 1))
+                                (lib/filter (lib/= category "Gadget")))]
+      (is (=? {:stages [{}
+                        {:joins [{:alias "PRODUCTS__via__PRODUCT_ID"}]}]}
+              (qp.preprocess/preprocess query))))))

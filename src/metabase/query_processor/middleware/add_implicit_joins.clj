@@ -60,15 +60,19 @@
     [:fk-field-name {:optional true} [:maybe :string]]
     [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]])
 
+(mr/def ::fk-targets
+  [:map-of [:tuple ::lib.schema.id/field [:maybe ::lib.schema.join/alias]] ::lib.schema.id/field])
+
 (mu/defn- fk-field-infos->joins :- [:maybe [:sequential ::join]]
   "Given `fk-field-infos`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   fk-targets            :- ::fk-targets
    fk-field-infos        :- [:maybe [:sequential ::fk-field-info]]]
   (when (seq fk-field-infos)
     (let [fk-field-ids     (into #{} (map :fk-field-id) fk-field-infos)
           fk-fields        (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column fk-field-ids)
-          target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
+          target-field-ids (into (set (vals fk-targets)) (keep :fk-target-field-id) fk-fields)
           target-fields    (when (seq target-field-ids)
                              (lib.metadata/bulk-metadata-or-throw metadata-providerable :metadata/column target-field-ids))
           target-table-ids (into #{} (keep :table-id) target-fields)]
@@ -78,7 +82,8 @@
       (for [{:keys [fk-field-id fk-field-name fk-join-alias]} fk-field-infos
             :let                                              [fk-field (lib.metadata/field metadata-providerable fk-field-id)]
             :when                                             fk-field
-            :let                                              [{pk-id :fk-target-field-id} fk-field]
+            :let                                              [pk-id (or (get fk-targets [fk-field-id fk-join-alias])
+                                                                         (:fk-target-field-id fk-field))]
             :when                                             pk-id]
         (let [{source-table-id :table-id}          (lib.metadata/field metadata-providerable pk-id)
               {table-name :name, :as source-table} (lib.metadata/table metadata-providerable source-table-id)
@@ -126,6 +131,7 @@
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
+   fk-targets                      :- ::fk-targets
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
@@ -136,7 +142,7 @@
                             not-empty)
         joins          (into []
                              (distinct)
-                             (fk-field-infos->joins metadata-providerable fk-field-infos))
+                             (fk-field-infos->joins metadata-providerable fk-targets fk-field-infos))
         unique-name-fn (lib/non-truncating-unique-name-generator)]
     (mapv (fn [{join-alias :alias, :as join}]
             (let [deduplicated-alias (unique-name-fn join-alias)]
@@ -144,6 +150,24 @@
                 (not= join-alias deduplicated-alias)
                 (rename-join deduplicated-alias))))
           joins)))
+
+(mu/defn- stage-fk-targets :- ::fk-targets
+  "Map of `[fk-field-id fk-join-alias]` -> FK target field ID of the columns visible at the stage at `path`, which
+  carry FKs set in model metadata as well as those of the database."
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/path]
+  (into {}
+        (keep (fn [{:keys [id fk-target-field-id], :as column}]
+                (when (and id fk-target-field-id)
+                  [[id (lib.join.u/current-join-alias column)] fk-target-field-id])))
+        (lib.walk/apply-f-for-stage-at-path
+         (fn [query stage-number]
+           (lib/visible-columns query stage-number {:include-joined?                              true
+                                                    :include-expressions?                         false
+                                                    :include-implicitly-joinable?                 false
+                                                    :include-implicitly-joinable-for-source-card? false}))
+         query
+         path)))
 
 (mu/defn- visible-joins :- [:sequential ::lib.schema.join/join]
   "Set of all joins that are visible in the current level of the query or in a nested source query."
@@ -355,7 +379,9 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (let [implicitly-joined-fields (implicitly-joined-fields stage)
-        new-joins                (implicitly-joined-fields->joins query implicitly-joined-fields)
+        new-joins                (implicitly-joined-fields->joins query
+                                                                  (stage-fk-targets query path)
+                                                                  implicitly-joined-fields)
         required-joins           (remove #(already-has-join? query path stage %) new-joins)
         reused-join-aliases      (into #{} (map :alias) (set/difference (set new-joins) (set required-joins)))]
     (-> stage
