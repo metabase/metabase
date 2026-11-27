@@ -43,8 +43,10 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -428,6 +430,17 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
+(def ^:private aggregation->driver-feature
+  (into {} (map (juxt :short :driver-feature)) lib.schema.aggregation/aggregation-operators))
+
+(mu/defn- metric-template-supported? :- :boolean
+  "Whether the database supports the aggregation of `metric-template`."
+  [database                                 :- (ms/InstanceOf :model/Database)
+   {[ag-type] :metric, :as _metric-template} :- ::ads/normalized-metric-template]
+  (if-let [feature (aggregation->driver-feature (keyword ag-type))]
+    (driver.u/supports? (:engine database) feature database)
+    true))
+
 (mu/defn identify :- ::ads/grounded-values
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied.
@@ -441,7 +454,9 @@
                               [:filter-specs    [:maybe [:sequential ::ads/filter-template]]]]]
   (let [dims      (->> (find-dimensions context dimension-specs)
                        (add-field-self-reference context))
-        metrics   (-> (normalize-seq-of-maps :metric metric-specs)
+        database  (xrays.db/database (-> context :root :database))
+        metrics   (-> (filterv (partial metric-template-supported? database)
+                               (normalize-seq-of-maps :metric metric-specs))
                       (grounded-metrics dims))
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]
