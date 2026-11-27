@@ -3,6 +3,30 @@
  * This version rearranges and the type in a logical way and adds an extra overrides to handle a case where we pass `any` type to `_.compose`.
  */
 
+declare module "underscore/modules/debounce.js" {
+  import { debounce } from "underscore";
+
+  export = debounce;
+}
+
+declare module "underscore/modules/noop.js" {
+  import { noop } from "underscore";
+
+  export = noop;
+}
+
+declare module "underscore/modules/omit.js" {
+  import { omit } from "underscore";
+
+  export = omit;
+}
+
+declare module "underscore/modules/unzip.js" {
+  import { unzip } from "underscore";
+
+  export = unzip;
+}
+
 declare namespace _ {
   interface UnderscoreStatic {
     compose<TArgs extends any[], R1>(

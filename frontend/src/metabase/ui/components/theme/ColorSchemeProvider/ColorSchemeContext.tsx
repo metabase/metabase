@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { noop } from "underscore";
+import noop from "underscore/modules/noop.js";
 
 import type {
   ColorScheme,
