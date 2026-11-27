@@ -94,7 +94,7 @@
                                    [step u]))})))))
 
 (deftest halt-falls-back-to-no-dependencies-on-a-cycle-test
-  (testing "a cycle in the halt's dependencies is logged, and the halt runs with none"
+  (testing "a cycle in the halt's dependencies makes the halt run with none"
     (let [halts (atom [])]
       (mt/with-dynamic-fn-redefs [global-system/halt! (fn [dependencies _opts]
                                                         (swap! halts conj dependencies)
