@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard";
+import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import type { MetabaseCollectionItem } from "embedding-sdk-bundle/types/collection";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   ALL_COLLECTIONS_ITEM,
   NOT_FOUND_ITEM,
   parseItem,
 } from "metabase/embedding/permission-preview/item";
-import { Box, Button, Icon, Stack } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 
 interface PreviewContentProps {
   initialItem: string;
@@ -23,60 +26,113 @@ export function PreviewContent({
   initialItem,
   onNavigate,
 }: PreviewContentProps) {
-  const [history, setHistory] = useState([initialItem]);
-  const item = history[history.length - 1];
+  const initialPreviewItem = parseItem(initialItem);
+  const initialCollectionId =
+    initialPreviewItem?.type === "collection" ? initialPreviewItem.id : null;
 
-  function handleOpen(nextItem: string) {
-    setHistory([...history, nextItem]);
-    onNavigate(nextItem);
-  }
+  // An opened dashboard or question goes over the collection browser, which keeps its place
+  const [openItem, setOpenItem] = useState<string | null>(
+    initialCollectionId == null ? initialItem : null,
+  );
+  const [browserItem, setBrowserItem] = useState(
+    initialCollectionId == null ? ALL_COLLECTIONS_ITEM : initialItem,
+  );
+  const shownItem = openItem ?? browserItem;
 
-  function handleBack() {
-    const previousItems = history.slice(0, -1);
-    if (previousItems.length === 0) {
-      previousItems.push(ALL_COLLECTIONS_ITEM);
+  useEffect(() => {
+    onNavigate(shownItem);
+  }, [shownItem, onNavigate]);
+
+  function handleClick(clicked: Pick<MetabaseCollectionItem, "id" | "model">) {
+    // The browser follows collections itself and reports where it went
+    if (clicked.model !== "collection") {
+      setOpenItem(getItemOfCollectionItem(clicked));
     }
-    setHistory(previousItems);
-    onNavigate(previousItems[previousItems.length - 1]);
   }
 
   return (
-    <Stack h="100vh" gap={0}>
-      {item !== ALL_COLLECTIONS_ITEM && (
-        <Box px="lg" pt="md">
-          <Button
-            variant="subtle"
-            leftSection={<Icon name="chevronleft" />}
-            onClick={handleBack}
-          >
-            {t`Back`}
-          </Button>
-        </Box>
-      )}
-      <Box flex={1} mih={0}>
-        <PreviewItem item={item} onOpen={handleOpen} />
+    <>
+      {/* Kept mounted, so Back returns to the collection the item was opened from. Collapsed rather than
+          `display: none`: the browser holds the SDK's first portal root, where the open item's tooltips go. */}
+      <Box
+        p={openItem == null ? "md" : 0}
+        h={openItem == null ? "100vh" : 0}
+        style={{ overflowY: openItem == null ? "auto" : "hidden" }}
+      >
+        <SdkBreadcrumbsProvider>
+          <Stack gap="sm">
+            <BrowserBreadcrumbs />
+            <CollectionBrowser
+              collectionId={initialCollectionId ?? "all"}
+              onClick={handleClick}
+            />
+          </Stack>
+          <BrowserLocation onChange={setBrowserItem} />
+        </SdkBreadcrumbsProvider>
       </Box>
-    </Stack>
+      {openItem != null && (
+        <Stack h="100vh" gap={0}>
+          <Box px="lg" pt="md" bg="background_page-primary">
+            <Button
+              variant="subtle"
+              leftSection={<Icon name="chevronleft" />}
+              onClick={() => setOpenItem(null)}
+            >
+              {t`Back`}
+            </Button>
+          </Box>
+          <Box flex={1} mih={0}>
+            <PreviewItem item={openItem} />
+          </Box>
+        </Stack>
+      )}
+    </>
   );
 }
 
-interface PreviewItemProps {
-  item: string;
-  onOpen: (item: string) => void;
+/** The trail of collections the browser went through, each going back to it. */
+function BrowserBreadcrumbs() {
+  const { breadcrumbs, navigateTo } = useSdkBreadcrumbs();
+
+  return (
+    <Flex align="center" gap="sm" data-testid="sdk-breadcrumbs">
+      {breadcrumbs.map((breadcrumb, index) => (
+        <Fragment key={`${breadcrumb.type}-${breadcrumb.id}`}>
+          {index > 0 && (
+            <Text fz="sm" fw="bold" c="text-secondary">
+              /
+            </Text>
+          )}
+          <Breadcrumb icon="folder" onClick={() => navigateTo(breadcrumb)}>
+            {breadcrumb.name}
+          </Breadcrumb>
+        </Fragment>
+      ))}
+    </Flex>
+  );
 }
 
-function PreviewItem({ item, onOpen }: PreviewItemProps) {
+/** Reports the collection the browser is in, as the SDK's breadcrumbs track it. */
+function BrowserLocation({ onChange }: { onChange: (item: string) => void }) {
+  const { currentLocation } = useSdkBreadcrumbs();
+  const item = match(currentLocation)
+    .with({ type: "all-collections" }, () => ALL_COLLECTIONS_ITEM)
+    .with({ type: "collection" }, ({ id }) => `collection/${id}`)
+    .otherwise(() => null);
+
+  useEffect(() => {
+    if (item != null) {
+      onChange(item);
+    }
+  }, [item, onChange]);
+
+  return null;
+}
+
+function PreviewItem({ item }: { item: string }) {
   const previewItem = item === NOT_FOUND_ITEM ? null : parseItem(item);
 
   return match(previewItem)
-    .with({ type: "collection" }, ({ id }) => (
-      <Box h="100%" p="md" style={{ overflowY: "auto" }}>
-        <CollectionBrowser
-          collectionId={id}
-          onClick={(clicked) => onOpen(getItemOfCollectionItem(clicked))}
-        />
-      </Box>
-    ))
     .with({ type: "dashboard" }, ({ id }) => (
       <InteractiveDashboard
         dashboardId={id}
@@ -95,8 +151,7 @@ function PreviewItem({ item, onOpen }: PreviewItemProps) {
         />
       </Box>
     ))
-    .with(null, () => <NotFound />)
-    .exhaustive();
+    .otherwise(() => <NotFound />);
 }
 
 function getItemOfCollectionItem({

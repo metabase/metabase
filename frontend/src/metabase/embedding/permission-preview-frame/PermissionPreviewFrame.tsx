@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -54,12 +54,12 @@ export function PermissionPreviewFrame() {
     return () => clearTimeout(timeout);
   }, [isToastOpen]);
 
-  function handleNavigate(item: string) {
+  const handleNavigate = useCallback((item: string) => {
     window.parent.postMessage(
       createLocationMessage(item),
       window.location.origin,
     );
-  }
+  }, []);
 
   if (isOpenedDirectly) {
     return (
