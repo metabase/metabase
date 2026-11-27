@@ -116,6 +116,15 @@ describe("ActionListPage", () => {
     expect(screen.queryByTestId("collection-name")).not.toBeInTheDocument();
   });
 
+  it("shows no row checkbox on empty state row when there are no actions", async () => {
+    setup({});
+
+    await screen.findByTestId("empty-state-row");
+    expect(
+      screen.queryByRole("checkbox", { name: "Select row" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("offers new actions and collections with native write on an actions-enabled database", async () => {
     setup({});
 

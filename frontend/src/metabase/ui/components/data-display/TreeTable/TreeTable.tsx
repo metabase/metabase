@@ -40,6 +40,7 @@ export function TreeTable<TData extends TreeNodeData>({
   headerCheckboxAriaLabel,
   isChildrenLoading,
   isRowDisabled,
+  hasRowCheckbox,
   isRowLoading,
   getRowProps,
   renderRowLink,
@@ -180,6 +181,7 @@ export function TreeTable<TData extends TreeNodeData>({
       isDisabled={isRowDisabled?.(row)}
       isChildrenLoading={isChildrenLoading?.(row)}
       isLoading={isRowLoading?.(row)}
+      hasCheckbox={hasRowCheckbox?.(row) ?? true}
       getSelectionState={getSelectionState}
       onCheckboxClick={onCheckboxClick}
       classNames={classNames}

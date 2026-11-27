@@ -41,6 +41,7 @@ interface TreeTableRowContentProps<
   isLoading?: boolean;
   isExpanded: boolean;
   canExpand: boolean;
+  hasCheckbox: boolean;
   selectionState: SelectionState;
   isCheckboxDisabled: boolean;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
@@ -98,6 +99,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   isLoading,
   isExpanded,
   canExpand,
+  hasCheckbox,
   selectionState,
   isCheckboxDisabled,
   onCheckboxClick,
@@ -161,19 +163,20 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
           pl="0.75rem"
           w={CHECKBOX_COLUMN_WIDTH}
           className={S.checkboxWrapper}
-          onClick={handleCheckboxToggle}
+          onClick={hasCheckbox ? handleCheckboxToggle : undefined}
         >
-          {isLoading ? (
-            <Loader size="xs" color="core-brand" aria-label={t`Loading`} />
-          ) : (
-            <SelectionCheckbox
-              isSelected={selectionState === "all"}
-              isSomeSelected={selectionState === "some"}
-              disabled={isCheckboxDisabled}
-              onClick={handleCheckboxToggle}
-              className={classNames?.checkbox}
-            />
-          )}
+          {hasCheckbox &&
+            (isLoading ? (
+              <Loader size="xs" color="core-brand" aria-label={t`Loading`} />
+            ) : (
+              <SelectionCheckbox
+                isSelected={selectionState === "all"}
+                isSomeSelected={selectionState === "some"}
+                disabled={isCheckboxDisabled}
+                onClick={handleCheckboxToggle}
+                className={classNames?.checkbox}
+              />
+            ))}
         </Flex>
       )}
       {visibleCells.map((cell, colIndex) => {
@@ -266,6 +269,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
   isDisabled,
   isChildrenLoading,
   isLoading,
+  hasCheckbox = true,
   getSelectionState,
   onCheckboxClick,
   classNames,
@@ -301,6 +305,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       isLoading={isLoading}
       isExpanded={isExpanded}
       canExpand={canExpand}
+      hasCheckbox={hasCheckbox}
       selectionState={selectionState}
       isCheckboxDisabled={isCheckboxDisabled}
       onCheckboxClick={onCheckboxClick}

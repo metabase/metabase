@@ -150,6 +150,9 @@ export function LibraryTreePage({
                     showCheckboxes={!isRemoteSyncReadOnly}
                     getSelectionState={getSelectionState}
                     isRowDisabled={getRowCovered}
+                    hasRowCheckbox={(row) =>
+                      row.original.model !== "empty-state"
+                    }
                     onCheckboxClick={onCheckboxClick}
                     onHeaderCheckboxClick={onSelectAllClick}
                     headerCheckboxAriaLabel={t`Select all`}
