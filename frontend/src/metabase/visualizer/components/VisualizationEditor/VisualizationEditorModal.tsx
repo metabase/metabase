@@ -1,27 +1,40 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, Modal } from "metabase/ui";
+import { Box, Center, Flex, Loader, Modal, Tabs } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getDataSources,
   getIsDirty,
+  getUsedDataSources,
   getVisualizationTitle,
+  getVisualizationType,
+  getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
 import {
   initializeVisualizer,
   resetVisualizer,
+  setDisplay,
 } from "metabase/visualizer/visualizer.slice";
-import type { DashboardId, VisualizerVizDefinition } from "metabase-types/api";
+import { isCartesianChart } from "metabase/viz-core";
+import type {
+  DashboardId,
+  VisualizationDisplay,
+  VisualizerVizDefinition,
+} from "metabase-types/api";
 
 import { Header } from "../Header";
+import { VisualizationPicker } from "../VisualizationPicker";
 import { VisualizerUiProvider } from "../VisualizerUiContext";
 
-import { AppearanceEditor } from "./AppearanceEditor";
 import { SeriesManager } from "./SeriesManager";
 import S from "./VisualizationEditor.module.css";
+import { SettingsSection, useSettingsSections } from "./settings";
+
+const SERIES_TAB = "series";
 
 export type VisualizationEditorMode = "series" | "appearance";
 
@@ -34,17 +47,42 @@ interface VisualizationEditorModalProps {
 }
 
 /**
- * Edits a visualization of a dashboard card in one of two separate modes: the
- * questions that give its series, or the appearance of its chart.
+ * Edits a visualization of a dashboard card: the questions that give its
+ * series, the settings of each series, and the general chart settings.
+ * `mode` selects the tab that opens first.
  */
 export function VisualizationEditorModal({
-  mode,
+  mode: initialMode,
   initialState,
   dashboardId,
   onSave,
   onClose,
 }: VisualizationEditorModalProps) {
   const dispatch = useDispatch();
+  const display = useSelector(getVisualizationType);
+  const rawSeries = useSelector(getVisualizerRawSeries);
+  const dataSourceCount = useSelector(getUsedDataSources).length;
+  const hasSeriesTab = display != null && isCartesianChart(display);
+  const { getSectionWidgets, sectionNames } = useSettingsSections(hasSeriesTab);
+  const [selectedTab, setSelectedTab] = useState<string | null>(
+    initialMode === "series" ? SERIES_TAB : null,
+  );
+  const tab =
+    (hasSeriesTab && selectedTab === SERIES_TAB) ||
+    (selectedTab != null && sectionNames.includes(selectedTab))
+      ? selectedTab
+      : hasSeriesTab && initialMode === "series"
+        ? SERIES_TAB
+        : (sectionNames[0] ?? null);
+
+  const handleChangeDisplay = useCallback(
+    (nextDisplay: string) => {
+      // The picker offers only keys of the visualization registry, and those
+      // are displays, but the segmented control gives a plain string.
+      dispatch(setDisplay(nextDisplay as VisualizationDisplay));
+    },
+    [dispatch],
+  );
   const isDirty = useSelector(getIsDirty);
   const title = useSelector(getVisualizationTitle);
   const mainSourceName = useSelector(getDataSources)[0]?.name;
@@ -108,13 +146,57 @@ export function VisualizationEditorModal({
               onClose={handleClose}
               saveLabel={t`Save`}
               showDataSidebarToggle={false}
-              subtitle={mode === "series" ? t`Series` : t`Appearance`}
             />
-            {mode === "series" ? (
-              <SeriesManager dashboardId={dashboardId} />
-            ) : (
-              <AppearanceEditor />
-            )}
+            <Box className={S.EditorLayout}>
+              <Box className={S.Chart}>
+                {rawSeries.length > 0 ? (
+                  <Visualization
+                    rawSeries={rawSeries}
+                    isDashboard
+                    isVisualizer
+                  />
+                ) : (
+                  <Center h="100%">
+                    <Loader />
+                  </Center>
+                )}
+              </Box>
+              <Flex className={S.Footer} px="xl" py="md">
+                {display && (
+                  <VisualizationPicker
+                    value={display}
+                    onChange={handleChangeDisplay}
+                    // A chart with several questions shares one x-axis, so it
+                    // can only switch between the chart types with an x-axis.
+                    filter={dataSourceCount > 1 ? isCartesianChart : undefined}
+                  />
+                )}
+              </Flex>
+              <Box className={S.Panel}>
+                <Tabs value={tab} onChange={setSelectedTab} px="lg" pt="md">
+                  <Tabs.List>
+                    {hasSeriesTab && (
+                      <Tabs.Tab value={SERIES_TAB}>{t`Series`}</Tabs.Tab>
+                    )}
+                    {sectionNames.map((name) => (
+                      <Tabs.Tab key={name} value={name}>
+                        {name}
+                      </Tabs.Tab>
+                    ))}
+                  </Tabs.List>
+                </Tabs>
+                <Box className={S.PanelContent}>
+                  {tab === SERIES_TAB ? (
+                    <SeriesManager dashboardId={dashboardId} />
+                  ) : tab != null ? (
+                    <SettingsSection
+                      widgets={getSectionWidgets(tab)}
+                      section={tab}
+                    />
+                  ) : null}
+                </Box>
+              </Box>
+            </Box>
           </Box>
         </VisualizerUiProvider>
       </Modal>

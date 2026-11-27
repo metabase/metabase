@@ -8,20 +8,13 @@
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
-.SeriesLayout {
+.EditorLayout {
   display: grid;
-  grid-template-columns: 1fr 400px;
-  grid-template-areas: "chart panel";
-  min-height: 0;
-}
-
-.AppearanceLayout {
-  display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 420px;
   grid-template-rows: 1fr auto;
   grid-template-areas:
-    "chart sidebar"
-    "footer sidebar";
+    "chart panel"
+    "footer panel";
   min-height: 0;
 }
 
@@ -36,19 +29,19 @@
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
-.SettingsSidebar {
-  grid-area: sidebar;
-  min-height: 0;
-  overflow: auto;
-  border-left: 1px solid var(--mb-color-border-neutral);
-}
-
 .Panel {
   grid-area: panel;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  overflow: auto;
   border-left: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-secondary);
+}
+
+.PanelContent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .SourceRow {
@@ -76,4 +69,14 @@
 
 .PickerItemDisabled {
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.SeriesName {
+  flex: 1;
+  min-width: 0;
+  font-weight: bold;
+}
+
+.SeriesSettings {
+  border-top: 1px solid var(--mb-color-border-neutral);
 }

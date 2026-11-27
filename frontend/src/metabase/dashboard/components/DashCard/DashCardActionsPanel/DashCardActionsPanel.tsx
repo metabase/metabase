@@ -188,27 +188,18 @@ function DashCardActionsPanelInner({
         isVisualizerSupportedVisualization(dashcard?.card.display)) &&
       onEditVisualization
     ) {
-      if (visualizationDisplay && isCartesianChart(visualizationDisplay)) {
-        buttons.push(
-          <DashCardActionButton
-            key="visualization-series-button"
-            tooltip={t`Manage series`}
-            aria-label={t`Manage series`}
-            onClick={() => onEditVisualization("series")}
-          >
-            <DashCardActionButton.Icon name="add_data" />
-          </DashCardActionButton>,
-        );
-      }
-
+      const hasSeries =
+        visualizationDisplay != null && isCartesianChart(visualizationDisplay);
       buttons.push(
         <DashCardActionButton
-          key="visualization-appearance-button"
-          tooltip={t`Edit appearance`}
-          aria-label={t`Edit appearance`}
-          onClick={() => onEditVisualization("appearance")}
+          key="visualization-editor-button"
+          tooltip={t`Edit visualization`}
+          aria-label={t`Edit visualization`}
+          onClick={() =>
+            onEditVisualization(hasSeries ? "series" : "appearance")
+          }
         >
-          <DashCardActionButton.Icon name="palette" />
+          <DashCardActionButton.Icon name="lineandbar" />
         </DashCardActionButton>,
       );
     }

@@ -6,6 +6,8 @@ import {
   useGetCardDimensionOptionsQuery,
   useSearchQuery,
 } from "metabase/api";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
+import { EditableText } from "metabase/common/components/EditableText";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 // The dimension picker of the metrics explorer is reused here as it is.
 // Moving it to a shared module is not worth it before the design settles.
@@ -19,7 +21,6 @@ import {
   Badge,
   Box,
   Button,
-  Center,
   Flex,
   Icon,
   Loader,
@@ -30,13 +31,12 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import {
   getCurrentVisualizerState,
   getDatasets,
   getIsLoading,
   getUsedDataSources,
-  getVisualizationColumns,
   getVisualizerColumnValuesMapping,
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
@@ -49,10 +49,10 @@ import {
   setSeriesDimension,
   setVisualizationAxis,
 } from "metabase/visualizer/visualizer.slice";
+import { SERIES_SETTING_KEY, getSeriesVizSettingsKey } from "metabase/viz-core";
 import type {
   CardDimensionOptions,
   DashboardId,
-  DatasetColumn,
   IconName,
   VisualizerColumnReference,
   VisualizerColumnValueSource,
@@ -64,6 +64,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./VisualizationEditor.module.css";
+import { SeriesSettings, useUpdateSeriesSettings } from "./settings";
 
 const getTemporalUnits = () => [
   { value: "day", label: t`Day` },
@@ -205,25 +206,63 @@ function getAxisCategories(
     .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
 }
 
+type SeriesItem = {
+  key: string;
+  name: string;
+  defaultName: string;
+  color: string | undefined;
+};
+
+// The series of the chart for each question, with the keys that the chart uses
+// for the series settings. A renamed series keeps its key, because the key
+// comes from the question name, not from the series title.
 function useSeriesBySource() {
-  const { metrics } = useDataSettings();
+  const rawSeries = useSelector(getVisualizerRawSeries);
+  const rawSettings = useSelector(getVisualizerRawSettings);
+  const computedSettings = useSelector(getVisualizerComputedSettings);
   const columnValuesMapping = useSelector(getVisualizerColumnValuesMapping);
-  const columns = useSelector(getVisualizationColumns);
 
   return useMemo(() => {
-    const result: Record<VisualizerDataSourceId, DatasetColumn[]> = {};
-    for (const metricName of metrics ?? []) {
-      if (!metricName) {
-        continue;
-      }
-      const ref = columnValuesMapping[metricName]?.find(isColumnRef);
-      const column = columns.find((col) => col.name === metricName);
-      if (ref && column) {
-        (result[ref.sourceId] ??= []).push(column);
-      }
-    }
+    const result: Partial<Record<VisualizerDataSourceId, SeriesItem[]>> = {};
+    const hasMultipleCards = rawSeries.length > 1;
+    const colors: Record<string, string> =
+      computedSettings["series_settings.colors"] ?? {};
+    rawSeries.forEach(({ card, data }, index) => {
+      const metrics = (card.visualization_settings["graph.metrics"] ?? [])
+        .filter((name): name is string => name != null)
+        .flatMap((name) => {
+          const column = data?.cols.find((col) => col.name === name);
+          return column ? [column] : [];
+        });
+      metrics.forEach((column) => {
+        const ref = columnValuesMapping[column.name]?.find(isColumnRef);
+        if (!ref) {
+          return;
+        }
+        const key = getSeriesVizSettingsKey(
+          column,
+          hasMultipleCards,
+          index === 0,
+          metrics.length,
+          null,
+          card.name,
+        );
+        const defaultName =
+          !hasMultipleCards || !card.name
+            ? column.display_name
+            : metrics.length === 1
+              ? card.name
+              : `${card.name}: ${column.display_name}`;
+        (result[ref.sourceId] ??= []).push({
+          key,
+          defaultName,
+          name: rawSettings[SERIES_SETTING_KEY]?.[key]?.title ?? defaultName,
+          color: colors[key],
+        });
+      });
+    });
     return result;
-  }, [metrics, columnValuesMapping, columns]);
+  }, [rawSeries, rawSettings, computedSettings, columnValuesMapping]);
 }
 
 export function SeriesManager({
@@ -231,7 +270,6 @@ export function SeriesManager({
 }: {
   dashboardId: DashboardId | undefined;
 }) {
-  const rawSeries = useSelector(getVisualizerRawSeries);
   const isLoading = useSelector(getIsLoading);
   const dataSources = useSelector(getUsedDataSources);
   const { dimensionOverrides = {} } = useSelector(getCurrentVisualizerState);
@@ -287,68 +325,55 @@ export function SeriesManager({
   );
 
   return (
-    <Box className={S.SeriesLayout}>
-      <Box className={S.Chart}>
-        {rawSeries.length > 0 ? (
-          <Visualization rawSeries={rawSeries} isDashboard isVisualizer />
-        ) : (
-          <Center h="100%">
-            <Loader />
-          </Center>
-        )}
-      </Box>
-
-      <Stack className={S.Panel} gap="lg" p="lg">
-        <AxisCategories
-          axis={axis}
-          axisColumnName={axisColumn?.display_name}
-          categories={categories}
-          sources={orderedSources}
-          unsupportedSources={unsupportedSources}
-          optionsByCard={optionsByCard}
-          sourceColumns={sourceColumns}
-          isLoading={isLoading}
-        />
-
-        <Stack gap="xs">
-          <Text fw="bold" c="text-secondary" size="sm">{t`Series`}</Text>
-          {orderedSources.map((source) => {
-            const options = optionsByCard[source.sourceId];
-            return (
-              <SourceRow
-                key={source.id}
-                source={source}
-                metrics={seriesBySource[source.id] ?? []}
-                isMain={source.id === mainSourceId}
-                canRemove={source.id !== mainSourceId}
-                regroupNote={
-                  dimensionOverrides[source.id] && options?.supported
-                    ? options.current
-                      ? t`Regrouped for this chart. The question is grouped by ${options.current.displayName}.`
-                      : t`Grouped for this chart. It has no grouping of its own.`
-                    : undefined
-                }
-              />
-            );
-          })}
-        </Stack>
-
-        {axis &&
-          (isPickerOpen ? (
-            <QuestionPicker
-              axis={axis}
-              usedSourceIds={dataSources.map((source) => source.id)}
-              dashboardId={dashboardId}
-              onClose={() => setPickerOpen(false)}
+    <Stack gap="lg" p="lg">
+      <Stack gap="xs">
+        {orderedSources.map((source) => {
+          const options = optionsByCard[source.sourceId];
+          return (
+            <SourceRow
+              key={source.id}
+              source={source}
+              series={seriesBySource[source.id] ?? []}
+              isMain={source.id === mainSourceId}
+              canRemove={source.id !== mainSourceId}
+              regroupNote={
+                dimensionOverrides[source.id] && options?.supported
+                  ? options.current
+                    ? t`Regrouped for this chart. The question is grouped by ${options.current.displayName}.`
+                    : t`Grouped for this chart. It has no grouping of its own.`
+                  : undefined
+              }
             />
-          ) : (
-            <Button
-              leftSection={<Icon name="add" />}
-              onClick={() => setPickerOpen(true)}
-            >{t`Add series`}</Button>
-          ))}
+          );
+        })}
       </Stack>
-    </Box>
+
+      {axis &&
+        (isPickerOpen ? (
+          <QuestionPicker
+            axis={axis}
+            usedSourceIds={dataSources.map((source) => source.id)}
+            dashboardId={dashboardId}
+            onClose={() => setPickerOpen(false)}
+          />
+        ) : (
+          <Button
+            leftSection={<Icon name="add" />}
+            onClick={() => setPickerOpen(true)}
+          >{t`Add series`}</Button>
+        ))}
+
+      <AxisCategories
+        axis={axis}
+        axisColumnName={axisColumn?.display_name}
+        categories={categories}
+        sources={orderedSources}
+        unsupportedSources={unsupportedSources}
+        optionsByCard={optionsByCard}
+        sourceColumns={sourceColumns}
+        isLoading={isLoading}
+      />
+    </Stack>
   );
 }
 
@@ -472,11 +497,6 @@ function AxisCategories({
   return (
     <Stack gap="xs">
       <Text fw="bold" c="text-secondary" size="sm">{t`Shared x-axis`}</Text>
-      <Text size="sm" c="text-secondary">
-        {sources.length > 1
-          ? t`Dimensions that every series has. Each series can use its own column of the dimension. The questions themselves don't change.`
-          : t`Dimensions of this question.`}
-      </Text>
       {categories.length > COLLAPSED_CATEGORY_COUNT && (
         <TextInput
           size="sm"
@@ -556,55 +576,108 @@ function AxisCategories({
 
 function SourceRow({
   source,
-  metrics,
+  series,
   isMain,
   canRemove,
   regroupNote,
 }: {
   source: VisualizerDataSource;
-  metrics: DatasetColumn[];
+  series: SeriesItem[];
   isMain: boolean;
   canRemove: boolean;
   regroupNote: string | undefined;
 }) {
   const dispatch = useDispatch();
+  const [isExpanded, setExpanded] = useState(false);
+  const updateSeriesSettings = useUpdateSeriesSettings();
+  const showSourceName = series.length !== 1 || series[0].name !== source.name;
 
   return (
-    <Flex className={S.SourceRow} align="flex-start" gap="sm" p="sm">
-      <Icon name="table2" mt={2} c="text-secondary" />
-      <Stack gap={2} flex={1} miw={0}>
-        <Flex align="center" gap="xs">
-          <Text fw="bold" truncate>
-            {source.name}
-          </Text>
-          {isMain && <Badge size="xs">{t`Main`}</Badge>}
+    <Stack className={S.SourceRow} gap={0}>
+      <Flex align="flex-start" gap="sm" p="sm">
+        <Stack gap={4} flex={1} miw={0}>
+          {series.map((item) => (
+            <Flex key={item.key} align="center" gap="sm" miw={0}>
+              {item.color && (
+                <ColorSelector
+                  value={item.color}
+                  colors={getNamedAccentColors()}
+                  pillSize="small"
+                  onChange={(color) =>
+                    updateSeriesSettings(item.key, { color })
+                  }
+                />
+              )}
+              <EditableText
+                className={S.SeriesName}
+                initialValue={item.name}
+                placeholder={item.defaultName}
+                isOptional
+                onChange={(title) =>
+                  updateSeriesSettings(item.key, {
+                    title: title.trim() || undefined,
+                  })
+                }
+              />
+            </Flex>
+          ))}
+          {(showSourceName || isMain) && (
+            <Flex align="center" gap="xs" pl={series.length > 0 ? 28 : 0}>
+              {showSourceName && (
+                <Text size="sm" c="text-secondary" truncate>
+                  {source.name}
+                </Text>
+              )}
+              {isMain && <Badge size="xs">{t`Main`}</Badge>}
+            </Flex>
+          )}
+          {regroupNote && (
+            <Flex align="center" gap={4} pl={series.length > 0 ? 28 : 0}>
+              <Icon name="arrow_split" size={12} c="text-secondary" />
+              <Text size="xs" c="text-secondary">
+                {regroupNote}
+              </Text>
+            </Flex>
+          )}
+        </Stack>
+        <Flex gap={2}>
+          {series.length > 0 && (
+            <Tooltip label={isExpanded ? t`Hide settings` : t`Series settings`}>
+              <ActionIcon
+                variant={isExpanded ? "filled" : "subtle"}
+                aria-label={t`Settings of ${source.name}`}
+                aria-expanded={isExpanded}
+                onClick={() => setExpanded((value) => !value)}
+              >
+                <Icon name="palette" />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {canRemove && (
+            <Tooltip label={t`Remove from this chart`}>
+              <ActionIcon
+                variant="subtle"
+                aria-label={t`Remove ${source.name}`}
+                onClick={() => dispatch(removeDataSource({ source }))}
+              >
+                <Icon name="close" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
-        <Text size="sm" c="text-secondary">
-          {metrics.length > 0
-            ? metrics.map((metric) => metric.display_name).join(", ")
-            : t`No series`}
-        </Text>
-        {regroupNote && (
-          <Flex align="center" gap={4}>
-            <Icon name="arrow_split" size={12} c="text-secondary" />
-            <Text size="xs" c="text-secondary">
-              {regroupNote}
-            </Text>
-          </Flex>
-        )}
-      </Stack>
-      {canRemove && (
-        <Tooltip label={t`Remove from this chart`}>
-          <ActionIcon
-            variant="subtle"
-            aria-label={t`Remove ${source.name}`}
-            onClick={() => dispatch(removeDataSource({ source }))}
-          >
-            <Icon name="close" />
-          </ActionIcon>
-        </Tooltip>
-      )}
-    </Flex>
+      </Flex>
+      {isExpanded &&
+        series.map((item) => (
+          <Box key={item.key} className={S.SeriesSettings} p="sm">
+            {series.length > 1 && (
+              <Text size="sm" fw="bold" pt="sm">
+                {item.name}
+              </Text>
+            )}
+            <SeriesSettings seriesKey={item.key} />
+          </Box>
+        ))}
+    </Stack>
   );
 }
 
