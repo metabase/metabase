@@ -69,6 +69,49 @@
         (Security/setProperty "keystore.pkcs12.macAlgorithm" (or mac-alg "HmacPBESHA256"))))
     (.getPath out)))
 
+(defn- password-protected-trust-store!
+  "Write a temp PKCS12 trust store protected by `password` whose only trusted entry is the certificate held in `pair`'s keystore."
+  ^String [^ObjectPair pair ^String password]
+  (let [pw    ^chars (.getSecond pair)
+        src   (doto ^KeyStore (KeyStore/getInstance (KeyStore/getDefaultType))
+                (.load (io/input-stream (.getFirst pair)) pw))
+        cert  (.getCertificate src (first (enumeration-seq (.aliases src))))
+        trust (doto ^KeyStore (KeyStore/getInstance "PKCS12")
+                (.load nil nil)
+                (.setCertificateEntry "ldap-ca" cert))
+        out   ^File (File/createTempFile "ldap-jvm-trust" ".p12")]
+    (with-open [os (io/output-stream out)]
+      (.store trust os (.toCharArray password)))
+    (.getPath out)))
+
+(defn- set-system-properties!
+  "Set each system property in `props`, clearing those whose value is nil."
+  [props]
+  (doseq [[k v] props]
+    (if v
+      (System/setProperty k v)
+      (System/clearProperty k))))
+
+(deftest ldaps-uses-jvm-trust-store-properties-test
+  (let [pair (self-signed-keystore)
+        ds   (start-ldaps-server! pair)
+        keys ["javax.net.ssl.trustStore" "javax.net.ssl.trustStoreType" "javax.net.ssl.trustStorePassword"]
+        old  (zipmap keys (map #(System/getProperty %) keys))]
+    (try
+      (set-system-properties! {"javax.net.ssl.trustStore"         (password-protected-trust-store! pair "changeit")
+                               "javax.net.ssl.trustStoreType"     "PKCS12"
+                               "javax.net.ssl.trustStorePassword" "changeit"})
+      (testing "password-protected PKCS12 trust store from JVM system properties validates server certificate"
+        (mt/with-temporary-setting-values [ldap-host        "localhost"
+                                           ldap-port        (.getListenPort ds "LDAPS")
+                                           ldap-security    :ssl
+                                           ldap-trust-store nil]
+          (with-open [^java.lang.AutoCloseable conn (#'ldap/get-connection)]
+            (is (some? conn)))))
+      (finally
+        (set-system-properties! old)
+        (.shutDown ds true)))))
+
 (deftest ldaps-verifies-server-hostname-test
   (testing "TLS connections are configured to verify the server certificate matches the connected host"
     (let [^LDAPConnectionOptions opt (#'ldap/ldap-connection-options)]
