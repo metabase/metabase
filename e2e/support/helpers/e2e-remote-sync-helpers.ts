@@ -76,15 +76,6 @@ export function configureGit(
   });
 }
 
-// Push the synced content via the API and wait for the export
-export function pushChangesWithApi(message = "Push") {
-  cy.request("POST", "/api/ee/remote-sync/export", {
-    branch: "main",
-    message,
-  });
-  pollForTask({ taskName: "export" });
-}
-
 // Setup remote sync via the API and wait for/trigger the initial import
 export function configureGitAndPullChanges(
   syncType: "read-write" | "read-only",
