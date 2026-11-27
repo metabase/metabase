@@ -8,9 +8,11 @@ import {
   useState,
 } from "react";
 import { useLatest } from "react-use";
+import { t } from "ttag";
 
 import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
+import { useIsFormulaBarOpen } from "../../../FormulaBar";
 import { MatchedLabel } from "../MatchedLabel";
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
@@ -79,6 +81,8 @@ export function SummaryWellInput({
   const [generateState, setGenerateState] = useState<GenerateFormulaState>({
     status: "idle",
   });
+  const isFormulaBarOpen = useIsFormulaBarOpen();
+  const formulaBarOpenRef = useLatest(isFormulaBarOpen);
   const isGenerating = generateState.status === "loading";
   const texts = getFieldTexts(wellId, hasItems);
 
@@ -136,6 +140,14 @@ export function SummaryWellInput({
     }
     if (result.status === "error") {
       setGenerateState({ status: "error", message: result.message });
+      return;
+    }
+    if (result.status === "invalid" && formulaBarOpenRef.current) {
+      setGenerateState({
+        status: "error",
+        message: t`Invalid generated formula: ${result.source}`,
+      });
+      comboboxRef.current.openDropdown();
       return;
     }
     setGenerateState({ status: "idle" });
