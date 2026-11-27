@@ -121,5 +121,12 @@ export type SegmentTest = {
   expectations: DataTestExpectation[];
   created_at: string;
   updated_at: string;
+  last_run: DataTestRun | null;
   segment?: Segment;
 };
+
+export type ListSegmentTestsRequest = {
+  "segment-id"?: SegmentId;
+};
+
+export type RunSegmentTestResponse = RunTransformTestResponse;

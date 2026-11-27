@@ -58,6 +58,7 @@ export * from "./revision";
 export * from "./search";
 export * from "./security-center";
 export * from "./segment";
+export * from "./segment-test";
 export * from "./session";
 export * from "./session-management";
 export * from "./settings";

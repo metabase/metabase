@@ -56,6 +56,7 @@ export function DataTestRuns<K extends DataTestType>({
   } = definition.useReadOnly(
     test != null ? definition.getSubjectId(test) : skipToken,
   );
+  const { getTestRunsUrl } = definition.useTestUrls();
   const [, { isLoading: isRunning }] = definition.useRunTestMutation({
     fixedCacheKey: getRunDataTestCacheKey(testType, testId),
   });
@@ -107,13 +108,13 @@ export function DataTestRuns<K extends DataTestType>({
   const handleFilterOptionsChange = (
     filterOptions: Omit<Urls.DataTestRunListParams, "page">,
   ) => {
-    navigate(definition.getTestRunsUrl(test, filterOptions), {
+    navigate(getTestRunsUrl(test, filterOptions), {
       replace: true,
     });
   };
 
   const handlePageChange = (page: number) => {
-    navigate(definition.getTestRunsUrl(test, { ...params, page }), {
+    navigate(getTestRunsUrl(test, { ...params, page }), {
       replace: true,
     });
   };
