@@ -98,12 +98,11 @@
     (fixed-hive-connection/fixed-hive-connection url properties)))
 
 (defn- connection-url
-  [{:keys [host port db jdbc-flags dbname]
-    :or   {host "localhost", port 10000, db "", jdbc-flags ""}}]
-  (let [port (cond-> port
-               (string? port) Integer/parseInt)
-        db   (or dbname db)]
-    (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)))
+  [{:keys [host port db jdbc-flags dbname]}]
+  (let [port (or port 10000)
+        port (cond-> port
+               (string? port) Integer/parseInt)]
+    (format "jdbc:hive2://%s:%s/%s%s" (or host "localhost") port (or dbname db "") (or jdbc-flags ""))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
   [_driver opts]

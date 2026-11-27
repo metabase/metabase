@@ -190,3 +190,7 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest ^:parallel connection-url-ignores-nil-optional-details-test
+  (is (= "jdbc:hive2://thrift-server:10000/default"
+         (#'sparksql/connection-url {:host "thrift-server" :port nil :dbname "default" :jdbc-flags nil}))))
