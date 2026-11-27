@@ -1,39 +1,28 @@
 import { useMemo } from "react";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken, useListTablesQuery } from "metabase/api";
 import { isSyncCompleted } from "metabase/utils/syncing";
 
 import type { DatabaseNode, SchemaNode, TableNode, TreeNode } from "../types";
 import { node, rootNode } from "../utils";
 
 /**
- * Fetch items from the search API and renders them as a TreeNode so we can use the same
+ * Fetch tables matching the query, hidden ones included, and renders them as a TreeNode so we can use the same
  * data structure for the tree and the search results and render them in a consistent way.
  */
 export function useSearch(query: string) {
-  const { data, isLoading } = useSearchQuery(
-    query === ""
-      ? skipToken
-      : {
-          q: query,
-          models: ["table"],
-          context: "data-picker",
-        },
+  const { data, isLoading } = useListTablesQuery(
+    query === "" ? skipToken : { term: query },
   );
 
   const tree = useMemo(() => {
     const tree: TreeNode = rootNode();
 
-    data?.data.forEach((result) => {
-      const { model, database_name, database_id, table_schema, id, name } =
-        result;
-      const tableSchema = table_schema ?? "";
+    data?.forEach((table) => {
+      const { db, db_id: database_id, schema, id, display_name } = table;
+      const tableSchema = schema ?? "";
 
-      if (
-        model !== "table" ||
-        database_name === null ||
-        typeof id !== "number"
-      ) {
+      if (db == null || typeof id !== "number") {
         return;
       }
 
@@ -44,7 +33,7 @@ export function useSearch(query: string) {
       if (!databaseNode) {
         databaseNode = node<DatabaseNode>({
           type: "database",
-          label: database_name,
+          label: db.name,
           value: {
             databaseId: database_id,
           },
@@ -73,13 +62,14 @@ export function useSearch(query: string) {
       if (!tableNode) {
         tableNode = node<TableNode>({
           type: "table",
-          label: name,
+          label: display_name,
           value: {
             databaseId: database_id,
             schemaName: tableSchema,
             tableId: id,
           },
-          disabled: !isSyncCompleted(result),
+          table,
+          disabled: !isSyncCompleted(table),
         });
         schemaNode.children.push(tableNode);
       }
