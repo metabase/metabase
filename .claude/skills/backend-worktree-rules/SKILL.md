@@ -38,7 +38,8 @@ Follow `resources/migrations/2026/20261128_remote_sync_worktrees.yaml`, which wo
 ## Keys
 
 A reference between two worktree tables is a plain foreign key, with no composite one on `worktree_id`, which could not
-hold the same way for nullable references. That a row references only rows of its own worktree is the write
+hold the same way for nullable references; an index on `(worktree_id, <column>)` serves the queries that keep to a
+worktree. That a row references only rows of its own worktree is the write
 function's check: it reads the referenced rows through its `db.clj`, in the worktree it writes in, before the statement.
 
 Every unique key but the primary key ends with `worktree_id`, since a worktree's copy repeats `entity_id`, names and

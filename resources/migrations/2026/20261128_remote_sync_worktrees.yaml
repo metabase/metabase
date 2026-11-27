@@ -6340,6 +6340,816 @@ databaseChangeLog:
               ALTER TABLE user_parameter_value DROP FOREIGN KEY fk_user_parameter_value_worktree_id
 
   - changeSet:
+      id: sdx8og
+      author: ranquild
+      comment: Index the worktree and card_id of card_bookmark, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_card_bookmark_card_wt ON card_bookmark (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_card_bookmark_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_card_bookmark_card_wt ON card_bookmark
+
+  - changeSet:
+      id: gehnys
+      author: ranquild
+      comment: Index the worktree and card_id of card_label, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_card_label_card_wt ON card_label (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_card_label_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_card_label_card_wt ON card_label
+
+  - changeSet:
+      id: ag11ao
+      author: ranquild
+      comment: Index the worktree and card_id of card_test, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_card_test_card_wt ON card_test (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_card_test_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_card_test_card_wt ON card_test
+
+  - changeSet:
+      id: p4jwx0
+      author: ranquild
+      comment: Index the worktree and collection_id of collection_bookmark, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_collection_bookmark_collection_wt ON collection_bookmark (worktree_id, collection_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_collection_bookmark_collection_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_collection_bookmark_collection_wt ON collection_bookmark
+
+  - changeSet:
+      id: qgnidr
+      author: ranquild
+      comment: Index the worktree and comment_id of comment_reaction, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_comment_reaction_comment_wt ON comment_reaction (worktree_id, comment_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_comment_reaction_comment_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_comment_reaction_comment_wt ON comment_reaction
+
+  - changeSet:
+      id: qsg6fw
+      author: ranquild
+      comment: Index the worktree and dashboard_id of dashboard_bookmark, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_dashboard_bookmark_dashboard_wt ON dashboard_bookmark (worktree_id, dashboard_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_dashboard_bookmark_dashboard_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_dashboard_bookmark_dashboard_wt ON dashboard_bookmark
+
+  - changeSet:
+      id: t5rvqd
+      author: ranquild
+      comment: Index the worktree and dashboard_id of dashboard_favorite, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_dashboard_favorite_dashboard_wt ON dashboard_favorite (worktree_id, dashboard_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_dashboard_favorite_dashboard_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_dashboard_favorite_dashboard_wt ON dashboard_favorite
+
+  - changeSet:
+      id: jq3lps
+      author: ranquild
+      comment: Index the worktree and dashboard_id of dashboard_tab, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_dashboard_tab_dashboard_wt ON dashboard_tab (worktree_id, dashboard_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_dashboard_tab_dashboard_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_dashboard_tab_dashboard_wt ON dashboard_tab
+
+  - changeSet:
+      id: ylnwmn
+      author: ranquild
+      comment: Index the worktree and card_id of dashboardcard_series, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_dashboardcard_series_card_wt ON dashboardcard_series (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_dashboardcard_series_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_dashboardcard_series_card_wt ON dashboardcard_series
+
+  - changeSet:
+      id: fqqzxl
+      author: ranquild
+      comment: Index the worktree and dashboardcard_id of dashboardcard_series, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_dashboardcard_series_dashboardcard_wt ON dashboardcard_series (worktree_id, dashboardcard_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_dashboardcard_series_dashboardcard_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_dashboardcard_series_dashboardcard_wt ON dashboardcard_series
+
+  - changeSet:
+      id: bghfp3
+      author: ranquild
+      comment: Index the worktree and document_id of document_bookmark, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_document_bookmark_document_wt ON document_bookmark (worktree_id, document_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_document_bookmark_document_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_document_bookmark_document_wt ON document_bookmark
+
+  - changeSet:
+      id: xe8laz
+      author: ranquild
+      comment: Index the worktree and exploration_thread_id of exploration_block, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_block_exploration_thread_wt ON exploration_block (worktree_id, exploration_thread_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_block_exploration_thread_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_block_exploration_thread_wt ON exploration_block
+
+  - changeSet:
+      id: zqua64
+      author: ranquild
+      comment: Index the worktree and exploration_id of exploration_bookmark, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_bookmark_exploration_wt ON exploration_bookmark (worktree_id, exploration_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_bookmark_exploration_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_bookmark_exploration_wt ON exploration_bookmark
+
+  - changeSet:
+      id: mz095c
+      author: ranquild
+      comment: Index the worktree and card_id of exploration_page, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_page_card_wt ON exploration_page (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_page_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_page_card_wt ON exploration_page
+
+  - changeSet:
+      id: f8rnzr
+      author: ranquild
+      comment: Index the worktree and exploration_block_id of exploration_page, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_page_exploration_block_wt ON exploration_page (worktree_id, exploration_block_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_page_exploration_block_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_page_exploration_block_wt ON exploration_page
+
+  - changeSet:
+      id: rlhh5o
+      author: ranquild
+      comment: Index the worktree and card_id of exploration_query, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_query_card_wt ON exploration_query (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_query_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_query_card_wt ON exploration_query
+
+  - changeSet:
+      id: qxp0xq
+      author: ranquild
+      comment: Index the worktree and exploration_thread_id of exploration_query, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_query_exploration_thread_wt ON exploration_query (worktree_id, exploration_thread_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_query_exploration_thread_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_query_exploration_thread_wt ON exploration_query
+
+  - changeSet:
+      id: gn754a
+      author: ranquild
+      comment: Index the worktree and page_id of exploration_query, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_query_page_wt ON exploration_query (worktree_id, page_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_query_page_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_query_page_wt ON exploration_query
+
+  - changeSet:
+      id: f01ebq
+      author: ranquild
+      comment: Index the worktree and exploration_query_id of exploration_query_result, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_query_result_exploration_query_wt ON exploration_query_result (worktree_id, exploration_query_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_query_result_exploration_query_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_query_result_exploration_query_wt ON exploration_query_result
+
+  - changeSet:
+      id: azt511
+      author: ranquild
+      comment: Index the worktree and exploration_id of exploration_thread, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_thread_exploration_wt ON exploration_thread (worktree_id, exploration_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_thread_exploration_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_thread_exploration_wt ON exploration_thread
+
+  - changeSet:
+      id: md3qre
+      author: ranquild
+      comment: Index the worktree and exploration_thread_id of exploration_thread_timeline, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_thread_timeline_exploration_thread_wt ON exploration_thread_timeline (worktree_id, exploration_thread_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_thread_timeline_exploration_thread_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_thread_timeline_exploration_thread_wt ON exploration_thread_timeline
+
+  - changeSet:
+      id: yy1pej
+      author: ranquild
+      comment: Index the worktree and timeline_id of exploration_thread_timeline, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_exploration_thread_timeline_timeline_wt ON exploration_thread_timeline (worktree_id, timeline_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_exploration_thread_timeline_timeline_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_exploration_thread_timeline_timeline_wt ON exploration_thread_timeline
+
+  - changeSet:
+      id: dx6g6n
+      author: ranquild
+      comment: Index the worktree and action_id of implicit_action, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_implicit_action_action_wt ON implicit_action (worktree_id, action_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_implicit_action_action_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_implicit_action_action_wt ON implicit_action
+
+  - changeSet:
+      id: spjuf9
+      author: ranquild
+      comment: Index the worktree and transform_id of metabase_table_indexes, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_metabase_table_indexes_transform_wt ON metabase_table_indexes (worktree_id, transform_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_metabase_table_indexes_transform_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_metabase_table_indexes_transform_wt ON metabase_table_indexes
+
+  - changeSet:
+      id: hk9d2c
+      author: ranquild
+      comment: Index the worktree and notification_id of notification_handler, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_notification_handler_notification_wt ON notification_handler (worktree_id, notification_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_notification_handler_notification_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_notification_handler_notification_wt ON notification_handler
+
+  - changeSet:
+      id: w4fpyb
+      author: ranquild
+      comment: Index the worktree and notification_handler_id of notification_recipient, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_notification_recipient_notification_handler_wt ON notification_recipient (worktree_id, notification_handler_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_notification_recipient_notification_handler_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_notification_recipient_notification_handler_wt ON notification_recipient
+
+  - changeSet:
+      id: mmpl16
+      author: ranquild
+      comment: Index the worktree and notification_id of notification_subscription, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_notification_subscription_notification_wt ON notification_subscription (worktree_id, notification_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_notification_subscription_notification_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_notification_subscription_notification_wt ON notification_subscription
+
+  - changeSet:
+      id: o0q3y4
+      author: ranquild
+      comment: Index the worktree and card_id of parameter_card, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_parameter_card_card_wt ON parameter_card (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_parameter_card_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_parameter_card_card_wt ON parameter_card
+
+  - changeSet:
+      id: bno7yg
+      author: ranquild
+      comment: Index the worktree and card_id of pulse_card, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_pulse_card_card_wt ON pulse_card (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_pulse_card_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_pulse_card_card_wt ON pulse_card
+
+  - changeSet:
+      id: g8b892
+      author: ranquild
+      comment: Index the worktree and pulse_id of pulse_card, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_pulse_card_pulse_wt ON pulse_card (worktree_id, pulse_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_pulse_card_pulse_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_pulse_card_pulse_wt ON pulse_card
+
+  - changeSet:
+      id: par9dm
+      author: ranquild
+      comment: Index the worktree and pulse_id of pulse_channel, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_pulse_channel_pulse_wt ON pulse_channel (worktree_id, pulse_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_pulse_channel_pulse_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_pulse_channel_pulse_wt ON pulse_channel
+
+  - changeSet:
+      id: zhq1b0
+      author: ranquild
+      comment: Index the worktree and pulse_channel_id of pulse_channel_recipient, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_pulse_channel_recipient_pulse_channel_wt ON pulse_channel_recipient (worktree_id, pulse_channel_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_pulse_channel_recipient_pulse_channel_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_pulse_channel_recipient_pulse_channel_wt ON pulse_channel_recipient
+
+  - changeSet:
+      id: yzt56x
+      author: ranquild
+      comment: Index the worktree and action_id of query_action, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_query_action_action_wt ON query_action (worktree_id, action_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_query_action_action_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_query_action_action_wt ON query_action
+
+  - changeSet:
+      id: xx3gdl
+      author: ranquild
+      comment: Index the worktree and card_id of query_field, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_query_field_card_wt ON query_field (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_query_field_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_query_field_card_wt ON query_field
+
+  - changeSet:
+      id: t4tbac
+      author: ranquild
+      comment: Index the worktree and card_id of query_table, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_query_table_card_wt ON query_table (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_query_table_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_query_table_card_wt ON query_table
+
+  - changeSet:
+      id: e6tdb3
+      author: ranquild
+      comment: Index the worktree and card_id of report_cardfavorite, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_report_cardfavorite_card_wt ON report_cardfavorite (worktree_id, card_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_report_cardfavorite_card_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_report_cardfavorite_card_wt ON report_cardfavorite
+
+  - changeSet:
+      id: t77t8x
+      author: ranquild
+      comment: Index the worktree and dashboard_id of report_dashboardcard, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_report_dashboardcard_dashboard_wt ON report_dashboardcard (worktree_id, dashboard_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_report_dashboardcard_dashboard_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_report_dashboardcard_dashboard_wt ON report_dashboardcard
+
+  - changeSet:
+      id: d7rlcx
+      author: ranquild
+      comment: Index the worktree and segment_id of segment_test, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_segment_test_segment_wt ON segment_test (worktree_id, segment_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_segment_test_segment_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_segment_test_segment_wt ON segment_test
+
+  - changeSet:
+      id: gaqm9q
+      author: ranquild
+      comment: Index the worktree and suite_id of test_suite_member, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_test_suite_member_suite_wt ON test_suite_member (worktree_id, suite_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_test_suite_member_suite_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_test_suite_member_suite_wt ON test_suite_member
+
+  - changeSet:
+      id: td7gd4
+      author: ranquild
+      comment: Index the worktree and timeline_id of timeline_event, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_timeline_event_timeline_wt ON timeline_event (worktree_id, timeline_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_timeline_event_timeline_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_timeline_event_timeline_wt ON timeline_event
+
+  - changeSet:
+      id: f6o52d
+      author: ranquild
+      comment: Index the worktree and tag_id of transform_job_transform_tag, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_transform_job_transform_tag_tag_wt ON transform_job_transform_tag (worktree_id, tag_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_transform_job_transform_tag_tag_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_transform_job_transform_tag_tag_wt ON transform_job_transform_tag
+
+  - changeSet:
+      id: b5nkr1
+      author: ranquild
+      comment: Index the worktree and run_id of transform_run_cancelation, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_transform_run_cancelation_run_wt ON transform_run_cancelation (worktree_id, run_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_transform_run_cancelation_run_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_transform_run_cancelation_run_wt ON transform_run_cancelation
+
+  - changeSet:
+      id: pta5ds
+      author: ranquild
+      comment: Index the worktree and transform_id of transform_test, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_transform_test_transform_wt ON transform_test (worktree_id, transform_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_transform_test_transform_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_transform_test_transform_wt ON transform_test
+
+  - changeSet:
+      id: skk5sw
+      author: ranquild
+      comment: Index the worktree and tag_id of transform_transform_tag, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_transform_transform_tag_tag_wt ON transform_transform_tag (worktree_id, tag_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_transform_transform_tag_tag_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_transform_transform_tag_tag_wt ON transform_transform_tag
+
+  - changeSet:
+      id: dtq608
+      author: ranquild
+      comment: Index the worktree and transform_id of transform_transform_tag, which a query keeping to a worktree reads
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_transform_transform_tag_transform_wt ON transform_transform_tag (worktree_id, transform_id)
+      rollback:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DROP INDEX idx_transform_transform_tag_transform_wt
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DROP INDEX idx_transform_transform_tag_transform_wt ON transform_transform_tag
+
+  - changeSet:
       id: dao2x8
       author: ranquild
       comment: Make the unique key action_entity_id_key of action unique per worktree, ending it with worktree_id, as uq_action_entity_id_worktree_id
