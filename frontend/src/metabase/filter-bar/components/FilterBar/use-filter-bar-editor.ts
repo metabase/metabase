@@ -1,33 +1,16 @@
-import type { Editor } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
-import {
-  type DraftSuggestion,
-  type FilterEditorRequest,
-  clearErrors,
-  getPillRectAt,
-  highlightErrors,
-  normalizeDocument,
-  placePillAt,
-  readTokens,
-  replaceDocument,
-  replacePillTokens,
-  tokensToContent,
-} from "../../editor";
-import {
-  type ParseError,
-  isEmptyTree,
-  isSameStages,
-  pillToken,
-  tokensToTrees,
-  treesToTokens,
-} from "../../model";
+import type { DraftSuggestion } from "../../editor";
+import { isEmptyTree } from "../../model";
 import type { FilterBarProps, FilterParts } from "../../types";
 import type { ListKeys } from "../SuggestionList/SuggestionList";
 
 import { createExtensions } from "./extensions";
+import { useFilterEditor } from "./use-filter-editor";
+import { useFilterErrors } from "./use-filter-errors";
+import { useHostSync } from "./use-host-sync";
 
 export const useFilterBarEditor = <F>({
   value,
@@ -35,11 +18,18 @@ export const useFilterBarEditor = <F>({
   adapter,
   autoFocus = false,
 }: FilterBarProps<F>) => {
-  const [filterEditorRequest, setFilterEditorRequest] =
-    useState<FilterEditorRequest<F> | null>(null);
   const [suggestion, setSuggestion] = useState<DraftSuggestion<F> | null>(null);
   const listKeysRef = useRef<ListKeys | null>(null);
   const adapterRef = useLatest(adapter);
+  const { error, showError, settleErrors, resetErrors } = useFilterErrors<F>();
+  const { initialContent, emit, receive } = useHostSync({
+    value,
+    adapter,
+    onChange,
+    onReplace: resetErrors,
+  });
+  const filterEditor = useFilterEditor(adapter);
+
   const getAdapter = useCallback(() => adapterRef.current, [adapterRef]);
   const handleSuggestionKeyDown = useCallback(
     (event: KeyboardEvent) => listKeysRef.current?.(event) ?? false,
@@ -49,43 +39,12 @@ export const useFilterBarEditor = <F>({
     () =>
       createExtensions({
         getAdapter,
-        openFilterEditor: setFilterEditorRequest,
+        openFilterEditor: filterEditor.open,
         onSuggestionChange: setSuggestion,
         onSuggestionKeyDown: handleSuggestionKeyDown,
       }),
-    [getAdapter, handleSuggestionKeyDown],
+    [getAdapter, filterEditor.open, handleSuggestionKeyDown],
   );
-  const [error, setError] = useState<ParseError | null>(null);
-  const isValidatingRef = useRef(false);
-  const [initialTokens] = useState(() => treesToTokens(value, adapter));
-  const [initialContent] = useState(() => tokensToContent(initialTokens));
-  const syncedTokensRef = useRef(initialTokens);
-  const onChangeRef = useLatest(onChange);
-
-  const showError = useCallback((editor: Editor) => {
-    if (isValidatingRef.current) {
-      setError(highlightErrors(editor));
-    } else {
-      clearErrors(editor);
-      setError(null);
-    }
-  }, []);
-
-  const emit = (editor: Editor) => {
-    const tokens = readTokens<F>(editor);
-    const result = tokensToTrees(tokens);
-    const hasFiltersChanged = !isSameStages(syncedTokensRef.current, tokens);
-    if (result.type === "ok" && hasFiltersChanged) {
-      syncedTokensRef.current = tokens;
-      onChangeRef.current(result.stages);
-    }
-  };
-
-  const settle = (editor: Editor) => {
-    isValidatingRef.current = true;
-    normalizeDocument<F>(editor);
-    showError(editor);
-  };
 
   const editor = useEditor({
     extensions,
@@ -96,28 +55,14 @@ export const useFilterBarEditor = <F>({
       emit(editor);
       showError(editor);
     },
-    onBlur: ({ editor }) => settle(editor),
+    onBlur: ({ editor }) => settleErrors(editor),
   });
 
   useEffect(() => {
-    if (!editor) {
-      return;
+    if (editor) {
+      receive(editor, value, adapter);
     }
-    const incomingTokens = treesToTokens(value, adapter);
-    const isEchoOfOwnChange = isSameStages(
-      syncedTokensRef.current,
-      incomingTokens,
-    );
-    if (isEchoOfOwnChange) {
-      replacePillTokens(editor, incomingTokens);
-      syncedTokensRef.current = incomingTokens;
-      return;
-    }
-    syncedTokensRef.current = incomingTokens;
-    isValidatingRef.current = false;
-    replaceDocument(editor, incomingTokens, { emitUpdate: false });
-    showError(editor);
-  }, [editor, value, adapter, showError]);
+  }, [editor, value, adapter, receive]);
 
   const context = useMemo(
     () => ({
@@ -127,57 +72,16 @@ export const useFilterBarEditor = <F>({
     [adapter],
   );
 
-  const hasFilters = value.some((tree) => !isEmptyTree(tree));
-  const clear = () => {
-    onChange([]);
-  };
-
-  const getFilterEditorRect = () =>
-    editor && filterEditorRequest
-      ? getPillRectAt(editor, filterEditorRequest.pos)
-      : null;
-
-  const closeFilterEditor = () => {
-    setFilterEditorRequest(null);
-    editor?.commands.focus();
-  };
-
-  const dismissPopover = () => {
-    if (filterEditorRequest) {
-      closeFilterEditor();
-    }
-  };
-
-  const applyFilter = (filter: F) => {
-    if (editor && filterEditorRequest) {
-      const { pos, targetStage } = filterEditorRequest;
-      const token = pillToken(
-        filter,
-        adapter.stage(targetStage).toPill(filter),
-      );
-      placePillAt(editor, pos, token, targetStage);
-    }
-    closeFilterEditor();
-  };
-
-  const filterEditor =
-    filterEditorRequest &&
-    adapter.stage(filterEditorRequest.targetStage).renderFilterEditor?.({
-      ...filterEditorRequest,
-      onChange: applyFilter,
-      onClose: closeFilterEditor,
-    });
-
   return {
     editor,
     error,
-    hasFilters,
-    clear,
+    hasFilters: value.some((tree) => !isEmptyTree(tree)),
+    clear: () => onChange([]),
     suggestion,
     listKeysRef,
-    getFilterEditorRect,
-    dismissPopover,
-    filterEditor,
+    getFilterEditorRect: () => filterEditor.getRect(editor),
+    dismissPopover: () => filterEditor.dismiss(editor),
+    filterEditor: filterEditor.render(editor),
     context,
   };
 };
