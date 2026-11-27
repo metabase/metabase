@@ -75,8 +75,8 @@ Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled`.
-- [Configuration file name](./config-file.md): `ai-features-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `ai-features-enabled?`.
+- [Configuration file name](./config-file.md): `ai-features-enabled?`
 
 Whether AI features are enabled.
 
@@ -313,7 +313,7 @@ If set to 0, Metabase will keep all rows.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `bcc-enabled`
+- [Configuration file name](./config-file.md): `bcc-enabled?`
 
 Whether or not bcc emails are enabled, default behavior is that it is.
 
@@ -662,8 +662,8 @@ Custom SMTP server username.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled`.
-- [Configuration file name](./config-file.md): `embedded-metabot-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `embedded-metabot-enabled?`.
+- [Configuration file name](./config-file.md): `embedded-metabot-enabled?`
 
 Whether Metabot is enabled for embedding.
 
@@ -1163,7 +1163,7 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via JWT and doesn't have a Metabase account.
 
@@ -1364,7 +1364,7 @@ User lookup filter. The placeholder '{login}' will be replaced by the user suppl
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via LDAP and doesn't have a Metabase account.
 
@@ -1913,8 +1913,8 @@ Maximum duration of a Metabot chat turn in milliseconds.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled`.
-- [Configuration file name](./config-file.md): `metabot-enabled`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-enabled?`.
+- [Configuration file name](./config-file.md): `metabot-enabled?`
 
 Whether Metabot is enabled for regular usage.
 
@@ -1944,7 +1944,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled?`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
 
@@ -2147,7 +2147,7 @@ JSON containing OIDC provider configurations.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via OIDC and doesn't have a Metabase account.
 
@@ -2557,7 +2557,7 @@ If enabled, Metabase will redirect users to your configured SAML Single Logout e
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
+- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled?`
 
 Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
 
@@ -2622,7 +2622,7 @@ This variable also controls the geocoding service that Metabase uses to know the
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
+- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email?`
 
 Should new email notifications be sent to admins, for all new SSO users?
 
