@@ -201,16 +201,17 @@
           (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
 (defn- reconcile-sample-database!
-  "Bring the sample database into line with the bundled one, adding it if there is none.
+  "Bring the sample database into line with the bundled one, adding it on a new install if there is none.
 
   Keyed on whether a sample database row is present rather than on whether this is a new install: the
   `CreateSampleContentV2` migration seeds that row before this runs, and an instance with no users reports a
   new install on every boot, so keying on the install leaves a seeded sample database unreconciled forever -
-  including across a change of bundled engine."
-  []
+  including across a change of bundled engine. A missing row is only re-added on a new install, so a sample
+  database deleted by an admin stays deleted."
+  [new-install?]
   (if (sample-data/sample-database-id)
     (sample-data/update-sample-database-if-needed!)
-    (when (config/load-sample-content?)
+    (when (and new-install? (config/load-sample-content?))
       (sample-data/extract-and-sync-sample-database!))))
 
 (defn- init!*
@@ -271,7 +272,7 @@
       ;; The instance is already set up. Clear out any stale setup token.
       (setup/clear-token!))
     (init-status/set-progress! 0.7)
-    (reconcile-sample-database!)
+    (reconcile-sample-database! new-install?)
     ;; Sample-content metrics are inserted via raw SQL and so never trigger Card after-insert hooks.
     ;; Not critical to startup: log and carry on if it fails rather than aborting initialization.
     (when-let [sample-db-id (sample-data/sample-database-id)]

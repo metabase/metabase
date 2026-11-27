@@ -20,7 +20,7 @@
                                                   :details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
         (sync/sync-database! (:id h2-db))
         (let [before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))]
-          (#'core/reconcile-sample-database!)
+          (#'core/reconcile-sample-database! false)
           (let [after (t2/select-one :model/Database :id (:id h2-db))]
             (testing "the record is migrated to the bundled engine, details and all"
               (is (= :sqlite (:engine after)))
@@ -40,7 +40,7 @@
                                                      :details (#'sample-data.impl/try-to-extract-sample-database! :sqlite)})
             _        (sync/sync-database! (:id db))
             messages (mt/with-log-messages-for-level [messages [metabase.sample-data.impl :error]]
-                       (#'core/reconcile-sample-database!)
+                       (#'core/reconcile-sample-database! false)
                        (messages))]
         (is (= [] (mapv :message messages)))
         (is (= 1 (t2/count :model/Database :is_sample true)))
@@ -51,7 +51,7 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
       (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
-        (#'core/reconcile-sample-database!))
+        (#'core/reconcile-sample-database! true))
       (let [sample-db (t2/select-one :model/Database :is_sample true)]
         (is (some? sample-db))
         (is (= :sqlite (:engine sample-db)))))))
@@ -80,3 +80,11 @@
 (deftest system-dependencies-have-no-cycle-test
   (testing "the halt's dependencies form a graph a halt accepts"
     (is (some? (#'global-system/dependency-graph @#'core/system-dependencies)))))
+
+(deftest reconcile-sample-database-keeps-deleted-database-deleted-test
+  (testing "On an existing install with no sample database the bundled one is not added back"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
+        (#'core/reconcile-sample-database! false))
+      (is (not (t2/exists? :model/Database :is_sample true))))))
