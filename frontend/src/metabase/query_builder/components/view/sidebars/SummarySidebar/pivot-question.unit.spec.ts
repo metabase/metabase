@@ -300,9 +300,7 @@ describe("getSummaryQuestion", () => {
       nextQuestion.settings(),
       nextQuery,
       query,
-      {
-        columnChange: "in-place",
-      },
+      { isInPlaceColumnChange: true },
     );
     expect(settings["pivot_table.column_split"]).toEqual(columnSplit);
   });

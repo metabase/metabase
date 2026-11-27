@@ -23,10 +23,6 @@ import {
 } from "metabase/common/utils/card";
 import { format } from "metabase/querying/expressions";
 import * as formatter from "metabase/querying/expressions/formatter/formatter";
-import {
-  type ColumnChange,
-  syncVizSettingsWithQuery,
-} from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type {
@@ -187,10 +183,7 @@ async function setup({
   }
   setupUserMetabotPermissionsEndpoint();
 
-  const onQueryChange = jest.fn<
-    void,
-    [Lib.Query, SummaryPivotChange?, ColumnChange?]
-  >();
+  const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
   const metadata = createMockMetadata({
     databases: [database],
     questions: metrics,
@@ -227,7 +220,7 @@ async function setup({
             query={query}
             stageIndex={stageIndex}
             pivotColumnSplit={pivotColumnSplit}
-            onQueryChange={(nextQuery, pivotChange, columnChange) => {
+            onQueryChange={(nextQuery, pivotChange) => {
               savedCard = question.setQuery(nextQuery).card();
               setCard(savedCard);
               if (pivotChange?.type === "show") {
@@ -236,7 +229,7 @@ async function setup({
               if (pivotChange?.type === "hide") {
                 setPivotColumnSplit(undefined);
               }
-              onQueryChange(nextQuery, pivotChange, columnChange);
+              onQueryChange(nextQuery, pivotChange);
             }}
           />
         )}
@@ -1276,98 +1269,6 @@ describe("editing a formula chip", () => {
     expect(Lib.expressions(nextQuery, -1)).toHaveLength(1);
     expect(getFormulaChip("Order date: Year")).toBeInTheDocument();
     expect(getFormulaChip("Order date: Month")).toBeInTheDocument();
-  });
-
-  it("keeps each column's format in a later stage when a grouping takes a value's name", async () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          source: { type: "table", id: ORDERS_ID },
-          expressions: [
-            {
-              name: "Total * 5",
-              value: {
-                type: "operator",
-                operator: "*",
-                args: [
-                  { type: "column", name: "TOTAL" },
-                  { type: "literal", value: 5 },
-                ],
-              },
-            },
-          ],
-          breakouts: [{ type: "column", name: "Total * 5" }],
-          aggregations: [{ name: "Total * 6", value: sumOf("TOTAL") }],
-        },
-        {},
-      ],
-    });
-    const { onQueryChange } = await setup({ query, stageIndex: 0 });
-
-    await openFormula("Total * 5");
-    await changeFormula("[Total] * 6");
-    await userEvent.keyboard("{Enter}");
-    await expectClosed();
-
-    const [nextQuery, , columnChange] = onQueryChange.mock.calls[0];
-    const settings = syncVizSettingsWithQuery(
-      {
-        column_settings: {
-          '["name","Total * 5"]': { column_title: "Grouping" },
-          '["name","Total * 6"]': { number_style: "currency" },
-        },
-      },
-      nextQuery,
-      query,
-      { columnChange },
-    );
-    expect(settings.column_settings).toEqual({
-      '["name","Total * 6"]': { column_title: "Grouping" },
-      '["name","Total * 6_2"]': { number_style: "currency" },
-    });
-  });
-
-  it("keeps the first grouping's format when an edited formula can no longer group by year and month", async () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [
-        {
-          source: { type: "table", id: ORDERS_ID },
-          expressions: [
-            { name: "now()", value: { type: "operator", operator: "now" } },
-          ],
-          breakouts: [
-            { type: "column", name: "now()", unit: "year" },
-            { type: "column", name: "now()", unit: "month" },
-            { type: "column", name: "QUANTITY" },
-          ],
-          aggregations: [{ type: "operator", operator: "count" }],
-        },
-      ],
-    });
-    const { onQueryChange } = await setup({ query });
-
-    await openFormula("now(): Month");
-    await changeFormula("[Total] * 2");
-    await userEvent.keyboard("{Enter}");
-    await expectClosed();
-
-    const [nextQuery, , columnChange] = onQueryChange.mock.calls[0];
-    const settings = syncVizSettingsWithQuery(
-      {
-        column_settings: {
-          '["name","now()"]': { column_title: "Annual totals" },
-          '["name","now()_2"]': { column_title: "Monthly totals" },
-          '["name","QUANTITY"]': { decimals: 3 },
-        },
-      },
-      nextQuery,
-      query,
-      { columnChange },
-    );
-    expect(settings.column_settings).toEqual({
-      '["name","Total * 2"]': { column_title: "Annual totals" },
-      '["name","QUANTITY"]': { decimals: 3 },
-    });
   });
 
   it("closes the bar when the removed chip's column name passes to another formula", async () => {

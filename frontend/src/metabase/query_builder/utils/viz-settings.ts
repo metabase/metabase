@@ -1,9 +1,6 @@
 import _ from "underscore";
 
-import {
-  type ColumnChange,
-  syncVizSettingsWithQuery,
-} from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { isNotNull } from "metabase/utils/types";
 import {
   adoptLegacyCustomVizSettings,
@@ -79,7 +76,7 @@ export function keepPivotColumnSplitOfChangedQuery(
 export function getAdHocQuestionWithVizSettings(options: {
   question: Question;
   currentQuestion?: Question;
-  columnChange?: ColumnChange;
+  isInPlaceColumnChange?: boolean;
   shouldStartAdHocQuestion?: boolean;
   onCloseQuestionInfo?: () => void;
 }) {
@@ -87,7 +84,7 @@ export function getAdHocQuestionWithVizSettings(options: {
     shouldStartAdHocQuestion = false,
     currentQuestion,
     onCloseQuestionInfo,
-    columnChange,
+    isInPlaceColumnChange,
   } = options;
   let { question } = options;
 
@@ -113,7 +110,7 @@ export function getAdHocQuestionWithVizSettings(options: {
         question.settings(),
         question.query(),
         currentQuestion.query(),
-        { columnChange },
+        { isInPlaceColumnChange },
       ),
     );
   }

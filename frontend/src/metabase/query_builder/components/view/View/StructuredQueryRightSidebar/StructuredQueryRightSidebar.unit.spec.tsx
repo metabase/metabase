@@ -155,11 +155,11 @@ describe("StructuredQueryRightSidebar", () => {
   });
 
   it.each([
-    { formula: "[Total] + 2", columnChange: "in-place" },
-    { formula: "now()", columnChange: "regrouped" },
+    { formula: "[Total] + 2", change: "kept", isInPlaceColumnChange: true },
+    { formula: "now()", change: "rebuilt", isInPlaceColumnChange: false },
   ])(
-    "updates the question with $columnChange columns after a grouping formula changes to $formula",
-    async ({ formula, columnChange }) => {
+    "reports that the groupings were $change after a grouping formula changes to $formula",
+    async ({ formula, isInPlaceColumnChange }) => {
       const { updateQuestion, openSummary } = setup({
         querySpec: {
           stages: [
@@ -207,7 +207,7 @@ describe("StructuredQueryRightSidebar", () => {
 
       expect(updateQuestion).toHaveBeenCalledWith(expect.any(Question), {
         run: true,
-        columnChange,
+        isInPlaceColumnChange,
       });
     },
   );

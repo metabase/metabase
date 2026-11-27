@@ -608,9 +608,7 @@ describe("syncVizSettingsWithQuery", () => {
           settings,
           newQuery,
           oldQuery,
-          {
-            columnChange: "in-place",
-          },
+          { isInPlaceColumnChange: true },
         );
 
         expect(newSettings["table.columns"]).toEqual([

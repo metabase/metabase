@@ -29,7 +29,7 @@ export function syncVizSettingsWithQuery(
   settings: VisualizationSettings,
   newQuery: Lib.Query,
   oldQuery: Lib.Query,
-  options: Pick<SyncVizSettingsOpts, "columnChange"> = {},
+  options: Pick<SyncVizSettingsOpts, "isInPlaceColumnChange"> = {},
 ): VisualizationSettings {
   if (isNativeQuery(newQuery) || isNativeQuery(oldQuery)) {
     return settings;
@@ -63,11 +63,9 @@ export function syncVizSettingsWithSeries(
   });
 }
 
-/** In-place changes preserve result column positions. Regrouping can move or merge breakouts. */
-export type ColumnChange = "in-place" | "regrouped";
-
 export type SyncVizSettingsOpts = {
-  columnChange?: ColumnChange;
+  /** The change kept each result column in its position, so a renamed column keeps its settings. */
+  isInPlaceColumnChange?: boolean;
   placeNewColumnsInQueryOrder?: boolean;
 };
 
@@ -77,8 +75,8 @@ export function syncVizSettings(
   oldColumns: ColumnInfo[],
   options: SyncVizSettingsOpts = {},
 ): VisualizationSettings {
-  const matchedColumns = options.columnChange
-    ? matchChangedColumns(newColumns, oldColumns, options.columnChange)
+  const matchedColumns = options.isInPlaceColumnChange
+    ? matchColumnsByPosition(newColumns, oldColumns)
     : newColumns;
   let nextSettings = settings;
   nextSettings = syncTableColumns(
@@ -235,6 +233,10 @@ function syncTableColumns(
   };
 }
 
+/**
+ * Gives each new column the key of the old column in the same position. A rename can also
+ * change the suffix of a sibling with the same name.
+ */
 function matchColumnsByPosition(
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
@@ -246,38 +248,6 @@ function matchColumnsByPosition(
     ...column,
     key: oldColumns[index].key,
   }));
-}
-
-/**
- * Gives each new column the key of the old column it replaces. A rename can also change
- * the suffix of a sibling with the same name.
- */
-function matchChangedColumns(
-  newColumns: ColumnInfo[],
-  oldColumns: ColumnInfo[],
-  columnChange: ColumnChange,
-) {
-  if (columnChange === "in-place") {
-    return matchColumnsByPosition(newColumns, oldColumns);
-  }
-
-  const newDimensions = newColumns.filter((column) => !column.isAggregation);
-  const oldDimensions = oldColumns.filter((column) => !column.isAggregation);
-  const oldKeys = new Set(oldDimensions.map((column) => column.key));
-  const newKeys = new Set(newDimensions.map((column) => column.key));
-  const renamed = newDimensions.filter((column) => !oldKeys.has(column.key));
-  const replaced = oldDimensions.filter((column) => !newKeys.has(column.key));
-
-  return [
-    // Rebuilding a formula's breakouts can move other groupings. Match those by key first.
-    ...newDimensions.filter((column) => oldKeys.has(column.key)),
-    // When several groupings collapse into one, it keeps the settings of the first.
-    ...matchColumnsByPosition(renamed, replaced.slice(0, renamed.length)),
-    ...matchColumnsByPosition(
-      newColumns.filter((column) => column.isAggregation),
-      oldColumns.filter((column) => column.isAggregation),
-    ),
-  ];
 }
 
 function syncColumnSettings(

@@ -52,10 +52,10 @@ export const StructuredQueryRightSidebar = ({
         query={query}
         canPivot={canPivotSummary(question, summaryStageIndex)}
         pivotColumnSplit={pivotColumnSplit}
-        onQueryChange={(nextQuery, pivotChange, columnChange) =>
+        onQueryChange={(nextQuery, pivotChange, isInPlaceColumnChange) =>
           updateQuestion(getSummaryQuestion(question, nextQuery, pivotChange), {
             run: true,
-            columnChange,
+            isInPlaceColumnChange,
           })
         }
         stageIndex={summaryStageIndex}

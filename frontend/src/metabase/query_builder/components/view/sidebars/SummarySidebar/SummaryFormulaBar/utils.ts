@@ -4,7 +4,6 @@ import {
   findExpression,
   isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
-import type { ColumnChange } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
@@ -199,18 +198,18 @@ function rebucketFormulaBreakouts(
   stageIndex: number,
   name: string,
   nextName: string,
-): { query: Lib.Query; columnChange: ColumnChange } {
+): { query: Lib.Query; isInPlace: boolean } {
   const column = findFormulaColumn(query, stageIndex, name);
   const nextColumn = findFormulaColumn(nextQuery, stageIndex, nextName);
   if (!column || !nextColumn) {
-    return { query: nextQuery, columnChange: "regrouped" };
+    return { query: nextQuery, isInPlace: false };
   }
   const isSameType =
     Lib.displayInfo(query, stageIndex, column).effectiveType ===
     Lib.displayInfo(nextQuery, stageIndex, nextColumn).effectiveType;
   if (isSameType) {
     // Lib already kept each grouping, its bucket, and the references to it in later stages.
-    return { query: nextQuery, columnChange: "in-place" };
+    return { query: nextQuery, isInPlace: true };
   }
   // A new type can drop the old bucket and leave groupings that duplicate each other, which
   // Lib removes. A clause, not a column, keeps the references to the grouping in later stages.
@@ -251,7 +250,7 @@ function rebucketFormulaBreakouts(
         withPreviousBucket(currentQuery, stageIndex, column, previousBreakout),
       );
     }, rebucketedQuery);
-  return { query: result, columnChange: "regrouped" };
+  return { query: result, isInPlace: false };
 }
 
 export function editSummaryFormula(
@@ -275,7 +274,7 @@ export function editSummaryFormula(
     );
     return {
       query: nextQuery,
-      options: { isFormulaEdited: true, columnChange: "in-place" },
+      options: { editedFormula: true, isInPlaceColumnChange: true },
     };
   }
   const { query: nextQuery, name: nextName } = editExpression(
@@ -297,8 +296,8 @@ export function editSummaryFormula(
   return {
     query: result.query,
     options: {
-      isFormulaEdited: true,
-      columnChange: result.columnChange,
+      editedFormula: true,
+      isInPlaceColumnChange: result.isInPlace,
       renamedFormula,
     },
   };

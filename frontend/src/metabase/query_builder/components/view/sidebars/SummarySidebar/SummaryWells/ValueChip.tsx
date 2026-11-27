@@ -52,7 +52,7 @@ export function ValueChip({
         item.clause,
         Lib.withExpressionName(item.clause, name),
       ),
-      { columnChange: "in-place" },
+      { isInPlaceColumnChange: true },
     );
   const handleEdit =
     isFormula && formulaInput
