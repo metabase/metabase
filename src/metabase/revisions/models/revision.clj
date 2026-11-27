@@ -278,9 +278,8 @@
   (let [model    (u/ignore-exceptions (t2.model/resolve-model (symbol model)))
         defaults (:defaults (revisions.spec/spec model))]
     (cond-> revision
-      ;; A snapshot records no `:id`, but one stored by an older Metabase may still hold it. Drop it, so that the
-      ;; after-select of the model reads the snapshot as a snapshot and not as a row it SELECTed: the Card hook takes
-      ;; a map with an `:id` and a query for a row and requires every column its schema upgrade needs.
+      ;; No snapshot records the `:id` of its row (see `revisions.spec/implicit-columns`), but one stored by an older
+      ;; Metabase may still hold it. Drop it so that the after-select of the model sees a snapshot, not a row.
       (and (revisions.spec/schema model) (map? (:object revision)))
       (update :object dissoc :id)
 
