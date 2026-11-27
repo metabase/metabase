@@ -1785,3 +1785,22 @@
           (testing "the filter matches some but not all of the 18760 orders"
             (is (pos? (count rows)))
             (is (< (count rows) 18760))))))))
+
+(deftest ^:parallel cumulative-count-breakout-by-bucketed-expression-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql :+features [:expressions :window-functions/cumulative]})
+    (testing "cumulative count broken out by a temporal-bucketed custom column returns one row per bucket (#62047)"
+      (let [mp       (mt/metadata-provider)
+            base     (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                         (lib/expression "adjusted" (lib/datetime-subtract (lib.metadata/field mp (mt/id :people :created_at)) 14 :day)))
+            adjusted (-> (lib/expression-ref base "adjusted")
+                         (lib/with-temporal-bucket :quarter))
+            plain    (-> base
+                         (lib/aggregate (lib/count))
+                         (lib/breakout adjusted))
+            query    (-> base
+                         (lib/aggregate (lib/cum-count))
+                         (lib/breakout adjusted))
+            plain-rows (mt/rows (qp/process-query plain))
+            rows       (mt/rows (qp/process-query query))]
+        (is (= (map first plain-rows) (map first rows)))
+        (is (= (reductions + (map (comp long second) plain-rows)) (map (comp long second) rows)))))))
