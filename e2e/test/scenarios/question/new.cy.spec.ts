@@ -14,6 +14,18 @@ describe("scenarios > question > new", () => {
   });
 
   describe("data picker", () => {
+    it("data selector popover should not be too small (metabase#15591)", () => {
+      // Add 10 more databases
+      for (let i = 0; i < 10; i++) {
+        H.addSqliteDatabase("Sample" + i);
+      }
+
+      H.startNewQuestion();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample3").should("be.visible");
+      });
+    });
+
     it("should be possible to create a question based on a question in another user personal collection", () => {
       cy.signOut();
       cy.signIn("nocollection");
@@ -99,6 +111,7 @@ describe("scenarios > question > new", () => {
     "should be able to save a question to a collection created on the go",
     { tags: "@prerelease" },
     () => {
+      cy.intercept("POST", "/api/card").as("createQuestion");
       H.visitCollection(THIRD_COLLECTION_ID);
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
@@ -146,8 +159,16 @@ describe("scenarios > question > new", () => {
       cy.get("header").findByText(NEW_COLLECTION);
 
       cy.log("the question is saved in the new collection");
-      cy.reload();
-      cy.get("header").findByText(NEW_COLLECTION);
+      cy.wait("@createQuestion").then(({ response }) => {
+        H.visitCollection(response?.body.collection_id);
+        cy.findByTestId("collection-name-heading").should(
+          "have.text",
+          NEW_COLLECTION,
+        );
+        H.collectionTable()
+          .findByText(response?.body.name)
+          .should("be.visible");
+      });
     },
   );
 
@@ -214,11 +235,20 @@ describe("scenarios > question > new", () => {
         .button(/Select/)
         .click();
       cy.wait("@createDashboard").then(({ response }) => {
+        const dashboardId = response?.body.id;
         cy.location("pathname").should(
           "eq",
-          `/dashboard/${response?.body.id}-new-dashboard`,
+          `/dashboard/${dashboardId}-new-dashboard`,
         );
+
+        cy.log("the dashboard is saved in the selected collection");
+        H.visitDashboard(dashboardId);
       });
+      cy.findByTestId("dashboard-name-heading").should(
+        "have.value",
+        "New Dashboard",
+      );
+      H.appBar().findByText("First collection").should("be.visible");
     });
   });
 });
@@ -285,6 +315,10 @@ describe(
         cy.findAllByTestId("result-item")
           .first()
           .should("contain.text", "Orders Model");
+        cy.log(
+          "the table picked at the start is recorded as a recent selection (metabase#45003)",
+        );
+        H.entityPickerModalLevel(1).findByText("Products").should("exist");
       });
     });
   },
