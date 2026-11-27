@@ -3101,3 +3101,17 @@
          (is (thrown-with-msg? Exception #"more parameters than we can handle"
                                (with-open [_stmt (sql-jdbc.execute/prepared-statement
                                                   :postgres conn "SELECT 1 -- ?" [1])]))))))))
+
+(deftest ci-probe-75450-native-enum-column-base-type-matches-table-test
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (let [mp       (lib.metadata.jvm/application-database-metadata-provider (u/the-id db))
+             table-id (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
+             result   (qp/process-query (lib/native-query mp "SELECT * FROM birds"))
+             cols     (get-in result [:data :cols])]
+         (doseq [col-name ["status" "other_status" "type"]]
+           (let [table-base-type (t2/select-one-fn :base_type :model/Field :table_id table-id :name col-name)
+                 col-base-type   (:base_type (m/find-first #(= (:name %) col-name) cols))]
+             (testing (str col-name " native result base type " col-base-type " vs table base type " table-base-type)
+               (is (isa? col-base-type table-base-type))))))))))
