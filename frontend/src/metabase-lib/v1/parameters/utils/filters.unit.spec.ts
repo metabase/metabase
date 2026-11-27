@@ -1,13 +1,22 @@
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  SAMPLE_PROVIDER,
+  columnFinder,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type { FieldId, TemplateTag } from "metabase-types/api";
 import {
+  createMockDatabase,
+  createMockField,
   createMockParameter,
+  createMockTable,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import {
+  columnFilterForParameter,
   dimensionTagFilterForParameter,
   variableTagFilterForParameter,
 } from "./filters";
@@ -72,6 +81,85 @@ describe("parameters/utils/filters", () => {
         createMockParameter({ type: "date/single" }),
       );
       expect(predicate(createDimensionTag(ORDERS.QUANTITY))).toBe(false);
+    });
+  });
+
+  describe("columnFilterForParameter", () => {
+    // Like the Postgres `ip_addresses` test table: an inet column and a text
+    // `count` column marked as a quantity
+    const DATABASE_ID = 2;
+    const TABLE_ID = 20;
+    const DATABASE = createMockDatabase({
+      id: DATABASE_ID,
+      tables: [
+        createMockTable({
+          id: TABLE_ID,
+          db_id: DATABASE_ID,
+          name: "ip_addresses",
+          display_name: "IP Addresses",
+          fields: [
+            createMockField({
+              id: 201,
+              table_id: TABLE_ID,
+              name: "inet",
+              display_name: "Inet",
+              base_type: "type/IPAddress",
+              effective_type: "type/IPAddress",
+              semantic_type: null,
+            }),
+            createMockField({
+              id: 202,
+              table_id: TABLE_ID,
+              name: "count",
+              display_name: "Count",
+              base_type: "type/Text",
+              effective_type: "type/Text",
+              semantic_type: "type/Quantity",
+            }),
+            createMockField({
+              id: 203,
+              table_id: TABLE_ID,
+              name: "created_at",
+              display_name: "Created At",
+              base_type: "type/DateTime",
+              effective_type: "type/DateTime",
+              semantic_type: null,
+            }),
+          ],
+        }),
+      ],
+    });
+    const provider = createMetadataProvider({
+      databaseId: DATABASE_ID,
+      metadata: createMockMetadata({ databases: [DATABASE] }),
+    });
+    const tableQuery = Lib.createTestQuery(provider, {
+      stages: [{ source: { type: "table", id: TABLE_ID } }],
+    });
+    const findColumn = columnFinder(
+      tableQuery,
+      Lib.filterableColumns(tableQuery, 0),
+    );
+
+    it.each(["inet", "count"])(
+      "should offer the %s column for a 'Text or Category' filter",
+      (columnName) => {
+        const predicate = columnFilterForParameter(
+          tableQuery,
+          0,
+          createMockParameter({ type: "string/=", sectionId: "string" }),
+        );
+        expect(predicate(findColumn("ip_addresses", columnName))).toBe(true);
+      },
+    );
+
+    it("should not offer a date column for a 'Text or Category' filter", () => {
+      const predicate = columnFilterForParameter(
+        tableQuery,
+        0,
+        createMockParameter({ type: "string/=", sectionId: "string" }),
+      );
+      expect(predicate(findColumn("ip_addresses", "created_at"))).toBe(false);
     });
   });
 

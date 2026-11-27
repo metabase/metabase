@@ -169,6 +169,7 @@ describe("ClickBehaviorSidebar", () => {
     await userEvent.click(await screen.findByText("UUID"));
     await userEvent.click(screen.getByText("Update a dashboard filter"));
     const filters = await screen.findByTestId("unset-click-mappings");
+    expect(screen.getByText("Available filters")).toBeInTheDocument();
     await userEvent.click(within(filters).getByRole("button", { name: "ID" }));
 
     const listbox = await screen.findByRole("listbox");
