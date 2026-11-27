@@ -3,9 +3,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.cache.db :as cache.db]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.cache.schema :as cache.schema]
+   [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
@@ -257,3 +259,15 @@
                    :new-value nil}
                   (:details (t2/select-one :model/AuditLog :topic "cache-config-update"
                                            {:order-by [[:id :desc]]})))))))))
+
+(deftest instance-caching-is-not-changed-in-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (doseq [[model model-id] [["root" 0] ["database" (mt/id)]]]
+          (testing model
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Root and database caching can only be changed in the default worktree"
+                                  (cache-config/save-cache-config! {:model    model
+                                                                    :model_id model-id
+                                                                    :strategy {:type :nocache}})))))))))

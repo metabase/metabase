@@ -48,7 +48,6 @@ export * from "./e2e-notification-helpers";
 export * from "./e2e-permissions-helpers";
 export * from "./e2e-python-helpers";
 export * from "./e2e-qa-databases-helpers";
-export * from "./e2e-relative-date-picker-helpers";
 export * from "./e2e-remote-sync-helpers";
 export * from "./e2e-request-helpers";
 export * from "./e2e-saml-helpers";

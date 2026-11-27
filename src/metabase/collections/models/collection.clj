@@ -106,14 +106,14 @@
   (collections.db/collection-of-type trash-collection-type))
 
 (let [get-trash (mdb/memoize-for-application-db
-                 (fn []
+                 (fn [_scope]
                    (u/prog1 (trash-collection*)
                      (when-not <>
                        (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
   (defn trash-collection
-    "Get the (memoized) trash collection"
+    "Get the trash collection of the remote sync worktree this thread works in, memoized per worktree."
     []
-    (assoc (get-trash) :name (deferred-tru "Trash"))))
+    (assoc (get-trash (mdb/worktree-scope)) :name (deferred-tru "Trash"))))
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"
@@ -2690,9 +2690,10 @@
 (defn- copy-collection-permissions!
   "Grants each target Collection of `source+targets`, the pairs `[source target-id]`, the permissions of its source, a
   Collection, an id or the root, to every group with read permissions for the source, and write permissions for
-  every group with write permissions for it, and records a new revision of the permission graph."
+  every group with write permissions for it, and records a new revision of the permission graph, but in a remote sync
+  worktree, whose Collections have no Permissions, since those every worktree shares are of the default worktree."
   [source+targets]
-  (when (seq source+targets)
+  (when (and (seq source+targets) (not (mdb/non-default-worktree?)))
     (let [groups (collections.db/group-ids-by-permission-object
                   (vec (into #{} (mapcat (fn [[source _]] [(perms/collection-read-path source)
                                                            (perms/collection-readwrite-path source)]))
@@ -3123,16 +3124,13 @@
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   (when-not *allow-deleting-personal-collections*
     (when personal_owner_id
-      (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
-  (when (= tenant-specific-root-collection-type (:type collection))
-    (throw (ex-info (tru "You cannot delete the root collection of a tenant.") {:status-code 400}))))
+      (throw (Exception. (tru "You cannot delete a Personal Collection!"))))))
 
 (defn- check-collection-deletes
   "Throw unless every one of `collections` satisfies these rules:
 
   - it is not the Trash
-  - it is not a personal Collection, unless deleting those is allowed
-  - it is not the root Collection of a tenant"
+  - it is not a personal Collection, unless deleting those is allowed"
   [collections]
   (run! check-deletable collections))
 

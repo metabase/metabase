@@ -140,10 +140,12 @@
     (some-> (row-filter ctx table) (as-> f (in-filter ctx f (relation-name table alias))))))
 
 (defn- clause-from
-  "The `:from` clause `from` with every item read through [[read-item]]."
+  "The `:from` clause `from` with every item read through [[read-item]], a bare table that reads through a substitution
+  becoming a one-item clause, since `[view alias]` alone would name two tables."
   [ctx from]
   (if (keyword? from)
-    (read-item ctx from)
+    (let [item (read-item ctx from)]
+      (if (vector? item) [item] item))
     (mapv #(read-item ctx %) from)))
 
 (defn- clause-joins

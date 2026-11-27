@@ -225,6 +225,86 @@
         (card/update-cards! [{:id card-id :dataset_query (table-query :orders)}])
         (is (pending? :card card-id))))))
 
+(deftest card-goal-edit-marks-dependencies-test
+  (testing "editing a card's viz settings, where dynamic goals live, marks its dependencies stale"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
+        (computed! :card card-id)
+        (card/update-cards! [{:id                     card-id
+                              :visualization_settings {:graph.goal_value {:id card-id :type "card" :column "count"}}}])
+        (is (pending? :card card-id))))))
+
+(deftest card-viz-edit-without-goal-change-keeps-dependencies-test
+  (testing "a viz settings edit that reads the same goal sources leaves the card's dependencies computed"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (table-query :orders)}
+                     :model/Card {card-id :id} {:dataset_query          (table-query :products)
+                                                :visualization_settings
+                                                {:graph.goal_value {:id goal-id :type "card" :column "count"}}}]
+        (doseq [[label viz] {"an unrelated setting"       {:graph.goal_value {:id goal-id :type "card" :column "count"}
+                                                           :card.title       "renamed"}
+                             "another column of a source" {:graph.goal_value {:id goal-id :type "card" :column "sum"}
+                                                           :card.title       "renamed"}}]
+          (testing label
+            (computed! :card card-id)
+            (card/update-cards! [{:id card-id :visualization_settings viz}])
+            (is (not (pending? :card card-id)))))
+        (testing "through the API"
+          (computed! :card card-id)
+          (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                {:visualization_settings {:graph.goal_value {:id goal-id :type "card" :column "count"}
+                                                          :card.title       "renamed again"}})
+          (is (not (pending? :card card-id))))
+        (testing "dropping the goal changes them"
+          (computed! :card card-id)
+          (card/update-cards! [{:id card-id :visualization_settings {:card.title "renamed"}}])
+          (is (pending? :card card-id)))))))
+
+(deftest card-goal-only-edit-recalculates-dependencies-test
+  (testing "adding a dynamic goal to a card, and nothing else, records the card it reads as a dependency"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (table-query :orders)}
+                       :model/Card {card-id :id}      {:dataset_query (table-query :products)}]
+          (deps.test/synchronously-run-dependency-job!)
+          (card/update-cards! [{:id                     card-id
+                                :visualization_settings {:graph.goal_value
+                                                         {:id goal-card-id :type "card" :column "count"}}}])
+          (deps.test/synchronously-run-dependency-job!)
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card :from_entity_id card-id
+                          :to_entity_type :card :to_entity_id goal-card-id)))))))
+
+(defn- goal-viz [card-id]
+  {:graph.goal_value {:id card-id :type "card" :column "count"}})
+
+(deftest deep-copied-dashboard-goal-dependencies-test
+  (testing "a deep copy's goals, on its cards and its dashboard cards, are recorded as reading the copied sources"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/Collection    {src :id}    {}
+                       :model/Collection    {dest :id}   {}
+                       :model/Card          {source :id} {:name "Source" :collection_id src
+                                                          :dataset_query (table-query :orders)}
+                       :model/Card          {chart :id}  {:name "Chart" :collection_id src
+                                                          :dataset_query (table-query :products)
+                                                          :visualization_settings
+                                                          (goal-viz source)}
+                       :model/Dashboard     {dash :id}   {:collection_id src}
+                       :model/DashboardCard _            {:dashboard_id dash :card_id chart
+                                                          :visualization_settings
+                                                          (goal-viz source)}]
+          (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" dash)
+                                                   {:collection_id dest :is_deep_copy true}))
+                {chart' "Chart" source' "Source"} (t2/select-fn->fn :name :id :model/Card :collection_id dest)]
+            (deps.test/synchronously-run-dependency-job!)
+            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id chart'
+                            :to_entity_type :card :to_entity_id source'))
+            (is (t2/exists? :model/Dependency :from_entity_type :dashboard :from_entity_id copy-id
+                            :to_entity_type :card :to_entity_id source'))
+            (is (not (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id chart'
+                                 :to_entity_type :card :to_entity_id source)))))))))
+
 (deftest dashboard-parts-mark-dashboard-test
   (testing "adding, updating and removing a dashboard card, a series or a tab marks the dashboard's dependencies stale"
     (mt/test-helpers-set-global-values!

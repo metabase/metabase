@@ -4,7 +4,8 @@
    [medley.core :as m]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.replacement.core :as replacement]
-   [metabase.replacement.walk :as replacement.walk]))
+   [metabase.replacement.walk :as replacement.walk]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,13 +37,14 @@
 
 (defn- dashcard-writes
   "The write of the dashcard whose parameter mapping and click behavior targets `target-fn` of a target and a card id
-  updates, or none."
-  [dashcard target-fn]
+  updates, and whose visualization settings `viz-fn` then updates, or none."
+  [dashcard target-fn viz-fn]
   (let [parameter-mappings  (:parameter_mappings dashcard)
         parameter-mappings' (replacement.walk/walk-parameter-mapping-targets parameter-mappings target-fn)
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
-                                    (replacement.walk/walk-viz-settings-click-behaviors target-fn))
+                                    (replacement.walk/walk-viz-settings-click-behaviors target-fn)
+                                    viz-fn)
         changes             (cond-> {}
                               (not= parameter-mappings parameter-mappings')
                               (assoc :parameter_mappings parameter-mappings')
@@ -68,12 +70,13 @@
         parameters'   (replacement/upgrade-parameter-source-card-refs parameters card-id->card)]
     (into (dashboard-writes dashboard parameters parameters')
           (mapcat #(dashcard-writes % (fn [target card-id]
-                                        (replacement/upgrade-parameter-target target card-id card-id->card))))
+                                        (replacement/upgrade-parameter-target target card-id card-id->card))
+                                    identity))
           (:replacement/dashcards dashboard))))
 
 (defn swap-source
-  "The writes that swap `old-source` for `new-source` in the parameter mappings and click behaviors of the dashcards
-  of the hydrated `dashboard`, then in the cards its parameters take their values from."
+  "The writes that swap `old-source` for `new-source` in the parameter mappings, click behaviors and dynamic goals of
+  the dashcards of the hydrated `dashboard`, then in the cards its parameters take their values from."
   [dashboard old-source new-source]
   (let [card-id->card (:replacement/cards dashboard)
         parameters    (or (:parameters dashboard) [])
@@ -81,6 +84,7 @@
     (-> []
         (into (mapcat #(dashcard-writes % (fn [target card-id]
                                             (replacement/swap-parameter-target target card-id card-id->card
-                                                                               old-source new-source))))
+                                                                               old-source new-source))
+                                        (fn [viz] (dynamic-goals/swap-goal-source viz old-source new-source))))
               (:replacement/dashcards dashboard))
         (into (dashboard-writes dashboard parameters parameters')))))

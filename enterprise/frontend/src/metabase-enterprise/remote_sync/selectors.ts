@@ -1,12 +1,19 @@
 import { getUser, getUserIsAdmin } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
-import type { RemoteSyncWorktreeId } from "metabase-types/api";
+import type {
+  RemoteSyncWorktree,
+  RemoteSyncWorktreeId,
+} from "metabase-types/api";
+
+export function getCurrentWorktree(state: State): RemoteSyncWorktree | null {
+  return getUser(state)?.worktree ?? null;
+}
 
 export function getCurrentWorktreeId(
   state: State,
 ): RemoteSyncWorktreeId | null {
-  return getUser(state)?.worktree?.id ?? null;
+  return getCurrentWorktree(state)?.id ?? null;
 }
 
 export function getIsRemoteSyncReadOnly(state: State): boolean {

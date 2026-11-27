@@ -133,6 +133,8 @@
   [rows :- [:sequential ::tenants.schema/tenant.create]]
   (app-db/create-batched! :model/Tenant rows
                           {:before-create (fn [rows]
+                                            (app-db/check-default-worktree
+                                             (tru "Tenants can only be created in the default worktree."))
                                             (check-new-tenants-free rows)
                                             (create-tenant-collections! rows))
                            :after-create  #(events/publish-event! :event/tenant-create (events/create-event %))}))

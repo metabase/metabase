@@ -44,7 +44,9 @@ import {
   useCreateQuestion,
   useSaveQuestion,
 } from "metabase/query_builder";
+import { getQuestionGoalSourcesScope } from "metabase/querying/goal-source-results";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
+import { GoalSourcesScopeProvider } from "metabase/visualizations/components/GoalSourcesScope";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -145,6 +147,11 @@ export const SdkQuestionProvider = ({
   });
 
   useSetupContentTranslations({ token });
+
+  const goalSourcesScope = useMemo(
+    () => getQuestionGoalSourcesScope({ token }),
+    [token],
+  );
 
   const isNewQuestion = questionId === "new" || questionId === "new-native";
 
@@ -399,15 +406,17 @@ export const SdkQuestionProvider = ({
   return (
     <SdkQuestionContext.Provider value={questionContext}>
       <EmbeddingEntityContextProvider uuid={null} token={token}>
-        <QuestionAlertModalProvider>
-          <EmbeddingDataPickerContextProvider
-            dataPicker={dataPicker}
-            entityTypes={entityTypes}
-          >
-            {children}
-          </EmbeddingDataPickerContextProvider>
-          <SdkQuestionAlertListModal />
-        </QuestionAlertModalProvider>
+        <GoalSourcesScopeProvider scope={goalSourcesScope}>
+          <QuestionAlertModalProvider>
+            <EmbeddingDataPickerContextProvider
+              dataPicker={dataPicker}
+              entityTypes={entityTypes}
+            >
+              {children}
+            </EmbeddingDataPickerContextProvider>
+            <SdkQuestionAlertListModal />
+          </QuestionAlertModalProvider>
+        </GoalSourcesScopeProvider>
       </EmbeddingEntityContextProvider>
     </SdkQuestionContext.Provider>
   );

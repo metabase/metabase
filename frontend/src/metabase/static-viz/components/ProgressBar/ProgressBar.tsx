@@ -5,6 +5,7 @@ import { scaleLinear } from "@visx/scale";
 import { useMemo } from "react";
 import { c } from "ttag";
 
+import { STATIC_VIZ_GOAL_SOURCE_RESULTS } from "metabase/static-viz/lib/resolve-goal-settings";
 import { formatValue } from "metabase/value-formatting";
 import {
   calculateProgressMetrics,
@@ -49,13 +50,12 @@ export const ProgressBar = ({
   renderingContext,
   hasDevWatermark = false,
 }: StaticChartProps) => {
-  const {
-    data: { cols, rows },
-  } = rawSeries[0];
+  const [{ data: seriesData }] = rawSeries;
 
   const { data, metrics, colors, column } = useMemo(() => {
     const valueField = settings["progress.value"];
-    const goalSetting = settings["progress.goal"] ?? 0;
+    const { cols, rows } = seriesData;
+    const goalSetting = settings["progress.goal"];
 
     const column = findProgressColumn(cols, valueField);
     const columnIndex = column
@@ -63,7 +63,11 @@ export const ProgressBar = ({
       : -1;
 
     const value = extractProgressValue(rows, columnIndex);
-    const goal = getGoalValue(goalSetting, cols, rows);
+    const goal = getGoalValue(
+      goalSetting,
+      seriesData,
+      STATIC_VIZ_GOAL_SOURCE_RESULTS,
+    );
 
     const metrics = calculateProgressMetrics(value, goal);
 
@@ -77,7 +81,7 @@ export const ProgressBar = ({
       colors,
       column: column || cols[0],
     };
-  }, [cols, rows, settings, renderingContext]);
+  }, [seriesData, settings, renderingContext]);
 
   const columnSettings = settings.column?.(column) ?? {};
   const barWidth = layout.width - layout.margin.left - layout.margin.right;

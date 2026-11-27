@@ -6,6 +6,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -986,3 +988,13 @@
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
               (is (every? string? values)))))))))
+
+(deftest display-values-are-not-changed-in-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Display values can only be changed in the default worktree"
+                              (mt/with-temp [:model/FieldValues _ {:field_id              (mt/id :venues :price)
+                                                                   :type                  :full
+                                                                   :values                [1 2]
+                                                                   :human_readable_values ["one" "two"]}])))))))

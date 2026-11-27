@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.global-system.mutable-component :as mc]
    [metabase.task.core :as task]
@@ -22,7 +23,8 @@
    (java.time Duration Instant)
    (java.util Date)
    (java.util.concurrent LinkedBlockingQueue TimeUnit)
-   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler SchedulerException)))
+   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler SchedulerException
+               Trigger)))
 
 (set! *warn-on-reflection* true)
 
@@ -551,3 +553,84 @@
     (mc/binding (task.impl/scheduler-handle) refusing-scheduler
                 (fn []
                   (is (nil? (task/schedule-once! (blocking-job) (one-shot-trigger "first"))))))))
+
+(def ^:private ^LinkedBlockingQueue scope-job-scopes (LinkedBlockingQueue.))
+
+(task/defjob ScopeJob
+  {:saved-class "metabase.task_test.ScopeJob"}
+  [_]
+  (.put scope-job-scopes (mdb/worktree-scope)))
+
+(def ^:private scope-job-key (jobs/key "metabase.task-test.scope-job"))
+
+(def ^:private scope-trigger-key (triggers/key "metabase.task-test.scope-trigger"))
+
+(defn- scope-job ^JobDetail []
+  (jobs/build
+   (jobs/of-type ScopeJob)
+   (jobs/with-identity scope-job-key)
+   (jobs/store-durably)))
+
+(defn- hourly-scope-trigger
+  "A trigger of the scope job that fires at the top of every hour."
+  ^Trigger []
+  (triggers/build
+   (triggers/with-identity scope-trigger-key)
+   (triggers/for-job scope-job-key)
+   (triggers/with-schedule
+    (cron/schedule
+     (cron/cron-schedule "0 0 * * * ? *")
+     (cron/with-misfire-handling-instruction-do-nothing)))))
+
+(defn- immediate-scope-trigger
+  "A trigger of the scope job that fires now."
+  ^Trigger []
+  (triggers/build
+   (triggers/with-identity scope-trigger-key)
+   (triggers/for-job scope-job-key)
+   (triggers/start-now)))
+
+(defn- trigger-worktree-id
+  "The worktree id the job data of the stored scope trigger names."
+  []
+  (.get (.getJobDataMap (.getTrigger (task/scheduler) scope-trigger-key)) "worktree-id"))
+
+(defn- next-scope-job-scope []
+  (.poll scope-job-scopes 5 TimeUnit/SECONDS))
+
+(deftest trigger-added-in-worktree-runs-in-worktree-test
+  (mt/with-temp-scheduler!
+    (.clear scope-job-scopes)
+    (task/add-job! (scope-job))
+    (testing "trigger added in worktree names it and its job runs in it"
+      (mdb/with-worktree-scope {:type :worktree :worktree-id 42}
+        (task/add-trigger! (hourly-scope-trigger)))
+      (is (= 42 (trigger-worktree-id)))
+      (task/delete-trigger! scope-trigger-key)
+      (mdb/with-worktree-scope {:type :worktree :worktree-id 42}
+        (task/add-trigger! (immediate-scope-trigger)))
+      (is (= {:type :worktree :worktree-id 42} (next-scope-job-scope))))
+    (testing "trigger added in default worktree runs its job in default worktree"
+      (task/delete-trigger! scope-trigger-key)
+      (task/add-trigger! (immediate-scope-trigger))
+      (is (= mdb/default-worktree-scope (next-scope-job-scope))))
+    (testing "task scheduled in worktree runs its job in it"
+      (task/delete-task! scope-job-key scope-trigger-key)
+      (mdb/with-worktree-scope {:type :worktree :worktree-id 42}
+        (task/schedule-task! (scope-job) (immediate-scope-trigger)))
+      (is (= {:type :worktree :worktree-id 42} (next-scope-job-scope))))
+    (task/delete-task! scope-job-key scope-trigger-key)))
+
+(deftest rescheduled-trigger-keeps-worktree-test
+  (mt/with-temp-scheduler!
+    (task/add-job! (scope-job))
+    (mdb/with-worktree-scope {:type :worktree :worktree-id 42}
+      (task/add-trigger! (hourly-scope-trigger)))
+    (testing "trigger rescheduled from default worktree keeps worktree of trigger it replaces"
+      (task/reschedule-trigger! (hourly-scope-trigger))
+      (is (= 42 (trigger-worktree-id))))
+    (testing "trigger rescheduled from another worktree takes that worktree"
+      (mdb/with-worktree-scope {:type :worktree :worktree-id 43}
+        (task/reschedule-trigger! (hourly-scope-trigger)))
+      (is (= 43 (trigger-worktree-id))))
+    (task/delete-task! scope-job-key scope-trigger-key)))

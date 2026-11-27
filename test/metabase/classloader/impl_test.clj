@@ -38,3 +38,12 @@
       (classloader/the-classloader)
       (is (= descendant-classloader
              (.getContextClassLoader (Thread/currentThread)))))))
+
+(deftest compile-to-temp-dir!-test
+  (let [compile! #(classloader/compile-to-temp-dir! "mb-classloader-test" 'metabase.classloader.gen-class-fixture)
+        dir      (compile!)]
+    (testing "the gen-class then loads by name"
+      (is (= "metabase.classloader.GenClassFixture"
+             (.getName (Class/forName "metabase.classloader.GenClassFixture" false (classloader/the-classloader))))))
+    (testing "each call gets its own directory"
+      (is (not= dir (compile!))))))

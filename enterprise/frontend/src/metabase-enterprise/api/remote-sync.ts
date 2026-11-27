@@ -29,7 +29,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, invalidateTags, listTag, tag } from "./tags";
+import { invalidateTags, listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -159,15 +159,6 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [listTag("remote-sync-worktree")],
     }),
-    getWorktree: builder.query<RemoteSyncWorktree, RemoteSyncWorktreeId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/remote-sync/worktree/${id}`,
-      }),
-      providesTags: (_worktree, _error, id) => [
-        idTag("remote-sync-worktree", id),
-      ],
-    }),
     createWorktree: builder.mutation<RemoteSyncWorktree, CreateWorktreeRequest>(
       {
         query: (body) => ({
@@ -184,10 +175,9 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/remote-sync/worktree/${id}`,
       }),
-      invalidatesTags: (_result, error, id) =>
+      invalidatesTags: (_result, error) =>
         invalidateTags(error, [
           listTag("remote-sync-worktree"),
-          idTag("remote-sync-worktree", id),
           tag("current-user"),
           tag("session-properties"),
           ...invalidateRemoteSyncContentTags(),
@@ -247,7 +237,6 @@ export const {
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
   useListWorktreesQuery,
-  useGetWorktreeQuery,
   useCreateWorktreeMutation,
   useDeleteWorktreeMutation,
   useCheckoutWorktreeMutation,

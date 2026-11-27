@@ -120,6 +120,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
 
       cy.log("User with __METABASE_ROUTER__ should see primary db");
       signInAs(DB_ROUTER_USERS.userWithMetabaseRouterAttr);
+      H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "lead");
       cy.get('[data-column-id="name"]')
         .should("not.contain", "destination_one")
@@ -174,6 +175,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
 
       cy.log("User with __METABASE_ROUTER__ should see primary db");
       signInAs(DB_ROUTER_USERS.userWithMetabaseRouterAttr);
+      H.visitQuestion(questionId);
       cy.get('[data-column-id="name"]').should("contain", "lead");
       cy.get('[data-column-id="name"]')
         .should("not.contain", "destination_one")

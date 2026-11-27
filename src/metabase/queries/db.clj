@@ -53,6 +53,11 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
 
+(mu/defn measures
+  "The Measures with `measure-ids`."
+  [measure-ids :- [:set ms/PositiveInt]]
+  (mdb/select-batched #(t2/select :model/Measure :id [:in %]) measure-ids))
+
 (mu/defn timelines
   "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
   [timeline-ids :- [:set ms/PositiveInt]]
@@ -185,6 +190,12 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
+(mu/defn public-document-ids :- [:set ms/PositiveInt]
+  "The ids of the Documents with `document-ids` that have a public link."
+  [document-ids :- [:set ms/PositiveInt]]
+  (or (mdb/select-batched-set #(t2/select-pks-set :model/Document :id [:in %] :public_uuid [:not= nil]) document-ids)
+      #{}))
+
 (mu/defn insert-cards!
   "Insert the Card `rows` with one statement for each set of columns they have and return the new instances, in the
   order of `rows`."
@@ -235,27 +246,42 @@
                                   :group-by [:card_id]})
                       card-ids))
 
+(def ^:private referenced-run-contexts
+  "Contexts of runs of a Card made to feed another entity, not to show the Card's own results."
+  ["dynamic-goal"])
+
+(defn not-referenced-run
+  "Where-clause that leaves out runs of a Card made to feed another entity. `context-column` is the
+  `query_execution.context` column, qualified as the query needs."
+  [context-column]
+  [:or [:= context-column nil] [:not-in context-column referenced-run-contexts]])
+
+(defn- own-uncached-runs
+  "Where-clause for the uncached executions of `card-ids`. Runs in `referenced-run-contexts` don't count."
+  [card-ids]
+  [:and
+   [:not= :running_time nil]
+   [:not= :cache_hit true]
+   (not-referenced-run :context)
+   [:in :card_id card-ids]])
+
 (mu/defn average-running-times-by-card
-  "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."
+  "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`. Runs in
+  `referenced-run-contexts` don't count."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select   [[:%avg.running_time :running_time] :card_id]
                                   :from     [(t2/table-name :model/QueryExecution)]
-                                  :where    [:and
-                                             [:not= :running_time nil]
-                                             [:not= :cache_hit true]
-                                             [:in :card_id %]]
+                                  :where    (own-uncached-runs %)
                                   :group-by [:card_id]})
                       card-ids))
 
 (mu/defn last-query-starts-by-card
-  "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`."
+  "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`. Runs in
+  `referenced-run-contexts` don't count."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select   [[:%max.started_at :started_at] :card_id]
                                   :from     [(t2/table-name :model/QueryExecution)]
-                                  :where    [:and
-                                             [:not= :running_time nil]
-                                             [:not= :cache_hit true]
-                                             [:in :card_id %]]
+                                  :where    (own-uncached-runs %)
                                   :group-by [:card_id]})
                       card-ids))
 

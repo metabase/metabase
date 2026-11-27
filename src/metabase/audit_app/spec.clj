@@ -83,7 +83,7 @@
 
 (def implicit-columns
   "The columns that no spec lists: the key, which never changes, the timestamps that every write sets, and the remote
-  sync worktree of the row, which the insert hook sets and no update changes."
+  sync worktree of the row, which the sandbox writes on insert and no update changes."
   #{:id :created_at :updated_at :worktree_id})
 
 (defn audited-models

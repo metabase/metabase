@@ -8,28 +8,41 @@
 
 (set! *warn-on-reflection* true)
 
-(defenterprise non-default-worktree-exists?
-  "Whether any worktree other than the default one exists, which none does without the `:remote-sync` feature."
-  metabase-enterprise.remote-sync.db
+(defenterprise worktrees-enabled?
+  "Whether a request can work in a worktree other than the default one, which none can without the enterprise code."
+  metabase-enterprise.remote-sync.models.remote-sync-worktree
   []
   false)
 
-(defenterprise user-worktree-id
-  "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
-  metabase-enterprise.remote-sync.db
-  [_user-id]
-  nil)
+(defenterprise non-default-worktrees
+  "Every worktree but the default one, of which there are none without the enterprise code."
+  metabase-enterprise.remote-sync.models.remote-sync-worktree
+  []
+  [])
 
-(defenterprise worktree-by-id
-  "The worktree with `worktree-id`, or nil."
-  metabase-enterprise.remote-sync.db
+(defenterprise non-default-worktree
+  "The worktree other than the default one with `worktree-id`, or nil."
+  metabase-enterprise.remote-sync.models.remote-sync-worktree
   [_worktree-id]
   nil)
 
+(defenterprise user-non-default-worktree-id
+  "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
+  metabase-enterprise.remote-sync.models.remote-sync-worktree
+  [_user-id]
+  nil)
+
+(defenterprise delete-checkouts!
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree; there are none without the
+  enterprise code."
+  metabase-enterprise.remote-sync.models.remote-sync-worktree
+  [_user-ids]
+  nil)
+
 (methodical/defmethod t2/simple-hydrate [:model/User :worktree]
-  "The worktree other than the default one the user checked out, or nil when they work in the main app."
+  "The worktree other than the default one the user checked out, or nil when they work in the default worktree."
   [_model k user]
-  (assoc user k (some-> (user-worktree-id (:id user)) worktree-by-id)))
+  (assoc user k (some-> (user-non-default-worktree-id (:id user)) non-default-worktree)))
 
 (defn ensure-built-ins!
   "Creates the built-in rows the remote sync worktree this thread works in lacks, of every model whose spec has

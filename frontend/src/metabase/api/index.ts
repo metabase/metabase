@@ -13,6 +13,7 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./document";
+export * from "./dynamic-goal";
 export * from "./embed";
 export * from "./entity-id";
 export * from "./exploration";

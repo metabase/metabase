@@ -13,6 +13,7 @@
    [metabase.measures.schema :as measures.schema]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.segments.schema :as segments.schema]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.transforms.schema :as transforms.schema]
@@ -220,15 +221,11 @@
 (mr/def ::worktree
   "A worktree, a checkout of a remote sync branch whose content lives in the same tables as the main app, with the user
   who created it and the users working in it when hydrated."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:branch     :string]
-   [:is_default :boolean]
-   [:creator_id [:maybe ms/PositiveInt]]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:creator    {:optional true} [:maybe ::worktree-user]]
-   [:users      {:optional true} [:sequential ::worktree-user]]])
+  [:merge
+   ::remote-sync.schema/worktree
+   [:map {:closed true}
+    [:creator {:optional true} [:maybe ::worktree-user]]
+    [:users   {:optional true} [:sequential ::worktree-user]]]])
 
 (mr/def ::worktree.update
   "The columns of a worktree a create or update sets."

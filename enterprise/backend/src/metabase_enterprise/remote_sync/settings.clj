@@ -115,7 +115,7 @@
   "Whether the current request can change synced content and push it: in a worktree always, in the main app only on a
   read-write instance."
   []
-  (or (some? (:worktree-id (mdb/worktree-scope)))
+  (or (mdb/non-default-worktree?)
       (= :read-write (remote-sync-type))))
 
 (defenterprise read-only?
@@ -129,7 +129,7 @@
 (defn branch
   "The branch the current request syncs: its worktree's, or the `remote-sync-branch` setting in the main app."
   []
-  (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
+  (if-let [worktree-id (when (mdb/non-default-worktree?) (mdb/worktree-id))]
     (remote-sync.db/worktree-branch worktree-id)
     (setting/get :remote-sync-branch)))
 
@@ -137,7 +137,7 @@
   "Make `new-branch` the branch the current request syncs: its worktree's, or the `remote-sync-branch` setting in the
   main app."
   [new-branch]
-  (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
+  (if-let [worktree-id (when (mdb/non-default-worktree?) (mdb/worktree-id))]
     (remote-sync.db/update-worktree! worktree-id {:branch new-branch})
     (setting/set! :remote-sync-branch new-branch)))
 
