@@ -10,6 +10,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,15 +41,15 @@
           (is (= [:evaluate] @called)))))))
 
 (deftest sync-and-evaluate-last-synced-at-test
-  (testing "security-center-last-synced-at is bumped only when fetch/sync-advisories! succeeds"
+  (testing "last-synced-at is bumped only when fetch/sync-advisories! succeeds"
     (mt/with-premium-features #{:admin-security-center}
       (testing "successful fetch updates the setting"
-        (mt/with-temporary-setting-values [security-center-last-synced-at nil]
+        (mt/with-temporary-setting-values [security-center-sync-state nil]
           (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                       fetch/sync-advisories!                    (constantly nil)
                                       matching/evaluate-all-advisories!         (constantly nil)]
             (#'sync-advisories/sync-and-evaluate!)
-            (is (some? (settings/security-center-last-synced-at))
+            (is (some? (settings/last-synced-at))
                 "fetch succeeded, so last-synced-at should be set"))))
       (testing "failed fetch leaves the setting untouched"
         ;; If a previous sync succeeded the setting holds that older timestamp;
@@ -56,47 +57,44 @@
         ;; freshness gauge tracks 'last attempt' rather than 'last success'
         ;; and alerts on stale advisories would never fire).
         (let [previous #t "2026-01-01T00:00:00Z"]
-          (mt/with-temporary-setting-values [security-center-last-synced-at previous]
+          (mt/with-temporary-setting-values [security-center-sync-state {:last-synced-at (u.date/format previous)}]
             (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                         fetch/sync-advisories!                    #(throw (Exception. "HM unreachable"))
                                         matching/evaluate-all-advisories!         (constantly nil)]
               (#'sync-advisories/sync-and-evaluate!)
-              (is (= previous (settings/security-center-last-synced-at))
+              (is (= previous (settings/last-synced-at))
                   "fetch failed, so last-synced-at must not be advanced")))))
       (testing "failed fetch on a never-synced instance keeps the setting nil"
-        (mt/with-temporary-setting-values [security-center-last-synced-at nil]
+        (mt/with-temporary-setting-values [security-center-sync-state nil]
           (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                       fetch/sync-advisories!                    #(throw (Exception. "HM unreachable"))
                                       matching/evaluate-all-advisories!         (constantly nil)]
             (#'sync-advisories/sync-and-evaluate!)
-            (is (nil? (settings/security-center-last-synced-at)))))))))
+            (is (nil? (settings/last-synced-at)))))))))
 
 (deftest sync-and-evaluate-last-sync-attempt-test
   (mt/with-premium-features #{:admin-security-center}
     (testing "failed fetch bumps last-sync-attempted-at and records the error"
       (let [previous #t "2026-01-01T00:00:00Z"]
-        (mt/with-temporary-setting-values [security-center-last-synced-at         previous
-                                           security-center-last-sync-attempted-at previous
-                                           security-center-last-sync-error        nil]
+        (mt/with-temporary-setting-values [security-center-sync-state {:last-synced-at         (u.date/format previous)
+                                                                       :last-sync-attempted-at (u.date/format previous)}]
           (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                       fetch/sync-advisories!                    #(throw (ex-info "Advisory fetch failed with status 502" {}))
                                       matching/evaluate-all-advisories!         (constantly nil)]
             (#'sync-advisories/sync-and-evaluate!)
-            (is (= previous (settings/security-center-last-synced-at)))
-            (is (not= previous (settings/security-center-last-sync-attempted-at)))
-            (is (= "Advisory fetch failed with status 502" (settings/security-center-last-sync-error)))))))
+            (is (= previous (settings/last-synced-at)))
+            (is (not= previous (settings/last-sync-attempted-at)))
+            (is (= "Advisory fetch failed with status 502" (settings/last-sync-error)))))))
     (testing "successful fetch clears the error and sets both timestamps to the same value"
-      (mt/with-temporary-setting-values [security-center-last-synced-at         nil
-                                         security-center-last-sync-attempted-at nil
-                                         security-center-last-sync-error        "Advisory fetch failed with status 502"]
+      (mt/with-temporary-setting-values [security-center-sync-state {:last-sync-error "Advisory fetch failed with status 502"}]
         (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                     fetch/sync-advisories!                    (constantly nil)
                                     matching/evaluate-all-advisories!         (constantly nil)]
           (#'sync-advisories/sync-and-evaluate!)
-          (is (some? (settings/security-center-last-sync-attempted-at)))
-          (is (= (settings/security-center-last-synced-at)
-                 (settings/security-center-last-sync-attempted-at)))
-          (is (nil? (settings/security-center-last-sync-error))))))))
+          (is (some? (settings/last-sync-attempted-at)))
+          (is (= (settings/last-synced-at)
+                 (settings/last-sync-attempted-at)))
+          (is (nil? (settings/last-sync-error))))))))
 
 (deftest sync-and-evaluate-e2e-test
   (testing "full flow: sync-and-evaluate! runs matching queries and updates match_status"
@@ -138,22 +136,22 @@
 (deftest init-reevaluates-when-version-changed-test
   (mt/with-premium-features #{:admin-security-center}
     (testing "never synced: syncs at startup"
-      (mt/with-temporary-setting-values [security-center-last-synced-at nil]
+      (mt/with-temporary-setting-values [security-center-sync-state nil]
         (is (= #{:sync} (run-init! "v1.64.4")))))
     (testing "advisories were last evaluated on another version: re-evaluates on this node, without a sync"
-      (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
-                                         security-center-last-evaluated-version "v1.64.3"]
+      (mt/with-temporary-setting-values [security-center-sync-state {:last-synced-at    "2026-01-01T00:00:00Z"
+                                                                     :evaluated-version "v1.64.3"}]
         (is (= #{:evaluate} (run-init! "v1.64.4")))
-        (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))
+        (is (= "v1.64.4" (settings/last-evaluated-version)))))
     (testing "advisories were last evaluated on this version: waits for the schedule"
-      (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
-                                         security-center-last-evaluated-version "v1.64.4"]
+      (mt/with-temporary-setting-values [security-center-sync-state {:last-synced-at    "2026-01-01T00:00:00Z"
+                                                                     :evaluated-version "v1.64.4"}]
         (is (= #{} (run-init! "v1.64.4")))))
     (testing "a build without a version tag: neither re-evaluates nor clears the stored version"
-      (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
-                                         security-center-last-evaluated-version "v1.64.4"]
+      (mt/with-temporary-setting-values [security-center-sync-state {:last-synced-at    "2026-01-01T00:00:00Z"
+                                                                     :evaluated-version "v1.64.4"}]
         (is (= #{} (run-init! nil)))
-        (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))))
+        (is (= "v1.64.4" (settings/last-evaluated-version)))))))
 
 (defn- sync-and-evaluate-on!
   "Run [[sync-advisories/sync-and-evaluate!]] on version `tag`, with fetch and evaluation stubbed."
@@ -166,10 +164,10 @@
 
 (deftest sync-and-evaluate-records-evaluated-version-test
   (mt/with-premium-features #{:admin-security-center}
-    (mt/with-temporary-setting-values [security-center-last-evaluated-version "v1.64.3"]
+    (mt/with-temporary-setting-values [security-center-sync-state {:evaluated-version "v1.64.3"}]
       (testing "records the running version"
         (sync-and-evaluate-on! "v1.64.4")
-        (is (= "v1.64.4" (settings/security-center-last-evaluated-version))))
+        (is (= "v1.64.4" (settings/last-evaluated-version))))
       (testing "a build without a version tag keeps the previous version"
         (sync-and-evaluate-on! nil)
-        (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))))
+        (is (= "v1.64.4" (settings/last-evaluated-version)))))))

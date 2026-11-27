@@ -75,9 +75,9 @@
   []
   (api/check-superuser)
   (let [advisories (t2/hydrate (security-center.db/advisories-newest-first) :acknowledged_by_user)]
-    {:last_checked_at        (settings/security-center-last-synced-at)
-     :last_sync_attempted_at (settings/security-center-last-sync-attempted-at)
-     :last_sync_error        (settings/security-center-last-sync-error)
+    {:last_checked_at        (settings/last-synced-at)
+     :last_sync_attempted_at (settings/last-sync-attempted-at)
+     :last_sync_error        (settings/last-sync-error)
      :advisories             (mapv advisory-response advisories)}))
 
 (defn- acknowledge-response

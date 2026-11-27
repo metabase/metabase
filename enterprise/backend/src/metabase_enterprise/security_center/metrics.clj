@@ -37,7 +37,7 @@
   "Read the last-synced-at setting and convert to Unix epoch seconds, or nil if
    no sync has ever completed."
   []
-  (when-let [^Temporal t (settings/security-center-last-synced-at)]
+  (when-let [^Temporal t (settings/last-synced-at)]
     (.getLong t ChronoField/INSTANT_SECONDS)))
 
 (defn- vulnerable-counts
