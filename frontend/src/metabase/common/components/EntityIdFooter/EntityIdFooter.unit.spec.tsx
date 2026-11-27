@@ -80,6 +80,17 @@ describe("EntityIdFooter", () => {
     expect(await screen.findAllByRole("term")).toHaveLength(ITEMS.length);
   });
 
+  it("expands with the keyboard", async () => {
+    setup();
+
+    await userEvent.tab();
+    expect(getToggle()).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(getToggle()).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findAllByRole("term")).toHaveLength(ITEMS.length);
+  });
+
   it("collapses again on a second click", async () => {
     setup();
 
