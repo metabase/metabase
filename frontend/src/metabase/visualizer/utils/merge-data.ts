@@ -1,5 +1,9 @@
 import _ from "underscore";
 
+import {
+  isPivotDetailRow,
+  isPivotGroupColumn,
+} from "metabase/visualizations/lib/data_grid";
 import type {
   Dataset,
   DatasetColumn,
@@ -32,6 +36,15 @@ type MergeVisualizerSeries = {
   dataSources: VisualizerDataSource[];
 };
 
+function getDetailRows(dataset: Dataset): RowValues[] {
+  const { cols, rows } = dataset.data;
+  const pivotGroupingIndex = cols.findIndex(isPivotGroupColumn);
+  if (pivotGroupingIndex < 0) {
+    return rows;
+  }
+  return rows.filter((row) => isPivotDetailRow(row, pivotGroupingIndex));
+}
+
 /**
  * Merges data from multiple datasets into a single dataset.
  *
@@ -58,7 +71,7 @@ export function mergeVisualizerData({
       (col) => col.name === ref.originalName,
     );
     if (columnIndex >= 0) {
-      const values = dataset.data.rows.map((row) => row[columnIndex]);
+      const values = getDetailRows(dataset).map((row) => row[columnIndex]);
       referencedColumnValuesMap[ref.name] = values;
     }
     const insight = dataset.data.insights?.find(
