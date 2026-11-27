@@ -1967,5 +1967,6 @@
                                                           (lib/with-join-alias (lib.metadata/field mp (mt/id :products :id)) alias))]))
                        (lib/breakout (lib/with-temporal-bucket created :month))
                        (lib/aggregate (lib/offset (lib/sum price) -1))
+                       (lib/order-by (lib/with-temporal-bucket created :month))
                        (lib/limit 5))]
       (is (seq (mt/rows (qp/process-query query)))))))
