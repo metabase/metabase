@@ -280,6 +280,23 @@
           (testing "get-secret-string"
             (is (= latest-value (secret/value-as-string :secret-test-driver details secret-property)))))))))
 
+(deftest value-as-file-reflects-rotated-secret-test
+  (testing "value-as-file! hands out the latest version after the secret is rotated, without any memoization reset (#71308)"
+    (let [creator-id (mt/user->id :crowberto)]
+      (mt/with-temp [:model/Secret {:keys [id version]} {:name       "keystore"
+                                                         :kind       ::secret/password
+                                                         :value      "old key"
+                                                         :creator_id creator-id}]
+        (let [details {:keystore-id id}]
+          (is (= "old key" (slurp (secret/value-as-file! :secret-test-driver details "keystore"))))
+          (mt/with-temp [:model/Secret _ {:id         id
+                                          :version    (inc version)
+                                          :name       "keystore"
+                                          :kind       ::secret/password
+                                          :value      "new key"
+                                          :creator_id creator-id}]
+            (is (= "new key" (slurp (secret/value-as-file! :secret-test-driver details "keystore"))))))))))
+
 (deftest secret-loading-from-path-test
   (testing "Loading secrets from a path only works if it is under an allowed path"
     (mt/with-temp-file [file-db "-1-key.pem"]

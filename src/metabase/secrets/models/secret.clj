@@ -218,8 +218,8 @@
         s))))
 
 (defn- value-as-file*
-  [driver details secret-property & [ext]]
-  (when-let [{source :source secret-value :value secret-id :id} (resolve-secret-map driver details secret-property)]
+  [driver secret-property secret-id source secret-bytes ext]
+  (let [secret-value (byte-array secret-bytes)]
     (if (= :file-path source)
       (let [secret-value (system/ensure-readable-path! (unresolved-value-string secret-value))
             ^File existing-file (File. ^String secret-value)]
@@ -243,16 +243,18 @@
             (.write out v)))
         tmp-file))))
 
-(def
-  ^java.io.File
-  ^{:arglists '([driver details secret-property & [ext]])}
-  value-as-file!
+(def ^:private memoized-value-as-file
+  (memoize/memo value-as-file*))
+
+(defn value-as-file!
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
   its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
   then returned.
 
   `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
-  (memoize/memo value-as-file*))
+  ^File [driver details secret-property & [ext]]
+  (when-let [{source :source secret-value :value secret-id :id} (resolve-secret-map driver details secret-property)]
+    (memoized-value-as-file driver secret-property secret-id source (vec (codecs/to-bytes secret-value)) ext)))
 
 ;;; ---------------------------------------------- Database Details ----------------------------------------------
 

@@ -2,7 +2,6 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:refer-clojure :exclude [mapv not-empty select-keys])
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [medley.core :as m]
@@ -125,8 +124,7 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id database))
-  (memoize/memo-clear! driver-api/secret-value-as-file!))
+  (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id database)))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
