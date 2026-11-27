@@ -1068,16 +1068,23 @@
 (defn- stop-system!
   "Stop `sys`: the JVM meters, its web server and its registry, and clear the `system` var."
   [^PrometheusSystem sys]
-  (when @jvm-hiccup-thread (@jvm-hiccup-thread))
-  (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
-  (try (stop-web-server sys)
-       (prometheus/clear (.-registry sys))
-       (log/info "Prometheus web-server shut down")
-       (catch Exception e
-         (log/warnf "Error stopping prometheus web-server: %s" (ex-message e)))
-       ;; cleared even when the stop fails, so a later [[setup!]] can start a new system
-       (finally
-         (alter-var-root #'system (constantly nil)))))
+  ;; cleared even when the stop fails, so a later [[setup!]] can start a new system
+  (try
+    ;; each meter is stopped on its own, so one that fails to stop stops neither the other nor the server
+    (doseq [stop-meter [@jvm-hiccup-thread @jvm-alloc-rate-thread]
+            :when stop-meter]
+      (try
+        (stop-meter)
+        (catch Exception e
+          (log/warnf "Error stopping a JVM meter: %s" (ex-message e)))))
+    (try
+      (stop-web-server sys)
+      (prometheus/clear (.-registry sys))
+      (log/info "Prometheus web-server shut down")
+      (catch Exception e
+        (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))
+    (finally
+      (alter-var-root #'system (constantly nil)))))
 
 (defn- start-system!
   "Start a Prometheus system on `port`, set the `system` var to it, and return it.

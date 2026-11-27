@@ -19,7 +19,8 @@
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (io.prometheus.client Collector GaugeMetricFamily)
-   (java.lang.management ManagementFactory)))
+   (java.lang.management ManagementFactory)
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -371,6 +372,27 @@
                                     prometheus/stop-system!           #(swap! stopped conj %)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reporter failed" (#'prometheus/start-system! 0)))
           (is (= [::system] @stopped)))))))
+
+(deftest stop-system-carries-on-past-a-meter-that-fails-to-stop-test
+  (testing "a JVM meter that fails to stop leaves the other meter, the server and the system var to be stopped as usual"
+    (let [hiccup        @#'prometheus/jvm-hiccup-thread
+          alloc         @#'prometheus/jvm-alloc-rate-thread
+          meters-before [@hiccup @alloc]
+          alloc-stopped (atom false)
+          sys           (#'prometheus/make-prometheus-system 0 "stop-test-registry")]
+      (try
+        (reset! hiccup #(throw (ex-info "hiccup meter failed" {})))
+        (reset! alloc #(reset! alloc-stopped true))
+        (with-redefs [prometheus/system sys]
+          (#'prometheus/stop-system! sys)
+          (is (= {:alloc-stopped? true, :server-stopped? true, :system nil}
+                 {:alloc-stopped?  @alloc-stopped
+                  :server-stopped? (.isStopped ^Server (:web-server sys))
+                  :system          @#'prometheus/system})))
+        (finally
+          (let [[hiccup-before alloc-before] meters-before]
+            (reset! hiccup hiccup-before)
+            (reset! alloc alloc-before)))))))
 
 (deftest start-system-sets-the-var-only-after-the-reporter-installs-test
   (testing "the system var is set only once the reporter is installed, so a concurrent setup! cannot return early"
