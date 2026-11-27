@@ -8,6 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { RemoteSyncType } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
@@ -28,12 +29,18 @@ function setup({ isEnabled = true, syncType = "read-only" }: SetupOpts = {}) {
   setupPropertiesEndpoints(settings);
   setupRemoteSyncEndpoints();
 
-  renderWithProviders(<SyncActionsSection />, {
-    storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: true }),
-      settings: mockSettings(settings),
-    }),
-  });
+  renderWithProviders(
+    <>
+      <SyncActionsSection />
+      <UndoListing />
+    </>,
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+        settings: mockSettings(settings),
+      }),
+    },
+  );
 }
 
 async function getRequestBody(path: string): Promise<unknown> {
@@ -56,6 +63,19 @@ describe("SyncActionsSection", () => {
     expect(await getRequestBody("/api/ee/remote-sync/import")).toEqual({
       force: true,
     });
+  });
+
+  it("shows no success message while the pull is running", async () => {
+    setup({ syncType: "read-only" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Pull changes now" }),
+    );
+
+    expect(await screen.findByText("Pulling changes")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Latest changes have been pulled successfully"),
+    ).not.toBeInTheDocument();
   });
 
   it("doesn't offer to pull on demand when syncing read-write", () => {
