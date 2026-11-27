@@ -101,6 +101,20 @@
   :include-in-list?   false
   :can-read-from-env? false)
 
+(defsetting security-center-last-evaluated-version
+  "Version tag of the Metabase that last evaluated the advisories. When the running version differs, the advisory
+  statuses were computed for another version and are evaluated again at startup."
+  :type               :string
+  :default            nil
+  :encryption         :no
+  :feature            :admin-security-center
+  :visibility         :internal
+  :export?            false
+  :doc                false
+  :audit              :never
+  :include-in-list?   false
+  :can-read-from-env? false)
+
 (defsetting security-center-health-check-results
   "The last result of each background health check, keyed by check id: what its refresh returned, and when."
   :type               :json

@@ -13,6 +13,7 @@
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.task.core :as task]
@@ -56,8 +57,9 @@
 
 (defn sync-and-evaluate!
   "Fetch advisories, re-evaluate all, and send repeat notifications. Records the outcome of the run in
-   `security-center-last-sync-attempted-at` and `security-center-last-sync-error`, and moves
-   `security-center-last-synced-at` only when the fetch succeeds."
+   `security-center-last-sync-attempted-at` and `security-center-last-sync-error`, moves
+   `security-center-last-synced-at` only when the fetch succeeds, and records the running version in
+   `security-center-last-evaluated-version` only when the evaluation succeeds."
   []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
@@ -67,11 +69,13 @@
                          nil
                          (catch Exception e
                            (log/error e "Error syncing advisories from HM")
-                           (or (ex-message e) (str e))))]
-      (try
-        (matching/evaluate-all-advisories!)
-        (catch Exception e
-          (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
+                           (or (ex-message e) (str e))))
+          evaluated?   (try
+                         (matching/evaluate-all-advisories!)
+                         true
+                         (catch Exception e
+                           (log/warnf "Error re-evaluating advisories: %s" (ex-message e))
+                           false))]
       (try
         (send-repeat-notifications!)
         (catch Exception e
@@ -79,7 +83,8 @@
       (setting/set-many!
        (cond-> {:security-center-last-sync-attempted-at attempted-at
                 :security-center-last-sync-error        sync-error}
-         (nil? sync-error) (assoc :security-center-last-synced-at attempted-at))))
+         (nil? sync-error) (assoc :security-center-last-synced-at attempted-at)
+         evaluated?        (assoc :security-center-last-evaluated-version (:tag config/mb-version-info)))))
     (metrics/refresh-metrics!)))
 
 (task/defjob SyncAdvisories
@@ -108,6 +113,8 @@
       ;; Populate metrics from existing appdb state so freshness and vulnerability
       ;; gauges survive restarts without waiting for the next scheduled sync.
       (metrics/refresh-metrics!)
-      ;; on first run of the feature, we sync immediately to seed advisories
-      (when-not (settings/security-center-last-synced-at)
+      ;; Sync immediately on the first run of the feature, to seed advisories, and after a version change, because
+      ;; the stored match statuses were computed for the version that evaluated them.
+      (when (or (not (settings/security-center-last-synced-at))
+                (not= (:tag config/mb-version-info) (settings/security-center-last-evaluated-version)))
         (task/trigger-now! (jobs/key job-key))))))
