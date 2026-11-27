@@ -74,7 +74,8 @@
 (def ^:private expandable-temporal-units
   (into expandable-time-units expandable-date-units))
 
-(defn- expandable-temporal-expression?
+(defn expandable-temporal-expression?
+  "Whether an expression is an `:=` of a bucketed temporal column that the filter picker cannot show as a single date."
   [[operator _options & [maybe-clause-arg other-arg :as args]]]
   (boolean (and (= := operator)
                 (= 2 (count args))

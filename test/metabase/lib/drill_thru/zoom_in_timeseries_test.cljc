@@ -53,12 +53,12 @@
                        :value 200
                        :dimensions [{:column     created-at
                                      :column-ref (lib/ref created-at)
-                                     :value      2022}]})]
+                                     :value      "2022-01-01T00:00:00"}]})]
       (is (=? {:type         :drill-thru/zoom-in.timeseries
                :dimension    {:column     {:id                               (meta/id :orders :created-at)
                                            :lib/temporal-unit :year}
                               :column-ref [:field {} (meta/id :orders :created-at)]
-                              :value      2022}
+                              :value      "2022-01-01T00:00:00"}
                :next-unit    :quarter
                :display-name "See this year by quarter"}
               drill))
@@ -68,10 +68,11 @@
         (is (=? {:stages [{:aggregation [[:count {}]]
                            :breakout    [[:field {} (meta/id :products :category)]
                                          [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]]
-                           :filters     [[:=
+                           :filters     [[:between
                                           {}
                                           [:field {:temporal-unit :year} (meta/id :orders :created-at)]
-                                          2022]]}]}
+                                          "2022-01-01"
+                                          "2022-12-31"]]}]}
                 query'))
         (let [columns    (lib/returned-columns query')
               created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
@@ -103,14 +104,16 @@
                                ;; if we were SMART we could remove the first filter clause since it's not adding any
                                ;; value, but it won't hurt anything other than performance to keep it there. QP can
                                ;; generate optimal filters anyway
-                               :filters     [[:=
+                               :filters     [[:between
                                               {}
                                               [:field {:temporal-unit :year} (meta/id :orders :created-at)]
-                                              2022]
-                                             [:=
+                                              "2022-01-01"
+                                              "2022-12-31"]
+                                             [:between
                                               {}
                                               [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
-                                              "2022-04-01T00:00:00"]]}]}
+                                              "2022-04-01"
+                                              "2022-06-30"]]}]}
                     query''))))))))
 
 (defn- valid-current-units-for-field
@@ -247,10 +250,11 @@
                                           :breakout    [[:field
                                                          {:temporal-unit :quarter}
                                                          (meta/id :orders :created-at)]],
-                                          :filters     [[:=
+                                          :filters     [[:between
                                                          {}
                                                          [:field {:temporal-unit :year} (meta/id :orders :created-at)]
-                                                         "2022-12-01T00:00:00+02:00"]]}]}
+                                                         "2022-01-01"
+                                                         "2022-12-31"]]}]}
                                  (= query multi-stage-query)
                                  (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
             (is (= 1
@@ -264,6 +268,20 @@
                     drill))
             (is (=? expected-query
                     (lib/drill-thru query -1 nil drill)))))))))
+
+(def ^:private expected-zoom-in-filter-bounds
+  {:year    ["2022-01-01" "2022-12-31"]
+   :quarter ["2022-10-01" "2022-12-31"]
+   :month   ["2022-12-01" "2022-12-31"]
+   :week    ["2022-12-04" "2022-12-10"]
+   :hour    ["2022-12-09T11:00:00" "2022-12-09T11:59:59"]})
+
+(defn- expected-zoom-in-filter
+  [unit value]
+  (let [column [:field {:temporal-unit unit} (meta/id :orders :created-at)]]
+    (if-let [[start end] (expected-zoom-in-filter-bounds unit)]
+      [:between {} column start end]
+      [:= {} column value])))
 
 (deftest ^:parallel zoom-in-timeseries-unit-tower-test
   (doseq [[unit1 unit2] datetime-unit-pairs]
@@ -281,11 +299,9 @@
                                           :breakout     [[:field
                                                           {:temporal-unit unit2}
                                                           (meta/id :orders :created-at)]]
-                                          :filters      [[:= {}
-                                                          [:field
-                                                           {:temporal-unit unit1}
-                                                           (meta/id :orders :created-at)]
-                                                          "2022-12-09T11:22:33+02:00"]]}]}
+                                          :filters      [(expected-zoom-in-filter
+                                                          unit1
+                                                          "2022-12-09T11:22:33+02:00")]}]}
                                  (= query multi-stage-query)
                                  (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))]
             (lib.drill-thru.tu/test-drill-application
@@ -333,9 +349,7 @@
                                      :breakout     [[:field
                                                      {:temporal-unit unit2}
                                                      (meta/id :orders :created-at)]]
-                                     :filters      [[:= {}
-                                                     [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
-                                                     "2022-12-09"]]}]}})))))
+                                     :filters      [(expected-zoom-in-filter unit1 "2022-12-09")]}]}})))))
 
 (deftest ^:parallel zoom-in-with-expression-breakout-test
   (testing "zoom-in.timeseries works when the stage also has an expression breakout (#13289)"
@@ -372,9 +386,10 @@
       (testing "drilling preserves the expression breakout and re-buckets the datetime breakout"
         (is (=? {:stages [{:breakout [[:expression {} "Math"]
                                       [:field {:temporal-unit :week} (meta/id :orders :created-at)]]
-                           :filters  [[:= {}
+                           :filters  [[:between {}
                                        [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                       "2025-09-01T00:00:00Z"]]}]}
+                                       "2025-09-01"
+                                       "2025-09-30"]]}]}
                 (lib/drill-thru query -1 nil drill)))))))
 
 (deftest ^:parallel zoom-in-day-to-hour-on-join-aliased-native-datetime-column-test
@@ -417,3 +432,36 @@
       (testing "drilling produces a valid :hour breakout without an invalid-temporal-unit error"
         (is (=? {:stages [{:breakout [[:field {:temporal-unit :hour, :join-alias "NativeOrders"} "CREATED_AT"]]}]}
                 (lib/drill-thru query -1 nil drill)))))))
+
+(deftest ^:parallel zoom-in-timeseries-filters-bucketed-column-by-range-test
+  (testing "zooming in from week filters by range of that week, so filter picker opens on Between (#69229)"
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                           (lib/with-temporal-bucket :week)))
+                         (lib/breakout (meta/field-metadata :products :category)))
+          columns    (lib/returned-columns query)
+          created-at (m/find-first #(= (:name %) "CREATED_AT") columns)
+          category   (m/find-first #(= (:name %) "CATEGORY") columns)
+          drill      (m/find-first #(= (:type %) :drill-thru/zoom-in.timeseries)
+                                   (lib/available-drill-thrus
+                                    query -1
+                                    {:column     nil
+                                     :column-ref nil
+                                     :value      :null
+                                     :dimensions [{:column     created-at
+                                                   :column-ref (lib/ref created-at)
+                                                   :value      "2025-09-07T00:00:00Z"}
+                                                  {:column     category
+                                                   :column-ref (lib/ref category)
+                                                   :value      "Gadget"}]}))
+          query'     (lib/drill-thru query -1 nil drill)
+          [filter-clause] (lib/filters query')]
+      (is (=? {:display-name "See this week by day"} drill))
+      (is (=? [:between {}
+               [:field {:temporal-unit :week} (meta/id :orders :created-at)]
+               "2025-09-07"
+               "2025-09-13"]
+              filter-clause))
+      (is (=? {:operator :between}
+              (lib/specific-date-filter-parts query' -1 filter-clause))))))
