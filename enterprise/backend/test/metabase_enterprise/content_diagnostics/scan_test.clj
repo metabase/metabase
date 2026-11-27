@@ -213,8 +213,11 @@
                                                       :last_used_at  (stale-instant)}
                        :model/Card {metric-id :id}   {:collection_id coll-id :type :metric
                                                       :last_used_at  (stale-instant)}
+                       :model/Card {analysis-id :id} {:collection_id coll-id :type :product-analysis
+                                                      :last_used_at  (stale-instant)}
                        :model/Dashboard {dash-id :id} {:collection_id coll-id :last_viewed_at (stale-instant)}]
-          (let [card-id-by-type {:question question-id :model model-id :metric metric-id}]
+          (let [card-id-by-type {:question question-id :model model-id
+                                 :metric metric-id :product-analysis analysis-id}]
             (testing "the card fixtures cover every card type the app defines"
               ;; drives the per-type assertions below - a newly added card type fails here rather
               ;; than silently going uncovered
@@ -916,11 +919,13 @@
                        :model/Card {question-id :id} {:collection_id coll-id :type :question}
                        :model/Card {model-id :id}    {:collection_id coll-id :type :model}
                        :model/Card {metric-id :id}   {:collection_id coll-id :type :metric}
+                       :model/Card {analysis-id :id} {:collection_id coll-id :type :product-analysis}
                        :model/Dashboard {dash-id :id} {:collection_id coll-id}
                        :model/Document {doc-id :id} {:collection_id coll-id}
                        :model/Transform {xform-id :id} {:collection_id tcoll-id}]
           (let [prefix          (scope-prefix)
-                card-id-by-type {:question question-id :model model-id :metric metric-id}
+                card-id-by-type {:question question-id :model model-id
+                                 :metric metric-id :product-analysis analysis-id}
                 insert!         (fn [etype eid & [card-type]]
                                   (t2/insert! :model/ContentDiagnosticsFinding
                                               {:scan_id      "ct"

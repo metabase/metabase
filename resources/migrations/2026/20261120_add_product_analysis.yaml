@@ -1,0 +1,16 @@
+# We are storing product analytics as a new subtype of Card where the analysis
+# state is stored as json in the product_analysis column.
+
+databaseChangeLog:
+  - changeSet:
+      id: e99qbo
+      author: Phil Hagelberg
+      comment: Add product_analysis column to card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: product_analysis
+                  type: ${text.type}
+                  remarks: The analysis state for product analytics

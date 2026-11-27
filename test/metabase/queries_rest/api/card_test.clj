@@ -25,6 +25,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.column :as lib.metadata.column]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as snippet]
    [metabase.notification.api.notification-test :as api.notification-test]
@@ -950,11 +951,9 @@
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
     (is (=? {:errors {:name                   "value must be a non-blank string."
-                      :dataset_query          "value must be a valid MBQL query."
                       :display                "value must be a non-blank string."
                       :visualization_settings "Value must be a map."}
              :specific-errors {:name                   ["missing required key, received: nil"]
-                               :dataset_query          ["missing required key, received: nil"]
                                :display                ["missing required key, received: nil"]
                                :visualization_settings ["Value must be a map., received: \"ABC\""]}}
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
@@ -970,11 +969,9 @@
 (deftest ^:parallel create-card-validation-test-1b
   (testing "POST /api/card"
     (is (=? {:errors {:name          "value must be a non-blank string."
-                      :dataset_query "value must be a valid MBQL query."
                       :parameters    "nullable sequence of parameter must be a map with :id and :type keys"
                       :display       "value must be a non-blank string."}
              :specific-errors {:name          ["missing required key, received: nil"]
-                               :dataset_query ["missing required key, received: nil"]
                                :parameters    ["invalid type, received: \"abc\""]
                                :display       ["missing required key, received: nil"]}}
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
@@ -6535,3 +6532,56 @@
                             (call-count))))]
           (refuse! 1)
           (is (= (refuse! 2) (refuse! 6))))))))
+
+(deftest product-analysis-test
+  (mt/with-full-data-perms-for-all-users!
+    (mt/with-model-cleanup [:model/Card]
+      (testing "creating a new product analysis card"
+        (let [mp (mt/metadata-provider)
+              base-query (lib/query mp (lib.metadata/table mp (u/the-id (mt/id :orders))))
+              user-id-field (lib.metadata.column/column-unique-key
+                             (m/find-first (comp #{"USER_ID"} :name)
+                                           (lib/returned-columns base-query)))
+              created-at-field (lib.metadata.column/column-unique-key
+                                (m/find-first (comp #{"CREATED_AT"} :name)
+                                              (lib/returned-columns base-query)))
+              analysis {:kind "habit"
+                        :base_query base-query
+                        :columns.person user-id-field
+                        :columns.timestamp created-at-field
+                        :habit.values "count"
+                        :granularity "day"}
+              card (-> (card-with-name-and-query (mt/random-name) {})
+                       (dissoc :dataset_query)
+                       (assoc :type "product-analysis"
+                              :product_analysis analysis))
+              {:keys [id] :as response} (mt/user-http-request :rasta :post 200 "card" card)]
+          (is (=? {:type "product-analysis"
+                   :product_analysis {:kind "habit"
+                                      :columns.person user-id-field
+                                      :columns.timestamp created-at-field
+                                      :habit.values "count"
+                                      :granularity "day"}}
+                  response))
+          (is (=? {:type :product-analysis
+                   :product_analysis {:kind "habit"
+                                      :columns.person user-id-field
+                                      :columns.timestamp created-at-field
+                                      :habit.values "count"
+                                      :granularity "day"}}
+                  (t2/select-one :model/Card :id id)))
+          (testing "updating a card"
+            (mt/user-http-request :crowberto :put 200 (str "card/" (:id response))
+                                  {:product_analysis (assoc analysis :granularity "week")})
+            (is (= "week"
+                   (:granularity (t2/select-one-fn :product_analysis :model/Card :id id)))))
+          (testing "running a card's query"
+            (is (=? {:row_count 35
+                     :status "completed"}
+                    (mt/user-http-request :crowberto :post 202
+                                          (format "card/%d/query" id)))))
+          (testing "running a card's query in a specific format"
+            (is (= 35
+                   (count (mt/user-http-request :crowberto :post 200
+                                                (format "card/%d/query/json" id)
+                                                {:format_rows true}))))))))))

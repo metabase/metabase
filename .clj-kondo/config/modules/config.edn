@@ -1354,6 +1354,7 @@
   lib
   {:team "Querying"
    :module-exports #{lib.agent-lib
+                     lib.analysis
                      lib.be
                      lib.legacy-mbql
                      lib.metadata
@@ -1395,6 +1396,14 @@
            serialization
            util}
    :model-imports #{:model/Card}}
+
+  lib.analysis
+  {:team "Querying"
+   :api #{metabase.lib.analysis}
+   :uses #{lib
+           lib.metadata
+           lib.schema
+           util}}
 
   lib.be
   {:team "Querying"
@@ -2434,6 +2443,7 @@
            events
            funnysql
            lib
+           lib.analysis
            lib.be
            lib.schema
            models

@@ -162,6 +162,7 @@
    :visualization_settings lib-be/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
+   :product_analysis       mi/transform-json
    :type                   mi/transform-keyword
    :dimensions             metrics/transform-dimensions
    :dimension_mappings     metrics/transform-dimension-mappings})
@@ -468,7 +469,7 @@
 (defn- check-dashboard-internal-card-shape
   "Throws unless the new Card `card`, which is in a Dashboard, is a question with no position in a Collection."
   [card]
-  (when (or (not (contains? #{:question "question" nil} (:type card)))
+  (when (or (not (contains? #{:question "question" nil :product-analysis} (:type card)))
             (some? (:collection_position card)))
     (throw (ex-info (tru "Invalid dashboard-internal card")
                     {:status-code 400
@@ -2617,7 +2618,7 @@
   [card creator-id]
   (->> (-> (select-keys card [:dataset_query :description :display :name :visualization_settings :parameters
                               :parameter_mappings :collection_id :collection_position :cache_ttl :type :dashboard_id
-                              :document_id :result_metadata])
+                              :document_id :product_analysis :result_metadata])
            (assoc :creator_id creator-id))
        (lib/normalize ::queries.schema/card.create)))
 
@@ -2669,7 +2670,7 @@
   `:collection_id` and a few others even when nil and the rest only when not nil."
   [changes]
   (u/select-keys-when changes
-                      :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type}
+                      :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type :product_analysis}
                       :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                  :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                  :result_metadata :verified-result-metadata?}))
@@ -2733,12 +2734,12 @@
            :metabase_version :type :initially_published_at :archived_directly
            :dataset_query_metrics_v2_migration_backup :source_card_id :dashboard_id :card_schema :document_id
            :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings :metabot_conversation_id
-           :metabot_chart_id]
+           :metabot_chart_id :product_analysis]
    :skip  [:last_used_at :view_count :cache_invalidated_at]})
 
 (defmethod serialization/spec :model/Card [_]
   {:schema              ::queries.schema/external-card
-   :copy                [:archived :archived_directly :collection_position :description :display
+   :copy                [:archived :archived_directly :collection_position :description :display :product_analysis
                          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
                          :card_schema]
    :skip                [:metabase_version :cache_invalidated_at :view_count :last_used_at :initially_published_at
@@ -2776,7 +2777,7 @@
   {:track         [:name :description :display :type :dataset_query :visualization_settings :parameters
                    :parameter_mappings :cache_ttl :result_metadata :card_schema :collection_id :dashboard_id
                    :database_id :table_id :query_type :source_card_id :archived :archived_directly
-                   :dataset_query_metrics_v2_migration_backup]
+                   :dataset_query_metrics_v2_migration_backup :product_analysis]
    :schema        ::queries.schema/card.revision
    :skip          [:cache_invalidated_at :collection_position :creator_id :dimension_mappings :dimensions
                    :document_id :embedding_params :embedding_type :enable_embedding :entity_id
@@ -2795,8 +2796,8 @@
                     :dataset_query :dataset_query_metrics_v2_migration_backup :dimension_mappings :dimensions :display
                     :document_id :embedding_params :embedding_type :enable_embedding :initially_published_at
                     :legacy_query :made_public_by_id :metabase_version :metabot_chart_id :metabot_conversation_id
-                    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :query_type :result_metadata
-                    :source_card_id :type :visualization_settings]
+                    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :product_analysis
+                    :query_type :result_metadata :source_card_id :type :visualization_settings]
    :skip           [:cache_invalidated_at :collection_position :entity_id :last_used_at :view_count]
    :details        queries.audit/details
    :same?          {:result_metadata queries.revisions/same-result-metadata?}

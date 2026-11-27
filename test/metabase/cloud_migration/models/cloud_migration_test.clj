@@ -319,6 +319,7 @@
                  :parameters
                  :public_uuid
                  :public_uuid_prefix
+                 :product_analysis
                  :query_type
                  :result_metadata
                  :source_card_id

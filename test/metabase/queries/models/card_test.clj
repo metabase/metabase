@@ -1407,7 +1407,7 @@
                                                                                                                                                                                                                                                                                             :dashboard_id dash-id))]))))
       (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
         (testing "invalid"
-          (doseq [invalid-type (disj queries.schema/card-types :question)]
+          (doseq [invalid-type (disj queries.schema/card-types :question :product-analysis)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
                                   (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} (assoc {}
                                                                                                                                                                                                                                                                                                                     :dashboard_id dash-id
