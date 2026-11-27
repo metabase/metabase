@@ -154,6 +154,8 @@
               (.addSuppressed e shutdown-error))))
         (throw e)))))
 
+(defonce ^:private ^{:doc "Held for the whole of [[init-scheduler!]]."} init-lock (Object.))
+
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks.
@@ -163,15 +165,18 @@
   (classloader/the-classloader)
   ;; one start at a time, which [[system/start!]] ensures: Quartz hands every caller the same default scheduler, so two
   ;; racing inits would attach our job factory and trigger listener to it twice
-  (let [[started-scheduler started?] (system/start! scheduler-component new-scheduler #(shut-down-scheduler! %))]
-    (when started?
-      (log/info "Task scheduler initialized into standby mode.")
-      ;; TODO (Chris 2026-11-13) -- If a step below throws, the scheduler stays published and a later call skips
-      ;; them all, so jobs with no class and errored triggers are left as they are.
-      ;; At startup the throw ends the process, so only a caller that survives it, such as a test, makes that call.
-      (delete-jobs-with-no-class!)
-      (reset-errored-triggers! started-scheduler)
-      (init-tasks!))))
+  ;; The lock also covers the steps after the start: the start publishes the scheduler, and a caller that found it
+  ;; before they finish could start Quartz with jobs not yet cleaned up and tasks not yet defined.
+  (locking init-lock
+    (let [[started-scheduler started?] (system/start! scheduler-component new-scheduler #(shut-down-scheduler! %))]
+      (when started?
+        (log/info "Task scheduler initialized into standby mode.")
+        ;; TODO (Chris 2026-11-13) -- If a step below throws, the scheduler stays published and a later call skips
+        ;; them all, so jobs with no class and errored triggers are left as they are.
+        ;; At startup the throw ends the process, so only a caller that survives it, such as a test, makes that call.
+        (delete-jobs-with-no-class!)
+        (reset-errored-triggers! started-scheduler)
+        (init-tasks!)))))
 
 (defn scheduler-disabled?
   "Whether the task scheduler is explicitly disabled via the `MB_DISABLE_SCHEDULER` env var. When true the

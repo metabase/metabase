@@ -668,6 +668,39 @@
             (finally
               (task/stop-scheduler!))))))))
 
+(deftest init-scheduler-waits-for-another-init-to-finish-test
+  (testing "a second init returns only once the first has defined its tasks, so it cannot start Quartz before then"
+    (let [quartz   (reify Scheduler
+                     (standby [_]))
+          defining (promise)
+          finish   (promise)
+          events   (atom [])]
+      (global-system.tu/with-root (task.impl/scheduler-handle) nil
+        (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                    task.impl/set-jdbc-backend-properties! (constantly nil)
+                                    task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                    task.impl/reset-errored-triggers!      (constantly nil)
+                                    task.impl/init-tasks!                  (fn []
+                                                                             (deliver defining true)
+                                                                             @finish
+                                                                             (swap! events conj :tasks-defined))
+                                    task.impl/shut-down-scheduler!         (constantly nil)
+                                    job-factory/add-to-scheduler           (constantly nil)]
+          (try
+            (let [first-init  (future (task/init-scheduler!))
+                  _           (deref defining 5000 nil)
+                  second-init (future (task/init-scheduler!)
+                                      (swap! events conj :second-returned))]
+              ;; long enough for a second init that does not wait to return first
+              (Thread/sleep 100)
+              (deliver finish true)
+              @first-init
+              @second-init
+              (is (= [:tasks-defined :second-returned] @events)))
+            (finally
+              (deliver finish true)
+              (task/stop-scheduler!))))))))
+
 (deftest shut-down-scheduler-logs-running-jobs-test
   (let [shutdowns  (atom 0)
         quartz     (fn [running-jobs]
