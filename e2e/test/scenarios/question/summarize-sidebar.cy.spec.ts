@@ -1,4 +1,5 @@
 const { H } = cy;
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const QUESTION_NAME = "Subtotal by total and weekday";
 const SUM_COLOR = "#88BF4D";
@@ -805,3 +806,128 @@ function assertBucketsInUse() {
   cy.realPress("Escape");
   H.menu().should("not.exist");
 }
+
+describe("scenarios > question > summarize sidebar > layout and errors", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.summarize();
+  });
+
+  it("should only scroll the field list in the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
+    cy.findByTestId("summary-panel").then(([element]) => {
+      expectNoScrollbar(element);
+    });
+
+    cy.findByTestId("summary-wells").then(([element]) => {
+      expectNoScrollbar(element);
+    });
+
+    // the field list is the only element with a scrollbar
+    cy.findByTestId("summary-field-list-scroll").then(([element]) => {
+      expect(element.scrollHeight > element.clientHeight).to.be.true;
+      expect(element.offsetWidth > element.clientWidth).to.be.true;
+    });
+
+    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
+
+    H.addSummaryValue("Count of rows");
+    H.main()
+      .findByText("We're experiencing server issues")
+      .should("be.visible");
+    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
+  });
+});
+
+function expectNoScrollbar(element: HTMLElement) {
+  const { borderLeftWidth, borderRightWidth } = getComputedStyle(element);
+  const scrollbarWidth =
+    element.offsetWidth -
+    element.clientWidth -
+    parseFloat(borderLeftWidth) -
+    parseFloat(borderRightWidth);
+
+  expect(scrollbarWidth).to.equal(0);
+}
+
+describe("scenarios > question > summarize sidebar > other sources and data", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("summarizes the results of a SQL question, with a date unit and a cut-off column name shown in full", () => {
+    const longColumnName =
+      "Customer state of residence at the time of their signup";
+
+    H.createNativeQuestion(
+      {
+        name: "SQL orders",
+        native: {
+          query: `SELECT o.CREATED_AT AS CREATED_AT, o.TOTAL AS TOTAL, pe.STATE AS "${longColumnName}" FROM ORDERS o JOIN PEOPLE pe ON pe.ID = o.USER_ID`,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+    cy.wait("@dataset");
+    H.summarize();
+
+    H.addSummaryValue("TOTAL");
+    cy.wait("@dataset");
+    H.clickSummaryField("CREATED_AT");
+    cy.wait("@dataset");
+    H.clickSummaryField(longColumnName, { add: true });
+    cy.wait("@dataset");
+    H.summaryWellItem("values", "Sum of TOTAL").should("be.visible");
+    H.assertSummaryWellItems("columns", ["CREATED_AT: Month", longColumnName]);
+
+    H.changeSummaryGroupingBucket("CREATED_AT: Month", "Year");
+    cy.wait("@dataset").then(({ request, response }) => {
+      expect(request.body.stages[0].breakout[0][1]["temporal-unit"]).to.eq(
+        "year",
+      );
+      expect(
+        response?.body.data.cols.map(
+          (col: { display_name: string }) => col.display_name,
+        ),
+      ).to.eql(["CREATED_AT: Year", longColumnName, "Sum of TOTAL"]);
+    });
+    H.assertSummaryWellItems("columns", ["CREATED_AT: Year", longColumnName]);
+
+    cy.log("a name too long for its chip or its row shows in full on hover");
+    H.summaryWellItem("columns", longColumnName)
+      .findByText(longColumnName)
+      .realHover();
+    H.tooltip().should("have.text", longColumnName);
+
+    H.summaryWellItem("values", "Sum of TOTAL").realHover();
+    H.tooltip().should("not.exist");
+
+    H.summaryField(longColumnName).findByText(longColumnName).realHover();
+    H.tooltip().should("have.text", longColumnName);
+  });
+
+  it("summarize with null values (metabase#12585)", () => {
+    H.openOrdersTable();
+
+    H.summarize();
+    H.addSummaryValue("Discount");
+    H.openSummaryValueMenu("Sum of Discount");
+    cy.findByRole("menuitem", { name: "Cumulative sum of ..." }).click();
+    // Group by
+    H.clickSummaryField("Created At", { section: "Orders" });
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Cumulative sum of Discount by Created At: Month");
+
+    H.cartesianChartCircle().should("have.length.of.at.least", 40);
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("There was a problem with your question").should("not.exist");
+  });
+});
