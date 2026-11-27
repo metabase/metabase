@@ -196,6 +196,8 @@ function Preview({ target }: PreviewProps) {
         {target.kind === "group" && (
           <AttributeBar
             group={target.group}
+            userId={session?.user_id}
+            item={frameItem}
             values={attributes}
             onApply={handleApplyAttribute}
           />

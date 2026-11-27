@@ -28,7 +28,12 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { createAnswer } from "./ExplainAccess/fixtures";
+import {
+  createAnswer,
+  createCollection,
+  createSandbox,
+  createTable,
+} from "./ExplainAccess/fixtures";
 import { PreviewAccessPage } from "./PreviewAccessPage";
 
 const SESSION_URL = "path:/api/ee/permission_debug/preview/session";
@@ -82,6 +87,8 @@ interface SetupOpts {
   users?: User[];
   hasTenants?: boolean;
   attributes?: string[];
+  /** The attributes the open question's rules read, all of `attributes` unless set */
+  usedAttributes?: string[];
   refusal?: { status: number; body: object };
   firstPreviewLastsMs?: number;
 }
@@ -92,6 +99,7 @@ function setup({
   users = USERS,
   hasTenants = true,
   attributes = [],
+  usedAttributes = attributes,
   refusal,
   firstPreviewLastsMs = TEN_MINUTES_MS,
 }: SetupOpts = {}) {
@@ -119,7 +127,28 @@ function setup({
     "path:/api/card/12",
     createMockCard({ id: 12, name: "Orders by state" }),
   );
-  fetchMock.get("path:/api/ee/permission_debug", createAnswer());
+  fetchMock.get(
+    "path:/api/ee/permission_debug",
+    createAnswer({
+      reasons: {
+        collection: createCollection(),
+        tables: [
+          createTable({
+            sandboxes: [
+              createSandbox({
+                filters: usedAttributes.map((attribute) => ({
+                  attribute,
+                  value: null,
+                  column: "Orders.State",
+                  "missing?": true,
+                })),
+              }),
+            ],
+          }),
+        ],
+      },
+    }),
+  );
   fetchMock.delete("express:/api/ee/permission_debug/preview/session/:id", 204);
   setupDatabasesEndpoints([]);
   fetchMock.get(
@@ -611,6 +640,25 @@ describe("PreviewAccessPage", () => {
         JSON.stringify({ group_id: 10 }),
         JSON.stringify({ group_id: 9 }),
       ]);
+    });
+
+    it("shows every attribute of the group on the collections, and only the ones the open question reads inside it", async () => {
+      setup({ attributes: ["state", "region"], usedAttributes: ["state"] });
+      await previewSales();
+      expect(
+        await screen.findByRole("button", { name: /^region/ }),
+      ).toBeVisible();
+
+      const address = screen.getByLabelText("Address");
+      await userEvent.clear(address);
+      await userEvent.type(address, "/question/12{Enter}");
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("button", { name: /^region/ }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByRole("button", { name: /^state/ })).toBeVisible();
     });
 
     it("shows no attribute line for a user preview", async () => {

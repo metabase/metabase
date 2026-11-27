@@ -1,4 +1,5 @@
-import { type KeyboardEvent, useState } from "react";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { type KeyboardEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,9 +7,13 @@ import {
   useListDatabasesQuery,
   useListGroupTableAccessPoliciesQuery,
 } from "metabase/api";
+import { parseItem } from "metabase/embedding/permission-preview/item";
 import { Box, Button, Flex, Popover, Text, TextInput } from "metabase/ui";
-import { useListImpersonationsQuery } from "metabase-enterprise/api";
-import type { GroupInfo, GroupPermissions } from "metabase-types/api";
+import {
+  useGetPermissionDebugQuery,
+  useListImpersonationsQuery,
+} from "metabase-enterprise/api";
+import type { GroupInfo, GroupPermissions, UserId } from "metabase-types/api";
 
 import {
   type GroupAttribute,
@@ -20,8 +25,57 @@ import { AttributeChip } from "./AttributeChip";
 
 interface AttributeBarProps {
   group: GroupInfo;
+  /** The person the preview runs as, once it has started */
+  userId?: UserId;
+  /** The item the frame shows, as `type/id` */
+  item?: string;
   values: Record<string, string>;
   onApply: (name: string, value: string) => void;
+}
+
+const QUERY_ACTIONS = {
+  question: "card/query",
+  dashboard: "dashboard/query",
+} as const;
+
+/**
+ * The attributes the rules on a question's or dashboard's data read, or
+ * `undefined` for a collection, when nothing is open yet or while it loads,
+ * where every attribute of the group is shown.
+ */
+function useItemAttributeNames(userId?: UserId, item?: string) {
+  const parsed = item ? parseItem(item) : null;
+  const type =
+    parsed?.type === "question" || parsed?.type === "dashboard"
+      ? parsed.type
+      : null;
+  const modelId = typeof parsed?.id === "number" ? parsed.id : null;
+
+  const { currentData } = useGetPermissionDebugQuery(
+    userId != null && type != null && modelId != null
+      ? {
+          user_id: userId,
+          model_id: modelId,
+          action_type: QUERY_ACTIONS[type],
+        }
+      : skipToken,
+  );
+  const reasons = currentData?.reasons;
+
+  return useMemo(() => {
+    if (!reasons) {
+      return undefined;
+    }
+    return new Set([
+      ...(reasons.tables ?? []).flatMap((table) =>
+        table.sandboxes.flatMap((sandbox) =>
+          sandbox.filters.map((filter) => filter.attribute),
+        ),
+      ),
+      ...(reasons.impersonations ?? []).map(({ attribute }) => attribute),
+      ...(reasons.routes ?? []).map(({ attribute }) => attribute),
+    ]);
+  }, [reasons]);
 }
 
 function getViewableDatabaseIds(permissions: GroupPermissions = {}) {
@@ -36,7 +90,13 @@ function getViewableDatabaseIds(permissions: GroupPermissions = {}) {
 }
 
 /** The user attributes a group's rules read, each with the value the preview uses. */
-export function AttributeBar({ group, values, onApply }: AttributeBarProps) {
+export function AttributeBar({
+  group,
+  userId,
+  item,
+  values,
+  onApply,
+}: AttributeBarProps) {
   const { data: policies = [] } = useListGroupTableAccessPoliciesQuery({
     group_id: group.id,
   });
@@ -45,13 +105,17 @@ export function AttributeBar({ group, values, onApply }: AttributeBarProps) {
 
   const { data: graph } = useGetGroupPermissionsGraphQuery(group.id);
 
+  const usedAttributeNames = useItemAttributeNames(userId, item);
+
   const attributes = getGroupAttributes({
     groupId: group.id,
     policies,
     impersonations,
     databases: databases?.data ?? [],
     viewableDatabaseIds: getViewableDatabaseIds(graph?.groups[group.id]),
-  });
+  }).filter(
+    ({ name }) => usedAttributeNames == null || usedAttributeNames.has(name),
+  );
 
   if (attributes.length === 0) {
     return null;
