@@ -3,7 +3,7 @@ semantic_models:
   - name: customers
     model: ref('dim_customers')
     entities:
-      - name: customer          # the shared key both fact tables point to
+      - name: customer # the shared key both fact tables point to
         type: primary
         expr: customer_id
     dimensions:
@@ -16,7 +16,7 @@ semantic_models:
   - name: invoices
     model: ref('fct_invoices')
     defaults:
-      agg_time_dimension: invoice_date   # becomes metric_time for its measures
+      agg_time_dimension: invoice_date # becomes metric_time for its measures
     entities:
       - name: invoice
         type: primary
@@ -27,7 +27,7 @@ semantic_models:
     dimensions:
       - name: invoice_date
         type: time
-        type_params: {time_granularity: day}
+        type_params: { time_granularity: day }
       - name: status
         type: categorical
     measures:
@@ -39,7 +39,7 @@ semantic_models:
   - name: time_entries
     model: ref('fct_time_entries')
     defaults:
-      agg_time_dimension: entry_date     # also becomes metric_time
+      agg_time_dimension: entry_date # also becomes metric_time
     entities:
       - name: time_entry
         type: primary
@@ -50,7 +50,7 @@ semantic_models:
     dimensions:
       - name: entry_date
         type: time
-        type_params: {time_granularity: day}
+        type_params: { time_granularity: day }
       - name: is_billable
         type: categorical
     measures:

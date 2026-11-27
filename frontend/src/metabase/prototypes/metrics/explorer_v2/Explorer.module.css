@@ -34,6 +34,11 @@
   flex: none;
 }
 
+/* Typed text keeps the gap a bare caret has, off the pills around it. */
+.typingSlot {
+  margin-inline: 6px;
+}
+
 .pill,
 .draftSeg {
   min-height: 1.625rem;

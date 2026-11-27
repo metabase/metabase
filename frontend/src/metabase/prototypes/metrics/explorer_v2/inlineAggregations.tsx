@@ -15,7 +15,7 @@ import {
   LoadTable,
   buildDefinition,
 } from "./MissingMeasures";
-import type { BarItem } from "./TokenBar";
+import { type BarItem, DRAFT_PREFIX, matchesItem } from "./TokenBar";
 import { COLUMNS, MEASURE_COLUMNS, MEASURE_TABLES } from "./catalog";
 
 /**
@@ -143,6 +143,83 @@ export const aggregationItems = (savedNames: readonly string[]): BarItem[] =>
       };
     });
   });
+
+const SECTION = "New aggregation";
+
+/** Step one: the aggregation; picking one types `Sum(` and lists what to sum. */
+const OPERATOR_STEPS: BarItem[] = [
+  {
+    id: `${DRAFT_PREFIX}Count(`,
+    label: "Count",
+    description: "rows of a table",
+    aliases: ["rows"],
+  },
+  {
+    id: `${DRAFT_PREFIX}Sum(`,
+    label: "Sum",
+    description: "of a column",
+    aliases: ["total"],
+  },
+  {
+    id: `${DRAFT_PREFIX}Avg(`,
+    label: "Average",
+    description: "of a column",
+    aliases: ["avg", "mean"],
+  },
+].map((item) => ({
+  ...item,
+  icon: "sum",
+  info: "Calculated right here. Save it as a measure to reuse it in other metrics.",
+  section: SECTION,
+  sectionIcon: "sum",
+}));
+
+const STEP_PATTERN = /^\s*(count|sum|avg|average)\s*\(\s*([^)]*)\)?\s*$/i;
+
+/**
+ * Two steps instead of every table and column at once: the aggregations for
+ * the typed text, then, once it reads `Sum(`, the columns (tables for Count)
+ * to aggregate, grouped by table. `items` are from `aggregationItems`.
+ */
+export function aggregationSuggestions(
+  items: BarItem[],
+  query: string,
+): BarItem[] {
+  const match = STEP_PATTERN.exec(query);
+  if (match == null) {
+    return OPERATOR_STEPS.filter((item) => matchesItem(item, query));
+  }
+  const typed = match[1].toLowerCase();
+  const operator = typed === "average" ? "avg" : typed;
+  return items
+    .flatMap((item): BarItem[] => {
+      const aggregation = parseAggregation(item.id);
+      if (aggregation == null || aggregation.operator !== operator) {
+        return [];
+      }
+      const { table, column } = aggregation;
+      return [
+        column == null
+          ? {
+              ...item,
+              label: table,
+              icon: "table",
+              aliases: [],
+              section: "Count rows of",
+              sectionIcon: "table",
+            }
+          : {
+              ...item,
+              label: column,
+              icon: "int",
+              aliases: [`${table}.${column}`],
+              section: table,
+              sectionIcon: "table",
+            },
+      ];
+    })
+    .filter((item) => matchesItem(item, match[2]));
+}
 
 /** Every inline aggregation, to name and resolve a pill. */
 export const AGGREGATION_ITEMS = aggregationItems([]);

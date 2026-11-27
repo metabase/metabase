@@ -399,6 +399,7 @@ export function TokenBar<T extends { key: string }>({
             className={cx(S.slot, {
               [S.draftSeg]: isHosted,
               [S.gap]: isEmptyCaret,
+              [S.typingSlot]: query !== "" && !isHosted,
               [S.caretSlot]: isEmptyCaret,
               [S.caretAfterConnector]:
                 isEmptyCaret && previousToken && isConnector?.(previousToken),

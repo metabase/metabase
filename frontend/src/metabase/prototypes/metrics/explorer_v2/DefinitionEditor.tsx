@@ -41,6 +41,7 @@ import {
   search,
   toOp,
 } from "./formula";
+import { aggregationSuggestions } from "./inlineAggregations";
 
 type Editing = { key: string; part: string };
 
@@ -97,7 +98,7 @@ export function DefinitionEditor({
   canNameFilter?: (measureId: string) => boolean;
   /** Called with the new segment; the pill then shows its name. */
   onNameFilter?: (measureId: string, filter: string, name: string) => void;
-  /** Aggregations to type straight in, like Sum(Orders.Total); offered once typing. */
+  /** Aggregations to type straight in, like Sum(Orders.Total); offered as aggregation, then column. */
   aggregationItems?: BarItem[];
   /** Whether the pill is an inline aggregation that can be saved as a measure. */
   canSaveAsMeasure?: (measureId: string) => boolean;
@@ -130,7 +131,9 @@ export function DefinitionEditor({
   const problem = findProblem(formula, measureName) ?? extraProblem ?? null;
   const searchTerms = (query: string) => [
     ...search(measureItems, query),
-    ...(query.trim() === "" ? [] : search(aggregationItems, query)),
+    ...(aggregationItems.length === 0
+      ? []
+      : aggregationSuggestions(aggregationItems, query)),
   ];
   const hasProblem = (key: string) => problem?.keys.includes(key) ?? false;
 
