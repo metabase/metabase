@@ -775,7 +775,13 @@
                 regular :unconfigured
                 other   :computed
                 kept    :computed}
-               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular other kept]])))))))
+               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular other kept]]))))
+      (testing "and maps it for a Table the import creates, which has no value of its own to keep"
+        (mt/with-model-cleanup [:model/Table]
+          (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id upload)]))
+                new-name  (mt/random-name)]
+            (serialization/load :model/Table [(assoc extracted :name new-name :data_authority "authoritative")])
+            (is (= :ingested (t2/select-one-fn :data_authority :model/Table :db_id db-id :name new-name)))))))))
 
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
