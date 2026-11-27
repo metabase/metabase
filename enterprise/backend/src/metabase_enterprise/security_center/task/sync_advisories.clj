@@ -49,8 +49,8 @@
     (try
       (notification/notify-advisory! advisory)
       (catch Exception e
-        (log/warnf "Failed to send repeat notification for advisory %s: %s"
-                   (:advisory_id advisory) (ex-message e))))))
+        (log/errorf "Failed to send repeat notification for advisory %s: %s"
+                    (:advisory_id advisory) (ex-message e))))))
 
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
@@ -75,7 +75,7 @@
       (try
         (send-repeat-notifications!)
         (catch Exception e
-          (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
+          (log/errorf "Error sending repeat notifications: %s" (ex-message e))))
       (setting/set-many!
        (cond-> {:security-center-last-sync-attempted-at attempted-at
                 :security-center-last-sync-error        sync-error}
