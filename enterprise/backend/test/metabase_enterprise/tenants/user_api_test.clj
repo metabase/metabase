@@ -244,17 +244,20 @@
     (mt/with-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Tenant {tid :id} {:name "T" :slug "t"}
-                       :model/PermissionsGroup {gid :id} {:name "Fav" :is_tenant_group true}
-                       :model/User {uid :id} {:tenant_id tid}]
-          (let [all-tenant-users-id (u/the-id (perms/all-external-users-group))
-                resp (mt/user-http-request :crowberto :put 200 (str "user/" uid)
-                                           {:user_group_memberships
-                                            [{:id all-tenant-users-id}
-                                             {:id gid}]})]
-            (is (= #{all-tenant-users-id gid}
-                   (set (map :id (:user_group_memberships resp)))))
-            (is (= #{all-tenant-users-id gid}
-                   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id uid)))))))))
+                       :model/PermissionsGroup {gid :id} {:name "Fav" :is_tenant_group true}]
+          (mt/with-model-cleanup [:model/User]
+            (let [all-tenant-users-id (u/the-id (perms/all-external-users-group))
+                  {uid :id}           (mt/user-http-request :crowberto :post 200 "user"
+                                                            {:first_name "M" :last_name "C"
+                                                             :email (mt/random-email) :tenant_id tid})
+                  resp                (mt/user-http-request :crowberto :put 200 (str "user/" uid)
+                                                            {:user_group_memberships
+                                                             [{:id all-tenant-users-id}
+                                                              {:id gid}]})]
+              (is (= #{all-tenant-users-id gid}
+                     (set (map :id (:user_group_memberships resp)))))
+              (is (= #{all-tenant-users-id gid}
+                     (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id uid))))))))))
 
 (deftest tenant-user-visibility-when-tenants-disabled-test
   (testing "Tenant users when use-tenants is off"
