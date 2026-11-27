@@ -243,6 +243,54 @@
         (is (=? {:field-id field-id}
                 (tag-by-name q "d")))))))
 
+(deftest update-native-sql-keeps-field-filter-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [field-id (mt/id :orders :total)
+            scopes   #{"agent:content:write" "agent:sql:run"}
+            created  (call-tool scopes (str (random-uuid)) "question_write"
+                                {:method "create"
+                                 :name   "Orders by total"
+                                 :native {:database_id   (mt/id)
+                                          :sql           "SELECT * FROM orders WHERE {{d}} LIMIT 50"
+                                          :template_tags {:d {:type        "dimension"
+                                                              :widget_type "number/="
+                                                              :field_id    field-id}}}})
+            card-id  (:id (payload created))
+            updated  (call-tool scopes (str (random-uuid)) "question_write"
+                                {:method "update"
+                                 :id     card-id
+                                 :native {:database_id (mt/id)
+                                          :sql         "SELECT * FROM orders WHERE {{d}} LIMIT 1000"}})]
+        (is (not (:isError created)) (-> created :content first :text))
+        (is (not (:isError updated)) (-> updated :content first :text))
+        (is (=? {:type :dimension :field-id field-id}
+                (tag-by-name (t2/select-one-fn :dataset_query :model/Card :id card-id) "d")))))))
+
+(deftest update-native-tag-replaces-stored-tag-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [scopes   #{"agent:content:write" "agent:sql:run"}
+            created  (call-tool scopes (str (random-uuid)) "question_write"
+                                {:method "create"
+                                 :name   "Orders by total"
+                                 :native {:database_id   (mt/id)
+                                          :sql           "SELECT * FROM orders WHERE {{d}} LIMIT 50"
+                                          :template_tags {:d {:type        "dimension"
+                                                              :widget_type "number/="
+                                                              :field_id    (mt/id :orders :total)}}}})
+            card-id  (:id (payload created))
+            updated  (call-tool scopes (str (random-uuid)) "question_write"
+                                {:method "update"
+                                 :id     card-id
+                                 :native {:database_id   (mt/id)
+                                          :sql           "SELECT * FROM orders WHERE total > {{d}}"
+                                          :template_tags {:d {:type "number"}}}})
+            tag      (tag-by-name (t2/select-one-fn :dataset_query :model/Card :id card-id) "d")]
+        (is (not (:isError updated)) (-> updated :content first :text))
+        (is (=? {:type :number} tag))
+        (is (not-any? tag [:dimension :field-id :widget-type]))))))
+
 (deftest create-question-happy-path-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-current-user (mt/user->id :crowberto)

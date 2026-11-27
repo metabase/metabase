@@ -11,6 +11,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
@@ -39,8 +40,8 @@
   (or (:field_id tag) (:field-id tag)))
 
 (defn- ->lib-template-tag
-  "Map the tool's tag shape onto `existing-tag` (the lib-extracted template-tag map, which
-   already carries `:id`/`:name`/`:display-name`). `dimension` and `temporal-unit` tags
+  "Map the tool's tag shape onto the `:id`/`:name`/`:display-name` of `existing-tag` (the query's
+   tag of that name); the caller's tag replaces the rest of its configuration. `dimension` and `temporal-unit` tags
    additionally carry a field (`field_id` — a numeric field id, resolved here.
    Numeric only: `metabase_field.entity_id` was dropped by migration and `:model/Field` is not in
    the eid-translation map, so an entity_id here could only ever fail); `dimension` tags also carry a widget type (`widget_type`). Alongside the
@@ -69,7 +70,7 @@
        (message/msg ["A %s template tag requires a field_id — the numeric id of the column it binds."
                      "%s"]
                     (name t) skills/template-tag-contract)))
-    (cond-> (assoc existing-tag :type t)
+    (cond-> (assoc (select-keys existing-tag [:id :name :display-name]) :type t)
       display-name (assoc :display-name display-name)
       (some? required) (assoc :required (boolean required))
       (some? default) (assoc :default default)
@@ -143,58 +144,69 @@
      metabot.scope/agent-sql-run))
   (v2.queries/check-execute-sql-enabled! (message/raw "Saving a native (SQL) query")))
 
+(defn- native-source-query
+  "A native query of `sql`, keeping the template tags of `stored-query` when it is a native query of the same database."
+  [mp sql stored-query]
+  (if (and (lib/native-only-query? stored-query)
+           (= (:database stored-query) (:id (lib.metadata/database mp))))
+    (lib/with-native-query (lib/query mp stored-query) sql)
+    (lib/native-query mp sql)))
+
 (defn- resolve-query-source
   "Resolve exactly one query source to a `dataset_query` map. `query_handle` re-runs the
    save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL
-   once `token-scopes` clears [[check-native-source-gates!]].
+   once `token-scopes` clears [[check-native-source-gates!]], on top of `stored-query` (the
+   updated card's query, nil on create) so tags the caller does not pass keep their configuration.
 
    Every branch returns genuine normalized MBQL 5: the save path feeds `dataset_query` into
    strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
    the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
    by the JSON round-trip — must be restored first."
-  [{:keys [query_handle query native]} session-id token-scopes]
-  (let [sources (cond-> []
-                  query_handle (conj :query_handle)
-                  query        (conj :query)
-                  native       (conj :native))]
-    (when-not (= 1 (count sources))
-      (common/throw-teaching-error
-       (message/msg [(str "Pass exactly one query source: \"query_handle\" (a handle from an execute "
-                          "tool), \"query\" (an inline query), or \"native\" ({database_id, sql}).")])))
-    (cond
-      query_handle
-      (let [resolved (lib-be/normalize-query
-                      nil
-                      (:query (v2.queries/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
-                      {:strict? true})]
-        (when (query-guards/native-query? resolved)
-          (check-native-source-gates! token-scopes))
-        resolved)
+  ([args session-id token-scopes]
+   (resolve-query-source args session-id token-scopes nil))
+  ([{:keys [query_handle query native]} session-id token-scopes stored-query]
+   (let [sources (cond-> []
+                   query_handle (conj :query_handle)
+                   query        (conj :query)
+                   native       (conj :native))]
+     (when-not (= 1 (count sources))
+       (common/throw-teaching-error
+        (message/msg [(str "Pass exactly one query source: \"query_handle\" (a handle from an execute "
+                           "tool), \"query\" (an inline query), or \"native\" ({database_id, sql}).")])))
+     (cond
+       query_handle
+       (let [resolved (lib-be/normalize-query
+                       nil
+                       (:query (v2.queries/resolve-query-handle-for-save! session-id api/*current-user-id* query_handle))
+                       {:strict? true})]
+         (when (query-guards/native-query? resolved)
+           (check-native-source-gates! token-scopes))
+         resolved)
 
-      query
-      (let [resolved (try
-                       (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
-                       (catch clojure.lang.ExceptionInfo e
-                         (common/throw-teaching-error
-                          (if-let [text (common/exception-message e)]
-                            (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"] text)
-                            (message/msg ["Invalid inline query — see learn(\"query-dialect\")."])))))]
-        ;; `native` on the source arg is not the same thing as native in the resolved query: an inline
-        ;; `query` can carry a native stage (`ensure-pmbql-type` stamps `:mbql.stage/native` on any stage
-        ;; with `:native`), and that stored card is raw SQL a later run_saved_question executes. Gate on
-        ;; the resolved query's shape, whole-tree (nested native too), so the `query` source can't be a
-        ;; back door around the scope + kill switch the `native` source enforces.
-        (when (query-guards/native-query? resolved)
-          (check-native-source-gates! token-scopes))
-        resolved)
+       query
+       (let [resolved (try
+                        (lib-be/normalize-query nil (ensure-pmbql-type query) {:strict? true})
+                        (catch clojure.lang.ExceptionInfo e
+                          (common/throw-teaching-error
+                           (if-let [text (common/exception-message e)]
+                             (message/msg ["Invalid inline query — see learn(\"query-dialect\"). %s"] text)
+                             (message/msg ["Invalid inline query — see learn(\"query-dialect\")."])))))]
+         ;; `native` on the source arg is not the same thing as native in the resolved query: an inline
+         ;; `query` can carry a native stage (`ensure-pmbql-type` stamps `:mbql.stage/native` on any stage
+         ;; with `:native`), and that stored card is raw SQL a later run_saved_question executes. Gate on
+         ;; the resolved query's shape, whole-tree (nested native too), so the `query` source can't be a
+         ;; back door around the scope + kill switch the `native` source enforces.
+         (when (query-guards/native-query? resolved)
+           (check-native-source-gates! token-scopes))
+         resolved)
 
-      native
-      (do
-        (check-native-source-gates! token-scopes)
-        (let [{:keys [database_id sql template_tags]} native
-              mp (lib-be/application-database-metadata-provider database_id)]
-          (-> (lib/native-query mp sql)
-              (apply-template-tags template_tags)))))))
+       native
+       (do
+         (check-native-source-gates! token-scopes)
+         (let [{:keys [database_id sql template_tags]} native
+               mp (lib-be/application-database-metadata-provider database_id)]
+           (-> (native-source-query mp sql stored-query)
+               (apply-template-tags template_tags))))))))
 
 ;;; ------------------------------------------------------ Create --------------------------------------------------
 
@@ -430,7 +442,7 @@
         dashboard    (resolve-dashboard! dashboard_id)
         dashboard-id (:dashboard-id dashboard)
         new-query    (when (or (:query_handle args) (:query args) (:native args))
-                       (resolve-query-source args session-id token-scopes))
+                       (resolve-query-source args session-id token-scopes (:dataset_query card-before)))
         raw-updates  (cond-> {}
                        (contains? args :name)                   (assoc :name name)
                        (contains? args :description)            (assoc :description description)
