@@ -8,11 +8,12 @@ import { Box } from "metabase/ui";
 import S from "./Notes.module.css";
 import { NOTES_QUERIES } from "./NotesQueries";
 import notes from "./notes.md";
+import questions from "./questions.md";
 
 // Markdown with raw HTML mixed in: marked passes HTML blocks and inline tags
 // through, so the notes can use classes the stylesheet knows (callout, note).
 // ```mermaid fences become SVG diagrams, themed through --pele-* variables.
-const NOTES_HTML = new Marked({
+const markdown = new Marked({
   async: false,
   gfm: true,
   renderer: {
@@ -32,7 +33,10 @@ const NOTES_HTML = new Marked({
       return `<div class="diagram">${svg}</div>`;
     },
   },
-}).parse(notes, { async: false });
+});
+
+const NOTES_HTML = markdown.parse(notes, { async: false });
+const QUESTIONS_HTML = markdown.parse(questions, { async: false });
 
 function scrollToHash(hash: string, behavior: ScrollBehavior) {
   document
@@ -59,8 +63,8 @@ function handleAnchorClick(event: MouseEvent<HTMLDivElement>) {
   scrollToHash(hash, "smooth");
 }
 
-/** Design notes behind the prototypes, written in notes.md. */
-export function NotesPrototype() {
+/** One markdown file rendered as a page, with live query blocks mounted in. */
+function MarkdownPage({ html }: { html: string }) {
   const notesRef = useRef<HTMLDivElement>(null);
   const [querySlots, setQuerySlots] = useState<Element[]>([]);
 
@@ -83,7 +87,7 @@ export function NotesPrototype() {
         maw="52rem"
         onClick={handleAnchorClick}
         // Our own file, not user input.
-        dangerouslySetInnerHTML={{ __html: NOTES_HTML }}
+        dangerouslySetInnerHTML={{ __html: html }}
       />
       {/* The HTML string never changes, so React leaves these nodes alone. */}
       {querySlots.map((slot) => {
@@ -92,4 +96,14 @@ export function NotesPrototype() {
       })}
     </>
   );
+}
+
+/** Design notes behind the prototypes, written in notes.md. */
+export function NotesPrototype() {
+  return <MarkdownPage html={NOTES_HTML} />;
+}
+
+/** Open questions about the prototypes, written in questions.md. */
+export function QuestionsPrototype() {
+  return <MarkdownPage html={QUESTIONS_HTML} />;
 }
