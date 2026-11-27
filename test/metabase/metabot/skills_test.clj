@@ -204,6 +204,22 @@
     ;; the FE sends the driver name (`postgres`), not the dialect file's name (`postgresql`)
     (let [parts (skills/dialect-preload-parts "postgres")]
       (is (= ["sql-dialect-postgresql"] (get-in (first parts) [:arguments :ids])))))
+  (testing "the result opens with a note that names the dialect and the engine as given, then the dialect body"
+    (let [output (get-in (skills/dialect-preload-parts "postgres") [1 :result :output])
+          body   (:body (skills/dialect-skill "postgres"))]
+      (is (str/starts-with? output "SQL rules for the **postgresql** SQL dialect, which the **postgres** engine uses."))
+      (is (str/includes? output "a database whose engine uses this dialect"))
+      (is (str/ends-with? output body))
+      (testing "the note does not say where the user is: later turns replay it wherever the user is then"
+        (is (not (str/includes? output "is in the SQL editor"))))))
+  (testing "an engine that shares another engine's dialect file gets a note that names both"
+    ;; `:sparksql` resolves to databricks.md (modules/drivers/sparksql/src/metabase/driver/sparksql.clj). The
+    ;; sparksql driver is not on the test classpath, so stub its resolution.
+    (mt/with-dynamic-fn-redefs [skills/engine->dialect (fn [engine] (get {"sparksql" "databricks"} engine))]
+      (let [[input output] (skills/dialect-preload-parts "sparksql")]
+        (is (= ["sql-dialect-databricks"] (get-in input [:arguments :ids])))
+        (is (str/starts-with? (get-in output [:result :output])
+                              "SQL rules for the **databricks** SQL dialect, which the **sparksql** engine uses.")))))
   (testing "a bare dialect name resolves from the registry without touching the driver system"
     (mt/with-dynamic-fn-redefs [skills/engine->dialect
                                 (fn [engine]

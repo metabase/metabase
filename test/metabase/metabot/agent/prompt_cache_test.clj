@@ -64,7 +64,9 @@
    #"current_user_info"
    #"viewing_context"
    #"recent_views"
-   #"first_day_of_week"])
+   #"first_day_of_week"
+   ;; The SQL editor's engine: the dialect instructions go into the turn that first meets the engine instead.
+   #"sql_dialect"])
 
 (deftest ^:parallel system-templates-have-no-per-request-vars-test
   (testing "system prompt templates must not reference per-request context variables"

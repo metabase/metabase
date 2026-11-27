@@ -14,6 +14,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.used-tables :as used-tables]
@@ -422,10 +423,14 @@
      It is stored as the row's first part, so that [[history]] replays the message
      with the same bytes and the provider can read it from its prompt cache.
   - `:full-context?` — whether `:context-block` holds all of the context, not only what
-     the user is viewing (see [[replays-full-context?]])."
+     the user is viewing (see [[replays-full-context?]]).
+  - `:preload-parts` — the internal parts of the SQL dialect preload the agent sent after
+     the user's message. They are stored before the first `step-start`, after the
+     `<context>` part, so that [[history]] replays them at the same position (see
+     [[replayed-skill-preloads]])."
   [assistant-msg-id parts
    & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens context-block
-             full-context?]
+             full-context? preload-parts]
       :or   {finished? true}}]
   (let [turn-state     (not-empty turn-state)
         usage          (extract-usage parts)
@@ -436,7 +441,7 @@
         kept-parts     (->> parts
                             (remove #(#{:start :usage :finish :error} (:type %)))
                             (filter streaming/persistable-data-part?))
-        content        (cond->> (parts->storable-content parts)
+        content        (cond->> (parts->storable-content (concat preload-parts parts))
                          context-block (into [{:type context-part-type
                                                :data {:block context-block :full (boolean full-context?)}}]))]
     (analytics/observe! :metabase-metabot/message-persist-bytes
@@ -555,9 +560,9 @@
   "The parts of the assistant row `data`, split into steps (vectors of parts) at each `step-start` part.
 
   Each LLM call of the turn starts at a `step-start` part, so each step after the first holds the parts of one call.
-  The first step holds the parts before the first `step-start`, such as the `<context>` data part. It is empty when
-  there are no such parts. A row migrated from v1 has no `step-start` parts, so it does not record which parts each
-  call made: there, each part is a step of its own."
+  The first step holds the parts before the first `step-start`, such as the `<context>` data part and the SQL dialect
+  preload. It is empty when there are no such parts. A row migrated from v1 has no `step-start` parts, so it does not
+  record which parts each call made: there, each part is a step of its own."
   [data]
   (if (some #(= "step-start" (:type %)) data)
     (reduce (fn [steps part]
@@ -698,6 +703,26 @@
                    (some-> (replayable-turn turn-rows) :reply stored-context :full))
                  (rows->turns messages))))
 
+(defn- preload-part?
+  "Whether the stored `part` is a SQL dialect preload (see `metabase.metabot.skills/dialect-preload-parts`), and not a
+  `load_skill` call of the model."
+  [part]
+  (and (schema.v2/tool-part? part)
+       (str/starts-with? (str (:toolCallId part)) skills/preload-call-id-prefix)))
+
+(defn replayed-skill-preloads
+  "The ids, as strings, of the SQL dialect skills that the [[history]] of `messages` preloads.
+
+  It reads only the turns that [[history]] replays. A failed turn, a deleted answer and a row stored before the agent
+  stored its preload give none, so the next turn on that engine sends the preload."
+  [messages]
+  (into #{}
+        (comp (keep replayable-turn)
+              (mapcat (comp :data :reply))
+              (filter preload-part?)
+              (mapcat #(get-in % [:input :ids])))
+        (rows->turns messages)))
+
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live
   `metabot_message` `messages` (in reader order, e.g. from [[live-messages]]):
@@ -730,13 +755,19 @@
 
 (defn- convert-content-block
   "Convert a single v2 part from `:data` into a frontend message part.
-   Returns nil for parts that should be skipped (unknown types).
+   Returns nil for parts that should be skipped: unknown types, and what only the model
+   read (the `<context>` block and the SQL dialect preload).
 
    `row-role` decides whether text parts render as user or agent parts — v2
    text parts carry no role of their own. The owning message carries the row's
    `external_id`; the per-block `:id` stays unique."
   [row-role part]
   (cond
+    ;; the SQL dialect preload is what the model read, not a call it made; it is a tool part, so this
+    ;; branch comes before the tool branch
+    (preload-part? part)
+    nil
+
     (schema.v2/text-part? part)
     {:id      (str (random-uuid))
      :role    (if (= :user row-role) "user" "agent")

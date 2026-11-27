@@ -220,6 +220,26 @@
     (cond-> all-messages
       block (update (dec (count all-messages)) update :content #(str block %)))))
 
+(defn dialect-preload
+  "The parts that preload the SQL dialect skill of the engine the user views in `context`, or [] when the turn sends
+  none.
+
+  `tools` is the active tool registry (name -> tool). The skill is preloaded only when it contains a SQL-writing
+  tool: the dialect body is SQL-writing guidance, and a profile without those tools (e.g. `:embedding_next` with the
+  native editor open in a full-app embed) has no tool that could act on it.
+
+  `preloaded-skill-ids` holds the ids, as strings, of the dialect skills that the replayed history has already
+  preloaded. A skill in it is not preloaded again: the history holds it, and a second copy would change the prefix
+  that later turns replay. nil counts as an empty set."
+  [context tools preloaded-skill-ids]
+  (let [parts     (if (prompts/sql-generation-tools? tools)
+                    (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+                    [])
+        skill-ids (get-in (first parts) [:arguments :ids])]
+    (if (some (set preloaded-skill-ids) skill-ids)
+      []
+      parts)))
+
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
 
@@ -231,11 +251,10 @@
   - `{:type :tool-input, :id ..., :function ..., :arguments ...}` for tool calls
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
-  `tools` is the active tool registry (name -> tool). The SQL dialect skill is preloaded only when it
-  contains a SQL-writing tool: the dialect body is SQL-writing guidance, and a profile without those
-  tools (e.g. `:embedding_next` with the native editor open in a full-app embed) has no tool that could
-  act on it, and its prompt makes no SQL promise the preload would have to back. The 2-arity has no
-  tools and never preloads.
+  After the input messages come the parts of the SQL dialect preload: the ones memory keeps (see
+  [[memory/set-dialect-preload]]), or, when memory has kept no preload for this turn (see
+  [[memory/dialect-preload-rendered?]]), [[dialect-preload]] of `context` and `tools`. An empty kept preload is
+  used as is. The 2-arity has no tools, so it preloads only what memory keeps.
 
   Each LLM adapter converts this to its own wire format."
   ([context memory]
@@ -248,10 +267,11 @@
          ;; Preload the active SQL dialect (if any) as a synthetic load_skill
          ;; tool-call/result pair. It is placed after the input messages (so the
          ;; first message is still the user's) and before this turn's steps, which
-         ;; keeps it below the system cache breakpoint.
-         preload-parts  (if (prompts/sql-generation-tools? tools)
-                          (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
-                          [])
+         ;; keeps it below the system cache breakpoint. The web chat stores it before
+         ;; the turn's first step, so later turns replay it at this position.
+         preload-parts  (if (memory/dialect-preload-rendered? memory)
+                          (memory/dialect-preload memory)
+                          (dialect-preload context tools nil))
          result         (vec (concat input-parts preload-parts step-parts))]
      (log/info "Building message history"
                {:input-message-count (count input-messages)
@@ -280,8 +300,7 @@
                           (ctx-fn context))
         content         (prompts/build-system-message-content
                          profile
-                         (merge {:sql_dialect (user-context/extract-sql-dialect context)}
-                                profile-context)
+                         profile-context
                          tools
                          (:capabilities context))]
     {:role    "system"

@@ -136,8 +136,7 @@
 
   Parameters:
   - profile: Profile map with :prompt-template key
-  - context: Template context map. Its keys are passed through to the template as-is; :sql_dialect
-    (or :sql-dialect) additionally drives the computed dialect/skill vars. Profiles contribute
+  - context: Template context map. Its keys are passed through to the template as-is. Profiles contribute
     feature-specific vars through this map via their :system-prompt-context hook — this fn does not
     name any feature-specific key.
   - tools: Tool registry map (name -> tool def/var)
@@ -158,9 +157,7 @@
   (let [template-name (or prompt-template "internal.selmer")
         template      (get-cached-system-prompt template-name)]
     (if template
-      (let [sql-dialect          (or (get context :sql_dialect)
-                                     (get context :sql-dialect))
-            {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
+      (let [{:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -176,12 +173,6 @@
                                       has-sql?
                                       (scope/sql-execution-allowed?))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
-                                  :sql_dialect              sql-dialect
-                                  ;; Must agree with the preload gate in `messages/build-message-history`: the
-                                  ;; template says the dialect skill "has already been loaded", which is only
-                                  ;; true when a SQL-writing tool is active.
-                                  :sql_dialect_loaded       (and (sql-generation-tools? tools)
-                                                                 (some? (skills/dialect-skill sql-dialect)))
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to
@@ -232,8 +223,7 @@
 
   ;; Load and render a template
   (def template (load-system-prompt-template "internal.selmer"))
-  (render-system-prompt template {:current-time "2024-01-15 14:30:00"
-                                  :sql-dialect "postgresql"})
+  (render-system-prompt template {:metabot_name "Metabot"})
 
   ;; Clear cache during development
   (clear-cache!))

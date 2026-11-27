@@ -132,8 +132,7 @@
 (deftest ^:parallel build-system-message-content-test
   (testing "builds complete system message"
     (let [profile {:prompt-template "embedding-next.selmer"}
-          context {:current_time "2024-01-15 14:30:00"
-                   :sql-dialect "postgresql"}
+          context {:current_time "2024-01-15 14:30:00"}
           tools {}
           content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
@@ -142,18 +141,6 @@
       (is (re-find #"Metabot" content))
       (is (not (str/includes? content "2024-01-15 14:30:00"))
           "current time is not in system message (moved to message injection)"))))
-
-(deftest ^:parallel build-system-message-content-test-2
-  (testing "includes dialect instructions when dialect specified"
-    (let [profile {:prompt-template "embedding-next.selmer"}
-          context {:current_time "2024-01-15 14:30:00"
-                   :sql-dialect "postgresql"}
-          tools {}
-          content (prompts/build-system-message-content profile context tools [])]
-      (is (some? content))
-      ;; Note: The embedding template might not reference dialect instructions,
-      ;; but they should be available in the template context
-      (is (string? content)))))
 
 (deftest ^:parallel build-system-message-content-test-3
   (testing "falls back to default message if template not found"
@@ -290,8 +277,7 @@
 (deftest ^:parallel build-system-message-content-test-9
   (testing "renders sql querying template with literal model syntax"
     (let [profile {:prompt-template "sql-querying-only.selmer"}
-          context {:current_time "2024-01-15 14:30:00"
-                   :sql-dialect "postgresql"}
+          context {:current_time "2024-01-15 14:30:00"}
           tools {}
           content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))

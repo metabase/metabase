@@ -298,28 +298,41 @@
     (or (get-skill (dialect-skill-id engine))
         (some-> (engine->dialect engine) dialect-skill-id get-skill))))
 
+(def preload-call-id-prefix
+  "The start of the call id of each synthetic call that [[dialect-preload-parts]] makes."
+  "skill_preload_")
+
+(defn- dialect-note
+  "The note before the dialect body. It names the `dialect` and the `engine` that loaded it, and not where the user is,
+  because later turns replay it. It does not limit the rules to `engine`: another engine can use the same dialect."
+  [dialect engine]
+  (str "SQL rules for the **" dialect "** SQL dialect, which the **" engine "** engine uses. "
+       "Follow them when you write SQL for a database whose engine uses this dialect.\n\n"))
+
 (defn dialect-preload-parts
   "Given a SQL `engine` name (e.g. \"postgres\", as extracted from viewing context), return AISDK parts
   that preload its dialect skill body into the message stream as a synthetic `load_skill` tool call +
-  result.
+  result. The result text is a note that names the skill's dialect and `engine`, then the skill body.
   These sit below the system cache breakpoint, so the cached system prefix stays identical across
   databases.
 
   Returns [] when `engine` is nil or has no matching dialect skill.
   Dialect context arises in SQL-editor sessions, but the editor can be open under a profile without
   SQL tools (a full-app embed's Metabot sidebar), so the caller
-  ([[metabase.metabot.agent.messages/build-message-history]]) also gates on the active tools.
+  ([[metabase.metabot.agent.messages/dialect-preload]]) also gates on the active tools.
 
   Invariant: the emitted pair references the `load_skill` tool, which
   [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill manifest is
   non-empty — i.e. the profile has any catalog or always-on skill.
   Any profile that can reach SQL-editor/dialect context also exposes query skills (e.g. the SQL
   profile inlines the `read-resource` skill via its `:always-on-skills`), so the manifest is non-empty
-  and `load_skill` is always registered when this returns a non-empty preload."
+  and `load_skill` is always registered when this returns a non-empty preload.
+  The invariant covers only the turn that sends the pair. Later turns replay the stored pair, and their tools
+  can lack `load_skill`, as they can for a `load_skill` call that the model made itself."
   [engine]
   (or (when-let [skill (dialect-skill engine)]
         (let [skill-id (:id skill)
-              call-id  (str "skill_preload_" (name skill-id))]
+              call-id  (str preload-call-id-prefix (name skill-id))]
           [{:type :tool-input  :id call-id :function "load_skill" :arguments {:ids [(name skill-id)]}}
-           {:type :tool-output :id call-id :result {:output (:body skill)}}]))
+           {:type :tool-output :id call-id :result {:output (str (dialect-note (:dialect skill) engine) (:body skill))}}]))
       []))

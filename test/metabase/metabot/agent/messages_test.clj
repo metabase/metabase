@@ -441,23 +441,23 @@
       (is (str/includes? system "there is no SQL editor") "premise")
       (is (not (str/includes? user "The user is currently in the SQL editor"))))))
 
-(deftest ^:parallel sql-profile-dialect-claim-matches-preload-test
-  (testing "sql-querying-only.selmer claims the dialect skill 'has already been loaded'; that claim and the preload must agree now that the preload gates on SQL tools"
+(deftest ^:parallel sql-profile-system-prompt-has-no-dialect-test
+  (testing "the sql profile's system prompt says nothing about the dialect; only the preload, which follows the SQL tools, holds it"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
       (let [profile (profiles/get-profile :sql)
             context {:user_is_viewing [{:type       "adhoc"
                                         :sql_engine "postgres"
                                         :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
             memory  (memory/initialize [{:role :user :content "Hi"}] {})]
-        (doseq [[label caps] {"with write_sql_queries" ["permission:write_sql_queries"]
-                              "without it"             []}]
+        (doseq [[label caps preloaded?] [["with write_sql_queries" ["permission:write_sql_queries"] true]
+                                         ["without it"             []                               false]]]
           (testing label
-            (let [tools      (profiles/profile->tools profile caps)
-                  system     (:content (messages/build-system-message (assoc context :capabilities caps) profile tools))
-                  parts      (messages/build-message-history context memory tools)
-                  claims?    (str/includes? system "have already been loaded into this conversation")
-                  preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
-              (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))
+            (let [tools  (profiles/profile->tools profile caps)
+                  system (:content (messages/build-system-message (assoc context :capabilities caps) profile tools))
+                  parts  (messages/build-message-history context memory tools)]
+              (is (not (str/includes? system "have already been loaded into this conversation")))
+              (is (not (str/includes? system "# SQL Dialect")))
+              (is (= preloaded? (boolean (some #(= "load_skill" (:function %)) parts)))))))))))
 
 (deftest build-message-history-uses-the-kept-context-block-test
   (let [calls   (atom 0)
