@@ -765,50 +765,46 @@
          #"\QError compiling Funny SQL: No matching clause: :nowait\E"
          (mu/disable-enforcement (funnysql.format/format {:select [:id], :from [:t], :for [:update :nowait]} :postgres))))))
 
-(deftest ^:parallel percent-keyword-niladic-function-test
-  (are [k sql] (= [(str "WHERE \"field\" = " sql)]
-                  (funnysql.format/format {:where [:= :field k]} :postgres))
-    :%now              "now()"
-    :%current_schema   "current_schema()"
-    :%current_database "current_database()"
-    :%database         "database()"))
+(deftest ^:parallel niladic-function-test
+  (are [call sql] (= [(str "WHERE \"field\" = " sql)]
+                     (funnysql.format/format {:where [:= :field call]} :postgres))
+    [:now]              "now()"
+    [:current_schema]   "current_schema()"
+    [:current_database] "current_database()"
+    [:database]         "database()"))
 
-(deftest ^:parallel percent-keyword-function-with-arg-test
-  (are [k sql] (= [(str "WHERE \"field\" = " sql)]
-                  (funnysql.format/format {:where [:= :field k]} :postgres))
-    :%count.*                    "count(*)"
-    :%count.id                   "count(\"id\")"
-    :%lower.email                "lower(\"email\")"
-    :%lower.name                 "lower(\"name\")"
-    :%max.id                     "max(\"id\")"
-    :%max.started_at             "max(\"started_at\")"
-    :%min.date_joined            "min(\"date_joined\")"
-    :%min.executor_id            "min(\"executor_id\")"
-    :%avg.running_time           "avg(\"running_time\")"
-    :%sum.total_tokens           "sum(\"total_tokens\")"
-    :%isnull.last_edit_timestamp "isnull(\"last_edit_timestamp\")"))
+(deftest ^:parallel function-with-args-test
+  (are [call sql] (= [(str "WHERE " sql " = 1")]
+                     (funnysql.format/format {:where [:= call 1]} :postgres))
+    [:count :*]                    "count(*)"
+    [:count :id]                   "count(\"id\")"
+    [:lower :email]                "lower(\"email\")"
+    [:lower :metabase_field/name]  "lower(\"metabase_field\".\"name\")"
+    [:max :started_at]             "max(\"started_at\")"
+    [:min :date_joined]            "min(\"date_joined\")"
+    [:avg :running_time]           "avg(\"running_time\")"
+    [:sum :total_tokens]           "sum(\"total_tokens\")"
+    [:isnull :last_edit_timestamp] "isnull(\"last_edit_timestamp\")"
+    [:coalesce :a :b]              "coalesce(\"a\", \"b\")"))
 
-(deftest ^:parallel percent-keyword-with-qualified-arg-test
-  (testing "the `:%fn.arg` shorthand accepts a `/`-qualified argument, as Honey SQL does -- the keyword is a qualified
-            keyword whose namespace starts with `%`, which must not be mistaken for an identifier"
-    (are [k sql] (= [(str "WHERE " sql " = 1")]
-                    (funnysql.format/format {:where [:= k 1]} :postgres))
-      :%lower.metabase_field/name "lower(\"metabase_field\".\"name\")"
-      :%lower.name                "lower(\"name\")"
-      :%count.*                   "count(*)"
-      :%now                       "now()"
-      ;; a `.` separates arguments, so this is a two-argument call
-      :%coalesce.a.b              "coalesce(\"a\", \"b\")")))
-
-(deftest ^:parallel percent-keyword-rejects-unknown-function-test
-  (testing "the `:%function` shorthand must not let an arbitrary, attacker-derived function name reach the SQL --
-            an unrecognized name must be rejected, not passed through raw"
-    (are [k] (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Function :.* is not currently supported"
-              (mu/disable-enforcement (funnysql.format/format {:where [:= :field k]} :postgres)))
-      (keyword "%'; DROP TABLE users; --")
-      (keyword "%count); DROP TABLE users; --"))))
+(deftest ^:parallel percent-keyword-throws-test
+  (testing "Honey SQL's `:%f.arg` call shorthand throws in every position, known function or not"
+    (are [query] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"call shorthand"
+                  (mu/disable-enforcement (funnysql.format/format query :postgres)))
+      {:where [:= :field :%now]}
+      {:where [:= :field :%current_schema]}
+      {:where [:= :field :%count.*]}
+      {:where [:= :field :%lower.email]}
+      {:where [:= :%lower.metabase_field/name 1]}
+      {:where [:= :%coalesce.a.b 1]}
+      {:select [:%count.*] :from [:t]}
+      {:select [[:%max.id :id]] :from [:t]}
+      {:order-by [[:%lower.name :asc]] :from [:t]}
+      {:update :t :set {:updated_at :%now}}
+      {:where [:= :field (keyword "%'; DROP TABLE users; --")]}
+      {:where [:= :field (keyword "%count); DROP TABLE users; --")]})))
 
 (deftest ^:parallel e2e-test
   (is (= ["SELECT \"X\", \"Y\" AS \"ALIAS\" FROM \"TABLE\" WHERE (\"FIELD\" = 100) AND (\"FIELD\" < ?) AND (\"TABLE\".\"FIELD\" IN (1, 2, 3))"
@@ -1222,11 +1218,11 @@
     (is (= [(str "SELECT \"id\", (SELECT count(*) FROM \"b\" WHERE \"b\".\"a_id\" = \"a\".\"id\") AS \"n\","
                  " coalesce((SELECT max(\"x\") FROM \"b\"), 0) AS \"m\" FROM \"a\"")]
            (funnysql.format/format {:select [:id
-                                             [^:allow-subquery {:select [:%count.*]
+                                             [^:allow-subquery {:select [[[:count :*]]]
                                                                 :from   [:b]
                                                                 :where  [:= :b.a_id :a.id]}
                                               :n]
-                                             [[:coalesce ^:allow-subquery {:select [[:%max.x]] :from [:b]} 0]
+                                             [[:coalesce ^:allow-subquery {:select [[[:max :x]]] :from [:b]} 0]
                                               :m]]
                                     :from   [:a]}
                                    :postgres))))
@@ -1236,7 +1232,7 @@
                                     :from   [[^:allow-subquery {:select [:id] :from [:b]} :sub]]
                                     :where  [:and
                                              [:in :x ^:allow-subquery {:select [:id] :from [:c]}]
-                                             [:= ^:allow-subquery {:select [[:%max.y]] :from [:d]} 1]]}
+                                             [:= ^:allow-subquery {:select [[[:max :y]]] :from [:d]} 1]]}
                                    :postgres))))
   (testing "`INSERT INTO ... SELECT` doesn't parenthesize the `SELECT`"
     (is (= ["INSERT INTO \"a\" (\"id\") SELECT \"id\" FROM \"b\""]
@@ -1294,7 +1290,7 @@
          (funnysql.format/format {:create-table [:table]
                                   :with-columns [[:id :bigint [:primary-key] [:generated-by-default-as-identity]]
                                                  [:created_at :timestamp-with-time-zone
-                                                  [:default :%current-timestamp]
+                                                  [:default [:current-timestamp]]
                                                   :not-null]
                                                  [:model [:varchar 32] :not-null]]}
                                  :postgres))))
@@ -1337,7 +1333,7 @@
       0.5                  "0.5"
       (/ 1 4)              "0.25"
       [:literal "x"]       "'x'"
-      :%current-timestamp  "now()"))
+      [:current-timestamp] "now()"))
   (testing "anything that would compile to a `?` throws instead of producing a CREATE TABLE the database rejects"
     (are [default] (thrown-with-msg?
                     clojure.lang.ExceptionInfo

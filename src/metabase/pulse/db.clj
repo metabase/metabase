@@ -312,7 +312,7 @@
   [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
   (into {}
         (map (juxt :pulse_id :max))
-        (app-db/select-batched #(app-db/query {:select   [:pulse_id [:%max.position :max]]
+        (app-db/select-batched #(app-db/query {:select   [:pulse_id [[:max :position] :max]]
                                                :from     [(t2/table-name :model/PulseCard)]
                                                :where    [:in :pulse_id %]
                                                :group-by [:pulse_id]})
@@ -502,7 +502,7 @@
   [channel-ids :- [:sequential ms/PositiveInt]]
   (into {}
         (map (juxt :pulse_channel_id :count))
-        (app-db/select-batched #(t2/select [:model/PulseChannelRecipient :pulse_channel_id [:%count.* :count]]
+        (app-db/select-batched #(t2/select [:model/PulseChannelRecipient :pulse_channel_id [[:count :*] :count]]
                                            :pulse_channel_id [:in %]
                                            {:group-by [:pulse_channel_id]})
                                channel-ids)))

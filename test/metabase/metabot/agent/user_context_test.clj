@@ -530,8 +530,8 @@
                                                 {:db_id      destination-id
                                                  :name       "destination-table"
                                                  :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
+                                                 :created_at [:now]
+                                                 :updated_at [:now]})]
           (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
             (let [result (user-context/format-viewing-context
                           {:user_is_viewing [{:type "table" :id table-id}]})]

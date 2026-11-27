@@ -925,7 +925,7 @@
       (when (pos? <>)
         (events/publish-event! :event/field-values-update
                                (events/update-event {(:id field-values) (t2/instance :model/FieldValues field-values)}
-                                                    [{:id (:id field-values) :last_used_at :%now}]))))))
+                                                    [{:id (:id field-values) :last_used_at [:now]}]))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

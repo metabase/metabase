@@ -108,7 +108,7 @@
                                      (merge {:id         id
                                              :key_hashed (session/hash-session-key (session/generate-session-key))
                                              :user_id    user-id
-                                             :created_at :%now}
+                                             :created_at [:now]}
                                             extra))
                          id))
             login!   (fn [session-id ip]
@@ -117,7 +117,7 @@
                                                         :device_id          (str (random-uuid))
                                                         :device_description windows-user-agent
                                                         :ip_address         ip}))]
-        (login! (session! :key_hashed nil :ended_at :%now :end_reason "admin") "10.0.0.1")
+        (login! (session! :key_hashed nil :ended_at [:now] :end_reason "admin") "10.0.0.1")
         (login! (session! :expires_at (t/minus (t/instant) (t/minutes 1))) "10.0.0.2")
         (login! (session!) "10.0.0.3")
         (login! nil "10.0.0.4")

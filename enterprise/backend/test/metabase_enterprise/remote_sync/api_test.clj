@@ -316,7 +316,7 @@
         (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
                        :model/Card       _      {:name "Synced card" :collection_id (:id synced)}
                        :model/RemoteSyncTask _  {:sync_task_type "export" :version "0000000000000000000000000000000000000000"
-                                                 :started_at :%now :ended_at :%now}]
+                                                 :started_at [:now] :ended_at [:now]}]
           (testing "all synced content is dirty when the repository lacks the version of the last sync"
             (is (= {:is_dirty true} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))
             (is (=? {:dirty [{:name "Synced card" :sync_status "create"}]}

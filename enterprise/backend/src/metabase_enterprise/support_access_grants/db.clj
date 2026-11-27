@@ -25,7 +25,7 @@
   []
   (t2/select-one :model/SupportAccessGrantLog
                  {:where    [:and [:= :revoked_at nil]
-                             [:> :grant_end_timestamp :%now]]
+                             [:> :grant_end_timestamp [:now]]]
                   :order-by [[:created_at :desc]
                              [:id :desc]]}))
 

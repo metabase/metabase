@@ -1881,8 +1881,8 @@
                                                 {:db_id      destination-id
                                                  :name       "destination-table"
                                                  :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
+                                                 :created_at [:now]
+                                                 :updated_at [:now]})]
           (mt/with-temp [:model/Card    {model-id :id}    {:type :model :database_id destination-id}
                          :model/Card    {question-id :id} {:type :question :database_id destination-id}
                          :model/Card    {metric-id :id}   {:type :metric :database_id destination-id}

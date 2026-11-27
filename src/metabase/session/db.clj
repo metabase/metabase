@@ -58,13 +58,13 @@
            [:user_id          ::lib.schema.id/user]
            [:anti_csrf_token  :nil]
            [:auth_identity_id ms/PositiveInt]
-           [:created_at       :keyword]]]
+           [:created_at       [:= [:now]]]]]
   (t2/insert-returning-instance! (t2/table-name :model/Session) row))
 
 (defn- session-ending
   "The columns that record the ending of a Session with `reason` by `ended-by`, clearing its key."
   [reason ended-by]
-  {:ended_at         :%now
+  {:ended_at         [:now]
    :end_reason       reason
    :ended_by_user_id ended-by
    :key_hashed       nil})
@@ -114,7 +114,7 @@
   (when-not (string? key-hashed)
     (throw (ex-info "key-hashed must be a string" {:key-hashed key-hashed})))
   (t2/query-one {:update (t2/table-name :model/Session)
-                 :set    {:last_active_at :%now}
+                 :set    {:last_active_at [:now]}
                  :where  [:= :key_hashed key-hashed]}))
 
 (mu/defn sessions-with-unrecorded-ending :- [:sequential [:map {:closed true}
@@ -197,7 +197,7 @@
   [email :- :string]
   (when-not (string? email)
     (throw (ex-info "email must be a string" {:email email})))
-  (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
+  (t2/select-one [:model/User :id :sso_source :is_active] {:where [:= [:lower :email] (u/lower-case-en email)]}))
 
 (mu/defn user
   "The User with `user-id`, or nil."

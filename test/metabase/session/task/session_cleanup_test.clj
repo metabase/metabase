@@ -22,7 +22,7 @@
                 (merge {:id         id
                         :key_hashed (session/hash-session-key (str (random-uuid)))
                         :user_id    user-id
-                        :created_at :%now}
+                        :created_at [:now]}
                        extra-cols))
     id))
 

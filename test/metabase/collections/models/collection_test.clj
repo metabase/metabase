@@ -553,7 +553,7 @@
          (t2/delete! :model/Collection :name name#)))))
 
 (defn- nonexistent-collection-id []
-  (inc (or (:max (t2/select-one [:model/Collection [:%max.id :max]]))
+  (inc (or (:max (t2/select-one [:model/Collection [[:max :id] :max]]))
            0)))
 
 (deftest crud-validate-path-test

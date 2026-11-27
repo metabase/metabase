@@ -72,7 +72,7 @@
 (mu/defn synced-card-counts-by-type :- [:map-of :keyword :int]
   "The number of Cards remote sync syncs, by `:type`."
   []
-  (t2/select-fn->fn :type :count [:model/Card :type [:%count.* :count]]
+  (t2/select-fn->fn :type :count [:model/Card :type [[:count :*] :count]]
                     :id [:in (remote-sync/synced-ids-clause :model/Card nil)]
                     {:group-by [:type]}))
 
@@ -143,18 +143,18 @@
   "Apply `changes` to the RemoteSyncTask with `task-id` and mark it ended now."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask :id task-id (assoc changes :ended_at :%now)))
+  (t2/update! :model/RemoteSyncTask :id task-id (assoc changes :ended_at [:now])))
 
 (mu/defn report-task-progress!
   "Record `progress` for the RemoteSyncTask with `task-id`, stamping the progress report time."
   [task-id  :- ms/PositiveInt
    progress :- number?]
-  (t2/update! :model/RemoteSyncTask :id task-id {:progress progress, :last_progress_report_at :%now}))
+  (t2/update! :model/RemoteSyncTask :id task-id {:progress progress, :last_progress_report_at [:now]}))
 
 (mu/defn touch-task!
   "Stamps the heartbeat of the RemoteSyncTask with `task-id` unless it ended, returning the number of rows updated."
   [task-id :- ms/PositiveInt]
-  (t2/update! :model/RemoteSyncTask {:id task-id, :ended_at nil} {:last_heartbeat_at :%now}))
+  (t2/update! :model/RemoteSyncTask {:id task-id, :ended_at nil} {:last_heartbeat_at [:now]}))
 
 (mu/defn supersede-stale-tasks! :- [:sequential ms/PositiveInt]
   "Cancels and ends with the error `message` the running RemoteSyncTasks last alive before `cutoff`, returning their
@@ -169,7 +169,7 @@
     (when (seq ids)
       (t2/query {:update (t2/table-name :model/RemoteSyncTask)
                  :set    {:cancelled     true
-                          :ended_at      :%now
+                          :ended_at      [:now]
                           :error_message message}
                  :where  [:and stale [:in :id ids]]}))
     ids))

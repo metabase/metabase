@@ -119,7 +119,7 @@
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select :model/Table
                                 :db_id (u/the-id db-or-id), :active true, :visibility_type nil
-                                {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+                                {:order-by [[[:lower :schema] :asc] [[:lower :display_name] :asc]]})))
 
 (defn- field-details [field]
   (mt/derecordize

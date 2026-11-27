@@ -40,7 +40,7 @@
               {:input_hash input-hash}
               (assoc changes
                      :seen_count   [:+ :seen_count 1]
-                     :last_seen_at :%now)))
+                     :last_seen_at [:now])))
 
 (mu/defn insert-shadow-difference! :- :int
   "Insert a shadow difference `row`. Returns the number of rows inserted."

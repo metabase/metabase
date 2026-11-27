@@ -207,8 +207,8 @@
                                                       :bundle_path            "index.js"
                                                       :entity_id              (subs (str slug "-" (apply str (repeat 21 "a"))) 0 21)
                                                       :resource_collection_id collection-id
-                                                      :created_at             :%now
-                                                      :updated_at             :%now}]}))]
+                                                      :created_at             [:now]
+                                                      :updated_at             [:now]}]}))]
           (mt/with-temp [:model/Collection {free-id :id} {:namespace :data-apps}]
             (testing "the same row on a collection no app owns goes in"
               (insert! "sparrows" free-id)

@@ -283,7 +283,7 @@
           (with-successful-oidc!
             (t2/delete! :model/User :email "example@slack.com")
             (letfn [(new-user-exists? []
-                      (boolean (seq (t2/select :model/User :%lower.email "example@slack.com"))))]
+                      (boolean (seq (t2/select :model/User {:where [:= [:lower :email] "example@slack.com"]}))))]
               (is (false? (new-user-exists?)))
               ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"

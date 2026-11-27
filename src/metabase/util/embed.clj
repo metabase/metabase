@@ -40,4 +40,4 @@
   [{:keys [enable_embedding initially_published_at] :as card-or-dashboard}]
   (cond-> card-or-dashboard
     (and (true? enable_embedding) (nil? initially_published_at))
-    (assoc :initially_published_at :%now)))
+    (assoc :initially_published_at [:now])))

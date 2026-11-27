@@ -200,7 +200,7 @@
   inside a transaction."
   []
   (case (mdb/db-type)
-    :postgres :%statement_timestamp
+    :postgres [:statement_timestamp]
     [:current-timestamp]))
 
 (defn- duration-clause
@@ -252,7 +252,7 @@
 (mu/defn heartbeat-started-task-runs!
   "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."
   [process-uuid :- :string]
-  (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at :%now}))
+  (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at [:now]}))
 
 (mu/defn mark-started-tasks-unknown!
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, ended at the app DB's now, returning
@@ -260,15 +260,15 @@
   [run-ids :- [:set ms/PositiveInt]]
   (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/TaskHistory
                                                           {:status :started, :run_id [:in %]}
-                                                          {:status :unknown, :ended_at :%now}) run-ids))
+                                                          {:status :unknown, :ended_at [:now]}) run-ids))
 
 (mu/defn set-started-task-runs-terminal!
   "Apply the `terminal` column values to the started TaskRuns with `run-ids`, returning the number updated."
   [run-ids  :- [:sequential ms/PositiveInt]
    terminal :- [:map {:closed true}
                 [:status    {:optional true} [:maybe [:or :string :keyword]]]
-                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
-                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string [:= [:now]]]]]
+                [:ended_at  {:optional true} [:maybe [:or :string [:= [:now]]]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
   [(mdb/sum-batched mdb/update-partition-size #(first (t2/query (rt/terminal-statement :model/TaskRun [:status "started"] % terminal))) run-ids)])

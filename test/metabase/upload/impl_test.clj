@@ -581,7 +581,7 @@
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
-  (t2/select-one-fn :database_position :model/Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
+  (t2/select-one-fn :database_position :model/Field :table_id (:id table) {:where [:= [:lower :name] (u/lower-case-en column-name)]}))
 
 (deftest create-from-csv-test
   (doseq [[separator lines] example-files]
@@ -732,7 +732,7 @@
           (testing "Fields exists after sync"
             (testing "Check the datetime column the correct base_type"
               (is (=? :type/DateTime
-                      (t2/select-one-fn :base_type :model/Field :%lower.name "datetime" :table_id (:id table)))))
+                      (t2/select-one-fn :base_type :model/Field :table_id (:id table) {:where [:= [:lower :name] "datetime"]}))))
             (is (some? table))))))))
 
 (deftest create-from-csv-offset-datetime-test
@@ -759,7 +759,7 @@
                             :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
                     (testing "Check the offset datetime column the correct base_type"
                       (is (=? :type/DateTimeWithLocalTZ
-                              (t2/select-one-fn :base_type :model/Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                              (t2/select-one-fn :base_type :model/Field :table_id (:id table) {:where [:= [:lower :name] "offset_datetime"]}))))
                     (let [position (column-position table "offset_datetime")
                           values   (map #(nth % position) (rows-for-table table))]
                       (is (= expected
@@ -793,7 +793,7 @@
           (testing "Table and Fields exist after sync"
             (testing "Check the boolean column has a boolean base_type"
               (is (= :type/Boolean
-                     (t2/select-one-fn :base_type :model/Field :%lower.name "bool" :table_id (:id table)))))
+                     (t2/select-one-fn :base_type :model/Field :table_id (:id table) {:where [:= [:lower :name] "bool"]}))))
             (testing "Check the data was uploaded into the table correctly"
               (let [position    (column-position table "bool")
                     bool-column (map #(nth % position) (rows-for-table table))
@@ -1189,7 +1189,7 @@
                (is (= "complete"
                       (:initial_sync_status (t2/select-one :model/Table :id (:id new-table))))
                    "The table is synced and marked as complete")
-               (is (t2/exists? :model/Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+               (is (t2/exists? :model/Field :table_id (:id new-table) :semantic_type :type/Name {:where [:= [:lower :name] "name"]})
                    "The sync actually runs")))))
         (finally
           (t2/update! :model/Database :id db-id original-sync-values))))))

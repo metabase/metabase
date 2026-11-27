@@ -58,7 +58,7 @@
                 "internal" [:and base-where [:or [:= :is_tenant_group false] [:= :is_tenant_group nil]]]
                 base-where)]
     (t2/select :model/PermissionsGroup
-               (cond-> {:where where :order-by [:%lower.name]}
+               (cond-> {:where where :order-by [[[:lower :name]]]}
                  limit  (assoc :limit limit)
                  offset (assoc :offset offset)))))
 

@@ -792,7 +792,7 @@
                                       :content         (comment-content "resolved note")}
                    :model/Comment  _ {:target_id       doc-id
                                       :child_target_id "para-2"
-                                      :deleted_at      :%now
+                                      :deleted_at      [:now]
                                       :content         (comment-content "deleted note")}
                    :model/Comment  _ {:target_id       doc-id
                                       :child_target_id "gone-0000"

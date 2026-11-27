@@ -97,7 +97,7 @@
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Card     {card-id :id} (card)
                    :model/CardTest {test-id :id} {:card_id card-id :inputs inputs :expectations expectations}]
-      (let [missing-id (inc (t2/select-one-fn :max-id [:model/Card [:%max.id :max-id]]))]
+      (let [missing-id (inc (t2/select-one-fn :max-id [:model/Card [[:max :id] :max-id]]))]
         (testing "even for an admin, the permission check refuses a card that does not exist"
           (mt/user-http-request :crowberto :post 403 "ee/card-test" (body missing-id))
           (mt/user-http-request :crowberto :put 403 (str "ee/card-test/" test-id) {:card_id missing-id}))

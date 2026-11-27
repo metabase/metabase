@@ -76,7 +76,7 @@
   "Whether a User other than `user-id` has an email matching `email` case-insensitively."
   [email   :- :string
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= user-id]))
+  (t2/exists? :model/User :id [:not= user-id] {:where [:= [:lower :email] (u/lower-case-en email)]}))
 
 (mu/defn user
   "The User with `user-id`, or nil."

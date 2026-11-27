@@ -675,13 +675,13 @@
           (comp (remove (comp excluded :id))
                 (map (comp u/lower-case-en :name)))
           (mdb/select-batched #(t2/select [:model/PermissionsGroup :id :name]
-                                          {:where [:in :%lower.name %]})
+                                          {:where [:in [:lower :name] %]})
                               (distinct lower-names)))))
 
 (mu/defn group-exists-with-lower-names? :- :boolean
   "Whether a PermissionsGroup exists whose lower-cased name is one of `lower-names`."
   [lower-names :- [:sequential {:min 1} :string]]
-  (boolean (some #(t2/exists? :model/PermissionsGroup :%lower.name [:in %])
+  (boolean (some #(t2/exists? :model/PermissionsGroup {:where [:in [:lower :name] %]})
                  (mdb/select-partitions (distinct lower-names)))))
 
 (mu/defn groups-except-magic-type
@@ -716,7 +716,7 @@
   [group-ids :- [:set ms/PositiveInt]]
   (mdb/select-batched #(t2/select [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group]
                                   :id [:in %]
-                                  {:order-by [:%lower.name]})
+                                  {:order-by [[[:lower :name]]]})
                       group-ids))
 
 (mu/defn group-members
@@ -811,17 +811,17 @@
 (mu/defn latest-permissions-revision-id
   "The highest ID of any PermissionsRevision, or nil."
   []
-  (:id (t2/select-one [:model/PermissionsRevision [:%max.id :id]])))
+  (:id (t2/select-one [:model/PermissionsRevision [[:max :id] :id]])))
 
 (mu/defn latest-collection-permission-graph-revision-id
   "The highest ID of any CollectionPermissionGraphRevision, or nil."
   []
-  (:id (t2/select-one [:model/CollectionPermissionGraphRevision [:%max.id :id]])))
+  (:id (t2/select-one [:model/CollectionPermissionGraphRevision [[:max :id] :id]])))
 
 (mu/defn latest-application-permissions-revision-id
   "The highest ID of any ApplicationPermissionsRevision, or nil."
   []
-  (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
+  (:id (t2/select-one [:model/ApplicationPermissionsRevision [[:max :id] :id]])))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -1277,7 +1277,7 @@
 (mu/defn earliest-user-join-date
   "The earliest `date_joined` of any User, or nil."
   []
-  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
+  (:min (t2/select-one [:model/User [[:min :date_joined] :min]])))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 

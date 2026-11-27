@@ -125,7 +125,7 @@
                                                                                             :where  [:and
                                                                                                      (entities-clause :r %)
                                                                                                      [:<= kept ^:allow-subquery
-                                                                                                      {:select [:%count.*]
+                                                                                                      {:select [[[:count :*]]]
                                                                                                        :from   [[(t2/table-name :model/Revision) :newer]]
                                                                                                        :where  [:and
                                                                                                                 [:= :newer.model :r.model]

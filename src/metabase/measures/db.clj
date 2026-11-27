@@ -33,7 +33,7 @@
 (mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."
   []
-  (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
+  (t2/select :model/Measure, :archived false, {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

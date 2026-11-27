@@ -155,7 +155,7 @@
                [:error_message {:optional true} [:maybe :string]]]]
   (when (seq ids)
     (indexes.db/update-table-index-statuses! (indexes.db/table-index-statuses (vec ids))
-                                             (assoc changes :last_executed_at :%now)))
+                                             (assoc changes :last_executed_at [:now])))
   nil)
 
 (defn mark-runnable-indexes-running!
@@ -177,7 +177,7 @@
   (when (seq ids)
     (indexes.db/mark-running-table-indexes-failed! (filterv #(= :running (:status %))
                                                             (indexes.db/table-index-statuses (vec ids)))
-                                                   {:status :failed :error_message message :last_executed_at :%now})))
+                                                   {:status :failed :error_message message :last_executed_at [:now]})))
 
 (defn mark-for-revalidation!
   "Flip the applicable index requests of the Transforms with `transform-ids` to `:update-pending` and clear stale errors,

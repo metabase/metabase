@@ -9,4 +9,4 @@
 (mu/defn user-id-and-active-by-email
   "The `:id` and `:is_active` of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
-  (t2/select-one [:model/User :id :is_active] :%lower.email (u/lower-case-en email)))
+  (t2/select-one [:model/User :id :is_active] {:where [:= [:lower :email] (u/lower-case-en email)]}))

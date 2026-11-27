@@ -53,8 +53,8 @@
   (t2/query {:insert-into (t2/table-name :model/Database)
              :values      [{:engine     "mysql"
                             :name       test-unicode-str
-                            :created_at :%now
-                            :updated_at :%now
+                            :created_at [:now]
+                            :updated_at [:now]
                             :details    "{}"}]}))
 
 (deftest utf8-test

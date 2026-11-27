@@ -13,7 +13,7 @@
 (mu/defn active-field-counts-by-table
   "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (mdb/select-batched #(t2/query {:select   [:table_id [:%count.* :field_count]]
+  (mdb/select-batched #(t2/query {:select   [:table_id [[:count :*] :field_count]]
                                   :from     [(t2/table-name :model/Field)]
                                   :where    [:and
                                              [:= :active true]
@@ -96,7 +96,7 @@
               {:where [:and
                        [:= :fingerprint fingerprint]
                        [:= :source source]
-                       [:>= :created_at [:date-add :%now (- hours) :hour]]]}))
+                       [:>= :created_at [:date-add [:now] (- hours) :hour]]]}))
 
 (mu/defn insert-score!
   "Insert `score-entry` and return its ID."

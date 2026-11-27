@@ -447,12 +447,12 @@
                       (testing "Correct number fo tables updated by set-initial-table-sync-complete-for-db! in batches"
                         (is (= 2 @tables-updated)))))
                   (sync-fields-and-fks!))
-                (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
+                (let [continent-id-field (t2/select-one :model/Field :table_id (mt/id :continent) {:where [:= [:lower :name] "id"]})]
                   (is (= [{:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (u/the-id continent-id-field)}
                           {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
                           {:name "name",         :semantic_type nil,      :fk_target_field_id nil}]
                          (->> (t2/select [:model/Field
-                                          [:%lower.name :name]
+                                          [[:lower :name] :name]
                                           :semantic_type
                                           :fk_target_field_id]
                                          :table_id [:in (map :id tables)])

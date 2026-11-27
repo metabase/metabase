@@ -527,30 +527,18 @@
       (append-sql! context ")"))))
 
 (defn- expr-identifier!
-  "Compile a keyword as a quoted and escaped identifier, or a `:%f.arg` shorthand as the call it names."
+  "Compile a keyword as a quoted and escaped identifier, throwing for Honey SQL's `:%f.arg` call shorthand, which Funny
+  SQL does not support: a call is always the vector `[:f arg]`."
   [k context]
-  ;; the `%` shorthand can carry a `/` (`:%lower.metabase_field/name`), so match against the keyword's whole printed
-  ;; form rather than just its name
-  (let [s (if-let [kw-ns (namespace k)]
-            (str kw-ns "/" (name k))
-            (name k))]
-    (cond
-      ;; function keyword e.g. `:%now`, `:%count.*`, or `:%lower.metabase_field/name`. This has to come before the
-      ;; qualified-keyword case: `:%lower.metabase_field/name` *is* a qualified keyword -- its namespace is
-      ;; `%lower.metabase_field` -- but it means `lower(metabase_field.name)`, not an identifier. `.` separates the
-      ;; function name from its arguments, and a `/` within an argument qualifies it as `table.column`.
-      (str/starts-with? s "%")
-      (let [[f & args] (str/split (subs s 1) #"\.")]
-        (call! (into [(keyword f)] (map keyword) args) context))
-
-      (qualified-keyword? k)
-      (do
-        (identifier! (namespace k) context)
-        (append-sql! context ".")
-        (identifier! (name k) context))
-
-      :else
-      (identifier! (name k) context))))
+  (when (str/starts-with? (u/qualified-name k) "%")
+    (throw (ex-info (clojure.core/format "Funny SQL doesn't support the %s call shorthand; write the call as a vector" k)
+                    {:identifier k})))
+  (if (qualified-keyword? k)
+    (do
+      (identifier! (namespace k) context)
+      (append-sql! context ".")
+      (identifier! (name k) context))
+    (identifier! (name k) context)))
 
 (defn- expr-value!
   "Compile a literal value: `NULL`, `TRUE`/`FALSE`, a number, or a bound `?`."
@@ -894,9 +882,9 @@
 (defn- call!
   "Compile a call, dispatching on its operator like [[::funnysql.schema/expr.call]]."
   [[f & args :as form] context]
-  ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
-  ;; `:%foo` keyword (see `expr-identifier!`), so an unrecognized function name must throw instead of being spliced
-  ;; into the SQL raw. All allowed functions need to be explicitly whitelisted.
+  ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from attacker-derived input,
+  ;; so an unrecognized function name must throw instead of being spliced into the SQL raw. All allowed functions need
+  ;; to be explicitly whitelisted.
   ;;
   ;; ⚠⚠⚠ DO NOT ADD SUPPORT FOR `:raw` -- IT IS NOT SUPPORTED ON PURPOSE ⚠⚠⚠
   ;;

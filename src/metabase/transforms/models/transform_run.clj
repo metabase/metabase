@@ -305,7 +305,7 @@
                    :active   [:is_active true]
                    :stale    [{:column stale-column :age age :unit unit}]
                    :set-terminal! #(transforms.db/set-active-runs-terminal!
-                                    :model/TransformRun % {:status "timeout" :end_time :%now :is_active nil :message message})
+                                    :model/TransformRun % {:status "timeout" :end_time [:now] :is_active nil :message message})
                    :metrics  {:total-metric   :metabase-transforms/timeouts-total
                               :latency-metric :metabase-transforms/timeout-detection-latency-ms
                               :tags           {:type "transform"}

@@ -39,7 +39,7 @@
                   :table-id      :related.table_id}
    :search-terms [:this.name :description]
    :render-terms {:related-field [:lower :related.field]
-                  :funky-field   :%now}})
+                  :funky-field   [:now]}})
 
 (deftest ^:parallel test-find-fields
   (is (= {:this    #{:name :description :collection_id :db_id}
@@ -50,8 +50,8 @@
   (is (= :column (#'search.spec/replace-qualification :column :table :sable)))
   (is (= :sable.column (#'search.spec/replace-qualification :table.column :table :sable)))
   (is (= :table.column (#'search.spec/replace-qualification :table.column :cable :sable)))
-  (is (= [:and :c.x [:or :c.y [:= :%now :b.z :c.xx]]]
-         (#'search.spec/replace-qualification [:and :a.x [:or :a.y [:= :%now :b.z :a.xx]]] :a :c))))
+  (is (= [:and :c.x [:or :c.y [:= [:now] :b.z :c.xx]]]
+         (#'search.spec/replace-qualification [:and :a.x [:or :a.y [:= [:now] :b.z :a.xx]]] :a :c))))
 
 (deftest ^:parallel search-model-hooks-test
   ;; TODO replace real specs with frozen test ones once things have stabilized

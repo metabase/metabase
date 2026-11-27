@@ -324,7 +324,7 @@
 (defn- dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
   []
-  [^:allow-subquery {:select [:%count.*]
+  [^:allow-subquery {:select [[[:count :*]]]
                      :from   [(t2/table-name :model/DashboardCard)]
                      :where  [:= (u/qualified-key (t2/table-name :model/DashboardCard) :card_id) :card.id]}
    :dashboardcard_count])

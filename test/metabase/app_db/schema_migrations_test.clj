@@ -116,7 +116,7 @@
                                          :first_name   (mt/random-name)
                                          :last_name    (mt/random-name)
                                          :password     (str (random-uuid))
-                                         :date_joined  :%now
+                                         :date_joined  [:now]
                                          :is_active    true
                                          :is_superuser false)))
 
@@ -220,21 +220,21 @@
                                                                                           :name      "populate-collection-created-at-test-db"}))
             table-id    (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      database-id
                                                                                        :name       "Table"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
+                                                                                       :created_at [:now]
+                                                                                       :updated_at [:now]
                                                                                        :active     true}))
             field-1-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name          "F1"
                                                                                        :table_id      table-id
                                                                                        :base_type     "type/Text"
                                                                                        :database_type "TEXT"
-                                                                                       :created_at    :%now
-                                                                                       :updated_at    :%now}))
+                                                                                       :created_at    [:now]
+                                                                                       :updated_at    [:now]}))
             field-2-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name          "F2"
                                                                                        :table_id      table-id
                                                                                        :base_type     "type/Text"
                                                                                        :database_type "TEXT"
-                                                                                       :created_at    :%now
-                                                                                       :updated_at    :%now}))
+                                                                                       :created_at    [:now]
+                                                                                       :updated_at    [:now]}))
             _           (t2/insert! (t2/table-name :model/Dimension) {:field_id   field-1-id
                                                                       :name       "F1 D1"
                                                                       :type       "internal"
@@ -268,21 +268,21 @@
                                                                                    :last_name   "Hughes"
                                                                                    :email       "howard@aircraft.com"
                                                                                    :password    "superstrong"
-                                                                                   :date_joined :%now}))
+                                                                                   :date_joined [:now]}))
             db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                        :engine     "postgres"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
+                                                                                       :created_at [:now]
+                                                                                       :updated_at [:now]
                                                                                        :settings    "{\"database-enable-actions\":true}"
                                                                                        :details    "{}"}))
             table-id (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                     :name       "Table"
-                                                                                    :created_at :%now
-                                                                                    :updated_at :%now
+                                                                                    :created_at [:now]
+                                                                                    :updated_at [:now]
                                                                                     :active     true}))
             model-id (first (t2/insert-returning-pks! (t2/table-name :model/Card) {:name                   "My Saved Question"
-                                                                                   :created_at             :%now
-                                                                                   :updated_at             :%now
+                                                                                   :created_at             [:now]
+                                                                                   :updated_at             [:now]
                                                                                    :creator_id             user-id
                                                                                    :table_id               table-id
                                                                                    :display                "table"
@@ -294,8 +294,8 @@
                                                                 :type       "implicit"
                                                                 :model_id   model-id
                                                                 :archived   false
-                                                                :created_at :%now
-                                                                :updated_at :%now})]
+                                                                :created_at [:now]
+                                                                :updated_at [:now]})]
         (is (thrown? clojure.lang.ExceptionInfo
                      (t2/delete! :model/Database :id db-id)))
         (migrate!)
@@ -306,14 +306,14 @@
     (impl/test-migrations ["v46.00-088" "v46.00-090"] [migrate!]
       (let [db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "DB"
                                                                                        :engine     "h2"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
+                                                                                       :created_at [:now]
+                                                                                       :updated_at [:now]
                                                                                        :details    "{}"}))
             table-id (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                     :schema     "SchemaName"
                                                                                     :name       "Table"
-                                                                                    :created_at :%now
-                                                                                    :updated_at :%now
+                                                                                    :created_at [:now]
+                                                                                    :updated_at [:now]
                                                                                     :active     true}))
             _        (t2/query-one {:insert-into :sandboxes
                                     :values      [{:group_id             1
@@ -347,25 +347,25 @@
              mysql-db-id] (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                     [{:name "PG Database"
                                                       :engine "postgres"
-                                                      :created_at :%now
-                                                      :updated_at :%now
+                                                      :created_at [:now]
+                                                      :updated_at [:now]
                                                       :details "{}"}
                                                      {:name "MySQL Database"
                                                       :engine "mysql"
-                                                      :created_at :%now
-                                                      :updated_at :%now
+                                                      :created_at [:now]
+                                                      :updated_at [:now]
                                                       :details "{}"}])
             [pg-table-id
              mysql-table-id] (t2/insert-returning-pks! (t2/table-name :model/Table)
                                                        [{:db_id pg-db-id
                                                          :name "PG Table"
-                                                         :created_at :%now
-                                                         :updated_at :%now
+                                                         :created_at [:now]
+                                                         :updated_at [:now]
                                                          :active true}
                                                         {:db_id mysql-db-id
                                                          :name "MySQL Table"
-                                                         :created_at :%now
-                                                         :updated_at :%now
+                                                         :created_at [:now]
+                                                         :updated_at [:now]
                                                          :active true}])
             [pg-field-1-id
              pg-field-2-id
@@ -402,14 +402,14 @@
                      :values      [{:first_name    "Cam"
                                     :last_name     "Era"
                                     :email         "cam@era.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :password      "password"
                                     :password_salt "and pepper"
                                     :google_auth   false}
                                    {:first_name    "Google Cam"
                                     :last_name     "Era"
                                     :email         "ldap_cam@era.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :password      "password"
                                     :password_salt "and pepper"
                                     :google_auth   true}]})
@@ -427,14 +427,14 @@
                      :values      [{:first_name    "Cam"
                                     :last_name     "Era"
                                     :email         "cam@era.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :password      "password"
                                     :password_salt "and pepper"
                                     :ldap_auth     false}
                                    {:first_name    "LDAP Cam"
                                     :last_name     "Era"
                                     :email         "ldap_cam@era.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :password      "password"
                                     :password_salt "and pepper"
                                     :ldap_auth     true}]})
@@ -522,7 +522,7 @@
                                                       :model_id    1
                                                       :user_id     user-id
                                                       :object      "{}"
-                                                      :timestamp   :%now})
+                                                      :timestamp   [:now]})
             rev-dash-2-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                      {:model       "dashboard"
                                                       :model_id    2
@@ -535,7 +535,7 @@
                                                       :model_id    2
                                                       :user_id     user-id
                                                       :object      "{}"
-                                                      :timestamp   :%now})
+                                                      :timestamp   [:now]})
             rev-card-1-old  (t2/insert-returning-pk! (t2/table-name :model/Revision)
                                                      {:model       "card"
                                                       :model_id    1
@@ -548,7 +548,7 @@
                                                       :model_id    1
                                                       :user_id     user-id
                                                       :object      "{}"
-                                                      :timestamp   :%now})]
+                                                      :timestamp   [:now]})]
         (migrate!)
         (is (= #{false} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
                                           :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old]])))
@@ -613,7 +613,7 @@
         (let [_activity-1 (t2/insert-returning-pks! :activity
                                                     {:topic       "card-create"
                                                      :user_id     1
-                                                     :timestamp   :%now
+                                                     :timestamp   [:now]
                                                      :model       "Card"
                                                      :model_id    2
                                                      :database_id 1
@@ -645,7 +645,7 @@
         (let [_activity-1 (t2/insert-returning-pks! "activity"
                                                     {:topic       "card-create"
                                                      :user_id     1
-                                                     :timestamp   :%now
+                                                     :timestamp   [:now]
                                                      :model       "Card"
                                                      :model_id    2
                                                      :database_id 1
@@ -679,27 +679,27 @@
                                                                                           :name      "populate-collection-created-at-test-db"}))
             table-1-id  (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      database-id
                                                                                        :name       "Table 1"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
+                                                                                       :created_at [:now]
+                                                                                       :updated_at [:now]
                                                                                        :active     true}))
             table-2-id  (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      database-id
                                                                                        :name       "Table 2"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
+                                                                                       :created_at [:now]
+                                                                                       :updated_at [:now]
                                                                                        :active     true}))
             field-1-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name          "F1"
                                                                                        :table_id      table-1-id
                                                                                        :base_type     "type/Text"
                                                                                        :database_type "TEXT"
-                                                                                       :created_at    :%now
-                                                                                       :updated_at    :%now
+                                                                                       :created_at    [:now]
+                                                                                       :updated_at    [:now]
                                                                                        :active        false}))
             field-2-id  (first (t2/insert-returning-pks! (t2/table-name :model/Field) {:name               "F2"
                                                                                        :table_id           table-2-id
                                                                                        :base_type          "type/Text"
                                                                                        :database_type      "TEXT"
-                                                                                       :created_at         :%now
-                                                                                       :updated_at         :%now
+                                                                                       :created_at         [:now]
+                                                                                       :updated_at         [:now]
                                                                                        :active             true
                                                                                        :fk_target_field_id field-1-id
                                                                                        :semantic_type      "type/FK"}))]
@@ -734,7 +734,7 @@
                                                                 :first_name "Metabase Internal User"
                                                                 :email "internal@metabase.com"
                                                                 :password (str (random-uuid))
-                                                                :date_joined :%now}))
+                                                                :date_joined [:now]}))
             original-db-names (t2/select-fn-set :name :metabase_database)
             original-collections (t2/select-fn-set :name :collection)
             check-before (fn []
@@ -769,28 +769,28 @@
                                                               :collection_id   nil
                                                               :alert_condition "rows"
                                                               :parameters      "[]"
-                                                              :created_at      :%now
-                                                              :updated_at      :%now}))
+                                                              :created_at      [:now]
+                                                              :updated_at      [:now]}))
             dashboard-id (first (t2/insert-returning-pks! :report_dashboard {:name       "A dashboard"
                                                                              :creator_id user-id
                                                                              :parameters "[]"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now}))
+                                                                             :created_at [:now]
+                                                                             :updated_at [:now]}))
             dash-subscription-id (first (t2/insert-returning-pks! :pulse {:name            "A dashboard subscription"
                                                                           :creator_id      user-id
                                                                           :dashboard_id    dashboard-id
                                                                           :collection_id   nil
                                                                           :alert_condition "rows"
                                                                           :parameters      "[]"
-                                                                          :created_at      :%now
-                                                                          :updated_at      :%now}))
+                                                                          :created_at      [:now]
+                                                                          :updated_at      [:now]}))
             legacy-pulse-id (first (t2/insert-returning-pks! :pulse {:name            "A legacy pulse"
                                                                      :creator_id      user-id
                                                                      :collection_id   nil
                                                                      :alert_condition nil
                                                                      :parameters      "[]"
-                                                                     :created_at      :%now
-                                                                     :updated_at      :%now}))]
+                                                                     :created_at      [:now]
+                                                                     :updated_at      [:now]}))]
         (migrate!)
         (is (t2/exists? :pulse :id dash-subscription-id))
         (is (t2/exists? :pulse :id alert-id))
@@ -937,8 +937,8 @@
         (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
       (let [db-id (t2/insert-returning-pk! :metabase_database
                                            {:details    "{}"
-                                            :created_at :%now
-                                            :updated_at :%now
+                                            :created_at [:now]
+                                            :updated_at [:now]
                                             :engine     "h2"
                                             :is_sample  false
                                             :name       "populate-is-defective-duplicate-test-db"})
@@ -946,8 +946,8 @@
                      (t2/insert-returning-instance! :metabase_table
                                                     {:db_id      db-id
                                                      :name       (mt/random-name)
-                                                     :created_at :%now
-                                                     :updated_at :%now
+                                                     :created_at [:now]
+                                                     :updated_at [:now]
                                                      :active     true}))
             field! (fn [table values]
                      (t2/insert-returning-instance! :metabase_field
@@ -955,8 +955,8 @@
                                                             :parent_id     nil
                                                             :base_type     "type/Text"
                                                             :database_type "TEXT"
-                                                            :created_at    :%now
-                                                            :updated_at    :%now}
+                                                            :created_at    [:now]
+                                                            :updated_at    [:now]}
                                                            values)))
             earlier #t "2023-01-01T00:00:00"
             later   #t "2024-01-01T00:00:00"
@@ -1013,16 +1013,16 @@
     (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
       (let [db-id (t2/insert-returning-pk! :metabase_database
                                            {:details    "{}"
-                                            :created_at :%now
-                                            :updated_at :%now
+                                            :created_at [:now]
+                                            :updated_at [:now]
                                             :engine     "h2"
                                             :is_sample  false
                                             :name       "populate-is-defective-duplicate-test-db"})
             table (t2/insert-returning-instance! :metabase_table
                                                  {:db_id      db-id
                                                   :name       (mt/random-name)
-                                                  :created_at :%now
-                                                  :updated_at :%now
+                                                  :created_at [:now]
+                                                  :updated_at [:now]
                                                   :active     true})
             field! (fn [values]
                      (t2/insert-returning-instance! :metabase_field
@@ -1030,8 +1030,8 @@
                                                             :parent_id     nil
                                                             :base_type     "type/Text"
                                                             :database_type "TEXT"
-                                                            :created_at    :%now
-                                                            :updated_at    :%now}
+                                                            :created_at    [:now]
+                                                            :updated_at    [:now]}
                                                            values)))
             field-no-parent-1     (field! {:name "F1", :active true, :parent_id nil})
             field-no-parent-2     (field! {:name "F2", :active true, :parent_id nil})
@@ -1094,16 +1094,16 @@
          (fn [migrate!]
            (let [db-id (t2/insert-returning-pk! :metabase_database
                                                 {:details    "{}"
-                                                 :created_at :%now
-                                                 :updated_at :%now
+                                                 :created_at [:now]
+                                                 :updated_at [:now]
                                                  :engine     "h2"
                                                  :is_sample  false
                                                  :name       ""})
                  table (t2/insert-returning-instance! :metabase_table
                                                       {:db_id      db-id
                                                        :name       (mt/random-name)
-                                                       :created_at :%now
-                                                       :updated_at :%now
+                                                       :created_at [:now]
+                                                       :updated_at [:now]
                                                        :active     true})
                  field! (fn [values]
                           (t2/insert-returning-instance! :metabase_field
@@ -1112,8 +1112,8 @@
                                                                  :parent_id     nil
                                                                  :base_type     "type/Text"
                                                                  :database_type "TEXT"
-                                                                 :created_at    :%now
-                                                                 :updated_at    :%now}
+                                                                 :created_at    [:now]
+                                                                 :updated_at    [:now]}
                                                                 values)))
                  _normal-field           (field! {:name "F1", :parent_id nil})
                  create-defective-field! #(field! {:name "F1", :parent_id nil})
@@ -1147,16 +1147,16 @@
     (impl/test-migrations ["v49.2024-06-27T00:00:09"] [migrate!]
       (let [db-id         (t2/insert-returning-pk! :metabase_database
                                                    {:details    "{}"
-                                                    :created_at :%now
-                                                    :updated_at :%now
+                                                    :created_at [:now]
+                                                    :updated_at [:now]
                                                     :engine     "h2"
                                                     :is_sample  false
                                                     :name       "some_db"})
             table         (t2/insert-returning-instance! :metabase_table
                                                          {:db_id      db-id
                                                           :name       "some_table"
-                                                          :created_at :%now
-                                                          :updated_at :%now
+                                                          :created_at [:now]
+                                                          :updated_at [:now]
                                                           :active     true})
             field!        (fn [values]
                             (t2/insert-returning-instance! :metabase_field
@@ -1165,8 +1165,8 @@
                                                                    :parent_id     nil
                                                                    :base_type     "type/Text"
                                                                    :database_type "TEXT"
-                                                                   :created_at    :%now
-                                                                   :updated_at    :%now}
+                                                                   :created_at    [:now]
+                                                                   :updated_at    [:now]}
                                                                   values)))
             active+field [[true  (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\",\"y\"]"})]
                           [true  (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
@@ -1247,19 +1247,19 @@
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))
             table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 1"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))
             table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 2"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC/with\\slash"
                                                                                       :active     true}))]
         (testing "Unrestricted data access for a DB"
@@ -1378,8 +1378,8 @@
       (let [group-id (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                        :engine     "postgres"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
+                                                                                       :created_at [:now]
+                                                                                       :updated_at [:now]
                                                                                        :details    "{}"}))]
         (testing "Native query editing allowed"
           (clear-permissions!)
@@ -1410,25 +1410,25 @@
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))
             table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 1"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))
             table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 2"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))
             table-id-3 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 3"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))]
         (testing "One-million-rows download access for a DB"
@@ -1548,13 +1548,13 @@
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))
             table-id   (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 1"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))]
         (testing "Manage table metadata access for a DB"
@@ -1608,8 +1608,8 @@
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))]
         (testing "Manage database permission"
           (clear-permissions!)
@@ -1663,7 +1663,7 @@
         :login_attributes nil
         :sso_source       nil
         :type             "internal"
-        :date_joined      :%now})
+        :date_joined      [:now]})
       (let [get-users    #(t2/query {:select [:*] :from [:core_user]})
             users-before (get-users)]
         (migrate!)
@@ -1678,18 +1678,18 @@
             group-id     (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id        (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                            :engine     "postgres"
-                                                                                           :created_at :%now
-                                                                                           :updated_at :%now
+                                                                                           :created_at [:now]
+                                                                                           :updated_at [:now]
                                                                                            :details    "{}"}))
             table-id     (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                         :name       "Table 1"
-                                                                                        :created_at :%now
-                                                                                        :updated_at :%now
+                                                                                        :created_at [:now]
+                                                                                        :updated_at [:now]
                                                                                         :active     true}))
             table-id-2   (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                         :name       "Table 2"
-                                                                                        :created_at :%now
-                                                                                        :updated_at :%now
+                                                                                        :created_at [:now]
+                                                                                        :updated_at [:now]
                                                                                         :active     true}))
             insert-perm! (fn [perm-type perm-value & [table-id schema]]
                            (t2/insert! (t2/table-name :model/DataPermissions)
@@ -1833,8 +1833,8 @@
             dash (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
                                           {:name       "A dashboard"
                                            :creator_id (:id user)
-                                           :created_at :%now
-                                           :updated_at :%now
+                                           :created_at [:now]
+                                           :updated_at [:now]
                                            :cache_ttl  20
                                            :parameters ""})
             card (t2/insert-returning-pk! (t2/table-name :model/Card)
@@ -1845,8 +1845,8 @@
                                            :cache_ttl              30
                                            :creator_id             (:id user)
                                            :database_id            db
-                                           :created_at             :%now
-                                           :updated_at             :%now})]
+                                           :created_at             [:now]
+                                           :updated_at             [:now]})]
         (encryption-test/with-secret-key "whateverwhatever"
           (migrate! :up))
         (is (=? [{:model    "root"
@@ -1933,7 +1933,7 @@
         (t2/insert! clog [{:id            "v50.2024-04-12T12:33:09"
                            :author        "piranha"
                            :filename      "001_update_migrations.yaml"
-                           :dateexecuted  :%now
+                           :dateexecuted  [:now]
                            :orderexecuted (inc last-order)
                            :exectype      "EXECUTED"}])
         (is (=? {:id            "v50.2024-04-12T12:33:09"
@@ -1948,19 +1948,19 @@
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
             db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))
             table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 1"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))
             table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 2"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))]
         (testing "Unrestricted data access + native query editing"
@@ -2074,19 +2074,19 @@
                                                  {:user_id user-id :group_id group-id-2 :is_group_manager false})
             db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))
             table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 1"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))
             table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 2"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :schema     "PUBLIC"
                                                                                       :active     true}))]
         (testing "No self-service in group 1 and unrestricted in group 2 (normal case)"
@@ -2255,14 +2255,14 @@
           group-id     (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
           db-id        (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "db"
                                                                                          :engine     "postgres"
-                                                                                         :created_at :%now
-                                                                                         :updated_at :%now
+                                                                                         :created_at [:now]
+                                                                                         :updated_at [:now]
                                                                                          :details    "{}"}))
           table-id     (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
                                                                                       :name       "Table 1"
                                                                                       :schema     "PUBLIC"
-                                                                                      :created_at :%now
-                                                                                      :updated_at :%now
+                                                                                      :created_at [:now]
+                                                                                      :updated_at [:now]
                                                                                       :active     true}))
           insert-perm! (fn [perm-type perm-value & [table-id]]
                          (t2/insert! (t2/table-name :model/DataPermissions)
@@ -2343,12 +2343,12 @@
                                                  :last_name   "Hughes"
                                                  :email       "howard@aircraft.com"
                                                  :password    "superstrong"
-                                                 :date_joined :%now})
+                                                 :date_joined [:now]})
           db-id        (t2/insert-returning-pk! (t2/table-name :model/Database)
                                                 {:name       "DB"
                                                  :engine     "h2"
-                                                 :created_at :%now
-                                                 :updated_at :%now
+                                                 :created_at [:now]
+                                                 :updated_at [:now]
                                                  :details    "{}"})
           table-id     (t2/insert-returning-pk! (t2/table-name :model/Table)
                                                 {:name       "orders"
@@ -2398,26 +2398,26 @@
         (clear-permissions!)
         (let [db-id      (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
                                                                                    :engine     "h2"
-                                                                                   :created_at :%now
-                                                                                   :updated_at :%now
+                                                                                   :created_at [:now]
+                                                                                   :updated_at [:now]
                                                                                    :details    "{}"})
               table-id-1 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
                                                                                 :schema     "SchemaName"
                                                                                 :name       "Table 1"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
+                                                                                :created_at [:now]
+                                                                                :updated_at [:now]
                                                                                 :active     true})
               table-id-2 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
                                                                                 :schema     "SchemaName"
                                                                                 :name       "Table 2"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
+                                                                                :created_at [:now]
+                                                                                :updated_at [:now]
                                                                                 :active     true})
               table-id-3 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
                                                                                 :schema     "SchemaName"
                                                                                 :name       "Table 3"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
+                                                                                :created_at [:now]
+                                                                                :updated_at [:now]
                                                                                 :active     true})
               group-id   (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})
               perm-id-1  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
@@ -2457,40 +2457,40 @@
       (let [user-id 13371338 ; use internal user to avoid creating a real user
             db-id   (t2/insert-returning-pk! :metabase_database {:name       "db"
                                                                  :engine     "postgres"
-                                                                 :created_at :%now
-                                                                 :updated_at :%now
+                                                                 :created_at [:now]
+                                                                 :updated_at [:now]
                                                                  :details    "{}"})
             table-id (t2/insert-returning-pk! :metabase_table {:active     true
                                                                :db_id      db-id
                                                                :name       "a table"
-                                                               :created_at :%now
-                                                               :updated_at :%now})
+                                                               :created_at [:now]
+                                                               :updated_at [:now]})
             dash-id (t2/insert-returning-pk! :report_dashboard {:name       "A dashboard"
                                                                 :creator_id user-id
                                                                 :parameters "[]"
-                                                                :created_at :%now
-                                                                :updated_at :%now})
+                                                                :created_at [:now]
+                                                                :updated_at [:now]})
             card-id (t2/insert-returning-pk! :report_card {:creator_id             user-id
                                                            :database_id            db-id
                                                            :dataset_query          "{}"
                                                            :visualization_settings "{}"
                                                            :display                "table"
                                                            :name                   "a card"
-                                                           :created_at             :%now
-                                                           :updated_at             :%now})
+                                                           :created_at             [:now]
+                                                           :updated_at             [:now]})
             _ (t2/insert-returning-pk! :view_log {:user_id   user-id
                                                   :model     "table"
                                                   :model_id  table-id
-                                                  :timestamp :%now})
+                                                  :timestamp [:now]})
             _ (t2/insert-returning-pk! :view_log {:user_id   user-id
                                                   :model     "card"
                                                   :model_id  card-id
-                                                  :timestamp :%now})
+                                                  :timestamp [:now]})
             _ (dotimes [_ 2]
                 (t2/insert-returning-pk! :view_log {:user_id   user-id
                                                     :model     "dashboard"
                                                     :model_id  dash-id
-                                                    :timestamp :%now}))]
+                                                    :timestamp [:now]}))]
         (migrate!)
         (is (= 1 (t2/select-one-fn :view_count :metabase_table :id table-id)))
         (is (= 1 (t2/select-one-fn :view_count :report_card :id card-id)))
@@ -2691,14 +2691,14 @@
                                                                             :engine    "h2"
                                                                             :is_sample false
                                                                             :name      "populate-collection-created-at-test-db"
-                                                                            :created_at :%now
-                                                                            :updated_at :%now})
+                                                                            :created_at [:now]
+                                                                            :updated_at [:now]})
             table-id-1 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id db-id :name "test-table-1" :active true
-                                                                              :created_at :%now
-                                                                              :updated_at :%now})
+                                                                              :created_at [:now]
+                                                                              :updated_at [:now]})
             table-id-2 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id db-id :name "test-table-2" :active true
-                                                                              :created_at :%now
-                                                                              :updated_at :%now})
+                                                                              :created_at [:now]
+                                                                              :updated_at [:now]})
             pg-id (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "test-group"})]
         (t2/insert! (t2/table-name :model/DataPermissions) [{:group_id pg-id :db_id db-id :table_id table-id-1 :perm_type "perms/view-data" :perm_value "blocked"}
                                                             {:group_id pg-id :db_id db-id :table_id table-id-1 :perm_type "perms/download-results" :perm_value "one-million-rows"}
@@ -2731,13 +2731,13 @@
                      :values      [{:first_name    "Password"
                                     :last_name     "User"
                                     :email         "password@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :password      "hashed_password"
                                     :password_salt "salt123"}
                                    {:first_name    "NoPassword"
                                     :last_name     "User"
                                     :email         "nopass@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :password      nil
                                     :password_salt nil}]})
       (migrate!)
@@ -2759,13 +2759,13 @@
                      :values      [{:first_name    "LDAP"
                                     :last_name     "User"
                                     :email         "ldap@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :sso_source    "ldap"
                                     :login_attributes "{\"dn\":\"cn=user,dc=example,dc=com\"}"}
                                    {:first_name    "NoLDAP"
                                     :last_name     "User"
                                     :email         "noldap@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :sso_source    nil}]})
       (migrate!)
       ;; Verify LDAP user has auth_identity
@@ -2786,12 +2786,12 @@
                      :values      [{:first_name    "Google"
                                     :last_name     "User"
                                     :email         "google@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :sso_source    "google"}
                                    {:first_name    "NoSSO"
                                     :last_name     "User"
                                     :email         "nosso@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :sso_source    nil}]})
       (migrate!)
       ;; Verify Google user has auth_identity
@@ -2812,12 +2812,12 @@
                      :values      [{:first_name    "SAML"
                                     :last_name     "User"
                                     :email         "saml@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :sso_source    "saml"}
                                    {:first_name    "JWT"
                                     :last_name     "User"
                                     :email         "jwt@example.com"
-                                    :date_joined   :%now
+                                    :date_joined   [:now]
                                     :sso_source    "jwt"}]})
       (migrate!)
       ;; Verify SAML and JWT users have auth_identity
@@ -2836,14 +2836,14 @@
       (let [group-id (t2/insert-returning-pk! :permissions_group {:name "Dedupe Test Group"})
             db-id    (t2/insert-returning-pk! :metabase_database {:name       "Dedupe Test DB"
                                                                   :engine     "postgres"
-                                                                  :created_at :%now
-                                                                  :updated_at :%now
+                                                                  :created_at [:now]
+                                                                  :updated_at [:now]
                                                                   :details    "{}"})
             table-id (t2/insert-returning-pk! :metabase_table {:active     true
                                                                :db_id      db-id
                                                                :name       "a table"
-                                                               :created_at :%now
-                                                               :updated_at :%now})
+                                                               :created_at [:now]
+                                                               :updated_at [:now]})
             perm!    (fn [m]
                        (t2/insert-returning-pk! :data_permissions
                                                 (merge {:group_id group-id :db_id db-id} m)))
@@ -2907,8 +2907,8 @@
             db!               (fn [db-name]
                                 (t2/insert-returning-pk! :metabase_database
                                                          {:details    "{}"
-                                                          :created_at :%now
-                                                          :updated_at :%now
+                                                          :created_at [:now]
+                                                          :updated_at [:now]
                                                           :engine     "h2"
                                                           :is_sample  false
                                                           :name       db-name}))
@@ -2917,8 +2917,8 @@
                                                          {:db_id      db-id
                                                           :name       (mt/random-name)
                                                           :schema     "PUBLIC"
-                                                          :created_at :%now
-                                                          :updated_at :%now
+                                                          :created_at [:now]
+                                                          :updated_at [:now]
                                                           :active     active?}))
             perm!             (fn [db-id table-id perm-type perm-value]
                                 (t2/insert! :data_permissions
@@ -2993,7 +2993,7 @@
                                         {:id            id
                                          :author        "escherize"
                                          :filename      "migrations/059_update_migrations.yaml"
-                                         :dateexecuted  :%now
+                                         :dateexecuted  [:now]
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       v59-ids))
@@ -3014,8 +3014,8 @@
                                                     :db_status      "ready"
                                                     :base_status    "active"
                                                     :graph_version  1
-                                                    :created_at     :%now
-                                                    :updated_at     :%now}))]
+                                                    :created_at     [:now]
+                                                    :updated_at     [:now]}))]
         ;; Insert workspace_input rows with OLD schema (includes ref_id and transform_version).
         (t2/insert-returning-pks! :workspace_input
                                   {:workspace_id      ws-id
@@ -3025,8 +3025,8 @@
                                    :ref_id            (str (random-uuid))
                                    :access_granted    true
                                    :transform_version 1
-                                   :created_at        :%now
-                                   :updated_at        :%now})
+                                   :created_at        [:now]
+                                   :updated_at        [:now]})
         (migrate!)
         ;; 1. Old workspace_input data is dropped (table recreated with new schema)
         (testing "workspace_input table is empty after drop/recreate"
@@ -3049,8 +3049,8 @@
                                      :schema         "public"
                                      :table          "orders"
                                      :access_granted false
-                                     :created_at     :%now
-                                     :updated_at     :%now}))
+                                     :created_at     [:now]
+                                     :updated_at     [:now]}))
         (testing "unique constraint prevents duplicate table entries"
           (is (thrown? Exception
                        (t2/insert-returning-pks! :workspace_input
@@ -3059,8 +3059,8 @@
                                                   :schema         "public"
                                                   :table          "orders"
                                                   :access_granted false
-                                                  :created_at     :%now
-                                                  :updated_at     :%now}))))))))
+                                                  :created_at     [:now]
+                                                  :updated_at     [:now]}))))))))
 
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
@@ -3095,7 +3095,7 @@
            :archived         false
            :is_sample        false
            :is_remote_synced false
-           :created_at       :%now}
+           :created_at       [:now]}
           attrs)))
 
 (defn- collection-entity-id
@@ -3296,15 +3296,15 @@
                              {:name       "test-db"
                               :engine     "h2"
                               :details    "{}"
-                              :created_at :%now
-                              :updated_at :%now}))
+                              :created_at [:now]
+                              :updated_at [:now]}))
             table-id (first (t2/insert-returning-pks!
                              (t2/table-name :model/Table)
                              {:name        "test_table"
                               :db_id       db-id
                               :active      true
-                              :created_at  :%now
-                              :updated_at  :%now}))
+                              :created_at  [:now]
+                              :updated_at  [:now]}))
             insert-field! (fn [m]
                             (first (t2/insert-returning-pks!
                                     (t2/table-name :model/Field)
@@ -3316,8 +3316,8 @@
                                             :active            true
                                             :preview_display   true
                                             :database_type     "x"
-                                            :created_at        :%now
-                                            :updated_at        :%now}
+                                            :created_at        [:now]
+                                            :updated_at        [:now]}
                                            m))))
             broken-id           (insert-field! {:name              "broken"
                                                 :base_type         "type/Number"
@@ -3345,14 +3345,14 @@
                     {:field_id          broken-id
                      :effective_type    "type/Text"
                      :coercion_strategy nil
-                     :created_at        :%now
-                     :updated_at        :%now})
+                     :created_at        [:now]
+                     :updated_at        [:now]})
         (t2/insert! :metabase_field_user_settings
                     {:field_id          with-coercion-id
                      :effective_type    "type/Number"
                      :coercion_strategy "Coercion/String->Number"
-                     :created_at        :%now
-                     :updated_at        :%now})
+                     :created_at        [:now]
+                     :updated_at        [:now]})
         (migrate!)
         (testing "broken active row is healed"
           (is (= "type/Number"
@@ -3464,8 +3464,8 @@
                            (t2/insert-returning-pk! :metabase_database
                                                     (merge {:name       name
                                                             :engine     "postgres"
-                                                            :created_at :%now
-                                                            :updated_at :%now
+                                                            :created_at [:now]
+                                                            :updated_at [:now]
                                                             :details    "{}"}
                                                            extra)))
             group-id     (t2/insert-returning-pk! :permissions_group {:name "Destperm Test Group"})
@@ -3497,14 +3497,14 @@
       (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
             last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
             v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]
-            column?    #(seq (t2/query {:select [:column_name] :from [:information_schema.columns] :where (cond-> [:and [:= [:lower :table_name] "auth_identity"] [:= [:lower :column_name] "confirmed_at"]] (= :mysql (mdb/db-type)) (conj [:= :table_schema :%database]) (= :postgres (mdb/db-type)) (conj [:= :table_schema :%current_schema]))}))]
+            column?    #(seq (t2/query {:select [:column_name] :from [:information_schema.columns] :where (cond-> [:and [:= [:lower :table_name] "auth_identity"] [:= [:lower :column_name] "confirmed_at"]] (= :mysql (mdb/db-type)) (conj [:= :table_schema [:database]]) (= :postgres (mdb/db-type)) (conj [:= :table_schema [:current_schema]]))}))]
         ;; simulate an instance upgraded by the code that shipped these changesets under v59 ids
         (t2/query ["ALTER TABLE auth_identity ADD COLUMN confirmed_at TIMESTAMP NULL"])
         (t2/insert! clog (map-indexed (fn [i id]
                                         {:id            id
                                          :author        "escherize"
                                          :filename      "migrations/059_update_migrations.yaml"
-                                         :dateexecuted  :%now
+                                         :dateexecuted  [:now]
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       v59-ids))
@@ -3525,8 +3525,8 @@
                           (t2/insert-returning-pk! :custom_viz_plugin (merge {:identifier   identifier
                                                                               :display_name identifier
                                                                               :status       status
-                                                                              :created_at   :%now
-                                                                              :updated_at   :%now}
+                                                                              :created_at   [:now]
+                                                                              :updated_at   [:now]}
                                                                              extra)))
             bundle      (.getBytes "pretend tgz bytes" "UTF-8")
             pending-id  (new-plugin! "pending-viz" "pending" :bundle bundle :bundle_hash "abc")
@@ -3552,7 +3552,7 @@
       (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "State"
                                                               :last_name     "Mover"
                                                               :email         "state-mover@test.com"
-                                                              :date_joined   :%now
+                                                              :date_joined   [:now]
                                                               :password      "password"
                                                               :password_salt "salt"})
             blob         "{\"queries\":{\"q1\":{\"database\":1}},\"todos\":[{\"id\":\"a\"}]}"
@@ -3561,7 +3561,7 @@
             new-message! (fn [conversation-id role & {:as extra}]
                            (t2/insert-returning-pk! :metabot_message
                                                     (merge {:conversation_id conversation-id
-                                                            :created_at      :%now
+                                                            :created_at      [:now]
                                                             :profile_id      "internal"
                                                             :role            role
                                                             :data            "[]"
@@ -3571,7 +3571,7 @@
             _            (t2/insert! :metabot_conversation {:id conv-a :user_id user-id :state blob})
             _            (t2/insert! :metabot_conversation {:id conv-b :user_id user-id})
             a-user       (new-message! conv-a "user")
-            a-deleted    (new-message! conv-a "assistant" :deleted_at :%now)
+            a-deleted    (new-message! conv-a "assistant" :deleted_at [:now])
             a-earliest   (new-message! conv-a "assistant")
             a-later      (new-message! conv-a "assistant")
             b-assistant  (new-message! conv-b "assistant")]
@@ -3593,21 +3593,21 @@
     (impl/test-migrations ["v64.2026-09-01T00:00:00" "v64.2026-09-01T00:00:01"] [migrate!]
       (let [db-id    (t2/insert-returning-pk! :metabase_database {:name       "Sensitivity Test DB"
                                                                   :engine     "h2"
-                                                                  :created_at :%now
-                                                                  :updated_at :%now
+                                                                  :created_at [:now]
+                                                                  :updated_at [:now]
                                                                   :details    "{}"})
             table-id (t2/insert-returning-pk! :metabase_table {:active     true
                                                                :db_id      db-id
                                                                :name       "a table"
-                                                               :created_at :%now
-                                                               :updated_at :%now})
+                                                               :created_at [:now]
+                                                               :updated_at [:now]})
             field-id (t2/insert-returning-pk! :metabase_field {:table_id      table-id
                                                                :name          "email"
                                                                :active        true
                                                                :base_type     "type/Text"
                                                                :database_type "TEXT"
-                                                               :created_at    :%now
-                                                               :updated_at    :%now})]
+                                                               :created_at    [:now]
+                                                               :updated_at    [:now]})]
         (migrate!)
         (testing "an existing field reads NULL"
           (is (nil? (t2/select-one-fn :data_sensitivity :metabase_field :id field-id))))
@@ -3627,22 +3627,22 @@
     (impl/test-migrations ["v64.2026-09-09T00:00:00" "v64.2026-09-09T00:00:03"] [migrate!]
       (let [db-id        (t2/insert-returning-pk! :metabase_database {:name       "FUS Flags Test DB"
                                                                       :engine     "h2"
-                                                                      :created_at :%now
-                                                                      :updated_at :%now
+                                                                      :created_at [:now]
+                                                                      :updated_at [:now]
                                                                       :details    "{}"})
             table-id     (t2/insert-returning-pk! :metabase_table {:active     true
                                                                    :db_id      db-id
                                                                    :name       "a table"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now})
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]})
             insert-field! (fn [name]
                             (t2/insert-returning-pk! :metabase_field {:table_id      table-id
                                                                       :name          name
                                                                       :active        true
                                                                       :base_type     "type/Text"
                                                                       :database_type "TEXT"
-                                                                      :created_at    :%now
-                                                                      :updated_at    :%now}))
+                                                                      :created_at    [:now]
+                                                                      :updated_at    [:now]}))
             target-id    (insert-field! "target")
             all-set-id   (insert-field! "all_set")
             none-set-id  (insert-field! "none_set")
@@ -3671,8 +3671,8 @@
     (impl/test-migrations ["v64.2026-09-11T00:00:00" "v64.2026-09-11T00:00:06"] [migrate!]
       (let [db-id           (t2/insert-returning-pk! :metabase_database {:name       "Table User Settings Test DB"
                                                                          :engine     "h2"
-                                                                         :created_at :%now
-                                                                         :updated_at :%now
+                                                                         :created_at [:now]
+                                                                         :updated_at [:now]
                                                                          :details    "{}"})
             insert-table!   (fn [table-name published? visibility-type data-layer]
                               (t2/insert-returning-pk! :metabase_table {:active          true
@@ -3681,8 +3681,8 @@
                                                                         :is_published    published?
                                                                         :visibility_type visibility-type
                                                                         :data_layer      data-layer
-                                                                        :created_at      :%now
-                                                                        :updated_at      :%now}))
+                                                                        :created_at      [:now]
+                                                                        :updated_at      [:now]}))
             hidden          (insert-table! "hidden" true "hidden" "hidden")
             technical       (insert-table! "technical" true "technical" "internal")
             cruft           (insert-table! "cruft" true "cruft" "internal")
@@ -3716,8 +3716,8 @@
     (impl/test-migrations ["ceygl0" "1h91ve"] [migrate!]
       (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "Move User Settings Test DB"
                                                                        :engine     "h2"
-                                                                       :created_at :%now
-                                                                       :updated_at :%now
+                                                                       :created_at [:now]
+                                                                       :updated_at [:now]
                                                                        :details    "{}"})
             insert-table! (fn [table-name]
                             (t2/insert-returning-pk! :metabase_table {:active          true
@@ -3728,8 +3728,8 @@
                                                                       :visibility_type "cruft"
                                                                       :data_layer      "internal"
                                                                       :field_order     "database"
-                                                                      :created_at      :%now
-                                                                      :updated_at      :%now}))
+                                                                      :created_at      [:now]
+                                                                      :updated_at      [:now]}))
             edited        (insert-table! "edited")
             untouched     (insert-table! "untouched")
             insert-field! (fn [table-id field-name]
@@ -3741,8 +3741,8 @@
                                                                       :active        true
                                                                       :base_type     "type/Text"
                                                                       :database_type "TEXT"
-                                                                      :created_at    :%now
-                                                                      :updated_at    :%now}))
+                                                                      :created_at    [:now]
+                                                                      :updated_at    [:now]}))
             edited-field  (insert-field! edited "edited")
             plain-field   (insert-field! edited "plain")]
         (t2/insert! :metabase_table_user_settings {:table_id        edited
@@ -3798,25 +3798,25 @@
   (testing "ceygl0, ziqcir, 1h91ve: a false flag keeps the synced value and clears the settings value, a true flag
            copies NULL, and a column that follows another moves with it"
     (impl/test-migrations ["ceygl0" "1h91ve"] [migrate!]
-      (let [db-id     (t2/insert-returning-pk! :metabase_database {:name "Flags Test DB" :engine "h2" :created_at :%now
-                                                                   :updated_at :%now :details "{}"})
-            coll-id   (t2/insert-returning-pk! :collection {:name "c" :slug "c" :created_at :%now
+      (let [db-id     (t2/insert-returning-pk! :metabase_database {:name "Flags Test DB" :engine "h2" :created_at [:now]
+                                                                   :updated_at [:now] :details "{}"})
+            coll-id   (t2/insert-returning-pk! :collection {:name "c" :slug "c" :created_at [:now]
                                                             :entity_id "flagsflagsflagsflags1"})
             table-id  (t2/insert-returning-pk! :metabase_table {:active true :db_id db-id :name "t" :display_name "Synced"
                                                                 :description "synced" :visibility_type "cruft"
                                                                 :data_layer "hidden" :data_source "ingested"
                                                                 :field_order "database" :caveats "synced caveats"
                                                                 :show_in_getting_started true :is_published true
-                                                                :collection_id coll-id :created_at :%now
-                                                                :updated_at :%now})
+                                                                :collection_id coll-id :created_at [:now]
+                                                                :updated_at [:now]})
             field!    (fn [field-name extra]
                         (t2/insert-returning-pk! :metabase_field
                                                  (merge {:table_id table-id :name field-name :display_name "Synced"
                                                          :description "synced" :semantic_type "type/Category"
                                                          :active true :base_type "type/Text" :database_type "TEXT"
                                                          :json_unfolding true :has_field_values "auto-list"
-                                                         :coercion_strategy "Coercion/Synced" :created_at :%now
-                                                         :updated_at :%now}
+                                                         :coercion_strategy "Coercion/Synced" :created_at [:now]
+                                                         :updated_at [:now]}
                                                         extra)))
             target-id (field! "target" {})
             flagged   (field! "flagged" {:fk_target_field_id target-id})
@@ -3864,8 +3864,8 @@
       (let [row      (fn [term] {:term       term
                                  :definition (str term " definition")
                                  :creator_id 13371338
-                                 :created_at :%now
-                                 :updated_at :%now})
+                                 :created_at [:now]
+                                 :updated_at [:now]})
             arr-id   (t2/insert-returning-pk! :glossary (row "ARR"))
             churn-id (t2/insert-returning-pk! :glossary (row "Churn"))]
         (migrate!)
@@ -3892,7 +3892,7 @@
                                         {:id            (str "v65.2026-09-11" suffix)
                                          :author        "tplude"
                                          :filename      "migrations/065/20260911_glossary_entity_id.yaml"
-                                         :dateexecuted  :%now
+                                         :dateexecuted  [:now]
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       suffixes))
@@ -3903,7 +3903,7 @@
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
         (testing "the changes were skipped, not re-applied"
           ;; information_schema spans every database on a shared MySQL server, so scope to this app db's schema
-          (is (empty? (t2/query {:select [:column_name] :from [:information_schema.columns] :where (cond-> [:and [:= [:lower :table_name] "glossary"] [:= [:lower :column_name] "entity_id"]] (= :mysql (mdb/db-type)) (conj [:= :table_schema :%database]) (= :postgres (mdb/db-type)) (conj [:= :table_schema :%current_schema]))}))))))))
+          (is (empty? (t2/query {:select [:column_name] :from [:information_schema.columns] :where (cond-> [:and [:= [:lower :table_name] "glossary"] [:= [:lower :column_name] "entity_id"]] (= :mysql (mdb/db-type)) (conj [:= :table_schema [:database]]) (= :postgres (mdb/db-type)) (conj [:= :table_schema [:current_schema]]))}))))))))
 
 (deftest action-collection-id-backfill-test
   (testing "v65.2026-10-02T00:00:06: each action takes its model's collection, model_id becomes nullable, and
@@ -3914,11 +3914,11 @@
                                                            :email      "action-owner@metabase.com"
                                                            :password   "superstrong"
                                                            :entity_id  (u/generate-nano-id)
-                                                           :date_joined :%now})
+                                                           :date_joined [:now]})
             db-id     (t2/insert-returning-pk! :metabase_database {:name       "Action Test DB"
                                                                    :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]
                                                                    :details    "{}"})
             coll-id   (t2/insert-returning-pk! :collection {:name      "Models"
                                                             :slug      "models"
@@ -3935,16 +3935,16 @@
                                                                    :database_id            db-id
                                                                    :collection_id          collection-id
                                                                    :archived               (boolean archived)
-                                                                   :created_at             :%now
-                                                                   :updated_at             :%now}))
+                                                                   :created_at             [:now]
+                                                                   :updated_at             [:now]}))
             insert-action! (fn [model-id & {:keys [archived]}]
                              (t2/insert-returning-pk! :action {:name       "Action"
                                                                :archived   (boolean archived)
                                                                :entity_id  (u/generate-nano-id)
                                                                :type       "implicit"
                                                                :model_id   model-id
-                                                               :created_at :%now
-                                                               :updated_at :%now}))
+                                                               :created_at [:now]
+                                                               :updated_at [:now]}))
             in-coll   (insert-action! (insert-model! coll-id))
             in-root   (insert-action! (insert-model! nil))
             archived  (insert-action! (insert-model! coll-id) :archived true)
@@ -3967,19 +3967,19 @@
                                                                 :email       "http-action-owner@metabase.com"
                                                                 :password    "superstrong"
                                                                 :entity_id   (u/generate-nano-id)
-                                                                :date_joined :%now})
+                                                                :date_joined [:now]})
             dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
                                                                        :creator_id user-id
                                                                        :parameters "[]"
                                                                        :entity_id  (u/generate-nano-id)
-                                                                       :created_at :%now
-                                                                       :updated_at :%now})
+                                                                       :created_at [:now]
+                                                                       :updated_at [:now]})
             insert-action! (fn [action-type]
                              (t2/insert-returning-pk! :action {:name       "Action"
                                                                :entity_id  (u/generate-nano-id)
                                                                :type       action-type
-                                                               :created_at :%now
-                                                               :updated_at :%now}))
+                                                               :created_at [:now]
+                                                               :updated_at [:now]}))
             insert-button! (fn [action-id]
                              (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id dash-id
                                                                              :action_id    action-id
@@ -3990,8 +3990,8 @@
                                                                              :size_y       4
                                                                              :row          0
                                                                              :col          0
-                                                                             :created_at   :%now
-                                                                             :updated_at   :%now}))
+                                                                             :created_at   [:now]
+                                                                             :updated_at   [:now]}))
             http-id        (insert-action! "http")
             implicit-id    (insert-action! "implicit")
             http-button    (insert-button! http-id)
@@ -4010,18 +4010,18 @@
                                                                 :email       "non-model-action-owner@metabase.com"
                                                                 :password    "superstrong"
                                                                 :entity_id   (u/generate-nano-id)
-                                                                :date_joined :%now})
+                                                                :date_joined [:now]})
             db-id          (t2/insert-returning-pk! :metabase_database {:name       "Actions DB"
                                                                         :engine     "h2"
                                                                         :details    "{}"
-                                                                        :created_at :%now
-                                                                        :updated_at :%now})
+                                                                        :created_at [:now]
+                                                                        :updated_at [:now]})
             dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
                                                                        :creator_id user-id
                                                                        :parameters "[]"
                                                                        :entity_id  (u/generate-nano-id)
-                                                                       :created_at :%now
-                                                                       :updated_at :%now})
+                                                                       :created_at [:now]
+                                                                       :updated_at [:now]})
             insert-card!   (fn [card-type & {:keys [archived]}]
                              (t2/insert-returning-pk! :report_card {:name                   "Card"
                                                                     :entity_id              (u/generate-nano-id)
@@ -4032,8 +4032,8 @@
                                                                     :visualization_settings "{}"
                                                                     :creator_id             user-id
                                                                     :database_id            db-id
-                                                                    :created_at             :%now
-                                                                    :updated_at             :%now}))
+                                                                    :created_at             [:now]
+                                                                    :updated_at             [:now]}))
             insert-action! (fn [model-id & {:keys [archived archived-directly]}]
                              (t2/insert-returning-pk! :action {:name              "Action"
                                                                :entity_id         (u/generate-nano-id)
@@ -4041,8 +4041,8 @@
                                                                :model_id          model-id
                                                                :archived          (boolean archived)
                                                                :archived_directly (boolean archived-directly)
-                                                               :created_at        :%now
-                                                               :updated_at        :%now}))
+                                                               :created_at        [:now]
+                                                               :updated_at        [:now]}))
             insert-button! (fn [action-id]
                              (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
                                                                              :action_id              action-id
@@ -4053,8 +4053,8 @@
                                                                              :size_y                 4
                                                                              :row                    0
                                                                              :col                    0
-                                                                             :created_at             :%now
-                                                                             :updated_at             :%now}))
+                                                                             :created_at             [:now]
+                                                                             :updated_at             [:now]}))
             model-id       (insert-card! "model")
             model-action   (insert-action! model-id)
             archived-alone (insert-action! model-id :archived true :archived-directly true)
@@ -4080,17 +4080,17 @@
                                                            :email       "implicit-action-table-owner@metabase.com"
                                                            :password    "superstrong"
                                                            :entity_id   (u/generate-nano-id)
-                                                           :date_joined :%now})
+                                                           :date_joined [:now]})
             db-id     (t2/insert-returning-pk! :metabase_database {:name       "Actions DB"
                                                                    :engine     "h2"
                                                                    :details    "{}"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now})
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]})
             table-id  (t2/insert-returning-pk! :metabase_table {:active     true
                                                                 :db_id      db-id
                                                                 :name       "customers"
-                                                                :created_at :%now
-                                                                :updated_at :%now})
+                                                                :created_at [:now]
+                                                                :updated_at [:now]})
             model-id  (t2/insert-returning-pk! :report_card {:name                   "Model"
                                                              :entity_id              (u/generate-nano-id)
                                                              :type                   "model"
@@ -4100,14 +4100,14 @@
                                                              :creator_id             user-id
                                                              :database_id            db-id
                                                              :table_id               table-id
-                                                             :created_at             :%now
-                                                             :updated_at             :%now})
+                                                             :created_at             [:now]
+                                                             :updated_at             [:now]})
             action-id (t2/insert-returning-pk! :action {:name       "Action"
                                                         :entity_id  (u/generate-nano-id)
                                                         :type       "implicit"
                                                         :model_id   model-id
-                                                        :created_at :%now
-                                                        :updated_at :%now})]
+                                                        :created_at [:now]
+                                                        :updated_at [:now]})]
         (t2/insert! :implicit_action {:action_id action-id :kind "row/create"})
         (migrate!)
         (is (nil? (t2/select-one-fn :table_id :implicit_action :action_id action-id)))
@@ -4121,21 +4121,21 @@
     (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]
       (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-birds@example.com"
                                                              :password    "password"
-                                                             :date_joined :%now
+                                                             :date_joined [:now]
                                                              :entity_id   (u/generate-nano-id)})
             timeline-id (t2/insert-returning-pk! :timeline {:name       "Migration seasons"
                                                             :icon       "star"
                                                             :creator_id user-id
-                                                            :created_at :%now
-                                                            :updated_at :%now
+                                                            :created_at [:now]
+                                                            :updated_at [:now]
                                                             :entity_id  (u/generate-nano-id)})
             event       {:name         "Swallows return"
                          :archived     false
                          :icon         "star"
                          :timeline_id  timeline-id
                          :creator_id   user-id
-                         :created_at   :%now
-                         :updated_at   :%now
+                         :created_at   [:now]
+                         :updated_at   [:now]
                          :timestamp    #t "2027-04-20T00:00:00Z"
                          :time_matters false
                          :timezone     "UTC"}
@@ -4157,21 +4157,21 @@
     (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]
       (let [user-id       (t2/insert-returning-pk! :core_user {:email       "migration-storks@example.com"
                                                                :password    "password"
-                                                               :date_joined :%now
+                                                               :date_joined [:now]
                                                                :entity_id   (u/generate-nano-id)})
             timeline-id   (t2/insert-returning-pk! :timeline {:name       "Rollback seasons"
                                                               :icon       "star"
                                                               :creator_id user-id
-                                                              :created_at :%now
-                                                              :updated_at :%now
+                                                              :created_at [:now]
+                                                              :updated_at [:now]
                                                               :entity_id  (u/generate-nano-id)})
             event         {:name         "Swallows return"
                            :archived     false
                            :icon         "star"
                            :timeline_id  timeline-id
                            :creator_id   user-id
-                           :created_at   :%now
-                           :updated_at   :%now
+                           :created_at   [:now]
+                           :updated_at   [:now]
                            :timestamp    #t "2027-04-20T00:00:00Z"
                            :time_matters false
                            :timezone     "UTC"}
@@ -4201,21 +4201,21 @@
     (impl/test-migrations ["v65.m2xncr"] [migrate!]
       (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-cranes@example.com"
                                                              :password    "password"
-                                                             :date_joined :%now
+                                                             :date_joined [:now]
                                                              :entity_id   (u/generate-nano-id)})
             timeline-id (t2/insert-returning-pk! :timeline {:name       "Crane seasons"
                                                             :icon       "star"
                                                             :creator_id user-id
-                                                            :created_at :%now
-                                                            :updated_at :%now
+                                                            :created_at [:now]
+                                                            :updated_at [:now]
                                                             :entity_id  (u/generate-nano-id)})
             event-id    (t2/insert-returning-pk! :timeline_event {:name         "Cranes arrive"
                                                                   :archived     false
                                                                   :icon         "star"
                                                                   :timeline_id  timeline-id
                                                                   :creator_id   user-id
-                                                                  :created_at   :%now
-                                                                  :updated_at   :%now
+                                                                  :created_at   [:now]
+                                                                  :updated_at   [:now]
                                                                   :timestamp    #t "2027-03-10T00:00:00Z"
                                                                   :time_matters false
                                                                   :timezone     "UTC"
@@ -4281,7 +4281,7 @@
                                                 :model_id          collection-id
                                                 :model_name        "Dashboards"
                                                 :status            status
-                                                :status_changed_at :%now}))
+                                                :status_changed_at [:now]}))
 
 (deftest drop-empty-library-dashboards-test
   (testing "pj1awi through pj1awj: empty Dashboards section is dropped with its permissions"
@@ -4313,8 +4313,8 @@
                                                                                   :collection_id id
                                                                                   :creator_id    (mt/user->id :rasta)
                                                                                   :parameters    "[]"
-                                                                                  :created_at    :%now
-                                                                                  :updated_at    :%now}))
+                                                                                  :created_at    [:now]
+                                                                                  :updated_at    [:now]}))
                          "sub-collection" (fn [id] (insert-legacy-library-collection!
                                                     {:location (str (t2/select-one-fn :location :collection :id id) id "/")
                                                      :archived true}))}]
@@ -4334,7 +4334,7 @@
       (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Finish"
                                                                  :last_name     "Reason"
                                                                  :email         "finish-reason@test.com"
-                                                                 :date_joined   :%now
+                                                                 :date_joined   [:now]
                                                                  :password      "password"
                                                                  :password_salt "salt"
                                                                  ;; NOT NULL since v64.2026-07-23T12:00:05
@@ -4343,7 +4343,7 @@
             _               (t2/insert! :metabot_conversation {:id conversation-id :user_id user-id})
             new-message!    (fn [finished]
                               (t2/insert-returning-pk! :metabot_message {:conversation_id conversation-id
-                                                                         :created_at      :%now
+                                                                         :created_at      [:now]
                                                                          :profile_id      "internal"
                                                                          :role            "assistant"
                                                                          :data            "[]"
@@ -4380,7 +4380,7 @@
       (let [user-id         (t2/insert-returning-pk! :core_user {:first_name    "Context"
                                                                  :last_name     "Window"
                                                                  :email         "context-window-full@test.com"
-                                                                 :date_joined   :%now
+                                                                 :date_joined   [:now]
                                                                  :password      "password"
                                                                  :password_salt "salt"
                                                                  ;; NOT NULL since v64.2026-07-23T12:00:05
@@ -4389,7 +4389,7 @@
             _               (t2/insert! :metabot_conversation {:id conversation-id :user_id user-id})
             ;; `finish_reason` exists already: its changeset runs before this one
             message-id      (t2/insert-returning-pk! :metabot_message {:conversation_id conversation-id
-                                                                       :created_at      :%now
+                                                                       :created_at      [:now]
                                                                        :profile_id      "internal"
                                                                        :role            "assistant"
                                                                        :data            "[]"
@@ -4423,7 +4423,7 @@
           user-id (t2/insert-returning-pk! :core_user
                                            {:email "finch@test.com"
                                             :entity_id "migration-finch"
-                                            :date_joined :%now
+                                            :date_joined [:now]
                                             :password "password"
                                             :password_salt "salt"})
           app-id (t2/insert-returning-pk! :data_app
@@ -4431,8 +4431,8 @@
                                            :display_name "Birds"
                                            :bundle_path "birds.js"
                                            :permission_group_id legacy-group
-                                           :created_at :%now
-                                           :updated_at :%now})]
+                                           :created_at [:now]
+                                           :updated_at [:now]})]
       (t2/insert! :permissions_group_membership {:group_id legacy-group :user_id user-id})
       (t2/insert! :permissions {:group_id legacy-group :object "/collection/999/read/"})
       (testing "migration removes legacy groups and their access"
@@ -4463,15 +4463,15 @@
     (impl/test-migrations ["v65.2026-10-20T00:00:02" "v65.2026-10-16T00:00:02"] [migrate!]
       (let [db-id       (t2/insert-returning-pk! :metabase_database {:name       "Remote Sync User Settings Test DB"
                                                                      :engine     "h2"
-                                                                     :created_at :%now
-                                                                     :updated_at :%now
+                                                                     :created_at [:now]
+                                                                     :updated_at [:now]
                                                                      :details    "{}"})
             table!      (fn [table-name]
                           (t2/insert-returning-pk! :metabase_table {:active     true
                                                                     :db_id      db-id
                                                                     :name       table-name
-                                                                    :created_at :%now
-                                                                    :updated_at :%now}))
+                                                                    :created_at [:now]
+                                                                    :updated_at [:now]}))
             field!      (fn [table-id field-name]
                           (t2/insert-returning-pk! :metabase_field {:table_id          table-id
                                                                     :name              field-name
@@ -4482,14 +4482,14 @@
                                                                     :database_position 0
                                                                     :active            true
                                                                     :preview_display   true
-                                                                    :created_at        :%now
-                                                                    :updated_at        :%now}))
+                                                                    :created_at        [:now]
+                                                                    :updated_at        [:now]}))
             rso!        (fn [model-type model-id status]
                           (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
                                                                         :model_id          model-id
                                                                         :model_name        model-type
                                                                         :status            status
-                                                                        :status_changed_at :%now
+                                                                        :status_changed_at [:now]
                                                                         :file_path         (str model-type "/" model-id ".yaml")}))
             published   (table! "published")
             unpublished (table! "unpublished")
@@ -4497,10 +4497,10 @@
             edited      (field! published "edited")
             unedited    (field! published "unedited")
             tracked-fld (field! tracked "tracked")]
-        (t2/insert! :metabase_table_user_settings [{:table_id published :created_at :%now :updated_at :%now}
-                                                   {:table_id tracked :created_at :%now :updated_at :%now}])
-        (t2/insert! :metabase_field_user_settings [{:field_id edited :created_at :%now :updated_at :%now}
-                                                   {:field_id tracked-fld :created_at :%now :updated_at :%now}])
+        (t2/insert! :metabase_table_user_settings [{:table_id published :created_at [:now] :updated_at [:now]}
+                                                   {:table_id tracked :created_at [:now] :updated_at [:now]}])
+        (t2/insert! :metabase_field_user_settings [{:field_id edited :created_at [:now] :updated_at [:now]}
+                                                   {:field_id tracked-fld :created_at [:now] :updated_at [:now]}])
         (let [table-rso (rso! "Table" published "create")
               field-rso (rso! "Field" edited "update")
               dropped   [(rso! "Table" unpublished "update") (rso! "Field" unedited "update")
@@ -4526,8 +4526,8 @@
                        (t2/insert-returning-pk! :python_library {:path       path
                                                                  :source     source
                                                                  :entity_id  (u/generate-nano-id)
-                                                                 :created_at :%now
-                                                                 :updated_at :%now}))
+                                                                 :created_at [:now]
+                                                                 :updated_at [:now]}))
             unedited (library! "common.py" "")
             edited   (library! "other.py" "def f(): pass")]
         (migrate!)
@@ -4543,15 +4543,15 @@
                                                                 :location   "/"
                                                                 :namespace  "data-apps"
                                                                 :entity_id  (u/generate-nano-id)
-                                                                :created_at :%now}))
+                                                                :created_at [:now]}))
             app!        (fn [slug collection-id]
                           (t2/insert-returning-pk! :data_app {:name                   slug
                                                               :display_name           slug
                                                               :bundle_path            "dist/index.js"
                                                               :entity_id              (u/generate-nano-id)
                                                               :resource_collection_id collection-id
-                                                              :created_at             :%now
-                                                              :updated_at             :%now}))
+                                                              :created_at             [:now]
+                                                              :updated_at             [:now]}))
             shared      (collection! "shared")
             own         (collection! "own")
             first-app   (app! "first" shared)
@@ -4579,11 +4579,11 @@
                                                           :email       "router-owner@metabase.com"
                                                           :password    "superstrong"
                                                           :entity_id   (u/generate-nano-id)
-                                                          :date_joined :%now})
+                                                          :date_joined [:now]})
             db!      (fn [db-name]
                        (t2/insert-returning-pk! :metabase_database {:details    "{}"
-                                                                    :created_at :%now
-                                                                    :updated_at :%now
+                                                                    :created_at [:now]
+                                                                    :updated_at [:now]
                                                                     :engine     "h2"
                                                                     :is_sample  false
                                                                     :name       db-name}))
@@ -4602,16 +4602,16 @@
                                                               :enable_embedding       (boolean enable-embedding)
                                                               :public_uuid            public-uuid
                                                               :archived               false
-                                                              :created_at             :%now
-                                                              :updated_at             :%now}))
+                                                              :created_at             [:now]
+                                                              :updated_at             [:now]}))
             dash!    (fn [& {:keys [enable-embedding]}]
                        (t2/insert-returning-pk! :report_dashboard {:name             "Dash"
                                                                    :creator_id       user-id
                                                                    :parameters       "[]"
                                                                    :entity_id        (u/generate-nano-id)
                                                                    :enable_embedding (boolean enable-embedding)
-                                                                   :created_at       :%now
-                                                                   :updated_at       :%now}))
+                                                                   :created_at       [:now]
+                                                                   :updated_at       [:now]}))
             dashcard! (fn [dash-id card-id]
                         (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
                                                                         :card_id                card-id
@@ -4622,8 +4622,8 @@
                                                                         :size_y                 4
                                                                         :row                    0
                                                                         :col                    0
-                                                                        :created_at             :%now
-                                                                        :updated_at             :%now}))
+                                                                        :created_at             [:now]
+                                                                        :updated_at             [:now]}))
             series!  (fn [dashcard-id card-id]
                        (t2/insert! :dashboardcard_series {:dashboardcard_id dashcard-id
                                                           :card_id          card-id
@@ -4686,7 +4686,7 @@
                                                               :last_name     "Owner"
                                                               :email         "job-owner@test.com"
                                                               :entity_id     (u/generate-nano-id)
-                                                              :date_joined   :%now
+                                                              :date_joined   [:now]
                                                               :password      "password"
                                                               :password_salt "salt"})
             transform!   (fn [tag-id]
@@ -4697,8 +4697,8 @@
                                                            :source_type "native"
                                                            :creator_id  user-id
                                                            :entity_id   (u/generate-nano-id)
-                                                           :created_at  :%now
-                                                           :updated_at  :%now})]
+                                                           :created_at  [:now]
+                                                           :updated_at  [:now]})]
                              (t2/insert! :transform_transform_tag {:transform_id transform-id
                                                                    :tag_id       tag-id
                                                                    :entity_id    (u/generate-nano-id)
@@ -4709,8 +4709,8 @@
                            (t2/select-one-pk :transform_job :built_in_type built-in-type))
             custom-tag   (t2/insert-returning-pk! :transform_tag {:name       "nightly"
                                                                   :entity_id  (u/generate-nano-id)
-                                                                  :created_at :%now
-                                                                  :updated_at :%now})
+                                                                  :created_at [:now]
+                                                                  :updated_at [:now]})
             job-active   (fn [] (t2/select-fn->fn :name :active :transform_job))]
         (t2/insert! :transform_job {:name        "Custom job"
                                     :description "A job without tags"
@@ -4741,7 +4741,7 @@
                                                               :location   location
                                                               :namespace  namespace
                                                               :entity_id  (u/generate-nano-id)
-                                                              :created_at :%now
+                                                              :created_at [:now]
                                                               :archived   archived?}
                                                        archived? (assoc :archived_directly    archived-directly?
                                                                         :archive_operation_id op-id))))
@@ -4773,13 +4773,13 @@
                                                                   :last_name     "Owner"
                                                                   :email         "transform-owner@test.com"
                                                                   :entity_id     (u/generate-nano-id)
-                                                                  :date_joined   :%now
+                                                                  :date_joined   [:now]
                                                                   :password      "password"
                                                                   :password_salt "salt"})
             db-id            (t2/insert-returning-pk! :metabase_database {:name       "Transform Source DB"
                                                                           :engine     "h2"
-                                                                          :created_at :%now
-                                                                          :updated_at :%now
+                                                                          :created_at [:now]
+                                                                          :updated_at [:now]
                                                                           :details    "{}"})
             insert-transform (fn [source-type source-db-id]
                                (t2/insert-returning-pk! :transform {:name               (mt/random-name)
@@ -4789,8 +4789,8 @@
                                                                     :source_database_id source-db-id
                                                                     :creator_id         user-id
                                                                     :entity_id          (u/generate-nano-id)
-                                                                    :created_at         :%now
-                                                                    :updated_at         :%now}))
+                                                                    :created_at         [:now]
+                                                                    :updated_at         [:now]}))
             transform-id     (insert-transform "native" db-id)
             native-orphan-id (insert-transform "native" nil)
             mbql-orphan-id   (insert-transform "mbql" nil)
@@ -4807,8 +4807,8 @@
     (impl/test-migrations ["gve1yq" "m6tckg"] [migrate!]
       (let [db-id (t2/insert-returning-pk! :metabase_database {:name       "Remapped DB"
                                                                :engine     "h2"
-                                                               :created_at :%now
-                                                               :updated_at :%now
+                                                               :created_at [:now]
+                                                               :updated_at [:now]
                                                                :details    "{}"})]
         (migrate!)
         (let [row   {:database_id     db-id
@@ -4836,12 +4836,12 @@
                                                          :first_name  "Workspace"
                                                          :last_name   "Creator"
                                                          :password    (str (random-uuid))
-                                                         :date_joined :%now
+                                                         :date_joined [:now]
                                                          :entity_id   (u/generate-nano-id)})
             db-id   (t2/insert-returning-pk! :metabase_database {:name       "Workspace DB"
                                                                  :engine     "h2"
-                                                                 :created_at :%now
-                                                                 :updated_at :%now
+                                                                 :created_at [:now]
+                                                                 :updated_at [:now]
                                                                  :details    "{}"})]
         (migrate!)
         (let [ws-id  (t2/insert-returning-pk! :workspace {:name "ws" :creator_id user-id})
@@ -4871,8 +4871,8 @@
     (impl/test-migrations ["h8xlm4"] [migrate!]
       (let [db-id (t2/insert-returning-pk! :metabase_database {:name       "Admin details DB"
                                                                :engine     "h2"
-                                                               :created_at :%now
-                                                               :updated_at :%now
+                                                               :created_at [:now]
+                                                               :updated_at [:now]
                                                                :details    "{}"})]
         (is (not (contains? (t2/select-one :metabase_database :id db-id) :admin_details))
             "065 dropped the column")
@@ -4896,12 +4896,12 @@
                                                          :email       "collection-preview@metabase.com"
                                                          :password    "superstrong"
                                                          :entity_id   (u/generate-nano-id)
-                                                         :date_joined :%now})
+                                                         :date_joined [:now]})
             db-id   (t2/insert-returning-pk! :metabase_database {:name       "Preview DB"
                                                                  :engine     "h2"
                                                                  :details    "{}"
-                                                                 :created_at :%now
-                                                                 :updated_at :%now})
+                                                                 :created_at [:now]
+                                                                 :updated_at [:now]})
             card-id (t2/insert-returning-pk! :report_card {:name                   "Card"
                                                            :entity_id              (u/generate-nano-id)
                                                            :display                "table"
@@ -4910,8 +4910,8 @@
                                                            :creator_id             user-id
                                                            :database_id            db-id
                                                            :collection_preview     false
-                                                           :created_at             :%now
-                                                           :updated_at             :%now})
+                                                           :created_at             [:now]
+                                                           :updated_at             [:now]})
             ;; Read whole rows: naming the column in the query would make the post-migration read a SQL error.
             card    #(t2/select-one :report_card :id card-id)]
         (migrate!)
@@ -4929,7 +4929,7 @@
                                                               :last_name     "Owner"
                                                               :email         "data-test-owner@test.com"
                                                               :entity_id     (u/generate-nano-id)
-                                                              :date_joined   :%now
+                                                              :date_joined   [:now]
                                                               :password      "password"
                                                               :password_salt "salt"})
             transform-id (t2/insert-returning-pk! :transform {:name        (mt/random-name)
@@ -4938,8 +4938,8 @@
                                                               :source_type "native"
                                                               :creator_id  user-id
                                                               :entity_id   (u/generate-nano-id)
-                                                              :created_at  :%now
-                                                              :updated_at  :%now})
+                                                              :created_at  [:now]
+                                                              :updated_at  [:now]})
             insert-test  (fn []
                            (t2/insert-returning-pk! :transform_test {:entity_id    (u/generate-nano-id)
                                                                      :transform_id transform-id
@@ -4947,8 +4947,8 @@
                                                                      :name         (mt/random-name)
                                                                      :inputs       "[]"
                                                                      :expectations "[]"
-                                                                     :created_at   :%now
-                                                                     :updated_at   :%now}))
+                                                                     :created_at   [:now]
+                                                                     :updated_at   [:now]}))
             test-id      (insert-test)
             deleted-id   (insert-test)
             run-row      (fn [id] {:transform_test_id id, :initiated_by user-id, :status "passed"})
@@ -5028,7 +5028,7 @@
                                                                  :slug       "c"
                                                                  :location   location
                                                                  :entity_id  entity-id
-                                                                 :created_at :%now}))
+                                                                 :created_at [:now]}))
               library-id (or (t2/select-one-pk :collection :entity_id "librarylibrarylibrary")
                              (insert! "/" "librarylibrarylibrary"))
               child-id   (insert! (format "/%d/" library-id) (u/generate-nano-id))
@@ -5046,13 +5046,13 @@
                                                            :last_name     "Owner"
                                                            :email         "card-test-owner@test.com"
                                                            :entity_id     (u/generate-nano-id)
-                                                           :date_joined   :%now
+                                                           :date_joined   [:now]
                                                            :password      "password"
                                                            :password_salt "salt"})
             db-id     (t2/insert-returning-pk! :metabase_database {:name       "DB"
                                                                    :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]
                                                                    :details    "{}"})
             card-id   (t2/insert-returning-pk! :report_card {:name                   "Card"
                                                              :entity_id              (u/generate-nano-id)
@@ -5061,8 +5061,8 @@
                                                              :visualization_settings "{}"
                                                              :creator_id             user-id
                                                              :database_id            db-id
-                                                             :created_at             :%now
-                                                             :updated_at             :%now})
+                                                             :created_at             [:now]
+                                                             :updated_at             [:now]})
             boundary  (with-open [conn (.getConnection (mdb/data-source))]
                         (liquibase/with-liquibase [liquibase conn]
                           (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
@@ -5106,7 +5106,7 @@
                                                              :last_name     "Creator"
                                                              :email         email
                                                              :entity_id     (u/generate-nano-id)
-                                                             :date_joined   :%now
+                                                             :date_joined   [:now]
                                                              :password      "password"
                                                              :password_salt "salt"}))
             alice     (new-user! "ws-idempotency-alice@test.com")
@@ -5144,8 +5144,8 @@
                                            :name         "birds"
                                            :display_name "Birds"
                                            :bundle_path  "birds.js"
-                                           :created_at   :%now
-                                           :updated_at   :%now})
+                                           :created_at   [:now]
+                                           :updated_at   [:now]})
           app    #(t2/select-one :data_app :id app-id)]
       (testing "the slug moves to slug and the display name to name"
         (migrate!)
@@ -5155,13 +5155,13 @@
         (is (thrown? Exception (t2/insert! :data_app {:entity_id    "migration-bees-appxxx"
                                                       :name         "Bees"
                                                       :bundle_path  "bees.js"
-                                                      :created_at   :%now
-                                                      :updated_at   :%now})))
+                                                      :created_at   [:now]
+                                                      :updated_at   [:now]})))
         (is (thrown? Exception (t2/insert! :data_app {:entity_id    "migration-bees-appxxx"
                                                       :slug         "bees"
                                                       :bundle_path  "bees.js"
-                                                      :created_at   :%now
-                                                      :updated_at   :%now}))))
+                                                      :created_at   [:now]
+                                                      :updated_at   [:now]}))))
       (testing "rollback restores the old columns"
         (migrate! :down 64)
         (is (=? {:name "birds" :display_name "Birds"} (app)))
@@ -5174,26 +5174,26 @@
                                                               :last_name     "Owner"
                                                               :email         "segment-test-owner@test.com"
                                                               :entity_id     (u/generate-nano-id)
-                                                              :date_joined   :%now
+                                                              :date_joined   [:now]
                                                               :password      "password"
                                                               :password_salt "salt"})
             db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
                                                                       :engine     "h2"
-                                                                      :created_at :%now
-                                                                      :updated_at :%now
+                                                                      :created_at [:now]
+                                                                      :updated_at [:now]
                                                                       :details    "{}"})
             table-id     (t2/insert-returning-pk! :metabase_table {:name       "customers"
                                                                    :db_id      db-id
                                                                    :active     true
-                                                                   :created_at :%now
-                                                                   :updated_at :%now})
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]})
             segment-id   (t2/insert-returning-pk! :segment {:name       "Active customers"
                                                             :entity_id  (u/generate-nano-id)
                                                             :table_id   table-id
                                                             :creator_id user-id
                                                             :definition "{}"
-                                                            :created_at :%now
-                                                            :updated_at :%now})
+                                                            :created_at [:now]
+                                                            :updated_at [:now]})
             boundary     (with-open [conn (.getConnection (mdb/data-source))]
                            (liquibase/with-liquibase [liquibase conn]
                              (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
@@ -5261,16 +5261,16 @@
   (impl/test-migrations ["zr3x3c" "mjumxg"] [migrate!]
     (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "User Settings Id Test DB"
                                                                      :engine     "h2"
-                                                                     :created_at :%now
-                                                                     :updated_at :%now
+                                                                     :created_at [:now]
+                                                                     :updated_at [:now]
                                                                      :details    "{}"})
           insert-table! (fn [table-name]
                           (t2/insert-returning-pk! :metabase_table {:active       true
                                                                     :db_id        db-id
                                                                     :name         table-name
                                                                     :display_name table-name
-                                                                    :created_at   :%now
-                                                                    :updated_at   :%now}))
+                                                                    :created_at   [:now]
+                                                                    :updated_at   [:now]}))
           insert-field! (fn [table-id field-name]
                           (t2/insert-returning-pk! :metabase_field {:table_id      table-id
                                                                     :name          field-name
@@ -5278,8 +5278,8 @@
                                                                     :active        true
                                                                     :base_type     "type/Text"
                                                                     :database_type "TEXT"
-                                                                    :created_at    :%now
-                                                                    :updated_at    :%now}))
+                                                                    :created_at    [:now]
+                                                                    :updated_at    [:now]}))
           table-1       (insert-table! "one")
           table-2       (insert-table! "two")
           field-1       (insert-field! table-1 "one")
@@ -5329,8 +5329,8 @@
                  :entity_local_id local-id
                  :entity_id       (format "osiaicontext%s%07d" (first entity-type) local-id)
                  :ai_context      "{}"
-                 :created_at      :%now
-                 :updated_at      :%now})]
+                 :created_at      [:now]
+                 :updated_at      [:now]})]
       (t2/insert! :osi_ai_context [(row "table" 1) (row "table" 2) (row "card" 1)])
       (migrate!)
       (testing "existing rows get distinct ids and keep their keys"
@@ -5355,26 +5355,26 @@
                                                            :email       "user@example.com"
                                                            :entity_id   (u/generate-nano-id)
                                                            :password    "superstrong"
-                                                           :date_joined :%now})
+                                                           :date_joined [:now]})
           db-id       (t2/insert-returning-pk! :metabase_database {:name       "Segment Definitions DB"
                                                                    :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]
                                                                    :details    "{}"})
           table-id    (t2/insert-returning-pk! :metabase_table {:active       true
                                                                 :db_id        db-id
                                                                 :name         "orders"
                                                                 :display_name "Orders"
-                                                                :created_at   :%now
-                                                                :updated_at   :%now})
+                                                                :created_at   [:now]
+                                                                :updated_at   [:now]})
           segment!    (fn [definition]
                         (t2/insert-returning-pk! :segment {:name       "Segment"
                                                            :table_id   table-id
                                                            :creator_id user-id
                                                            :entity_id  (u/generate-nano-id)
                                                            :definition (json/encode definition)
-                                                           :created_at :%now
-                                                           :updated_at :%now}))
+                                                           :created_at [:now]
+                                                           :updated_at [:now]}))
           definition  (fn [segment-id]
                         (json/decode (t2/select-one-fn :definition :segment :id segment-id)))
           filter-form ["=" ["field" 1 nil] 2]
@@ -5428,14 +5428,14 @@
             builder-gid (group! "Transforms Builder Group")
             db-id       (t2/insert-returning-pk! :metabase_database {:name       "Transforms Test DB"
                                                                      :engine     "postgres"
-                                                                     :created_at :%now
-                                                                     :updated_at :%now
+                                                                     :created_at [:now]
+                                                                     :updated_at [:now]
                                                                      :details    "{}"})
             table-id    (t2/insert-returning-pk! :metabase_table {:active     true
                                                                   :db_id      db-id
                                                                   :name       "a_table"
-                                                                  :created_at :%now
-                                                                  :updated_at :%now})
+                                                                  :created_at [:now]
+                                                                  :updated_at [:now]})
             perm!       (fn [m] (t2/insert-returning-pk! :data_permissions (merge {:db_id db-id} m)))
             transforms! (fn [group-id] (perm! {:group_id group-id :perm_type "perms/transforms" :perm_value "yes"}))
             transforms  (fn [id] (t2/select-one-fn :perm_value :data_permissions :id id))]
@@ -5459,18 +5459,18 @@
                                                              :email       "user@example.com"
                                                              :password    "superstrong"
                                                              :entity_id   (u/generate-nano-id)
-                                                             :date_joined :%now})
+                                                             :date_joined [:now]})
             db-id       (t2/insert-returning-pk! :metabase_database {:name       "db"
                                                                      :engine     "postgres"
-                                                                     :created_at :%now
-                                                                     :updated_at :%now
+                                                                     :created_at [:now]
+                                                                     :updated_at [:now]
                                                                      :details    "{}"})
             dash-id     (t2/insert-returning-pk! :report_dashboard {:name       "Series"
                                                                     :creator_id user-id
                                                                     :parameters "[]"
                                                                     :entity_id  (u/generate-nano-id)
-                                                                    :created_at :%now
-                                                                    :updated_at :%now})
+                                                                    :created_at [:now]
+                                                                    :updated_at [:now]})
             insert-card!    (fn []
                               (t2/insert-returning-pk! :report_card {:name                   "Card"
                                                                      :entity_id              (u/generate-nano-id)
@@ -5479,8 +5479,8 @@
                                                                      :visualization_settings "{}"
                                                                      :creator_id             user-id
                                                                      :database_id            db-id
-                                                                     :created_at             :%now
-                                                                     :updated_at             :%now}))
+                                                                     :created_at             [:now]
+                                                                     :updated_at             [:now]}))
             insert-dashcard! (fn []
                                (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
                                                                                :parameter_mappings     "[]"
@@ -5490,8 +5490,8 @@
                                                                                :size_y                 4
                                                                                :row                    0
                                                                                :col                    0
-                                                                               :created_at             :%now
-                                                                               :updated_at             :%now}))
+                                                                               :created_at             [:now]
+                                                                               :updated_at             [:now]}))
             insert-series!  (fn [dashcard-id position]
                               (t2/insert-returning-pk! :dashboardcard_series {:dashboardcard_id dashcard-id
                                                                               :card_id          (insert-card!)
@@ -5517,7 +5517,7 @@
                                                                :email       "user@example.com"
                                                                :password    "superstrong"
                                                                :entity_id   (u/generate-nano-id)
-                                                               :date_joined :%now})
+                                                               :date_joined [:now]})
             insert-collection! (fn [archived?]
                                  (t2/insert-returning-pk! :collection {:name      "Collection"
                                                                        :slug      "collection"
@@ -5533,8 +5533,8 @@
                                                              :archived      archived?
                                                              :parameters    "[]"
                                                              :entity_id     (u/generate-nano-id)
-                                                             :created_at    :%now
-                                                             :updated_at    :%now}))
+                                                             :created_at    [:now]
+                                                             :updated_at    [:now]}))
             insert-snippet! (fn [collection-id archived?]
                               (t2/insert-returning-pk! :native_query_snippet {:name          (str (random-uuid))
                                                                               :content       "1 = 1"
@@ -5542,8 +5542,8 @@
                                                                               :collection_id collection-id
                                                                               :archived      archived?
                                                                               :entity_id     (u/generate-nano-id)
-                                                                              :created_at    :%now
-                                                                              :updated_at    :%now}))
+                                                                              :created_at    [:now]
+                                                                              :updated_at    [:now]}))
             insert-timeline! (fn [collection-id archived?]
                                (t2/insert-returning-pk! :timeline {:name          "Timeline"
                                                                    :creator_id    user-id
@@ -5551,8 +5551,8 @@
                                                                    :archived      archived?
                                                                    :icon          "star"
                                                                    :entity_id     (u/generate-nano-id)
-                                                                   :created_at    :%now
-                                                                   :updated_at    :%now}))
+                                                                   :created_at    [:now]
+                                                                   :updated_at    [:now]}))
             rows          {:pulse    [(insert-pulse! live-id true) (insert-pulse! archived-id true) (insert-pulse! live-id false)]
                            :snippet  [(insert-snippet! live-id true) (insert-snippet! archived-id true) (insert-snippet! live-id false)]
                            :timeline [(insert-timeline! live-id true) (insert-timeline! archived-id true) (insert-timeline! live-id false)]}]
@@ -5569,11 +5569,11 @@
                                                           :email       "user@example.com"
                                                           :entity_id   (u/generate-nano-id)
                                                           :password    "superstrong"
-                                                          :date_joined :%now})
+                                                          :date_joined [:now]})
           db-id      (t2/insert-returning-pk! :metabase_database {:name       "Transform Targets DB"
                                                                   :engine     "h2"
-                                                                  :created_at :%now
-                                                                  :updated_at :%now
+                                                                  :created_at [:now]
+                                                                  :updated_at [:now]
                                                                   :details    "{}"})
           transform! (fn []
                        (t2/insert-returning-pk! :transform {:name        (mt/random-name)
@@ -5582,15 +5582,15 @@
                                                             :source_type "native"
                                                             :creator_id  user-id
                                                             :entity_id   (u/generate-nano-id)
-                                                            :created_at  :%now
-                                                            :updated_at  :%now}))
+                                                            :created_at  [:now]
+                                                            :updated_at  [:now]}))
           table!     (fn [transform-id]
                        (t2/insert-returning-pk! :metabase_table {:active       true
                                                                  :db_id        db-id
                                                                  :name         (mt/random-name)
                                                                  :transform_id transform-id
-                                                                 :created_at   :%now
-                                                                 :updated_at   :%now}))
+                                                                 :created_at   [:now]
+                                                                 :updated_at   [:now]}))
           target     (fn [transform-id]
                        (t2/select-one-fn :target_table_id :transform :id transform-id))
           unlinked   (transform!)
@@ -5619,8 +5619,8 @@
   (impl/test-migrations ["t5r8wm" "m6d9fx"] [migrate!]
     (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "Published Tables DB"
                                                                      :engine     "h2"
-                                                                     :created_at :%now
-                                                                     :updated_at :%now
+                                                                     :created_at [:now]
+                                                                     :updated_at [:now]
                                                                      :details    "{}"})
           collection-id (t2/insert-returning-pk! :collection {:name      "Data"
                                                               :slug      "data"
@@ -5630,13 +5630,13 @@
                           (t2/insert-returning-pk! :metabase_table (merge {:active     true
                                                                            :db_id      db-id
                                                                            :name       (mt/random-name)
-                                                                           :created_at :%now
-                                                                           :updated_at :%now}
+                                                                           :created_at [:now]
+                                                                           :updated_at [:now]}
                                                                           values)))
           settings!     (fn [table-id values]
                           (t2/insert! :metabase_table_user_settings (merge {:table_id   table-id
-                                                                            :created_at :%now
-                                                                            :updated_at :%now}
+                                                                            :created_at [:now]
+                                                                            :updated_at [:now]}
                                                                            values)))
           published     (table! {:is_published true, :collection_id collection-id})
           unpublished   (table! {})

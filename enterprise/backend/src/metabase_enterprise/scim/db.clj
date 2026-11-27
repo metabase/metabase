@@ -25,7 +25,7 @@
 (defn- personal-user-expr
   [email]
   [:and [:= :type "personal"]
-   (when email [:= :%lower.email (u/lower-case-en email)])])
+   (when email [:= [:lower :email] (u/lower-case-en email)])])
 
 (mu/defn scim-user-by-entity-id
   "The SCIM columns of the personal User with `entity-id`, or nil."
@@ -57,7 +57,7 @@
 (mu/defn user-email-exists?
   "Whether a User with `email` (case-insensitive) exists."
   [email :- :string]
-  (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
+  (t2/exists? :model/User {:where [:= [:lower :email] (u/lower-case-en email)]}))
 
 (mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
@@ -111,7 +111,7 @@
 (mu/defn group-name-exists?
   "Whether a PermissionsGroup with `group-name` (case-insensitive) exists."
   [group-name :- :string]
-  (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
+  (t2/exists? :model/PermissionsGroup {:where [:= [:lower :name] (u/lower-case-en group-name)]}))
 
 (mu/defn group-member-user-ids
   "The user IDs of the members of the PermissionsGroup with `group-id`."

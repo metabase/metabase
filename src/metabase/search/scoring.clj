@@ -93,7 +93,7 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  (let [one-day-ago [:date-add :%now -1 :day]]
+  (let [one-day-ago [:date-add [:now] -1 :day]]
     ^:allow-subquery
     {:select [[[:case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them

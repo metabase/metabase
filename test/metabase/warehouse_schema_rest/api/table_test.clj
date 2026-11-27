@@ -1148,8 +1148,8 @@
                                                  :schema     "PUBLIC"
                                                  :name       "mirror_table"
                                                  :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
+                                                 :created_at [:now]
+                                                 :updated_at [:now]})]
           (is (= "Not found."
                  (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" table-id)))))))))
 

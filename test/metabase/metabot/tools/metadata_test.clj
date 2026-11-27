@@ -124,7 +124,7 @@
                    :model/Card {card-id :id} {:type :question :database_id destination-id}]
       (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
                                               {:db_id destination-id :name "destination-table" :active true
-                                               :created_at :%now :updated_at :%now})]
+                                               :created_at [:now] :updated_at [:now]})]
         (testing "destination databases cannot be addressed directly"
           (doseq [profile [:document-generate-content :slackbot]
                   [data-source source-id] [["table" table-id] ["model" card-id] ["metric" card-id]

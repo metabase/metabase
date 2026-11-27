@@ -17,7 +17,7 @@
                 {:id         session-id
                  :key_hashed (session/hash-session-key (str (random-uuid)))
                  :user_id    user-id
-                 :created_at :%now})
+                 :created_at [:now]})
     (t2/insert! :model/OAuthAccessToken {:token     token
                                          :user_id   user-id
                                          :client_id "test-client"

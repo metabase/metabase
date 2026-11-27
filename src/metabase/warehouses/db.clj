@@ -82,7 +82,7 @@
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
   []
-  (t2/query {:select   [[:%min.id :id]]
+  (t2/query {:select   [[[:min :id] :id]]
              :from     [(t2/table-name :model/Database)]
              :where    [:and
                         [:= :is_audit false]
@@ -100,7 +100,7 @@
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id database-id :active true {:order-by [[[:lower :display_name] :asc]]}))
 
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
@@ -108,7 +108,7 @@
   (mdb/select-batched #(t2/select :model/Table
                                   :db_id  [:in %]
                                   :active true
-                                  {:order-by [[:db_id :asc] [:%lower.display_name :asc]]})
+                                  {:order-by [[:db_id :asc] [[:lower :display_name] :asc]]})
                       (sort (distinct database-ids))))
 
 (mu/defn active-table-ids-for-database

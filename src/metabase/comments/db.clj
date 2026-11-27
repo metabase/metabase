@@ -40,7 +40,7 @@
   "Rows of `:child_target_id` and `:comment_count` for the document with `document-id`, counting only
   live comments and skipping threads with no child target."
   [document-id]
-  (t2/select [:model/Comment :child_target_id [:%count.id :comment_count]]
+  (t2/select [:model/Comment :child_target_id [[:count :id] :comment_count]]
              :target_type "document"
              :target_id document-id
              :child_target_id [:not= nil]
@@ -130,8 +130,8 @@
              (h2x/assert-map-or-nil!
               (-> (user/filter-clauses {:limit limit :offset offset})
                   restrict-to-visible-users
-                  (sql.helpers/order-by [:%lower.first_name :asc]
-                                        [:%lower.last_name :asc]
+                  (sql.helpers/order-by [[:lower :first_name] :asc]
+                                        [[:lower :last_name] :asc]
                                         [:id :asc])))))
 
 (mu/defn mentionable-user-count

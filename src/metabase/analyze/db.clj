@@ -23,7 +23,7 @@
   [table-ids where-fn]
   (into {}
         (map (juxt :table_id :field_count))
-        (app-db/select-batched #(t2/query {:select   [:table_id [:%count.* :field_count]]
+        (app-db/select-batched #(t2/query {:select   [:table_id [[:count :*] :field_count]]
                                            :from     [(t2/table-name :model/Field)]
                                            :where    (where-fn %)
                                            :group-by [:table_id]})

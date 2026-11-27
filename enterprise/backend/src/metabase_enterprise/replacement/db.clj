@@ -55,10 +55,10 @@
    unit :- :keyword]
   (t2/update! :model/ReplacementRun
               :is_active true
-              :start_time [:< [:date-add :%now (- age) unit]]
+              :start_time [:< [:date-add [:now] (- age) unit]]
               {:status    :timeout
                :is_active nil
-               :end_time  :%now
+               :end_time  [:now]
                :message   "Timed out by metabase"}))
 
 (mu/defn row

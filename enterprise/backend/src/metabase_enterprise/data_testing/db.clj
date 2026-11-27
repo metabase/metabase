@@ -88,7 +88,7 @@
 (mu/defn touch-test-suites!
   "Set the update time of the TestSuites with `ids` to the database's current time."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in %] {:updated_at :%now}) ids))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in %] {:updated_at [:now]}) ids))
 
 (mu/defn delete-members-of-suites!
   "Delete the members of the TestSuites with `suite-ids`."
@@ -146,7 +146,7 @@
   (t2/update! :model/TestSuiteRun
               :id run-id
               :status "started"
-              (cond-> {:status status :end_time :%now}
+              (cond-> {:status status :end_time [:now]}
                 members (assoc :members members))))
 
 (mu/defn add-members-to-ended-suite-run! :- :int
@@ -319,7 +319,7 @@
   (t2/update! :model/DataTestRun
               :id run-id
               :status "started"
-              {:status status :end_time :%now}))
+              {:status status :end_time [:now]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -456,8 +456,8 @@
    run-ids  :- [:sequential ms/PositiveInt]
    terminal :- [:map {:closed true}
                 [:status    {:optional true} [:maybe [:or :string :keyword]]]
-                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
-                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string [:= [:now]]]]]
+                [:ended_at  {:optional true} [:maybe [:or :string [:= [:now]]]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
   [(app-db/sum-batched app-db/update-partition-size #(first (t2/query (rt/terminal-statement model [:status "started"] % terminal))) run-ids)])

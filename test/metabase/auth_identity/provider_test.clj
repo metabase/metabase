@@ -391,7 +391,7 @@
    (fn []
      (mt/with-temporary-setting-values [site-name "Metabase"]
        (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
-         (mt/with-temp [:model/User admin {:is_superuser true :last_login :%now}]
+         (mt/with-temp [:model/User admin {:is_superuser true :last_login [:now]}]
            (let [email (mt/random-email)]
              (try
                (testing "provisioning a new user emails admins"

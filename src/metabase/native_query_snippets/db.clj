@@ -25,7 +25,7 @@
 (mu/defn snippets-by-archived
   "The NativeQuerySnippets whose archived flag is `archived`, in case-insensitive name order."
   [archived :- :boolean]
-  (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[:%lower.name :asc]]}))
+  (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn snippet
   "The NativeQuerySnippet with `id`, or nil."

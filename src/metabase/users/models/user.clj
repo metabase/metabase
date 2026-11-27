@@ -109,7 +109,7 @@
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (def ^:private insert-default-values
-  {:date_joined     :%now
+  {:date_joined     [:now]
    :last_login      nil
    :is_active       true
    :is_superuser    false
@@ -684,7 +684,7 @@
   (t2/with-transaction [_conn]
     (u/prog1 (users.db/set-user-last-login-now! user-id)
       (when (pos? <>)
-        (publish-own-write! user-id {:last_login :%now})))))
+        (publish-own-write! user-id {:last_login [:now]})))))
 
 (mu/defn set-settings! :- :int
   "Store `settings-json` as the user-local setting values of the User with `user-id` in one statement, publishing the

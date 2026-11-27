@@ -106,7 +106,7 @@
 
 (t2/define-before-insert :model/AuditLog
   [activity]
-  (let [defaults {:timestamp :%now
+  (let [defaults {:timestamp [:now]
                   :details   {}}]
     (merge defaults activity)))
 

@@ -123,7 +123,7 @@
                                    :active   [:status "started"]
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
                                    :set-terminal! #(data-testing.db/set-started-runs-terminal!
-                                                    model % {:status "timeout" :end_time :%now})})]
+                                                    model % {:status "timeout" :end_time [:now]})})]
     (doseq [run reaped]
       (if-let [topic (topic-of run)]
         (call-or-log-failure

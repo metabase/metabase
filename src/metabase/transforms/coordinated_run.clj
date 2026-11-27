@@ -116,7 +116,7 @@
     :active   [:is_active true]
     :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
     :set-terminal! #(transforms.db/set-active-runs-terminal!
-                     model % {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"})
+                     model % {:status "timeout" :end_time [:now] :is_active nil :message "Timed out: crashed"})
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
                :latency-metric :metabase-transforms/timeout-detection-latency-ms
                :tags           {:type type-tag}

@@ -25,7 +25,7 @@
   (t2/insert! (t2/table-name :model/Session) {:id         (session/generate-session-id)
                                               :key_hashed (session/hash-session-key (session/generate-session-key))
                                               :user_id    user-id
-                                              :created_at :%now}))
+                                              :created_at [:now]}))
 
 (defn- population!
   "Deactivate every active superuser, then create the Users of one case and return their ids by name: admins `a` and

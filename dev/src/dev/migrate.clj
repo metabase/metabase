@@ -62,7 +62,7 @@
 
 (defn- migration-since
   [id]
-  (->> (t2/query-one {:select [[:%count.* :count]]
+  (->> (t2/query-one {:select [[[:count :*] :count]]
                       :from   [databasechangelog-name]
                       :where  [:> :orderexecuted ^:allow-subquery
                                {:select   [:orderexecuted]

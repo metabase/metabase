@@ -105,7 +105,7 @@
 (mu/defn spec-index-count
   "The number of indexable rows of `search-model`."
   [search-model :- :string]
-  (:count (t2/query-one (assoc (ingestion.query/spec-index-query search-model) :select [[:%count.* :count]]))))
+  (:count (t2/query-one (assoc (ingestion.query/spec-index-query search-model) :select [[[:count :*] :count]]))))
 
 (mu/defn in-place-model-set-rows
   "The `:model` rows of the in-place search engine's model-set query for `search-ctx`, or nil when no model applies."
@@ -207,7 +207,7 @@
   (t2/query-one {:select [:engine :table_collation :table_rows]
                  :from   [:information_schema.tables]
                  :where  [:and
-                          [:= :table_schema :%database]
+                          [:= :table_schema [:database]]
                           [:= :table_name table-name]]}))
 
 (mu/defn postgres-batch-upsert!
@@ -306,13 +306,13 @@
 (defn- current-schema
   "The SQL expression for the schema, or the MySQL database, that holds the app DB's tables."
   []
-  (if (= :mysql (mdb/db-type)) :%database :%current_schema))
+  (if (= :mysql (mdb/db-type)) [:database] [:current_schema]))
 
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
   ;; MySQL's `information_schema` lists the tables of every database the user can see.
-  (t2/exists? :information_schema.tables :table_schema (current-schema) :table_name table-name))
+  (t2/exists? :information_schema.tables :table_schema [:= (current-schema)] :table_name table-name))
 
 (mu/defn mysql-index-names :- [:set :string]
   "The names of the indexes on the table `table-name` in the current MySQL database."
@@ -323,7 +323,7 @@
         (t2/query {:select-distinct [[:index_name :index_name]]
                    :from            [:information_schema.statistics]
                    :where           [:and
-                                     [:= :table_schema :%database]
+                                     [:= :table_schema [:database]]
                                      [:= :table_name table-name]]})))
 
 (mu/defn mysql-table-older-than? :- :boolean
@@ -332,10 +332,10 @@
   [table-name :- :string
    minutes    :- pos-int?]
   (boolean
-   (some-> (t2/query-one {:select [[[:< :create_time [:date-add :%now (- minutes) :minute]] :old]]
+   (some-> (t2/query-one {:select [[[:< :create_time [:date-add [:now] (- minutes) :minute]] :old]]
                           :from   [:information_schema.tables]
                           :where  [:and
-                                   [:= :table_schema :%database]
+                                   [:= :table_schema [:database]]
                                    [:= :table_name table-name]]})
            :old
            pos?)))

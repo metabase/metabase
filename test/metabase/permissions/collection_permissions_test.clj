@@ -74,7 +74,7 @@
       (perms/grant-collection-read-permissions! (perms/all-users-group) read-id)
       (perms/grant-collection-readwrite-permissions! (perms/all-users-group) write-id)
       (let [rasta-id   (user-info :rasta)
-            missing-id (inc (:max (t2/select-one [:model/Collection [:%max.id :max]])))]
+            missing-id (inc (:max (t2/select-one [:model/Collection [[:max :id] :max]])))]
         (testing "every id asked has an entry, repeated ids and ids of no Collection included"
           (is (= {read-id :read, write-id :read-and-write, none-id :none, missing-id :none, nil :none}
                  (perms/collection-permissions-for-user rasta-id

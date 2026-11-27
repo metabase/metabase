@@ -31,7 +31,7 @@
 (defn- cutoff
   "Honey SQL form for `(now - age unit)` in the app-db dialect."
   [age unit]
-  [:date-add :%now (- age) unit])
+  [:date-add [:now] (- age) unit])
 
 (defn- stale-clause
   "ORs together the `[:< column (cutoff age unit)]` predicate for each spec in `stale-specs`."
@@ -51,7 +51,7 @@
    heartbeat-column :- :keyword
    ids              :- [:sequential ms/PositiveInt]]
   {:update (t2/table-name model)
-   :set    {heartbeat-column :%now}
+   :set    {heartbeat-column [:now]}
    :where  [:and (active-clause active) [:in :id ids]]})
 
 (mu/defn active-ids
@@ -74,15 +74,15 @@
 
   `terminal` is typed as a generic column -> value map rather than a closed schema because the columns are
   model-specific (TaskRun, TransformRun, TransformJobRun, TransformDagRun each have their own terminal-state
-  columns, e.g. `{:status \"timeout\" :end_time :%now :is_active nil :message m}`); callers are trusted to pass
+  columns, e.g. `{:status \"timeout\" :end_time [:now] :is_active nil :message m}`); callers are trusted to pass
   real column names for `model`."
   [model    :- :keyword
    active   :- ActivePredicate
    ids      :- [:sequential ms/PositiveInt]
    terminal :- [:map {:closed true}
                 [:status    {:optional true} [:maybe [:or :string :keyword]]]
-                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
-                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string [:= [:now]]]]]
+                [:ended_at  {:optional true} [:maybe [:or :string [:= [:now]]]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
   {:update (t2/table-name model)

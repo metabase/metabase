@@ -87,7 +87,7 @@
                                   :last_name     "User"
                                   :password      "unused"
                                   :password_salt "unused"
-                                  :date_joined   :%now
+                                  :date_joined   [:now]
                                   :settings      (encryption/encrypt
                                                   "{\"some-user-setting\":true}"
                                                   {:secret-key (encryption/secret-key->hash "source-instance-key")})}
@@ -97,7 +97,7 @@
                                   :last_name     "User"
                                   :password      "unused"
                                   :password_salt "unused"
-                                  :date_joined   :%now
+                                  :date_joined   [:now]
                                   :settings      "{\"other-user-setting\":true}"}]})
         (is (nil? (raw-value "encryption-check")))
         (encryption-test/with-secret-key "target-instance-key"

@@ -35,8 +35,8 @@
    :schedule_hour 6})
 
 (def timestamp-now
-  {:created_at :%now
-   :updated_at :%now})
+  {:created_at [:now]
+   :updated_at [:now]})
 
 (def cron-daily-6-am
   "0 0 6 * * ? *")

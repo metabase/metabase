@@ -358,8 +358,8 @@
                                                       {:db_id      routed-db
                                                        :name       "routed_table"
                                                        :active     true
-                                                       :created_at :%now
-                                                       :updated_at :%now})
+                                                       :created_at [:now]
+                                                       :updated_at [:now]})
             metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
             ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"

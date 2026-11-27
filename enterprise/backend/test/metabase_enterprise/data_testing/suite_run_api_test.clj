@@ -125,7 +125,7 @@
             (is (not-any? #(or (contains? % :result) (contains? % :name) (contains? % :test_id))
                           (:members (first data))))))
         (testing "a suite that does not exist is a 404"
-          (let [no-suite (inc (t2/select-one-fn :max-id [:model/TestSuite [:%max.id :max-id]]))]
+          (let [no-suite (inc (t2/select-one-fn :max-id [:model/TestSuite [[:max :id] :max-id]]))]
             (mt/user-http-request :crowberto :post 404 (run-path no-suite))
             (mt/user-http-request :crowberto :get 404 (runs-path no-suite))))))))
 

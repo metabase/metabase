@@ -16,7 +16,7 @@
   (t2/select :model/Dashboard {:where    [:and
                                           (when creator-id [:= :creator_id creator-id])
                                           [:= :archived archived?]]
-                               :order-by [:%lower.name]}))
+                               :order-by [[[:lower :name]]]}))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."

@@ -46,7 +46,7 @@
                                                                                                                                                    :permission-level          :read
                                                                                                                                                    :archive-operation-id      nil
                                                                                                                                                    :root-namespace            nil})]
-              :order-by [[:%lower.name :asc]]}))
+              :order-by [[[:lower :name] :asc]]}))
 
 (mu/defn collection-type
   "The type of the Collection with `collection-id`."

@@ -774,7 +774,7 @@
                    :model/Database {tenant-b :id} {:name "Tenant B DB" :router_database_id router}]
       (let [b-orders (t2/insert-returning-pk! (t2/table-name :model/Table)
                                               {:db_id tenant-b :schema "public" :name "tenant_b_orders" :active true
-                                               :created_at :%now :updated_at :%now})]
+                                               :created_at [:now] :updated_at [:now]})]
         (mt/with-temp [:model/Field    _ {:table_id b-orders :name "secret_amount"
                                           :base_type :type/Float :position 0}
                        :model/Card     _ {:name "Tenant B Model" :type :model

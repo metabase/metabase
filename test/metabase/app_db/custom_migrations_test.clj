@@ -93,13 +93,13 @@
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
-            (merge props {:created_at :%now :updated_at :%now}))]
+            (merge props {:created_at [:now] :updated_at [:now]}))]
     (case table
       :core_user         {:first_name  (mt/random-name)
                           :last_name   (mt/random-name)
                           :email       (mt/random-email)
                           :password    "superstrong"
-                          :date_joined :%now}
+                          :date_joined [:now]}
       :metabase_database (with-timestamped
                            {:name       (mt/random-name)
                             :engine     "h2"
@@ -109,7 +109,7 @@
                             :dataset_query          "{}"
                             :display                "table"
                             :visualization_settings "{}"})
-      :revision          {:timestamp :%now}
+      :revision          {:timestamp [:now]}
       :pulse             (with-timestamped
                            {:name       (mt/random-name)
                             :parameters "{}"})
@@ -192,17 +192,17 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
-                                                   :created_at             :%now
-                                                   :updated_at             :%now
+                                                   :created_at             [:now]
+                                                   :updated_at             [:now]
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
@@ -258,17 +258,17 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
-                                                   :created_at             :%now
-                                                   :updated_at             :%now
+                                                   :created_at             [:now]
+                                                   :updated_at             [:now]
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
@@ -333,17 +333,17 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
-                                                   :created_at             :%now
-                                                   :updated_at             :%now
+                                                   :created_at             [:now]
+                                                   :updated_at             [:now]
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
@@ -379,7 +379,7 @@
                                                                                        :last_name   "Hughes"
                                                                                        :email       "howard@aircraft.com"
                                                                                        :password    "superstrong"
-                                                                                       :date_joined :%now}))
+                                                                                       :date_joined [:now]}))
             dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                             :creator_id user-id}))
             tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
@@ -468,7 +468,7 @@
                                                          :last_name   "Hughes"
                                                          :email       "howard@aircraft.com"
                                                          :password    "superstrong"
-                                                         :date_joined :%now}))
+                                                         :date_joined [:now]}))
 
           cards        [{:row 15 :col 0  :size_x 12 :size_y 8}
                         {:row 7  :col 12 :size_x 6  :size_y 8}
@@ -490,7 +490,7 @@
                                                         :model     "Dashboard"
                                                         :model_id  1
                                                         :user_id   user-id
-                                                        :timestamp :%now}))]
+                                                        :timestamp [:now]}))]
       (migrate!)
       (testing "forward migration migrate correclty"
         (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
@@ -520,7 +520,7 @@
                                                          :last_name   "Hughes"
                                                          :email       "howard@aircraft.com"
                                                          :password    "superstrong"
-                                                         :date_joined :%now}))
+                                                         :date_joined [:now]}))
 
           cards        [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}          ; correct case
                         {:id 2 :row 0 :col 0 :sizeX 4 :sizeY 4}            ; sizeX and sizeY are legacy names
@@ -532,7 +532,7 @@
                                                         :model     "Dashboard"
                                                         :model_id  1
                                                         :user_id   user-id
-                                                        :timestamp :%now}))]
+                                                        :timestamp [:now]}))]
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
@@ -650,14 +650,14 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             card        {:visualization_settings visualization-settings}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Card"
                                                    :model_id  1 ;; TODO: this could be a foreign key in the future
                                                    :user_id   user-id
                                                    :object    (json/encode card)
-                                                   :timestamp :%now})]
+                                                   :timestamp [:now]})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -724,13 +724,13 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Card"
                                                    :model_id  1 ;; TODO: this could be a foreign key in the future
                                                    :user_id   user-id
                                                    :object    (json/encode card)
-                                                   :timestamp :%now})]
+                                                   :timestamp [:now]})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
@@ -775,17 +775,17 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
-                                                   :created_at             :%now
-                                                   :updated_at             :%now
+                                                   :created_at             [:now]
+                                                   :updated_at             [:now]
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
@@ -863,17 +863,17 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
-                                                   :created_at             :%now
-                                                   :updated_at             :%now
+                                                   :created_at             [:now]
+                                                   :updated_at             [:now]
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
@@ -932,14 +932,14 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             dashboard   {:cards [{:visualization_settings visualization-settings}]}
             revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                   {:model     "Dashboard"
                                                    :model_id  1
                                                    :user_id   user-id
                                                    :object    (json/encode dashboard)
-                                                   :timestamp :%now})]
+                                                   :timestamp [:now]})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -996,17 +996,17 @@
                                                           :last_name   "Hughes"
                                                           :email       "howard@aircraft.com"
                                                           :password    "superstrong"
-                                                          :date_joined :%now})
+                                                          :date_joined [:now]})
             database-id        (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                          {:name       "DB"
                                                           :engine     "h2"
-                                                          :created_at :%now
-                                                          :updated_at :%now
+                                                          :created_at [:now]
+                                                          :updated_at [:now]
                                                           :details    "{}"})
             [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                          {:name                   "My Saved Question"
-                                                          :created_at             :%now
-                                                          :updated_at             :%now
+                                                          :created_at             [:now]
+                                                          :updated_at             [:now]
                                                           :creator_id             user-id
                                                           :display                "table"
                                                           :dataset_query          (json/encode {:database 1
@@ -1029,7 +1029,7 @@
                                                    :model_id  1
                                                    :user_id   user-id
                                                    :object    (json/encode dashboard)
-                                                   :timestamp :%now})]
+                                                   :timestamp [:now]})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
@@ -1060,8 +1060,8 @@
           (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
             (let [default-db                {:name       "DB"
                                              :engine     "postgres"
-                                             :created_at :%now
-                                             :updated_at :%now}
+                                             :created_at [:now]
+                                             :updated_at [:now]}
                   success-id                (first (t2/insert-returning-pks!
                                                     :model/Database
                                                     (merge default-db
@@ -1437,12 +1437,12 @@
                                                           :last_name   "Hughes"
                                                           :email       "howard@aircraft.com"
                                                           :password    "superstrong"
-                                                          :date_joined :%now})
+                                                          :date_joined [:now]})
                 [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                          {:name       "DB"
                                                           :engine     "h2"
-                                                          :created_at :%now
-                                                          :updated_at :%now
+                                                          :created_at [:now]
+                                                          :updated_at [:now]
                                                           :details    "{}"})
                 [card-id]      (t2/insert-returning-pks!
                                 :report_card
@@ -1452,8 +1452,8 @@
                                  :creator_id             user-id
                                  :database_id            database-id
                                  :name                   "My Card"
-                                 :created_at             :%now
-                                 :updated_at             :%now})
+                                 :created_at             [:now]
+                                 :updated_at             [:now]})
                 [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
                                                                            :creator_id user-id
                                                                            :parameters []})
@@ -1616,10 +1616,10 @@
                                                            :last_name   "Hughes"
                                                            :email       "howard@aircraft.com"
                                                            :password    "superstrong"
-                                                           :date_joined :%now})
+                                                           :date_joined [:now]})
               session (t2/insert-returning-instance! :core_session {:user_id    user-id
                                                                     :id         (str (random-uuid))
-                                                                    :created_at :%now})]
+                                                                    :created_at [:now]})]
           (t2/update! :core_session :id (:id session) {:anti_csrf_token "normal"})
           (testing "created_at shouldn't change if there is an update"
             (is (= (:created_at session)
@@ -1897,18 +1897,18 @@
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
                                                    :password    "superstrong"
-                                                   :date_joined :%now})
+                                                   :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-ids    (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   (mapv (fn [[name {:keys [card]}]]
                                                           (merge card {:name name
-                                                                       :created_at    :%now
-                                                                       :updated_at    :%now
+                                                                       :created_at    [:now]
+                                                                       :updated_at    [:now]
                                                                        :creator_id    user-id
                                                                        :dataset_query "{}"
                                                                        :database_id   database-id
@@ -1930,8 +1930,8 @@
 (def ^:private migrate-uploads-default-db
   {:name       "DB"
    :engine     "h2"
-   :created_at :%now
-   :updated_at :%now
+   :created_at [:now]
+   :updated_at [:now]
    :details    "{}"})
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-1
@@ -2071,17 +2071,17 @@
                                                :last_name   "Hughes"
                                                :email       "howard@aircraft.com"
                                                :password    "superstrong"
-                                               :date_joined :%now})
+                                               :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
                                               {:name                   "My Saved Question"
-                                               :created_at             :%now
-                                               :updated_at             :%now
+                                               :created_at             [:now]
+                                               :updated_at             [:now]
                                                :creator_id             user-id
                                                :display                "table"
                                                :dataset_query          "{}"
@@ -2114,17 +2114,17 @@
                                                :last_name   "Hughes"
                                                :email       "howard@aircraft.com"
                                                :password    "superstrong"
-                                               :date_joined :%now})
+                                               :date_joined [:now]})
             database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                   {:name       "DB"
                                                    :engine     "h2"
-                                                   :created_at :%now
-                                                   :updated_at :%now
+                                                   :created_at [:now]
+                                                   :updated_at [:now]
                                                    :details    "{}"})
             card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
                                               {:name                   "My Saved Question"
-                                               :created_at             :%now
-                                               :updated_at             :%now
+                                               :created_at             [:now]
+                                               :updated_at             [:now]
                                                :creator_id             user-id
                                                :display                "table"
                                                :dataset_query          "{}"
@@ -2187,8 +2187,8 @@
       (is (false? (sample-content-created?)))
       (t2/insert-returning-pks! :metabase_database {:name       "db"
                                                     :engine     "h2"
-                                                    :created_at :%now
-                                                    :updated_at :%now
+                                                    :created_at [:now]
+                                                    :updated_at [:now]
                                                     :details    "{}"})
       (t2/query {:delete-from :metabase_database})
       (migrate!)
@@ -2207,7 +2207,7 @@
         :email         "rasta@metabase.com"
         :password      "password"
         :password_salt "and pepper"
-        :date_joined   :%now})
+        :date_joined   [:now]})
       (migrate!)
       (is (false? (sample-content-created?))))))
 
@@ -2240,12 +2240,12 @@
                                        :last_name   "Hughes"
                                        :email       "howard@aircraft.com"
                                        :password    "superstrong"
-                                       :date_joined :%now})
+                                       :date_joined [:now]})
         database-id (insert-returning-pk! (t2/table-name :model/Database)
                                           {:name       "DB"
                                            :engine     "h2"
-                                           :created_at :%now
-                                           :updated_at :%now
+                                           :created_at [:now]
+                                           :updated_at [:now]
                                            :details    "{}"})
         dashboard-id (insert-returning-pk! :model/Dashboard {:name                "My Dashboard"
                                                              :creator_id          user-id
@@ -2261,8 +2261,8 @@
                                            :native native-query})
         single-stage-question-id (insert-returning-pk! (t2/table-name :model/Card)
                                                        {:name                   "Single-stage Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
+                                                        :created_at             [:now]
+                                                        :updated_at             [:now]
                                                         :creator_id             user-id
                                                         :type                   "question"
                                                         :display                "table"
@@ -2272,8 +2272,8 @@
                                                         :collection_id          nil})
         native-question-id (insert-returning-pk! (t2/table-name :model/Card)
                                                  {:name                   "Native Question"
-                                                  :created_at             :%now
-                                                  :updated_at             :%now
+                                                  :created_at             [:now]
+                                                  :updated_at             [:now]
                                                   :creator_id             user-id
                                                   :type                   "question"
                                                   :display                "table"
@@ -2283,8 +2283,8 @@
                                                   :collection_id          nil})
         multi-stage-question-id (insert-returning-pk! (t2/table-name :model/Card)
                                                       {:name                    "Multi-stage Question"
-                                                       :created_at             :%now
-                                                       :updated_at             :%now
+                                                       :created_at             [:now]
+                                                       :updated_at             [:now]
                                                        :creator_id             user-id
                                                        :type                   "question"
                                                        :display                "table"
@@ -2294,8 +2294,8 @@
                                                        :collection_id          nil})
         multi-stage-model-id (insert-returning-pk! (t2/table-name :model/Card)
                                                    {:name                   "Single Stage Question"
-                                                    :created_at             :%now
-                                                    :updated_at             :%now
+                                                    :created_at             [:now]
+                                                    :updated_at             [:now]
                                                     :creator_id             user-id
                                                     :type                   "model"
                                                     :display                "table"
@@ -2339,8 +2339,8 @@
                                (insert-returning-pk! (t2/table-name :model/DashboardCard)
                                                      {:dashboard_id           dashboard-id
                                                       :parameter_mappings     (json/encode pmappings)
-                                                      :created_at             :%now
-                                                      :updated_at             :%now
+                                                      :created_at             [:now]
+                                                      :updated_at             [:now]
                                                       :visualization_settings "{}"
                                                       :card_id                card-id
                                                       :size_x                 4
@@ -2483,8 +2483,8 @@
                               [card-id targets-or-viz-settings]
                               (insert-returning-pk! (t2/table-name :model/DashboardCard)
                                                     {:dashboard_id           dashboard-id
-                                                     :created_at             :%now
-                                                     :updated_at             :%now
+                                                     :created_at             [:now]
+                                                     :updated_at             [:now]
                                                      :parameter_mappings     "[]"
                                                      :visualization_settings (json/encode
                                                                               (if (map? targets-or-viz-settings)
@@ -2603,8 +2603,8 @@
                     (t2/insert! :metabase_database
                                 {:name name
                                  :engine "clickhouse"
-                                 :created_at :%now
-                                 :updated_at :%now
+                                 :created_at [:now]
+                                 :updated_at [:now]
                                  :details (mi/encrypted-json-in details)})))
                 (assert-pre-conditions []
                   (let [clickhouse-dbs (t2/select :metabase_database :engine "clickhouse")
@@ -2754,8 +2754,8 @@
                               :target             target
                               :source_type        source-type
                               :source_database_id db-id
-                              :created_at         :%now
-                              :updated_at         :%now}))
+                              :created_at         [:now]
+                              :updated_at         [:now]}))
             ;; source.query.database takes precedence over target.database
             both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
             ;; source.query.database used when target has no database
@@ -2795,8 +2795,8 @@
           (let [db-id (t2/insert-returning-pk! :metabase_database
                                                {:name "clickhouse cloud upload db"
                                                 :engine "clickhouse"
-                                                :created_at :%now
-                                                :updated_at :%now
+                                                :created_at [:now]
+                                                :updated_at [:now]
                                                 :uploads_enabled true
                                                 :uploads_schema_name uploads-schema-name
                                                 :uploads_table_prefix "uploads_"
@@ -2809,8 +2809,8 @@
                                                           :active active
                                                           :is_upload is-upload
                                                           :display_name display-name
-                                                          :created_at :%now
-                                                          :updated_at :%now}))
+                                                          :created_at [:now]
+                                                          :updated_at [:now]}))
                 ;; An uploads table in a good state, created before uploads_schema_name was set to null
                 uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
                 ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
@@ -2866,8 +2866,8 @@
                                                :base_type     "type/DateTimeWithLocalTZ"
                                                :database_type "timestamptz"
                                                :active        true
-                                               :created_at    :%now
-                                               :updated_at    :%now})
+                                               :created_at    [:now]
+                                               :updated_at    [:now]})
             target   (json/encode {:type "table" :schema "public" :name "out"})
             insert-transform!
             (fn [source]
@@ -2877,8 +2877,8 @@
                            :target             target
                            :source_type        "mbql"
                            :source_database_id db-id
-                           :created_at         :%now
-                           :updated_at         :%now}))
+                           :created_at         [:now]
+                           :updated_at         [:now]}))
             ;; Transform with resolvable legacy checkpoint strategy
             resolvable-source
             (json/encode {:type  "query"
@@ -2955,8 +2955,8 @@
                                    :source_type        "mbql"
                                    :source_database_id db-id
                                    :target_db_id       db-id
-                                   :created_at         :%now
-                                   :updated_at         :%now})]
+                                   :created_at         [:now]
+                                   :updated_at         [:now]})]
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
           (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
@@ -2982,8 +2982,8 @@
                 (t2/insert-returning-pk! :auth_identity {:user_id     user-id
                                                          :provider    "totp"
                                                          :credentials credentials-str
-                                                         :created_at  :%now
-                                                         :updated_at  :%now}))
+                                                         :created_at  [:now]
+                                                         :updated_at  [:now]}))
               enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
                                                 (encryption/maybe-encrypt
                                                  (json/encode {:secret "s1" :confirmed_at confirmed-at})))
@@ -3026,7 +3026,7 @@
                                          :email       (str (random-uuid) "@metabase.com")
                                          :password    "irrelevant"
                                          :entity_id   (subs (str/replace (str (random-uuid)) "-" "") 0 21)
-                                         :date_joined :%now})
+                                         :date_joined [:now]})
             insert-client!  (fn [client-id registration-type scopes]
                               (t2/insert-returning-pk!
                                :oauth_client {:client_id         client-id
@@ -3037,8 +3037,8 @@
                                               :scopes            (json/encode scopes)
                                               :registration_type registration-type
                                               :client_type       "public"
-                                              :created_at        :%now
-                                              :updated_at        :%now}))
+                                              :created_at        [:now]
+                                              :updated_at        [:now]}))
             insert-token!   (fn [table client-id scopes]
                               (t2/insert-returning-pk!
                                table {:token      (str (random-uuid))
@@ -3046,7 +3046,7 @@
                                       :client_id  client-id
                                       :scope      (json/encode scopes)
                                       :expiry     (+ (System/currentTimeMillis) 3600000)
-                                      :created_at :%now}))
+                                      :created_at [:now]}))
             dynamic-id      (insert-client! "dynamic-legacy" "dynamic" legacy-scopes)
             static-id       (insert-client! "static-legacy" "static" legacy-scopes)
             legacy-access   (insert-token! :oauth_access_token "dynamic-legacy" legacy-scopes)
@@ -3083,13 +3083,13 @@
                                                               :bundle_path            "dist/index.js"
                                                               :entity_id              (str slug "Entity0000000000")
                                                               :resource_collection_id collection-id
-                                                              :created_at             :%now
-                                                              :updated_at             :%now}))
+                                                              :created_at             [:now]
+                                                              :updated_at             [:now]}))
             old-coll    (t2/insert-returning-pk! :collection {:name       "Data App: sales"
                                                               :slug       "data_app__sales"
                                                               :location   "/"
                                                               :entity_id  "salesCollection000001"
-                                                              :created_at :%now})
+                                                              :created_at [:now]})
             with-coll   (insert-app! "sales" old-coll)
             without     (insert-app! "ops" nil)]
         (migrate!)
@@ -3112,7 +3112,7 @@
                                                                        :location   "/"
                                                                        :namespace  "data-apps"
                                                                        :entity_id  (u/generate-nano-id)
-                                                                       :created_at :%now}))
+                                                                       :created_at [:now]}))
             insert-app!        (fn [slug draft? collection-id]
                                  (t2/insert-returning-pk! :data_app {:name                   slug
                                                                      :display_name           slug
@@ -3120,8 +3120,8 @@
                                                                      :entity_id              (u/generate-nano-id)
                                                                      :draft                  draft?
                                                                      :resource_collection_id collection-id
-                                                                     :created_at             :%now
-                                                                     :updated_at             :%now}))
+                                                                     :created_at             [:now]
+                                                                     :updated_at             [:now]}))
             empty-coll   (insert-collection! "empty")
             used-coll    (insert-collection! "used")
             kept-coll    (insert-collection! "kept")
@@ -3139,7 +3139,7 @@
                                  :location   (str "/" used-coll "/")
                                  :namespace  "data-apps"
                                  :entity_id  (u/generate-nano-id)
-                                 :created_at :%now})
+                                 :created_at [:now]})
         (migrate!)
         (testing "every draft row is gone, with its assignments"
           (is (not (t2/exists? :data_app :id empty-draft)))

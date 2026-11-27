@@ -29,11 +29,11 @@
       (t2/insert! :model/OAuthAccessToken
                   [(merge base {:token live-access            :expiry future-ms})
                    (merge base {:token (uuid)                 :expiry past-ms})
-                   (merge base {:token (uuid)                 :expiry future-ms :revoked_at :%now})])
+                   (merge base {:token (uuid)                 :expiry future-ms :revoked_at [:now]})])
       (t2/insert! :model/OAuthRefreshToken
                   [(merge base {:token live-refresh           :expiry future-ms})
                    (merge base {:token (uuid)                 :expiry past-ms})
-                   (merge base {:token (uuid)                 :expiry future-ms :revoked_at :%now})
+                   (merge base {:token (uuid)                 :expiry future-ms :revoked_at [:now]})
                    (merge base {:token live-no-expiry-refresh :expiry nil})])
       (cleanup/cleanup-expired-tokens!)
       (let [surviving (fn [model col] (t2/select-fn-set col [model col] :client_id client-id))]

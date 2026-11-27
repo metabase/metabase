@@ -20,8 +20,8 @@
                                   :active          true
                                   :db_id           [:in %]
                                   :visibility_type nil
-                                  {:order-by [[:%lower.schema :asc]
-                                              [:%lower.display_name :asc]]})
+                                  {:order-by [[[:lower :schema] :asc]
+                                              [[:lower :display_name] :asc]]})
                       database-ids))
 
 (mu/defn active-visible-schemas-for-databases
@@ -62,7 +62,7 @@
                        (perms/visible-databases-filter-clause :id user-info {:perms/manage-database :yes})
                        (perms/visible-databases-filter-clause :id user-info {:perms/manage-table-metadata :yes})]]
                      base-where)]
-    (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
+    (t2/select :model/Database {:order-by [[[:lower :name]] [[:lower :engine]]]
                                 :where where})))
 
 (mu/defn database-exists?
@@ -90,9 +90,9 @@
   (t2/select [:model/Table :id :db_id :schema :name]
              {:where    [:and [:= :db_id database-id]
                          [:= :active true]
-                         [:like :%lower.name like-pattern]
+                         [:like [:lower :name] like-pattern]
                          [:= :visibility_type nil]]
-              :order-by [[:%lower.name :asc]]
+              :order-by [[[:lower :name] :asc]]
               :limit    limit}))
 
 (defn- autocomplete-cards-search-clause
@@ -216,7 +216,7 @@
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:order-by [[:%lower.schema :asc]]}
+                      (merge {:order-by [[[:lower :schema] :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
 
@@ -243,7 +243,7 @@
 
 (defn- card-usage-count-subquery
   [database-id model type-str]
-  ^:allow-subquery {:select [[:%count.* model]]
+  ^:allow-subquery {:select [[[:count :*] model]]
                     :from   [(t2/table-name :model/Card)]
                     :where  [:and
                              [:= :database_id database-id]
@@ -258,13 +258,13 @@
     :from   [[(card-usage-count-subquery database-id :question "question") :question]
              [(card-usage-count-subquery database-id :dataset "model") :dataset]
              [(card-usage-count-subquery database-id :metric "metric") :metric]
-             [^:allow-subquery {:select [[:%count.* :segment]]
+             [^:allow-subquery {:select [[[:count :*] :segment]]
                                 :from   [(t2/table-name :model/Segment)]
                                 :where  [:in :table_id ^:allow-subquery {:select [:id]
                                                                          :from   [(t2/table-name :model/Table)]
                                                                          :where  [:= :db_id database-id]}]}
               :segment]
-             [^:allow-subquery {:select [[:%count.* :transform]]
+             [^:allow-subquery {:select [[[:count :*] :transform]]
                                 :from   [(t2/table-name :model/Transform)]
                                 :where  [:or
                                          [:= :source_database_id database-id]

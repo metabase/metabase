@@ -115,7 +115,7 @@
 
 (def field-order-rule
   "How should we order fields."
-  [[:position :asc] [:%lower.name :asc]])
+  [[:position :asc] [[:lower :name] :asc]])
 
 (defn copy-fields-select
   "The HoneySQL fragment by which copying the application database reads all fields in id order."
@@ -193,9 +193,9 @@
                      (app-db/isa :semantic_type :type/Temporal) 2
                      :else                                     3]
                     :asc]
-                   [:%lower.name :asc]]
+                   [[:lower :name] :asc]]
     :database     [[:database_position :asc]]
-    :alphabetical [[:%lower.name :asc]]))
+    :alphabetical [[[:lower :name] :asc]]))
 
 (mu/defn field-ids-for-tables-ordered
   "The id and Table id of the Fields of the Tables with `table-ids`, by Table and then per `field-order` (`:custom`,
@@ -696,7 +696,7 @@
 (mu/defn touch-field-values!
   "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."
   [field-values-id :- ms/PositiveInt]
-  (t2/update! :model/FieldValues :id field-values-id {:last_used_at :%now}))
+  (t2/update! :model/FieldValues :id field-values-id {:last_used_at [:now]}))
 
 (defn- field-values-of-fields-kvs
   "The conditions on FieldValues of the Fields with `field-ids`."
@@ -759,7 +759,7 @@
                           :type [:in types]
                           {:where [:and
                                    [:< (u/qualified-key (t2/table-name :model/FieldValues) :created_at)
-                                    [:date-add :%now (- max-age-days) :day]]
+                                    [:date-add [:now] (- max-age-days) :day]]
                                    [:exists ^:allow-subquery
                                     {:select [[[:inline 1] :one]]
                                      :from   [[(t2/table-name :model/Field) :f]]
@@ -848,7 +848,7 @@
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:order-by [[:%lower.schema :asc]]}
+                      (merge {:order-by [[[:lower :schema] :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
 

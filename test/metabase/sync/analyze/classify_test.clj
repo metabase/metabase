@@ -140,12 +140,12 @@
                                    :base_type :type/Text
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name
-                                   :last_analyzed :%now}
+                                   :last_analyzed [:now]}
                    :model/Field _ {:name "lastName"
                                    :base_type :type/Text
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name
-                                   :last_analyzed :%now}
+                                   :last_analyzed [:now]}
                    :model/Field field {:name "name"
                                        :base_type :type/Text
                                        :table_id (u/the-id table)
@@ -183,7 +183,7 @@
                                    :base_type :type/Text
                                    :table_id (u/the-id table)
                                    :semantic_type :type/Name
-                                   :last_analyzed :%now}
+                                   :last_analyzed [:now]}
                    :model/Field _ {:name "lastName"
                                    :base_type :type/Text
                                    :table_id (u/the-id table)

@@ -56,9 +56,9 @@
     (not (str/blank? search))
     (conj (let [pattern (funnysql.util/like-substring search)]
             [:or
-             [:like :%lower.first_name pattern]
-             [:like :%lower.last_name  pattern]
-             [:like :%lower.email      pattern]]))))
+             [:like [:lower :first_name] pattern]
+             [:like [:lower :last_name]  pattern]
+             [:like [:lower :email]      pattern]]))))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -123,8 +123,8 @@
   (t2/select :model/User
              (cond-> {:select   (cond-> list-columns enrolled? (into (enrolled-at-select)))
                       :where    (user-list-where enrolled? search)
-                      :order-by [[:%lower.first_name :asc]
-                                 [:%lower.last_name  :asc]
+                      :order-by [[[:lower :first_name] :asc]
+                                 [[:lower :last_name] :asc]
                                  [:id :asc]]}
                ;; a nil limit would emit `LIMIT NULL`
                limit (assoc :limit limit :offset offset))))

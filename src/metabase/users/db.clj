@@ -36,9 +36,9 @@
   "Honeysql clause to shove into user query if there's a query"
   [query]
   [:or
-   [:like :%lower.first_name (wildcard-query query)]
-   [:like :%lower.last_name  (wildcard-query query)]
-   [:like :%lower.email      (wildcard-query query)]])
+   [:like [:lower :first_name] (wildcard-query query)]
+   [:like [:lower :last_name]  (wildcard-query query)]
+   [:like [:lower :email]      (wildcard-query query)]])
 
 (defn- table-metadata-perms-exist-clause
   "EXISTS clause, correlated to :core_user.id, testing whether the user is in a group that grants
@@ -71,8 +71,8 @@
 
 (def ^:private sort-order-by
   "Fixed ORDER BYs for [[filter-clauses]]'s `:sort` option."
-  {:first-name [[:%lower.first_name :asc] [:%lower.last_name :asc] [:id :asc]]
-   :last-name  [[:%lower.last_name :asc] [:%lower.first_name :asc]]})
+  {:first-name [[[:lower :first_name] :asc] [[:lower :last_name] :asc] [:id :asc]]
+   :last-name  [[[:lower :last_name] :asc] [[:lower :first_name] :asc]]})
 
 (defn- add-sort
   [honeysql-map sort]
@@ -110,7 +110,7 @@
 (mu/defn set-user-last-login-now!
   "Set `last_login` of the User with `user-id` to now."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/User :id user-id {:last_login :%now}))
+  (t2/update! :model/User :id user-id {:last_login [:now]}))
 
 (mu/defn update-user-settings!
   "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
@@ -186,14 +186,14 @@
   [lower-case-emails :- [:sequential :string]]
   (into {}
         (map (juxt (comp u/lower-case-en :email) :id))
-        (by-id-partitions #(t2/select [:model/User :id :email] :%lower.email [:in (vec %)]) lower-case-emails)))
+        (by-id-partitions #(t2/select [:model/User :id :email] {:where [:in [:lower :email] (vec %)]}) lower-case-emails)))
 
 (defn deactivated-at-clause
   "The `deactivated_at` a User gets when its `is_active` becomes `active?`: NULL on activation, else the stored stamp or
   now, an expression that reads no column the same statement assigns."
   [active?]
   (when-not active?
-    [:coalesce :deactivated_at :%now]))
+    [:coalesce :deactivated_at [:now]]))
 
 (mu/defn update-users! :- :nil
   "Apply `updates`, each the id of a User and its columns to set, with one update for each distinct change."
@@ -289,4 +289,4 @@
 (mu/defn user-email-exists?
   "Whether a User whose lower-cased email is `lower-case-email` exists."
   [lower-case-email :- :string]
-  (t2/exists? :model/User :%lower.email lower-case-email))
+  (t2/exists? :model/User {:where [:= [:lower :email] lower-case-email]}))

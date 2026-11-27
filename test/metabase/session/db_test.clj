@@ -20,7 +20,7 @@
                 {:id         id
                  :key_hashed (session/hash-session-key session-key)
                  :user_id    user-id
-                 :created_at :%now})
+                 :created_at [:now]})
     [id session-key]))
 
 (defn- row [session-id]

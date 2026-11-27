@@ -324,7 +324,7 @@
           rows    (t2/query {:select [:column_name :data_type]
                              :from   [:information_schema.columns]
                              :where  [:and
-                                      [:= :table_schema :%database]
+                                      [:= :table_schema [:database]]
                                       [:= :table_name (name (search.index/active-table))]
                                       [:in :column_name columns]]})]
       (is (= (zipmap columns (repeat "bit")) (into {} (map (juxt :column_name :data_type)) rows))))))
