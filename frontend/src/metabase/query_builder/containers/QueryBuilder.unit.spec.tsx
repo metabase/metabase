@@ -10,9 +10,11 @@ import {
   setupCollectionItemsEndpoint,
   setupFieldValuesEndpoint,
   setupLastDownloadFormatEndpoints,
+  setupMostRecentlyViewedDashboard,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
+  type TestRouter,
   act,
   renderHook,
   screen,
@@ -37,8 +39,10 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockCollectionItem,
   createMockCollectionItemFromCollection,
   createMockColumn,
+  createMockDashboard,
   createMockDataset,
   createMockDatasetData,
   createMockUnsavedCard,
@@ -51,8 +55,10 @@ import {
   PRODUCTS_ID,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
+  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
+  createOrdersTableDatasetColumns,
   createPeopleStateDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -510,6 +516,175 @@ describe("QueryBuilder", () => {
         collection_id: firstCollection.id,
       });
       expect(await screen.findByDisplayValue("Custom")).toBeInTheDocument();
+    });
+
+    const ORDERS_DATASET = createMockDataset({
+      database_id: SAMPLE_DB_ID,
+      status: "completed",
+      row_count: 1,
+      data: createMockDatasetData({
+        cols: createOrdersTableDatasetColumns(),
+        rows: [
+          [2, 1871, 123, 110.93, 6.1, 117.03, null, "2025-01-02T00:00:00Z", 3],
+        ],
+      }),
+    });
+
+    /**
+     * Saves a new question to "Our analytics" and opens the "add to a
+     * dashboard" modal from the toast, with a dashboard picked in it.
+     */
+    const saveAndPickDashboard = async () => {
+      const rootCollection = createMockCollection({
+        id: "root",
+        name: "Our analytics",
+        can_write: true,
+      });
+      const dashboardId = 10;
+      const dashboard = createMockDashboard({
+        id: dashboardId,
+        name: "Orders in a dashboard",
+      });
+      const { router } = await setup({
+        card: TEST_UNSAVED_STRUCTURED_CARD,
+        collections: [rootCollection, TEST_COLLECTION],
+        dataset: ORDERS_DATASET,
+        withUndos: true,
+      });
+      setupCollectionItemsEndpoint({
+        collection: { id: "root" },
+        collectionItems: [
+          createMockCollectionItemFromCollection({
+            ...TEST_COLLECTION,
+            can_write: true,
+            here: ["collection"],
+          }),
+          createMockCollectionItem({
+            id: dashboardId,
+            name: dashboard.name,
+            model: "dashboard",
+            can_write: true,
+          }),
+        ],
+      });
+      setupCollectionItemsEndpoint({
+        collection: TEST_COLLECTION,
+        collectionItems: [],
+      });
+      fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
+      setupMostRecentlyViewedDashboard();
+      const savedCard = createMockCard({
+        id: 1,
+        name: "Orders",
+        collection_id: null,
+        dataset_query: TEST_UNSAVED_STRUCTURED_CARD.dataset_query,
+      });
+      setupCardsEndpoints([savedCard]);
+      setupCardQueryMetadataEndpoint(
+        savedCard,
+        createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+      );
+
+      await waitForSaveToBeEnabled();
+      await userEvent.click(screen.getByText("Save"));
+      const saveModal = await screen.findByTestId("save-question-modal");
+      await userEvent.click(
+        within(saveModal).getByLabelText(/Where do you want to save this/),
+      );
+      const collectionPicker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(collectionPicker).findByText("Our analytics"),
+      );
+      await userEvent.click(
+        within(collectionPicker).getByRole("button", {
+          name: "Select this collection",
+        }),
+      );
+      await userEvent.click(
+        within(saveModal).getByRole("button", { name: "Save" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("save-question-modal"),
+        ).not.toBeInTheDocument(),
+      );
+      const createCall = checkNotNull(
+        fetchMock.callHistory.lastCall("card-create"),
+      );
+      expect(JSON.parse(String(createCall.options.body))).toMatchObject({
+        name: "Orders",
+        collection_id: null,
+      });
+
+      const toast = await screen.findByTestId("toast-undo");
+      expect(within(toast).getByText("Saved")).toBeInTheDocument();
+      await userEvent.click(
+        within(toast).getByRole("button", { name: /Add this to a dashboard/ }),
+      );
+      const dashboardPicker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(dashboardPicker).findByText("Our analytics"),
+      );
+      await userEvent.click(
+        await within(dashboardPicker).findByText("Orders in a dashboard"),
+      );
+      return { router, dashboardPicker };
+    };
+
+    /** Leaves the query builder, then opens the Orders table in it again */
+    const navigateAwayAndBack = async (router: TestRouter) => {
+      act(() => router.navigate("/redirect"));
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("query-builder-root"),
+        ).not.toBeInTheDocument(),
+      );
+      act(() =>
+        router.navigate(
+          `/question#${serializeCardForUrl(TEST_UNSAVED_STRUCTURED_CARD)}`,
+        ),
+      );
+      expect(
+        await screen.findByTestId("query-visualization-root"),
+      ).toBeInTheDocument();
+      // a new question, not the saved one
+      expect(screen.getByTestId("qb-save-button")).toBeInTheDocument();
+      // let the run of the reopened question end, then look at its table
+      await act(() => fetchMock.callHistory.flush(true));
+      const table = await screen.findByTestId("table-root");
+      expect(table).toBeVisible();
+      expect(
+        within(table).getByRole("columnheader", { name: "User ID" }),
+      ).toBeInTheDocument();
+      expect(within(table).getByText("1871")).toBeInTheDocument();
+    };
+
+    it("should not show the 'add to a dashboard' modal again after it was canceled and the user navigated away", async () => {
+      const { router, dashboardPicker } = await saveAndPickDashboard();
+      await userEvent.click(
+        within(dashboardPicker).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("entity-picker-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      await navigateAwayAndBack(router);
+      expect(
+        screen.queryByTestId("entity-picker-modal"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("should close the 'add to a dashboard' modal when the user navigates away while it is open", async () => {
+      const { router } = await saveAndPickDashboard();
+
+      await navigateAwayAndBack(router);
+      expect(
+        screen.queryByTestId("entity-picker-modal"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 
