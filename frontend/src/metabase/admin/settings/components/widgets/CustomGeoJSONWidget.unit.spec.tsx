@@ -275,6 +275,30 @@ describe("CustomGeoJSONWIdget", () => {
     });
   });
 
+  it("should start new map with empty preview after cancelling loaded map", async () => {
+    await setup({});
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
+    await userEvent.type(
+      screen.getByPlaceholderText(
+        "Like https://my-mb-server.com/maps/my-map.json",
+      ),
+      "https://test.com/download/GeoJSON_two.json",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Load" }));
+    expect(
+      await screen.findByRole("button", { name: "Refresh" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
+
+    expect(screen.getByRole("button", { name: "Load" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Load a GeoJSON file to see a preview"),
+    ).toBeInTheDocument();
+  });
+
   describe("load errors", () => {
     const loadMap = async (url: string) => {
       await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
