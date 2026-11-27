@@ -14,6 +14,8 @@ import {
   setupTableQueryMetadataEndpoint,
   setupUserAcknowledgementEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -32,6 +34,7 @@ import {
   createMockField,
   createMockImplicitQueryAction,
   createMockTable,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { getDataStudioDataAppRoutes } from "./routes";
@@ -91,7 +94,16 @@ function setup({ initialRoute }: SetupOpts) {
 
   return renderWithProviders(
     <Route path="/data-studio">{getDataStudioDataAppRoutes(IsAdmin)}</Route>,
-    { withRouter: true, initialRoute },
+    {
+      withRouter: true,
+      initialRoute,
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          // The gated section reads the feature from the store when it renders.
+          "token-features": createMockTokenFeatures({ "data-apps": true }),
+        }),
+      }),
+    },
   );
 }
 
