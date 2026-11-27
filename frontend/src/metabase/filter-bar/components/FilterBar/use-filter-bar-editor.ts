@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
 import {
+  type DraftSuggestion,
   type FilterEditorRequest,
   clearErrors,
   getPillRectAt,
@@ -26,7 +27,6 @@ import {
 import type { FilterBarProps, FilterParts } from "../../types";
 import type { ListKeys } from "../SuggestionList/SuggestionList";
 
-import type { DraftSuggestion } from "./draft-suggestion";
 import { createExtensions } from "./extensions";
 
 export const useFilterBarEditor = <F>({

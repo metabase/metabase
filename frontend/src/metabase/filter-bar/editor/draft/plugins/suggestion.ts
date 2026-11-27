@@ -2,16 +2,12 @@ import { type Editor, Extension, type Range } from "@tiptap/core";
 import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";
 import { match } from "ts-pattern";
 
-import {
-  DRAFT_SUGGESTION_KEY,
-  type DraftActions,
-  findPartStep,
-  getStageAt,
-  insertBoolOp,
-} from "../../editor";
-import type { BoolOpToken } from "../../model";
-import type { ColumnItem, FilterOperator } from "../../types";
-import type { GetAnchorRect } from "../AnchorTarget/AnchorTarget";
+import type { BoolOpToken } from "../../../model";
+import type { ColumnItem, FilterOperator } from "../../../types";
+import { insertBoolOp } from "../../commands";
+import { getStageAt } from "../../document";
+import { DRAFT_SUGGESTION_KEY, type DraftActions } from "../actions";
+import { findPartStep } from "../read";
 
 export type DraftPick<F> =
   | ColumnItem<F>
@@ -22,7 +18,7 @@ export type DraftSuggestion<F> = {
   editor: Editor;
   range: Range;
   query: string;
-  getCaretRect: GetAnchorRect;
+  getCaretRect: () => DOMRect | null;
   pick: (item: DraftPick<F>) => void;
 };
 

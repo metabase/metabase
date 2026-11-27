@@ -1,5 +1,5 @@
+import type { DraftPick } from "../../editor";
 import type { FilterOperator, FilterOperatorGroup } from "../../types";
-import type { DraftPick } from "../FilterBar/draft-suggestion";
 import { findExact, isMatch } from "../SuggestionList/search";
 import type { SuggestionGroup } from "../SuggestionList/utils";
 

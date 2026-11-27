@@ -1,7 +1,7 @@
 import type { IconName } from "metabase-types/api";
 
+import type { DraftPick } from "../../editor";
 import type { ColumnGroup, ColumnItem } from "../../types";
-import type { DraftPick } from "../FilterBar/draft-suggestion";
 import type { SuggestionGroup } from "../SuggestionList/utils";
 
 import {

@@ -1,5 +1,3 @@
-import { UndoRedo } from "@tiptap/extensions";
-
 import { pillToken } from "../model";
 import { AND, createTestPill, pill } from "../test-utils";
 
@@ -10,7 +8,7 @@ const A = pill("A");
 const B = pill("B");
 
 const setup = () => {
-  const testEditor = createTestEditorWith([UndoRedo], [A, AND, B]);
+  const testEditor = createTestEditorWith([], [A, AND, B]);
   const removeFirstPill = () => {
     testEditor.selectNode(0);
     testEditor.editor.commands.deleteSelection();

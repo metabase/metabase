@@ -1,5 +1,4 @@
 import { type AnyExtension, Editor, findChildren } from "@tiptap/core";
-import Text from "@tiptap/extension-text";
 
 import type { PillToken, Token } from "../model";
 import { MOCK_ADAPTER, type MockFilter } from "../test-utils";
@@ -9,27 +8,9 @@ import { documentToTokens, tokensToContent } from "./document";
 import { createDraftActions } from "./draft/actions";
 import { insertPillDraft } from "./draft/layout";
 import { createDraftActionKeys } from "./draft/plugins/action-keys";
-import { createDraftKeys } from "./draft/plugins/keys";
-import { createDraftLifecycle } from "./draft/plugins/lifecycle";
 import { findDraftAt } from "./draft/read";
-import {
-  createColumnNode,
-  createConnectorNode,
-  createDocumentNode,
-  createDraftInputNode,
-  createDraftNode,
-  createOperatorNode,
-  createPillNode,
-  createRangeAndNode,
-  createThenNode,
-  createValueNode,
-} from "./nodes/nodes";
+import { createEditorExtensions } from "./extensions";
 import { isDraftNode } from "./nodes/types";
-import { createBlankClick } from "./plugins/blank-click";
-import { createCaret } from "./plugins/caret";
-import { createHiddenThen } from "./plugins/hidden-then";
-import { createFilterBarKeys } from "./plugins/keys";
-import { createParens } from "./plugins/parens";
 
 const EDIT_COLUMN: FilterColumn = { key: "c", label: "C", icon: "int" };
 const EDIT_OPERATOR: FilterOperator = {
@@ -49,24 +30,7 @@ export const createTestEditorWith = <F = string>(
 ) => {
   const editor = new Editor({
     extensions: [
-      createDocumentNode(),
-      Text,
-      createPillNode(),
-      createConnectorNode(),
-      createThenNode(),
-      createDraftNode(),
-      createDraftInputNode(),
-      createColumnNode(),
-      createOperatorNode(),
-      createValueNode(),
-      createRangeAndNode(),
-      createDraftKeys(),
-      createDraftLifecycle(),
-      createFilterBarKeys(),
-      createParens(),
-      createHiddenThen(),
-      createBlankClick(),
-      createCaret("caret"),
+      ...createEditorExtensions({ caretClassName: "caret" }),
       ...extensions,
     ],
     content: tokensToContent(stages),

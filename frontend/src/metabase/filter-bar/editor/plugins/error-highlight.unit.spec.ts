@@ -7,7 +7,6 @@ import { createTestEditorWith } from "../test-editor";
 
 import {
   clearErrors,
-  createErrorHighlight,
   hasErrorDecoration,
   highlightErrors,
 } from "./error-highlight";
@@ -16,7 +15,7 @@ const A = pill("A");
 const B = pill("B");
 
 const setup = (...stages: Token<string>[][]) =>
-  createTestEditorWith([createErrorHighlight()], ...stages);
+  createTestEditorWith([], ...stages);
 
 type TestEditor = ReturnType<typeof setup>["editor"];
 

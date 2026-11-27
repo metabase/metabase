@@ -5,8 +5,10 @@ import { t } from "ttag";
 import { Flex, Icon, Kbd, Popover, Text } from "metabase/ui";
 
 import {
+  type DraftPick,
   type DraftState,
   type DraftStep,
+  type DraftSuggestion,
   findDraftStartingAt,
   getStageAt,
   readDraft,
@@ -14,7 +16,6 @@ import {
 import { BOOL_OP_TEXT, type BoolOpToken, PAREN_TEXT } from "../../model";
 import type { FilterBarAdapter } from "../../types";
 import { AnchorTarget, type GetAnchorRect } from "../AnchorTarget/AnchorTarget";
-import type { DraftPick, DraftSuggestion } from "../FilterBar/draft-suggestion";
 import {
   type ListKeys,
   SuggestionList,

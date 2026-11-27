@@ -56,3 +56,10 @@ export {
 export { createHiddenThen } from "./plugins/hidden-then";
 export { createFilterBarKeys } from "./plugins/keys";
 export { createParens } from "./plugins/parens";
+export {
+  type DraftPick,
+  type DraftSuggestion,
+  type DraftSuggestionOptions,
+  createDraftSuggestion,
+} from "./draft/plugins/suggestion";
+export { createEditorExtensions } from "./extensions";
