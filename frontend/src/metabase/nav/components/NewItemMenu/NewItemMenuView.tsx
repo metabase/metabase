@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { useMemo } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -12,6 +12,7 @@ import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { hasModifierKeys } from "metabase/utils/keyboard";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -47,6 +48,15 @@ export const NewItemMenuView = ({
 
   const { hasNlqAccess } = useUserMetabotPermissions();
 
+  const handleLinkClick = useCallback(
+    (event: MouseEvent) => {
+      if (!hasModifierKeys(event)) {
+        onCloseNavbar();
+      }
+    },
+    [onCloseNavbar],
+  );
+
   const menuItems = useMemo(() => {
     const items = [];
 
@@ -63,7 +73,7 @@ export const NewItemMenuView = ({
             buildQuestion({ collectionId, cardType: "question" }),
             { mode: "notebook", creationType: "custom_question" },
           )}
-          onClick={onCloseNavbar}
+          onClick={handleLinkClick}
           leftSection={<Icon name="insight" />}
         >
           {t`Question`}
@@ -85,7 +95,7 @@ export const NewItemMenuView = ({
             }),
             { creationType: "native_question" },
           )}
-          onClick={onCloseNavbar}
+          onClick={handleLinkClick}
           leftSection={<Icon name="sql" />}
         >
           {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
@@ -113,7 +123,7 @@ export const NewItemMenuView = ({
         key="document"
         component={ForwardRefLink}
         to="/document/new"
-        onClick={onCloseNavbar}
+        onClick={handleLinkClick}
         leftSection={<Icon name="document" />}
       >
         {t`Document`}
@@ -130,7 +140,7 @@ export const NewItemMenuView = ({
     dispatch,
     canWriteToCollections,
     hasNlqAccess,
-    onCloseNavbar,
+    handleLinkClick,
     buildQuestion,
   ]);
 

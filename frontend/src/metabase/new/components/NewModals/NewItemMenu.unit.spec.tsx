@@ -178,6 +178,20 @@ describe("NewItemMenu", () => {
       },
     );
 
+    it.each(["Question", "SQL query", "Document"])(
+      "keeps navbar open when %s is opened in new tab with modifier key",
+      async (itemName) => {
+        const { store } = await setup();
+        const user = userEvent.setup();
+
+        await user.keyboard("{Meta>}");
+        await user.click(await screen.findByText(itemName));
+        await user.keyboard("{/Meta}");
+
+        expect(store.getState().app.isNavbarOpen).toBe(true);
+      },
+    );
+
     it("should not collapse the navbar when the new dashboard modal is opened and cancelled", async () => {
       const { store } = await setup();
       await userEvent.click(await screen.findByText("Dashboard"));
