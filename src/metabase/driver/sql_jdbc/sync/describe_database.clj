@@ -298,19 +298,23 @@
   [[metabase.driver.sql-jdbc.sync.describe-table]]'s `describe-fields`/`describe-fks`), so a large table
   list streams a batch at a time instead of being realized into a set up front. Building the reducible is
   eager -- satisfying [[metabase.driver/do-with-resilient-connection]], which requires an eager `f` -- while
-  the connection is opened lazily at reduction time (with a fresh connection, outside the resilient scope)."
+  the connection is opened lazily at reduction time, inside a resilient scope of its own."
   [driver   :- :keyword
    database :- ::lib.schema.metadata/database]
   {:tables
    (reify clojure.lang.IReduceInit
      (reduce [_this rf init]
-       (sql-jdbc.execute/do-with-connection-with-options
+       (driver/do-with-resilient-connection
         driver
         database
-        nil
-        (fn [^Connection conn]
-          (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
-                [inclusion-patterns
-                 exclusion-patterns] (when (some? schema-filter-prop)
-                                       (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
-            (reduce rf init (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))))})
+        (fn [driver database]
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           database
+           nil
+           (fn [^Connection conn]
+             (let [schema-filter-prop   (driver.u/find-schema-filters-prop driver)
+                   [inclusion-patterns
+                    exclusion-patterns] (when (some? schema-filter-prop)
+                                          (driver.s/db-details->schema-filter-patterns (:name schema-filter-prop) database))]
+               (reduce rf init (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))))))))})
