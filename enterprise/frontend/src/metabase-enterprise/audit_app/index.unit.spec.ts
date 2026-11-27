@@ -15,10 +15,10 @@ describe("metabase-enterprise/audit_app initializePlugin", () => {
     expect(PLUGIN_AUDIT.getAiAuditingRoutes).toBe(getAiAuditingRoutes);
   });
 
-  it("resets to the OSS default on reinitialize()", () => {
+  it("resets to the empty slot on reinitialize()", () => {
     initializePlugin();
     reinitialize();
 
-    expect(PLUGIN_AUDIT.getAiAuditingRoutes()).toBeNull();
+    expect(PLUGIN_AUDIT.getAiAuditingRoutes).toBeUndefined();
   });
 });
