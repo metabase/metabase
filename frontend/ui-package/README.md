@@ -65,8 +65,8 @@ From the repository root: `bun run build-ui-package` builds `dist/`, and `bun ru
 
 ## Releasing
 
-1. Run [UI Package Version Bump PR](https://github.com/metabase/metabase/actions/workflows/ui-package-version-bump-pr.yml) from `master`. Select the bump and leave the changelog note blank to draft it from UI-related commits since `ui-v<current-version>`. The workflow needs the dedicated `UI_CHANGELOG_OPENAI_API_KEY` repository secret and sends only the selected commit subjects to OpenAI. If the tag is missing or drafting fails, rerun with a manual note. Review and edit the generated changelog in the PR before merging.
-2. Review the generated version and changelog PR. In `0.x`, a patch must be compatible; breaking changes and Mantine upgrades need at least a minor bump.
+1. Run [UI Package Version Bump PR](https://github.com/metabase/metabase/actions/workflows/ui-package-version-bump-pr.yml) from `master`. Select the bump. The workflow drafts the changelog from UI-related commits since `ui-v<current-version>`. It needs the dedicated `UI_CHANGELOG_OPENAI_API_KEY` repository secret and sends only the selected commit subjects to OpenAI.
+2. Review the generated version and edit the changelog in the PR if needed. In `0.x`, a patch must be compatible; breaking changes and Mantine upgrades need at least a minor bump.
 3. Merge the PR with its `ui-release-trigger` label. **Release UI Package** smoke-tests the tarball, publishes it to npm, and tags the merge commit. No second dispatch is needed.
 
 If the bump workflow pushes a branch but cannot open the PR, open a PR from that branch to `master` and add `ui-release-trigger` rather than dispatching the bump again.

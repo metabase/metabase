@@ -8,10 +8,6 @@ on:
         type: choice
         options: [patch, minor, major]
         required: true
-      note:
-        description: Optional changelog override. Leave blank to draft from the last release.
-        type: string
-        required: false
 
 permissions:
   contents: read
@@ -36,7 +32,6 @@ jobs:
           node-version: 24
 
       - name: Draft a changelog note
-        if: ${{ inputs.note == '' }}
         env:
           UI_CHANGELOG_OPENAI_API_KEY: ${{ secrets.UI_CHANGELOG_OPENAI_API_KEY }}
         run: node bin/ui-package/draft-changelog.mjs > "$RUNNER_TEMP/ui-changelog-note"
@@ -46,12 +41,9 @@ jobs:
         working-directory: frontend/ui-package
         env:
           BUMP: ${{ inputs.bump }}
-          NOTE: ${{ inputs.note }}
         run: |
-          if [ -z "$NOTE" ]; then
-            NOTE=$(cat "$RUNNER_TEMP/ui-changelog-note")
-          fi
-          version=$(node ../../bin/ui-package/bump-version.mjs "$BUMP" "$NOTE")
+          note=$(cat "$RUNNER_TEMP/ui-changelog-note")
+          version=$(node ../../bin/ui-package/bump-version.mjs "$BUMP" "$note")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Open release PR
