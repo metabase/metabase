@@ -1672,6 +1672,7 @@ describe("SettingsJWTForm", () => {
           "Administrators, bar",
         ),
       );
+      expect(findMappingRow("cn=People2")).toBeUndefined();
       expect(findMappingRow("cn=People3")).toHaveTextContent("readonly");
       expect(findMappingRow("cn=People3")).not.toHaveTextContent("flamingos");
 
