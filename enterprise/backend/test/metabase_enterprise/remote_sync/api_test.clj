@@ -80,6 +80,21 @@
           (is (false? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection)))))))))
 
+(deftest settings-failed-repository-check-leaves-nothing-configured-test
+  (mt/with-temporary-setting-values [remote-sync-url    nil
+                                     remote-sync-token  nil
+                                     remote-sync-branch nil
+                                     remote-sync-type   :read-write]
+    (mt/with-temp [:model/Collection collection {:name "To sync" :location "/"}]
+      (testing "a repository that can't be reached is refused and leaves remote sync not configured"
+        (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                              {:remote-sync-url  "file:///does/not/exist"
+                               :remote-sync-type "read-only"
+                               :collections      {(:id collection) true}})
+        (is (false? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
+        (is (nil? (mt/user-http-request :crowberto :get 204 "setting/remote-sync-url")))
+        (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection))))))))
+
 (deftest test-connection-test
   (remote-sync.tu/with-repository [url]
     (testing "a reachable repository passes"
