@@ -3,7 +3,7 @@ import type { Node as PmNode } from "@tiptap/pm/model";
 import { Plugin, type Transaction } from "@tiptap/pm/state";
 
 import { PAREN_TEXT } from "../../../model";
-import { insertConnector } from "../../commands";
+import { insertBoolOp } from "../../commands";
 import { getEditedPill, pillContent } from "../../nodes/nodes";
 import { draftContent, insertDraft } from "../layout";
 import {
@@ -31,7 +31,7 @@ export const removeDraft = (
     : transaction.delete(range.from, range.to);
 };
 
-const createConnectorRule = () =>
+const createBoolOpRule = () =>
   new InputRule({
     find: /^(and|or) $/i,
     handler: ({ state, chain, match }) => {
@@ -40,7 +40,7 @@ const createConnectorRule = () =>
         return null;
       }
       const type = match[1].toLowerCase() === "or" ? "or" : "and";
-      insertConnector({ chain, state, ...getDraftRange(draft) }, type);
+      insertBoolOp({ chain, state, ...getDraftRange(draft) }, type);
     },
   });
 
@@ -87,7 +87,7 @@ export const createDraftLifecycle = () =>
   Extension.create({
     name: "draftLifecycle",
     priority: 1100,
-    addInputRules: () => [createConnectorRule()],
+    addInputRules: () => [createBoolOpRule()],
     addProseMirrorPlugins() {
       return [
         createTyping(this.editor),

@@ -94,7 +94,7 @@ describe("document", () => {
       expect(editor.state).toBe(state);
     });
 
-    it("removes a dangling connector", () => {
+    it("removes a dangling bool op", () => {
       const { editor, getStages } = createTestEditor([A, AND]);
       normalizeDocument(editor);
       expect(getStages()).toEqual([[A]]);

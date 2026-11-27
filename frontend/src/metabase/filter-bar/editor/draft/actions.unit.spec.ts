@@ -1,4 +1,4 @@
-import { connectorToken, pillToken } from "../../model";
+import { boolOpToken, pillToken } from "../../model";
 import {
   MOCK_ADAPTER,
   type MockFilter,
@@ -352,12 +352,12 @@ describe("createDraftActions", () => {
     }>([
       { name: "a caret", select: ({ placeCaret }) => placeCaret(0) },
       {
-        name: "a selected connector",
+        name: "a selected bool op",
         select: ({ selectNode }) => selectNode(1),
       },
     ])("does nothing on ArrowDown with $name", ({ select }) => {
       const testEditor = createActionsTestEditor({
-        stages: [[mockPill(mockFilter("id", ">", "1")), connectorToken("or")]],
+        stages: [[mockPill(mockFilter("id", ">", "1")), boolOpToken("or")]],
       });
       const { findDraft, press } = testEditor;
       select(testEditor);

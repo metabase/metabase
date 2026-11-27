@@ -11,7 +11,7 @@ import {
   getStageAt,
   readDraft,
 } from "../../editor";
-import { CONNECTOR_TEXT, type ConnectorToken, PAREN_TEXT } from "../../model";
+import { BOOL_OP_TEXT, type BoolOpToken, PAREN_TEXT } from "../../model";
 import type { FilterBarAdapter } from "../../types";
 import { AnchorTarget, type GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 import type { DraftPick, DraftSuggestion } from "../FilterBar/draft-suggestion";
@@ -25,7 +25,7 @@ import { findExactColumn, getColumnSuggestions } from "./columns";
 import { findExactOperator, getOperatorSuggestions } from "./operators";
 
 const LOGIC_OPERATORS = [
-  ...Object.values(CONNECTOR_TEXT),
+  ...Object.values(BOOL_OP_TEXT),
   ...Object.values(PAREN_TEXT),
 ];
 
@@ -40,11 +40,11 @@ const NEW_DRAFT: Pick<DraftState, "step" | "column"> = {
   column: null,
 };
 
-const getTypedConnector = (query: string) =>
+const getTypedBoolOp = (query: string) =>
   match(query.trim().toLowerCase())
-    .returnType<ConnectorToken["type"] | null>()
-    .with(CONNECTOR_TEXT.and, () => "and")
-    .with(CONNECTOR_TEXT.or, () => "or")
+    .returnType<BoolOpToken["type"] | null>()
+    .with(BOOL_OP_TEXT.and, () => "and")
+    .with(BOOL_OP_TEXT.or, () => "or")
     .otherwise(() => null);
 
 const getDraftListView = <F,>(
@@ -56,11 +56,11 @@ const getDraftListView = <F,>(
   const view = match(draft ? readDraft(draft) : NEW_DRAFT)
     .with({ step: "column" }, (): DraftListView<F> => {
       const columns = adapter.stage(getStageAt(doc, range.from)).columnGroups();
-      const connector = getTypedConnector(query);
+      const boolOp = getTypedBoolOp(query);
       return {
         step: "column",
-        groups: getColumnSuggestions(columns, query, connector),
-        exact: connector ? null : findExactColumn(columns, query),
+        groups: getColumnSuggestions(columns, query, boolOp),
+        exact: boolOp ? null : findExactColumn(columns, query),
       };
     })
     .with(

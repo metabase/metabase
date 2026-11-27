@@ -45,7 +45,7 @@ describe("error highlight", () => {
     { stages: [[A], [OPEN, CLOSE]], stage: 1, positions: [3, 4] },
   ])("highlights $positions in $stages", ({ stages, stage, positions }) => {
     const { editor } = setup(...stages);
-    expect(highlightErrors(editor)).toMatchObject({ stage });
+    expect(highlightErrors(editor)).toMatchObject({ stageIndex: stage });
     expect(getErrorPositions(editor)).toEqual(positions);
   });
 

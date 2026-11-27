@@ -84,13 +84,13 @@ describe("getColumnSuggestions", () => {
     },
   );
 
-  it("puts a typed connector first, in a group without a header", () => {
-    const [connector] = getColumnSuggestions([ORDERS], "or", "or");
-    expect(connector.header).toBeUndefined();
-    expect(connector.rows).toEqual([
+  it("puts a typed bool op first, in a group without a header", () => {
+    const [boolOp] = getColumnSuggestions([ORDERS], "or", "or");
+    expect(boolOp.header).toBeUndefined();
+    expect(boolOp.rows).toEqual([
       expect.objectContaining({
         label: "OR",
-        value: { type: "connector", connector: "or" },
+        value: { type: "boolOp", boolOp: "or" },
       }),
     ]);
   });

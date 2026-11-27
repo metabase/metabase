@@ -18,7 +18,7 @@ describe("filter bar keys", () => {
 
     it.each([
       { name: "a pill", gap: 3, expected: [[A, OR, OR, C]] },
-      { name: "a connector", gap: 2, expected: [[A, B, OR, C]] },
+      { name: "a bool op", gap: 2, expected: [[A, B, OR, C]] },
     ])("removes $name before the caret right away", ({ gap, expected }) => {
       const { getStages, placeCaret, press } = createTestEditor([
         A,
@@ -121,7 +121,7 @@ describe("filter bar keys", () => {
     });
   });
 
-  describe("connectors", () => {
+  describe("bool ops", () => {
     it.each([
       { from: OR, to: AND },
       { from: AND, to: OR },

@@ -1,10 +1,10 @@
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import { type EditorState, NodeSelection } from "@tiptap/pm/state";
 
-import type { ConnectorToken } from "../model";
+import type { BoolOpToken } from "../model";
 
-import { connectorContent } from "./nodes/nodes";
-import { isConnectorNode } from "./nodes/types";
+import { boolOpContent } from "./nodes/nodes";
+import { isBoolOpNode } from "./nodes/types";
 
 export type InsertProps = {
   chain: () => ChainedCommands;
@@ -13,12 +13,12 @@ export type InsertProps = {
   to: number;
 };
 
-export const insertConnector = (
+export const insertBoolOp = (
   { chain, state, from, to }: InsertProps,
-  type: ConnectorToken["type"],
+  type: BoolOpToken["type"],
 ) => {
   const before = state.doc.resolve(from).nodeBefore;
-  if (isConnectorNode(before)) {
+  if (isBoolOpNode(before)) {
     const beforePos = from - before.nodeSize;
     return chain()
       .deleteRange({ from, to })
@@ -29,11 +29,11 @@ export const insertConnector = (
       .setTextSelection(from)
       .run();
   }
-  const connector = state.schema.nodeFromJSON(connectorContent(type));
+  const boolOp = state.schema.nodeFromJSON(boolOpContent(type));
   return chain()
     .deleteRange({ from, to })
-    .insertContentAt(from, connector)
-    .setTextSelection(from + connector.nodeSize)
+    .insertContentAt(from, boolOp)
+    .setTextSelection(from + boolOp.nodeSize)
     .run();
 };
 

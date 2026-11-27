@@ -1,4 +1,4 @@
-export { insertConnector } from "./commands";
+export { insertBoolOp } from "./commands";
 export {
   getPillRectAt,
   getStageAt,
@@ -25,7 +25,7 @@ export { findDraftStartingAt, findPartStep, readDraft } from "./draft/read";
 export type { DraftState, DraftStep, FilterEditorRequest } from "./draft/types";
 export {
   createColumnNode,
-  createConnectorNode,
+  createBoolOpNode,
   createDraftInputNode,
   createDraftNode,
   createOperatorNode,

@@ -4,8 +4,8 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { moveCaretPast } from "../commands";
 import {
   isAndNode,
+  isBoolOpNode,
   isCloseNode,
-  isConnectorNode,
   isOpenNode,
   isThenNode,
 } from "../nodes/types";
@@ -42,11 +42,11 @@ const deleteNextToCaret = (editor: Editor, isBackward: boolean) => {
   });
 };
 
-const toggleConnector = (editor: Editor) => {
+const toggleBoolOp = (editor: Editor) => {
   const { selection } = editor.state;
-  const isConnector =
-    selection instanceof NodeSelection && isConnectorNode(selection.node);
-  if (!isConnector) {
+  const isBoolOp =
+    selection instanceof NodeSelection && isBoolOpNode(selection.node);
+  if (!isBoolOp) {
     return;
   }
   const type = isAndNode(selection.node) ? "or" : "and";
@@ -70,7 +70,7 @@ export const createFilterBarKeys = () =>
       Backspace: ({ editor }) => deleteNextToCaret(editor, true),
       Delete: ({ editor }) => deleteNextToCaret(editor, false),
       Enter: ({ editor }) => {
-        toggleConnector(editor);
+        toggleBoolOp(editor);
         return true;
       },
       Home: ({ editor }) => editor.commands.selectTextblockStart(),

@@ -218,7 +218,7 @@ describe("FilterBar", () => {
       expect(getPillTexts()).toEqual(["Count>5", "Count<10"]);
     });
 
-    it("shows every connector and the parentheses once there is an or", async () => {
+    it("shows every bool op and the parentheses once there is an or", async () => {
       await setup({
         value: [
           and(

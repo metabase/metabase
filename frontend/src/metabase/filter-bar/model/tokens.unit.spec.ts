@@ -1,11 +1,46 @@
-import { AND, CLOSE, OPEN, OR, pill } from "../test-utils";
+import { AND, CLOSE, OPEN, OR, createTestPill, pill } from "../test-utils";
 
-import { applyImplicitAnds } from "./implicit-and";
+import {
+  type TokenStages,
+  applyImplicitAnds,
+  isSameStages,
+  pillToken,
+} from "./tokens";
 
 const A = pill("A");
 const B = pill("B");
 const C = pill("C");
 const D = pill("D");
+
+describe("isSameStages", () => {
+  it("treats pills that look the same as the same, even with different filters", () => {
+    const before = [[pillToken({ id: 1 }, createTestPill("A"))]];
+    const after = [[pillToken({ id: 2 }, createTestPill("A"))]];
+    expect(isSameStages(before, after)).toBe(true);
+  });
+
+  it("tells pills that look different apart", () => {
+    const before = [[pillToken("A", createTestPill("A"))]];
+    const after = [[pillToken("A", createTestPill("B"))]];
+    expect(isSameStages(before, after)).toBe(false);
+  });
+
+  it.each<[string, TokenStages<string>, TokenStages<string>]>([
+    ["no stages and one empty stage", [], [[]]],
+    ["a stage and the same stage with an empty one after it", [[A]], [[A], []]],
+  ])("treats as the same %s", (_, before, after) => {
+    expect(isSameStages(before, after)).toBe(true);
+  });
+
+  it.each<[string, TokenStages<string>, TokenStages<string>]>([
+    ["a different stage count", [[A]], [[A], [B]]],
+    ["a different token count", [[A, B]], [[A]]],
+    ["and and or", [[A, AND, B]], [[A, OR, B]]],
+    ["a pill and an and", [[A, B]], [[A, AND]]],
+  ])("tells apart %s", (_, before, after) => {
+    expect(isSameStages(before, after)).toBe(false);
+  });
+});
 
 describe("applyImplicitAnds", () => {
   it("hides ands while the stage has no or", () => {

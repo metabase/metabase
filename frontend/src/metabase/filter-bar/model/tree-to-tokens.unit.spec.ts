@@ -12,8 +12,8 @@ import {
 } from "../test-utils";
 import type { FilterBarAdapter, FilterStages } from "../types";
 
-import { stagesToTokens } from "./stages-to-tokens";
-import type { TokenStages } from "./types";
+import type { TokenStages } from "./tokens";
+import { treesToTokens } from "./tree-to-tokens";
 
 const A = pill("A");
 const B = pill("B");
@@ -21,7 +21,7 @@ const C = pill("C");
 const D = pill("D");
 const E = pill("E");
 
-describe("stagesToTokens", () => {
+describe("treesToTokens", () => {
   it.each<[string, FilterStages<string>, TokenStages<string>]>([
     ["no filters", [], []],
     ["one filter", [leaf("A")], [[A]]],
@@ -68,7 +68,7 @@ describe("stagesToTokens", () => {
       [[A], [], []],
     ],
   ])("%s", (_, stages, expected) => {
-    expect(stagesToTokens(stages, TEST_ADAPTER)).toEqual(expected);
+    expect(treesToTokens(stages, TEST_ADAPTER)).toEqual(expected);
   });
 
   it("builds each pill with the adapter of its stage", () => {
@@ -82,7 +82,7 @@ describe("stagesToTokens", () => {
 
     const stages: FilterStages<string> = [leaf("A"), leaf("B"), leaf("C")];
 
-    const tokens = stagesToTokens(stages, adapter);
+    const tokens = treesToTokens(stages, adapter);
 
     expect(tokens).toEqual([
       [{ type: "pill", filter: "A", content: createTestPill("A@0") }],
@@ -91,8 +91,8 @@ describe("stagesToTokens", () => {
     ]);
   });
 
-  it("gives each connector its own object, so it can be a React key", () => {
-    const [tokens] = stagesToTokens(
+  it("gives each bool op its own object", () => {
+    const [tokens] = treesToTokens(
       [or(leaf("A"), leaf("B"), leaf("C"))],
       TEST_ADAPTER,
     );

@@ -6,22 +6,29 @@ import {
   isLeafTree,
 } from "../types";
 
-import { applyImplicitAnds } from "./implicit-and";
-import type { NodeType, Token, TokenStages } from "./types";
 import {
-  PRECEDENCE,
+  type Token,
+  type TokenStages,
+  applyImplicitAnds,
+  boolOpToken,
   closeToken,
-  connectorToken,
-  isEmptyTree,
-  join,
   openToken,
   pillToken,
-} from "./utils";
+} from "./tokens";
+import { type BoolOp, PRECEDENCE, isEmptyTree } from "./tree";
+
+export const join = <T>(
+  parts: readonly (readonly T[])[],
+  createSeparator: (index: number) => T,
+): T[] =>
+  parts.flatMap((part, index) =>
+    index === 0 ? [...part] : [createSeparator(index), ...part],
+  );
 
 const treeToTokens = <F>(
   node: FilterTree<F>,
   stageAdapter: FilterBarStageAdapter<F>,
-  parentType?: NodeType,
+  parentType?: BoolOp,
 ): Token<F>[] => {
   if (isLeafTree(node)) {
     return [pillToken(node.filter, stageAdapter.toPill(node.filter))];
@@ -34,7 +41,7 @@ const treeToTokens = <F>(
 
   const tokens = join(
     children.map((child) => treeToTokens(child, stageAdapter, node.type)),
-    () => connectorToken(node.type),
+    () => boolOpToken(node.type),
   );
   const needsParens =
     parentType !== undefined && PRECEDENCE[node.type] < PRECEDENCE[parentType];
@@ -42,12 +49,12 @@ const treeToTokens = <F>(
   return needsParens ? [openToken(), ...tokens, closeToken()] : tokens;
 };
 
-export const stagesToTokens = <F>(
-  stages: FilterStages<F>,
+export const treesToTokens = <F>(
+  trees: FilterStages<F>,
   adapter: FilterBarAdapter<F>,
 ): TokenStages<F> =>
   applyImplicitAnds(
-    stages.map((tree, stage) =>
+    trees.map((tree, stage) =>
       isEmptyTree(tree) ? [] : treeToTokens(tree, adapter.stage(stage)),
     ),
   );

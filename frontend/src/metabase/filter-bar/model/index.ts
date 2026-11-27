@@ -1,8 +1,8 @@
-export { applyImplicitAnds } from "./implicit-and";
-export { normalizeTokens } from "./normalize-tokens";
-export { parseTokens } from "./parse-tokens";
-export { stagesToTokens } from "./stages-to-tokens";
+export { join, treesToTokens } from "./tree-to-tokens";
+export { normalizeTokens, tokensToTrees } from "./tokens-to-tree";
+export { isEmptyTree } from "./tree";
 export {
+  type BoolOpToken,
   type ConnectorToken,
   type ParenToken,
   type ParseError,
@@ -10,19 +10,16 @@ export {
   type Token,
   type TokenStages,
   type TokenType,
+  isBoolOpToken,
   isCloseToken,
-  isConnectorToken,
   isOpenToken,
   isPillToken,
-} from "./types";
-export {
-  closeToken,
-  CONNECTOR_TEXT,
-  connectorToken,
-  isEmptyTree,
-  isSameStages,
-  join,
-  openToken,
+  applyImplicitAnds,
+  BOOL_OP_TEXT,
   PAREN_TEXT,
+  boolOpToken,
+  closeToken,
+  isSameStages,
+  openToken,
   pillToken,
-} from "./utils";
+} from "./tokens";

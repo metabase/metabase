@@ -1,7 +1,7 @@
 import {
   type PillToken,
+  boolOpToken,
   closeToken,
-  connectorToken,
   openToken,
   pillToken,
 } from "./model";
@@ -38,8 +38,8 @@ export const TEST_ADAPTER: FilterBarAdapter<string> = {
 export const pill = (filter: string): PillToken<string> =>
   pillToken(filter, createTestPill(filter));
 
-export const AND = connectorToken("and");
-export const OR = connectorToken("or");
+export const AND = boolOpToken("and");
+export const OR = boolOpToken("or");
 export const OPEN = openToken();
 export const CLOSE = closeToken();
 

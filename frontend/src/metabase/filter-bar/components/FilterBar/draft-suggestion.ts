@@ -7,16 +7,16 @@ import {
   type DraftActions,
   findPartStep,
   getStageAt,
-  insertConnector,
+  insertBoolOp,
 } from "../../editor";
-import type { ConnectorToken } from "../../model";
+import type { BoolOpToken } from "../../model";
 import type { ColumnItem, FilterOperator } from "../../types";
 import type { GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 
 export type DraftPick<F> =
   | ColumnItem<F>
   | { type: "operator"; operator: FilterOperator }
-  | { type: "connector"; connector: ConnectorToken["type"] };
+  | { type: "boolOp"; boolOp: BoolOpToken["type"] };
 
 export type DraftSuggestion<F> = {
   editor: Editor;
@@ -49,10 +49,10 @@ export const createDraftSuggestion = <F>({
       .with({ type: "operator" }, ({ operator }) =>
         actions.pickOperator(editor, range, operator),
       )
-      .with({ type: "connector" }, ({ connector }) =>
-        insertConnector(
+      .with({ type: "boolOp" }, ({ boolOp }) =>
+        insertBoolOp(
           { chain: () => editor.chain(), state: editor.state, ...range },
-          connector,
+          boolOp,
         ),
       )
       .exhaustive();

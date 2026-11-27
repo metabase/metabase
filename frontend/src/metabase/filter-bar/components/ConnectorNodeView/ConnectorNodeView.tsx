@@ -6,14 +6,12 @@ import { Flex, Icon } from "metabase/ui";
 
 import { hasErrorDecoration } from "../../editor";
 import { PAREN_TEXT } from "../../model";
-import type { ConnectorToken, ParenToken } from "../../model";
+import type { ConnectorToken } from "../../model";
 
 import S from "./ConnectorNodeView.module.css";
 
-type ConnectorType = ConnectorToken["type"] | ParenToken["type"];
-
 type ConnectorNodeViewProps = NodeViewProps & {
-  type: ConnectorType;
+  type: ConnectorToken["type"];
 };
 
 export const ConnectorNodeView = ({

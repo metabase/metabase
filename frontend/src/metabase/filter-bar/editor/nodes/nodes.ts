@@ -1,7 +1,7 @@
 import { type JSONContent, Node, type NodeConfig } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 
-import type { ConnectorToken, ParenToken, PillToken } from "../../model";
+import type { BoolOpToken, ParenToken, PillToken } from "../../model";
 import type {
   ColumnPart,
   DraftPart,
@@ -33,8 +33,7 @@ export const createPillNode = () =>
     }),
   });
 
-export const createConnectorNode = (type: ConnectorToken["type"]) =>
-  createAtom(type);
+export const createBoolOpNode = (type: BoolOpToken["type"]) => createAtom(type);
 
 export const createParenNode = (type: ParenToken["type"]) => createAtom(type);
 
@@ -117,9 +116,7 @@ export const pillContent = <F>(
   attrs: { token, stage },
 });
 
-export const connectorContent = (
-  type: ConnectorToken["type"],
-): JSONContent => ({
+export const boolOpContent = (type: BoolOpToken["type"]): JSONContent => ({
   type,
 });
 

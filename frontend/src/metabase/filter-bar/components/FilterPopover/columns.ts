@@ -1,4 +1,4 @@
-import type { ConnectorToken } from "../../model";
+import type { BoolOpToken } from "../../model";
 import type { ColumnGroup, ColumnItem } from "../../types";
 import type { DraftPick } from "../FilterBar/draft-suggestion";
 import { findExact, isMatch } from "../SuggestionList/search";
@@ -43,16 +43,16 @@ const toColumnGroup = <F>(
   return rows.length > 0 ? [{ key, header, rows }] : [];
 };
 
-const toConnectorGroup = <F>(
-  connector: ConnectorToken["type"],
+const toBoolOpGroup = <F>(
+  boolOp: BoolOpToken["type"],
 ): SuggestionGroup<DraftPick<F>> => ({
-  key: "connector",
+  key: "bool-op",
   rows: [
     {
       type: "item",
-      key: `connector:${connector}`,
-      label: connector.toUpperCase(),
-      value: { type: "connector", connector },
+      key: `bool-op:${boolOp}`,
+      label: boolOp.toUpperCase(),
+      value: { type: "boolOp", boolOp },
     },
   ],
 });
@@ -60,9 +60,9 @@ const toConnectorGroup = <F>(
 export const getColumnSuggestions = <F>(
   groups: readonly ColumnGroup<F>[],
   query: string,
-  connector: ConnectorToken["type"] | null,
+  boolOp: BoolOpToken["type"] | null,
 ): SuggestionGroup<DraftPick<F>>[] => [
-  ...(connector ? [toConnectorGroup<F>(connector)] : []),
+  ...(boolOp ? [toBoolOpGroup<F>(boolOp)] : []),
   ...groups.flatMap((group) => toColumnGroup(group, query)),
 ];
 

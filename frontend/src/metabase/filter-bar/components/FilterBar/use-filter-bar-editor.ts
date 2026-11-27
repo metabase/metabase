@@ -19,9 +19,9 @@ import {
   type ParseError,
   isEmptyTree,
   isSameStages,
-  parseTokens,
   pillToken,
-  stagesToTokens,
+  tokensToTrees,
+  treesToTokens,
 } from "../../model";
 import type { FilterBarProps } from "../../types";
 import type { ListKeys } from "../SuggestionList/SuggestionList";
@@ -57,7 +57,7 @@ export const useFilterBarEditor = <F>({
   );
   const [error, setError] = useState<ParseError | null>(null);
   const isValidatingRef = useRef(false);
-  const [initialTokens] = useState(() => stagesToTokens(value, adapter));
+  const [initialTokens] = useState(() => treesToTokens(value, adapter));
   const [initialContent] = useState(() => tokensToContent(initialTokens));
   const syncedTokensRef = useRef(initialTokens);
   const onChangeRef = useLatest(onChange);
@@ -73,7 +73,7 @@ export const useFilterBarEditor = <F>({
 
   const emit = (editor: Editor) => {
     const tokens = readTokens<F>(editor);
-    const result = parseTokens(tokens);
+    const result = tokensToTrees(tokens);
     const hasFiltersChanged = !isSameStages(syncedTokensRef.current, tokens);
     if (result.type === "ok" && hasFiltersChanged) {
       syncedTokensRef.current = tokens;
@@ -103,7 +103,7 @@ export const useFilterBarEditor = <F>({
     if (!editor) {
       return;
     }
-    const incomingTokens = stagesToTokens(value, adapter);
+    const incomingTokens = treesToTokens(value, adapter);
     const isEchoOfOwnChange = isSameStages(
       syncedTokensRef.current,
       incomingTokens,

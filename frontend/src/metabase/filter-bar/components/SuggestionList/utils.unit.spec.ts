@@ -22,12 +22,12 @@ const ORDERS: SuggestionGroup<string> = {
   ],
 };
 
-const CONNECTOR: SuggestionGroup<string> = {
-  key: "connector",
+const BOOL_OP: SuggestionGroup<string> = {
+  key: "bool-op",
   rows: [item("OR")],
 };
 
-const COLLAPSED = new Set(["orders", "connector"]);
+const COLLAPSED = new Set(["orders", "bool-op"]);
 
 const describeOptions = (
   groups: readonly SuggestionGroup<string>[],
@@ -40,7 +40,7 @@ const describeOptions = (
 
 describe("getVisibleGroups and getOptions", () => {
   it("lists headers and items, but not labels", () => {
-    expect(describeOptions([CONNECTOR, ORDERS], new Set(), "")).toEqual([
+    expect(describeOptions([BOOL_OP, ORDERS], new Set(), "")).toEqual([
       "OR",
       "header orders",
       "ID",
@@ -67,6 +67,6 @@ describe("getVisibleGroups and getOptions", () => {
   });
 
   it("never collapses a group without a header", () => {
-    expect(describeOptions([CONNECTOR], COLLAPSED, "")).toEqual(["OR"]);
+    expect(describeOptions([BOOL_OP], COLLAPSED, "")).toEqual(["OR"]);
   });
 });

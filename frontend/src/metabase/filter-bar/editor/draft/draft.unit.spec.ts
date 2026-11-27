@@ -88,34 +88,31 @@ describe("draft", () => {
     });
   });
 
-  describe("text that becomes a connector", () => {
+  describe("text that becomes a bool op", () => {
     it.each([
-      { text: "or ", connector: OR },
-      { text: "OR ", connector: OR },
-      { text: "And ", connector: AND },
-    ])("turns $text into a connector", ({ text, connector }) => {
+      { text: "or ", boolOp: OR },
+      { text: "OR ", boolOp: OR },
+      { text: "And ", boolOp: AND },
+    ])("turns $text into a bool op", ({ text, boolOp }) => {
       const { editor, getStages, findDraft } = createWithDraft([A], 1, text);
       expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([[A, connector]]);
+      expect(getStages()).toEqual([[A, boolOp]]);
       expect(editor.state.selection.from).toBe(3);
     });
 
     it.each([
-      { text: "or ", connector: OR },
-      { text: "and ", connector: AND },
-    ])(
-      "puts $text in place of the connector before it",
-      ({ text, connector }) => {
-        const { editor, getStages, findDraft } = createWithDraft(
-          [A, AND, B],
-          2,
-          text,
-        );
-        expect(findDraft()).toBeNull();
-        expect(getStages()).toEqual([[A, connector, B]]);
-        expect(editor.state.selection.from).toBe(3);
-      },
-    );
+      { text: "or ", boolOp: OR },
+      { text: "and ", boolOp: AND },
+    ])("puts $text in place of the bool op before it", ({ text, boolOp }) => {
+      const { editor, getStages, findDraft } = createWithDraft(
+        [A, AND, B],
+        2,
+        text,
+      );
+      expect(findDraft()).toBeNull();
+      expect(getStages()).toEqual([[A, boolOp, B]]);
+      expect(editor.state.selection.from).toBe(3);
+    });
 
     it("keeps other text, even a word that ends with and / or", () => {
       const { findDraft } = createWithDraft([A], 1, "brand ");

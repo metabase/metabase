@@ -61,5 +61,5 @@ export const isOperatorNode = (node: MaybeNode): node is OperatorNode =>
 export const isValueNode = (node: MaybeNode): node is ValueNode =>
   node?.type.name === "value";
 
-export const isConnectorNode = (node: MaybeNode): node is AndNode | OrNode =>
+export const isBoolOpNode = (node: MaybeNode): node is AndNode | OrNode =>
   isAndNode(node) || isOrNode(node);
