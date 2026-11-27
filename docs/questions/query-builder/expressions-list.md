@@ -55,6 +55,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
   - [String functions](#string-functions)
 
+    - [collate](#collate)
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [date](#date)
@@ -94,6 +95,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [dayName](#dayname)
     - [hour](#hour)
     - [interval](#interval)
+    - [intervalStartingFrom](#intervalstartingfrom)
     - [minute](#minute)
     - [month](#month)
     - [monthName](#monthname)
@@ -439,6 +441,19 @@ Related: [power](#power).
 
 String functions manipulate or validate string data.
 
+### collate
+
+> Only available for Snowflake.
+
+Applies a collation to a text value, which changes how the text is sorted and compared.
+
+Syntax: `collate(text, collation)`
+
+- `text`: The column or text to apply the collation to.
+- `collation`: A [Snowflake collation specification](https://docs.snowflake.com/en/sql-reference/collation), like `"en-ci"`.
+
+Example: `collate([Name], "en-ci")` would compare and sort `Name` values using English rules, ignoring case, so `"apple"` and `"Apple"` would be treated as equal.
+
 ### [concat](./expressions/concat.md)
 
 Combine two or more strings together.
@@ -449,18 +464,20 @@ Example: `concat([Last Name], ", ", [First Name])` would produce a string of the
 
 ### contains
 
-Checks to see if `string1` contains `string2` within it.
+Checks to see if `string1` contains `string2` within it (or `string3`, etc., if specified).
 
 Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `contains(string1, string2)` for case-sensitive match.
+Syntax: `contains(string1, string2, ...)` for case-sensitive match.
 
-`contains(string1, string2, "case-insensitive")` for case-insensitive match.
+`contains(string1, string2, ..., "case-insensitive")` for case-insensitive match.
 
 Example: `contains([Status], "Class")`.
 
 If `Status` were "Classified", the expression would return `true`. If the `Status` were "**c**lassified", the expression would return `false`, because the case does not match.
+
+You can check for multiple values: `contains([Status], "Class", "Secret")` would return `true` if `Status` contains either "Class" or "Secret".
 
 Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
@@ -522,14 +539,14 @@ Related: [date](#date)
 
 ### doesNotContain
 
-Checks to see if `string1` contains `string2` within it.
+Returns true if `string1` doesn't contain `string2` within it (and doesn't contain `string3`, etc., if specified).
 
 Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `doesNotContain(string1, string2)` for case-sensitive match.
+Syntax: `doesNotContain(string1, string2, ...)` for case-sensitive match.
 
-`doesNotContain(string1, string2, "case-insensitive")` for case-insensitive match.
+`doesNotContain(string1, string2, ..., "case-insensitive")` for case-insensitive match.
 
 Example: `doesNotContain([Status], "Class")`. If `Status` were "Classified", the expression would return `false`.
 
@@ -547,14 +564,14 @@ Related: [host](#host), [path](#path), [subdomain](#subdomain).
 
 ### endsWith
 
-Returns true if the end of the text matches the comparison text.
+Returns true if the end of the text matches the comparison text (or any of the other comparison texts, if specified).
 
 Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `endsWith(text, comparison)` for case-sensitive match.
+Syntax: `endsWith(text, comparison, ...)` for case-sensitive match.
 
-`endsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+`endsWith(text, comparison, ..., "case-insensitive")` for case-insensitive match.
 
 Example: `endsWith([Appetite], "hungry")`
 
@@ -582,7 +599,7 @@ Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
 ### [isEmpty](./expressions/isempty.md)
 
-Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isNull](#isnull) for non-string columns.
+Returns true if a column contains an empty string or is null. For non-string columns, `isEmpty` works the same as [isNull](#isnull).
 
 Syntax: `isEmpty(column)`
 
@@ -599,7 +616,7 @@ Related: [notEmpty](#notempty), [isNull](#isnull).
 
 Syntax: `integer(value)`
 
-String example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+String example: `integer("123")` would return `123` as an integer. The string must contain a whole number, like `"123"` (not `"123.45"`).
 
 Float example: `integer(123.45)` would return `123`.
 
@@ -635,7 +652,7 @@ Related: [upper](#upper).
 
 ### notEmpty
 
-Returns true if a _string column_ contains a value that is not the empty string. Calling this function on a non-string column will cause an error. You can use [notNull](#notnull) on non-string columns.
+Returns true if a column contains a value that isn't null or the empty string. For non-string columns, `notEmpty` works the same as [notNull](#notnull).
 
 Syntax: `notEmpty(column)`
 
@@ -657,11 +674,11 @@ Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
 > ⚠️ `regexExtract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexExtract` is only available for the Druid-JDBC driver.
 
-Extracts matching substrings according to a regular expression.
+Extracts the first substring that matches a regular expression.
 
 Syntax: `regexExtract(text, regular_expression)`
 
-Example: `regexExtract([Address], "[0-9]+")`
+Example: `regexExtract([Address], "[0-9]+")`. If the `Address` were `"123 Main St"`, the expression would return `"123"`.
 
 Databases that don't support `regexExtract`: SQL Server, SQLite.
 
@@ -691,7 +708,7 @@ Syntax: `splitPart(text, delimiter, position)`
 
 Example: `splitPart([Date string], " ", 1)`. If the value for `Date string` was `"2024-09-18 16:55:15.373733-07"`, `splitPart` would return `"2024-09-18"` because it split the data on space (`" "`, and took the first part (the substring at index 1)).
 
-Another example: `splitPart("First name, Middle Name, Last name", ", ", 3)` would return `"Last Name"` (because we used the comma and space `", "` as the delimiter to split the string into parts, and took the third substring).
+Another example: `splitPart("First name, Middle Name, Last name", ", ", 3)` would return `"Last name"` (because we used the comma and space `", "` as the delimiter to split the string into parts, and took the third substring).
 
 ### rTrim
 
@@ -705,12 +722,12 @@ Related: [trim](#trim) and [lTrim](#ltrim).
 
 ### startsWith
 
-Returns true if the beginning of the text matches the comparison text. Performs case-sensitive match by default.
+Returns true if the beginning of the text matches the comparison text (or any of the other comparison texts, if specified). Performs case-sensitive match by default.
 You can pass an optional parameter `"case-insensitive"` to perform a case-insensitive match.
 
-Syntax: `startsWith(text, comparison)` for case-sensitive match.
+Syntax: `startsWith(text, comparison, ...)` for case-sensitive match.
 
-`startsWith(text, comparison, "case-insensitive")` for case-insensitive match.
+`startsWith(text, comparison, ..., "case-insensitive")` for case-insensitive match.
 
 Example: `startsWith([Course Name], "Computer Science")` would return true for course names that began with "Computer Science", like "Computer Science 101: An introduction".
 
@@ -722,7 +739,7 @@ Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnot
 
 ### subdomain
 
-Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
+Extracts the first subdomain from a URL. Ignores `www` (returns a blank string). Returns a blank string if the URL has no subdomain, like `bbc.co.uk`.
 
 Syntax: `subdomain(url)`
 
@@ -738,6 +755,8 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
+Another example: `substring("Metabase", 1, 4)` would return `"Meta"`.
+
 Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
@@ -748,7 +767,7 @@ Converts a number or date to text (a string). Useful for applying text filters o
 
 Syntax: `text(value)`
 
-Example: `text(Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
+Example: `text([Created At])` would take a datetime (`Created At`) and return that datetime converted to a string (like `"2024-03-17 16:55:15.373733-07"`).
 
 ### trim
 
@@ -850,9 +869,31 @@ Syntax: `interval(column, number, text)`
 
 Example: `interval([Created At], -1, "month")`
 
+The range covers complete units and doesn't include the current one. For example, `interval([Created At], -3, "month")` would return true for rows created in the three full months before the current month.
+
 The `number` must be an integer. You cannot use a fractional value.
 
-Related: [between](#between).
+Related: [between](#between), [intervalStartingFrom](#intervalstartingfrom).
+
+### intervalStartingFrom
+
+Checks a date column's values to see if they're within a relative range that's shifted by an offset.
+
+Syntax: `intervalStartingFrom(column, value, unit, offsetValue, offsetUnit)`
+
+- `column`: The date column to check.
+- `value`: The number of units in the range. Negative values go back in time.
+- `unit`: The unit of the range, like `"day"`, `"month"`, or `"year"`.
+- `offsetValue`: How far to shift the range. Negative values go back in time.
+- `offsetUnit`: The unit of the offset, like `"day"`, `"month"`, or `"year"`.
+
+`value` and `offsetValue` must be integers.
+
+The range covers complete units and doesn't include the current one. For example, `-3, "month"` means the three full months before the current month.
+
+Example: `intervalStartingFrom([Created At], -3, "month", -1, "year")` would return true for rows created in the three full months before the current month, one year ago. If today were November 17, 2026, that's August 1, 2025, through October 31, 2025.
+
+Related: [interval](#interval), [between](#between).
 
 ### minute
 
@@ -968,13 +1009,14 @@ Note that summarizing by week of year in the query builder uses a different mode
 
 ### weekday
 
-Takes a datetime and returns an integer (1-7) with the number of the day of the week.
+Takes a datetime and returns an integer (1-7) with the number of the day of the week. Which day is `1` depends on your [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week) (Sunday by default).
 
-Syntax: `weekday(column)`
+Syntax: `weekday(column, mode)`
 
 - column: The datetime column.
+- mode: Optional. Set to `"iso"` to number the days from Monday (`1`) to Sunday (`7`), regardless of your first day of the week setting.
 
-Example:
+Example (with Sunday as the first day of the week):
 
 ```
 case(
@@ -987,13 +1029,15 @@ case(
   weekday([Created At]) = 7, "Saturday")
 ```
 
+ISO example: `weekday("2021-03-25T12:52:37", "iso")` would return `4`, because March 25, 2021 was a Thursday.
+
 ### year
 
 Takes a datetime and returns the year as an integer.
 
 Syntax: `year([datetime column])`
 
-Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
+Example: `year("2021-03-25T12:52:37")` would return the year as an integer, `2021`.
 
 ## Type-casting functions
 
@@ -1076,6 +1120,8 @@ Limitations are noted for each aggregation and function above, and here they are
 **SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
 
 **Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
+
+`collate` is only available for Snowflake.
 
 If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 
