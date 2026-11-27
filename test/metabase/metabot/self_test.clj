@@ -34,6 +34,7 @@
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -687,6 +688,24 @@
                  :toolName   "get-time"
                  :result     string?}
                 tool-result))))))
+
+(deftest ^:parallel tool-executor-xf-binds-the-tool-call-id-test
+  (testing "a tool runs with the id of its own call bound, so a query it runs can name the call (BOT-2381)"
+    (let [seen   (atom {})
+          tools  {"note" {:tool-name "note"
+                          :doc       "Note the id of the running call."
+                          :schema    [:=> [:cat [:map {:closed true} [:n :int]]] :any]
+                          :fn        (fn [{:keys [n]}]
+                                       (swap! seen assoc n tools.shared/*tool-call-id*)
+                                       "ok")}}
+          chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-1"}
+                   {:type :tool-input :id "call-1" :function "note" :arguments {:n 1}}
+                   {:type :tool-input :id "call-2" :function "note" :arguments {:n 2}}])]
+      (is (= 2 (count (filter #(= :tool-output-available (:type %))
+                              (into [] (self.core/tool-executor-xf tools) chunks)))))
+      (is (= {1 "call-1", 2 "call-2"} @seen))
+      (is (nil? tools.shared/*tool-call-id*)))))
 
 (deftest ^:parallel tool-executor-xf-test-3
   (testing "tool-executor-xf handles multiple concurrent tool calls"

@@ -77,7 +77,11 @@ function setupSaveModalEndpoints() {
 function setup(
   args: Parameters<typeof setupCardDataset>[0] = {},
   valueOverrides: Partial<GeneratedCard> = {},
-  { readonly = false }: { readonly?: boolean } = {},
+  {
+    readonly = false,
+    messageId,
+    isRerun,
+  }: { readonly?: boolean; messageId?: string; isRerun?: boolean } = {},
 ) {
   setupCardDataset(args);
   return renderWithProviders(
@@ -85,9 +89,16 @@ function setup(
       value={{ ...value, ...valueOverrides }}
       readonly={readonly}
       conversationId="convo-1"
+      messageId={messageId}
+      isRerun={isRerun}
       size="md"
     />,
   );
+}
+
+function getDatasetRequestHeaders() {
+  const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+  return new Headers(call?.options.headers);
 }
 
 async function openSaveModal() {
@@ -111,6 +122,28 @@ describe("MetabotInlineChart", () => {
     expect(screen.getByTestId("metabot-inline-chart")).toBeInTheDocument();
     expect(await screen.findByTestId("visualization")).toBeInTheDocument();
     expect(fetchMock.callHistory.called("path:/api/dataset")).toBe(true);
+  });
+
+  it("names the conversation and the message in the request headers, not in the query", async () => {
+    setup({}, {}, { messageId: "msg-1" });
+    expect(await screen.findByTestId("visualization")).toBeInTheDocument();
+
+    const headers = getDatasetRequestHeaders();
+    expect(headers.get("X-Metabase-Metabot-Conversation-Id")).toBe("convo-1");
+    expect(headers.get("X-Metabase-Metabot-Message-Id")).toBe("msg-1");
+    expect(headers.get("X-Metabase-Metabot-Rerun")).toBe("false");
+
+    const call = fetchMock.callHistory.lastCall("path:/api/dataset");
+    expect(String(call?.options.body)).not.toContain("metabot_run");
+  });
+
+  it("marks the run of a chart that is drawn again as a rerun", async () => {
+    setup({}, {}, { messageId: "msg-1", isRerun: true });
+    expect(await screen.findByTestId("visualization")).toBeInTheDocument();
+
+    expect(getDatasetRequestHeaders().get("X-Metabase-Metabot-Rerun")).toBe(
+      "true",
+    );
   });
 
   it("waits for Run query to be clicked before running in readonly mode", async () => {

@@ -150,6 +150,12 @@ export type MetabotMessage = {
   parts: MetabotMessagePart[];
   status: MetabotMessageStatus;
   contextTokens?: number;
+  /**
+   * True for a message that came with a loaded conversation, absent for one
+   * that this session streamed. A chart of a loaded message runs its query
+   * again; the run is recorded as a rerun.
+   */
+  fromSnapshot?: boolean;
 };
 
 export type MetabotToolCall = {

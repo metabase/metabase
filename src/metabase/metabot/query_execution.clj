@@ -24,6 +24,10 @@
    The QP strips some of these itself; that is defense in depth, not this boundary's contract."
   [:lib/type :database :stages :parameters])
 
+(def ^:private caller-info-keys
+  "The `:info` keys a caller of [[execute-page!]] may set in its options: what a Metabot query run belongs to."
+  [:metabot-conversation-id :metabot-message-id :metabot-tool-call-id])
+
 (defn- query-canceled
   "An agent error for a query that did not finish because the request it served was canceled."
   []
@@ -85,14 +89,17 @@
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
    under `context`, stopping it as [[execute-page!]] describes for `options`."
-  [serialized-query row-limit context {:keys [request-canceled-chan timeout-ms]}]
+  [serialized-query row-limit context {:keys [request-canceled-chan timeout-ms info]}]
   (let [query      (-> (select-keys serialized-query query-passthrough-keys)
                        (assoc :middleware {:js-int-to-string? true})
                        qp/userland-query-with-default-constraints
                        (assoc :constraints {:max-results           row-limit
                                             :max-results-bare-rows row-limit}
-                              :info        {:executed-by api/*current-user-id*
-                                            :context     context}))
+                              ;; `info` is the caller's code speaking, never the query map: see
+                              ;; [[query-passthrough-keys]].
+                              :info        (merge (select-keys info caller-info-keys)
+                                                  {:executed-by api/*current-user-id*
+                                                   :context     context})))
         timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
         timer      (u/start-timer)
         timed-out? (atom false)
@@ -147,7 +154,10 @@
    - `:request-canceled-chan`, a promise channel that receives a value when the request being served is canceled.
      The error is `:query-canceled`.
    - `:timeout-ms`, a time limit for the run. The database query timeout still applies when it is shorter.
-     The error is `:query-timed-out`, with the shorter of the two limits as `:timeout-ms`."
+     The error is `:query-timed-out`, with the shorter of the two limits as `:timeout-ms`.
+
+   The option `:info` names what the run belongs to, for its QueryExecution: `:metabot-conversation-id`,
+   `:metabot-message-id` and `:metabot-tool-call-id`. Any other key in it is dropped."
   ([serialized-query row-limit context]
    (execute-page! serialized-query row-limit context nil))
   ([serialized-query row-limit context options]

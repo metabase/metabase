@@ -59,15 +59,22 @@
     (api/read-check :model/Card source-card-id)
     source-card-id))
 
+(def ^:private metabot-link-keys
+  "The `:info` keys that name the Metabot reply a query run belongs to. Server middleware checks them and puts them
+  on the request under `:metabot/query-run-link` (see `metabase.metabot.query-run-link`); this module cannot require
+  that one."
+  [:metabot-conversation-id :metabot-message-id :metabot-rerun?])
+
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
-   & {:keys [context export-format was-pivot]
+   & {:keys [context export-format was-pivot metabot-link]
       :or   {context       :ad-hoc
              export-format :api}}
    :- [:maybe [:map {:closed true}
                [:context       {:optional true} ::lib.schema.info/context]
                [:export-format {:optional true} ::qp.schema/export-format]
-               [:was-pivot     {:optional true} [:maybe :boolean]]]]]
+               [:was-pivot     {:optional true} [:maybe :boolean]]
+               [:metabot-link  {:optional true} [:maybe :map]]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
@@ -81,9 +88,10 @@
                            (query->source-card-id query))
           source-card    (when source-card-id
                            (queries/card-query-info source-card-id))
-          info           (cond-> {:executed-by api/*current-user-id*
-                                  :context     context
-                                  :card-id     source-card-id}
+          info           (cond-> (merge (select-keys metabot-link metabot-link-keys)
+                                        {:executed-by api/*current-user-id*
+                                         :context     context
+                                         :card-id     source-card-id})
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
@@ -114,7 +122,8 @@
    (-> query
        (dissoc :cache-strategy)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+       qp/userland-query-with-default-constraints)
+   :metabot-link (:metabot/query-run-link request)))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 

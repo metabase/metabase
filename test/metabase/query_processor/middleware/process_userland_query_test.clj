@@ -120,6 +120,56 @@
               (qe))
           "QueryExecution should be saved"))))
 
+(deftest metabot-link-test
+  (testing "a query that Metabot ran is saved with what it belongs to (BOT-2381)"
+    (let [query (assoc (mt/mbql-query venues)
+                       :info {:context                 :metabot
+                              :metabot-conversation-id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
+                              :metabot-message-id      42
+                              :metabot-tool-call-id    "call-7"
+                              :metabot-rerun?          false})]
+      (with-query-execution! [qe query]
+        (testing "the response does not hold the link"
+          (is (not-any? #{:metabot_conversation_id :metabot_message_id :metabot_tool_call_id :metabot_rerun}
+                        (keys (process-userland-query query)))))
+        (is (=? {:context                 :metabot
+                 :metabot_conversation_id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
+                 :metabot_message_id      42
+                 :metabot_tool_call_id    "call-7"
+                 :metabot_rerun           false}
+                (qe))))))
+  (testing "any other query is saved with no link"
+    (let [query (mt/mbql-query venues)]
+      (with-query-execution! [qe query]
+        (process-userland-query query)
+        (is (=? {:metabot_conversation_id nil
+                 :metabot_message_id      nil
+                 :metabot_tool_call_id    nil}
+                (qe)))))))
+
+(deftest metabot-link-is-saved-test
+  (testing "the batch save writes the link of a Metabot run to the app DB (BOT-2381)"
+    (mt/with-model-cleanup [:model/QueryExecution]
+      (let [marker (str "metabot-link-test-" (random-uuid))]
+        (#'process-userland-query/save-execution-metadata!*
+         [{:hash                    (buddy-hash/sha256 marker)
+           :started_at              (t/offset-date-time)
+           :running_time            1
+           :result_rows             0
+           :native                  false
+           :context                 :metabot
+           :cache_hit               true
+           :error                   marker
+           :metabot_conversation_id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
+           :metabot_message_id      42
+           :metabot_tool_call_id    "call-7"
+           :metabot_rerun           true}])
+        (is (=? [{:metabot_conversation_id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
+                  :metabot_message_id      42
+                  :metabot_tool_call_id    "call-7"
+                  :metabot_rerun           true}]
+                (t2/select :model/QueryExecution :error marker)))))))
+
 (deftest oversized-row-does-not-destroy-batch-test
   (testing "a row the app DB rejects (here: an oversized embedding_client) does not take the rest of the batch with it"
     (mt/with-model-cleanup [:model/QueryExecution]

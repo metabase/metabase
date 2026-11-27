@@ -6,6 +6,8 @@
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`: the core var is a potemkin copy.
+   [metabase.query-processor :as qp]
    [metabase.slackbot.query :as slackbot.query]
    [metabase.test :as mt])
   (:import
@@ -52,6 +54,31 @@
           (let [col-names (map :name (get-in results [:data :cols]))]
             (is (some #(re-find #"(?i)category" %) col-names))
             (is (some #(re-find #"(?i)count" %) col-names))))))))
+
+(deftest chart-query-runs-name-their-reply-test
+  (testing "a chart's query run names the Metabot reply it belongs to in :info (BOT-2381)"
+    (let [link {:metabot-conversation-id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
+                :metabot-message-id      42
+                :metabot-rerun?          false}
+          info (atom nil)
+          mp   (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/limit 1))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
+                                                       (reset! info (:info query))
+                                                       {:status :completed, :data {:cols [], :rows []}})]
+          (testing "an ad-hoc chart"
+            (slackbot.query/execute-adhoc-query query (assoc link :card-id 1, :context :question))
+            (is (= (assoc link :context :slackbot, :executed-by (mt/user->id :rasta))
+                   (select-keys @info (concat (keys link) [:context :executed-by :card-id])))))
+          (testing "a saved question"
+            (slackbot.query/pulse-card-query-results {:id 7, :dataset_query query} link)
+            (is (= (assoc link :context :pulse, :card-id 7)
+                   (select-keys @info (concat (keys link) [:context :card-id])))))
+          (testing "no link, no keys"
+            (slackbot.query/execute-adhoc-query query)
+            (is (= {} (select-keys @info (keys link))))))))))
 
 ;;; ------------------------------------------------ PNG Generation --------------------------------------------------
 

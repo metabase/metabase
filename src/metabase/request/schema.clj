@@ -110,6 +110,13 @@
    [:compojure/route         {:optional true} [:maybe [:tuple :keyword :string]]]
    [:remember                {:optional true} [:maybe :string]]
    [:slack/validated?        {:optional true} :boolean]
+   ;; The Metabot reply that the query of this request draws a chart for, checked by
+   ;; `metabase.metabot.query-run-link/+query-run-link`.
+   [:metabot/query-run-link  {:optional true} [:maybe
+                                               [:map {:closed true}
+                                                [:metabot-conversation-id :string]
+                                                [:metabot-message-id      {:optional true} :int]
+                                                [:metabot-rerun?          :boolean]]]]
    [:token-scopes            {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked    {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]

@@ -1,6 +1,7 @@
 (ns metabase.metabot.core
   "API namespace for the `metabase.metabot` module."
   (:require
+   [metabase.metabot.query-run-link]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
    [metabase.metabot.self]
@@ -30,6 +31,10 @@
  [metabase.metabot.search-models
   entity-type->search-model
   search-model->entity-type])
+
+(p/import-vars
+ [metabase.metabot.query-run-link
+  +query-run-link])
 
 (p/import-vars
  [metabase.metabot.tools.entity-details

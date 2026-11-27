@@ -90,7 +90,11 @@
    [:json_query                  {:optional true} [:maybe query-like]]
    ;; the entry shape is enforced where it is built ([[metabase.lib.schema/sandboxing.details.entry]]) and on the way
    ;; into the app DB ([[metabase.queries.schema/query-execution.update]]); this row schema only passes it through
-   [:sandbox_details             {:optional true} [:maybe [:sequential :map]]]])
+   [:sandbox_details             {:optional true} [:maybe [:sequential :map]]]
+   [:metabot_conversation_id     {:optional true} [:maybe :string]]
+   [:metabot_message_id          {:optional true} [:maybe :int]]
+   [:metabot_tool_call_id        {:optional true} [:maybe :string]]
+   [:metabot_rerun               {:optional true} [:maybe :boolean]]])
 
 (def ^:private id+timestamp
   [:map {:closed true}

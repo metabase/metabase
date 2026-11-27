@@ -43,6 +43,8 @@ import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 type AgentDataPartProps = {
   dataPart: MetabotAgentDataPartMessage;
   externalId?: string;
+  /** Whether the message came with a loaded conversation. */
+  fromSnapshot?: boolean;
   readonly: boolean;
   debug: boolean;
   conversationId: string;
@@ -54,6 +56,7 @@ type AgentDataPartProps = {
 export const AgentDataPart = ({
   dataPart,
   externalId,
+  fromSnapshot = false,
   readonly,
   debug,
   conversationId,
@@ -113,6 +116,8 @@ export const AgentDataPart = ({
               value={part.data}
               readonly={readonly}
               conversationId={conversationId}
+              messageId={externalId}
+              isRerun={readonly || fromSnapshot}
               size={size}
             />
             <GeneratedCardTablePills

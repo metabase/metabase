@@ -2656,6 +2656,19 @@
                                       "session_id"           "00000000-0000-0000-0000-000000000001"}}]
                           token-events)))))))))))
 
+(deftest turn-memory-holds-the-assistant-message-id-test
+  (testing "memory holds the pk of the turn's assistant message, for the query runs of its tools (BOT-2381)"
+    (is (= 42
+           (-> (#'agent/init-agent {:profile-id :internal, :tracking-opts {:message-id 42}})
+               :memory-atom
+               deref
+               :message-id))))
+  (testing "a turn with no assistant message holds none"
+    (is (nil? (-> (#'agent/init-agent {:profile-id :internal})
+                  :memory-atom
+                  deref
+                  :message-id)))))
+
 (deftest chart-configs-loaded-into-charts-test
   (let [query (lib/native-query (mt/metadata-provider) "select 1")
         chart-config {:display_type "pie"

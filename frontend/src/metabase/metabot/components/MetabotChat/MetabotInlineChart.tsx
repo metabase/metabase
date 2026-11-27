@@ -7,6 +7,7 @@ import { noop } from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import type { MetabotChartRun } from "metabase/api/dataset";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -49,11 +50,17 @@ export function MetabotInlineChart({
   value,
   readonly = false,
   conversationId,
+  messageId,
+  isRerun = false,
   size,
 }: {
   value: GeneratedCard;
   readonly?: boolean;
   conversationId: string;
+  /** The external id of the assistant message that holds the chart. */
+  messageId?: string;
+  /** Whether the chart is drawn again, not for the reply that made it. */
+  isRerun?: boolean;
   size: "md" | "lg";
 }) {
   const { id: chartId, title, description, display, query } = value;
@@ -100,8 +107,15 @@ export function MetabotInlineChart({
 
   const [isRunRequested, { open: requestRun }] = useDisclosure(false);
   const shouldRunQuery = !readonly || isRunRequested;
+  // Fixed at mount: a later change of the message's state must not start
+  // another run of the query.
+  const [metabotRun] = useState<MetabotChartRun>(() => ({
+    conversation_id: conversationId,
+    message_id: messageId,
+    rerun: isRerun,
+  }));
   const { data: dataset, error } = useGetAdhocQueryQuery(
-    shouldRunQuery ? datasetQuery : skipToken,
+    shouldRunQuery ? { ...datasetQuery, metabot_run: metabotRun } : skipToken,
   );
 
   const rawSeries = useMemo(

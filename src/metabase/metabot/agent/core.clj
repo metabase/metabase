@@ -650,6 +650,9 @@
                          (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
                          (assoc :conversation-id conversation-id
+                                ;; The pk of the assistant MetabotMessage of this turn; a query that a tool runs
+                                ;; is recorded with it.
+                                :message-id (:message-id tracking-opts)
                                 :tool-names (set (keys base-tools))
                                 :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context))
