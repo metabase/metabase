@@ -789,3 +789,14 @@
             visible [nil :internal]}
            (t2/select-pk->fn (juxt :visibility_type :data_layer) :model/Table
                              :id [:in [cruft hidden final visible]])))))
+
+(deftest update-accepts-agreeing-visibility-type-and-data-layer-test
+  (mt/with-temp [:model/Table {hidden :id}   {}
+                 :model/Table {rejected :id} {}]
+    (testing "agreeing pair is stored"
+      (t2/update! :model/Table hidden {:visibility_type :hidden :data_layer :hidden})
+      (is (= [:hidden :hidden]
+             (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id hidden))))
+    (testing "disagreeing pair is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update both visibility_type and data_layer"
+                            (t2/update! :model/Table rejected {:visibility_type :hidden :data_layer :final}))))))

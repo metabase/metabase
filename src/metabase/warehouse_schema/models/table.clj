@@ -184,7 +184,9 @@
   (when (and (contains? changes :visibility_type)
              (contains? changes :data_layer)
              (not= (keyword (:visibility_type changes)) (keyword (:visibility_type original)))
-             (not= (keyword (:data_layer changes)) (keyword (:data_layer original))))
+             (not= (keyword (:data_layer changes)) (keyword (:data_layer original)))
+             (not= (some? (:visibility_type changes))
+                   (= (keyword (:data_layer changes)) :hidden)))
     (throw (ex-info (tru "Cannot update both visibility_type and data_layer") {:status-code 400}))))
 
 (defn- visibility-changes

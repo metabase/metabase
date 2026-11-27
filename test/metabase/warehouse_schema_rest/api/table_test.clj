@@ -1223,11 +1223,17 @@
                               {:data_layer "internal"})
         (is (= :internal (user-table-fn :data_layer (u/the-id table))))
         (is (= nil (user-table-fn :visibility_type (u/the-id table)))))
-      (testing "cannot update both visibility_type and data_layer at once"
+      (testing "cannot update visibility_type and data_layer to values that disagree"
         (is (= "Cannot update both visibility_type and data_layer"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
-                                     {:visibility_type  "hidden"
-                                      :data_layer "hidden"})))))))
+                                     {:visibility_type "hidden"
+                                      :data_layer      "final"}))))
+      (testing "updating both to values that agree stores both"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:visibility_type "hidden"
+                               :data_layer      "hidden"})
+        (is (= :hidden (user-table-fn :data_layer (u/the-id table))))
+        (is (= :hidden (user-table-fn :visibility_type (u/the-id table))))))))
 
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan-only=true"
