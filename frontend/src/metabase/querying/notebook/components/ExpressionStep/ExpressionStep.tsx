@@ -40,7 +40,7 @@ export const ExpressionStep = ({
     sourceClause: Lib.ExpressionClause,
     targetClause: Lib.ExpressionClause,
   ) => {
-    const nextQuery = Lib.swapClauses(
+    const nextQuery = Lib.moveClause(
       query,
       stageIndex,
       sourceClause,

@@ -59,7 +59,7 @@ export function BreakoutStep({
     sourceClause: Lib.BreakoutClause,
     targetClause: Lib.BreakoutClause,
   ) => {
-    const nextQuery = Lib.swapClauses(
+    const nextQuery = Lib.moveClause(
       query,
       stageIndex,
       sourceClause,

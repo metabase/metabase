@@ -50,7 +50,7 @@ export function MeasureAggregationPicker({
       sourceClause: Lib.AggregationClause,
       targetClause: Lib.AggregationClause,
     ) => {
-      const nextQuery = Lib.swapClauses(
+      const nextQuery = Lib.moveClause(
         query,
         STAGE_INDEX,
         sourceClause,

@@ -34,7 +34,7 @@ export function AggregateStep({
     sourceClause: Lib.AggregationClause,
     targetClause: Lib.AggregationClause,
   ) => {
-    const nextQuery = Lib.swapClauses(
+    const nextQuery = Lib.moveClause(
       query,
       stageIndex,
       sourceClause,

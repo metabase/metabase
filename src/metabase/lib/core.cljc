@@ -1710,6 +1710,7 @@
   ensure-filter-stage
   has-clauses?]
  [lib.swap
+  move-clause
   swap-clauses]
  [lib.template-tags
   template-tags->card-ids
