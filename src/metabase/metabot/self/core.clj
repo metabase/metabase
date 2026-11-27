@@ -214,7 +214,7 @@
   "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema, or one of its children.
 
   Recursive, so a schema can hold arrays of objects and objects nested in objects. Closed to the keywords
-  [[metabase.metabot.ai-features]] gets from `malli.json-schema/transform`, so a keyword an adapter would pass on
+  [[metabase.metabot.ai]] gets from `malli.json-schema/transform`, so a keyword an adapter would pass on
   without understanding fails here. `:properties` keys are the field names the schema itself declares: string keys
   off the wire, keyword keys when built in Clojure."
   [:map {:closed true}

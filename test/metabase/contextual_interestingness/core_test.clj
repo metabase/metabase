@@ -49,7 +49,7 @@
   (testing "blank or nil context returns nil without invoking the LLM"
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs
-        [metabot/call!
+        [metabot/call-llm!
          (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (with-llm-configured!
           (fn []
@@ -62,7 +62,7 @@
   (testing "nil chart-config returns nil without invoking the LLM"
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs
-        [metabot/call!
+        [metabot/call-llm!
          (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (with-llm-configured!
           (fn []
@@ -74,7 +74,7 @@
     (let [calls (atom 0)]
       (mt/with-dynamic-fn-redefs
         [llm.provider/connection-usable? (constantly false)
-         metabot/call!
+         metabot/call-llm!
          (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})]
         (is (nil? (call {})))
         (is (zero? @calls))))))
@@ -92,7 +92,7 @@
         (let [calls (atom 0)]
           (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-haiku-4-5"]
             (with-redefs-fn (merge gate-open
-                                   {#'metabot/call!
+                                   {#'metabot/call-llm!
                                     (fn [& _] (swap! calls inc) {:score 1.0 :chart_description "c" :reasoning "x"})}
                                    redefs)
               (fn []
@@ -109,7 +109,7 @@
       (testing label
         (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-haiku-4-5"]
           (with-redefs-fn (merge gate-open
-                                 {#'metabot/call! (fn [& _] {:score 1.0 :chart_description "c" :reasoning "x"})}
+                                 {#'metabot/call-llm! (fn [& _] {:score 1.0 :chart_description "c" :reasoning "x"})}
                                  redefs)
             (fn []
               (is (nil? (call {})) "must swallow the exception and return nil per its \"Never throws\" contract"))))))))
@@ -117,7 +117,7 @@
 (deftest score-and-describe-happy-path-test
   (testing "valid LLM response returns score + descriptions; metric description is generated when card-description is blank"
     (mt/with-dynamic-fn-redefs
-      [metabot/call!
+      [metabot/call-llm!
        (constantly {:score              0.85
                     :chart_description  "Monthly revenue trend over the past year"
                     :metric_description "Total monthly revenue from completed orders"
@@ -137,9 +137,9 @@
   (testing "the scorer calls as its registered feature, for the Metabase app's audience"
     (let [calls (atom [])]
       (mt/with-dynamic-fn-redefs
-        [metabot/call! (fn [feature-id opts]
-                         (swap! calls conj [feature-id (:audience opts)])
-                         {:score 0.5 :chart_description "c" :reasoning "x"})]
+        [metabot/call-llm! (fn [feature-id opts]
+                             (swap! calls conj [feature-id (:audience opts)])
+                             {:score 0.5 :chart_description "c" :reasoning "x"})]
         (with-llm-configured!
           (fn []
             (call {})
@@ -169,7 +169,7 @@
 (deftest score-and-describe-with-card-description-test
   (testing "When card-description is provided, the schema does not require metric_description and parse-response surfaces it as nil"
     (mt/with-dynamic-fn-redefs
-      [metabot/call!
+      [metabot/call-llm!
        (constantly {:score             0.6
                     :chart_description "Monthly revenue"
                     :reasoning         "related"})]
@@ -185,11 +185,11 @@
     (with-llm-configured!
       (fn []
         (mt/with-dynamic-fn-redefs
-          [metabot/call!
+          [metabot/call-llm!
            (constantly {:score 1.5 :chart_description "c" :reasoning "over"})]
           (is (= 1.0 (:score (call {})))))
         (mt/with-dynamic-fn-redefs
-          [metabot/call!
+          [metabot/call-llm!
            (constantly {:score -0.2 :chart_description "c" :reasoning "under"})]
           (is (= 0.0 (:score (call {})))))))))
 
@@ -198,18 +198,18 @@
     (with-llm-configured!
       (fn []
         (mt/with-dynamic-fn-redefs
-          [metabot/call!
+          [metabot/call-llm!
            (constantly {:chart_description "c" :reasoning "no score"})]
           (is (nil? (call {}))))
         (mt/with-dynamic-fn-redefs
-          [metabot/call!
+          [metabot/call-llm!
            (constantly {:score "not a number" :chart_description "c" :reasoning "wrong type"})]
           (is (nil? (call {}))))))))
 
 (deftest score-and-describe-empty-descriptions-test
   (testing "blank/whitespace descriptions parse to nil"
     (mt/with-dynamic-fn-redefs
-      [metabot/call!
+      [metabot/call-llm!
        (constantly {:score              0.5
                     :chart_description  "   "
                     :metric_description ""
@@ -224,7 +224,7 @@
 (deftest score-and-describe-llm-throws-test
   (testing "transport / API errors are caught and surfaced as nil — never thrown"
     (mt/with-dynamic-fn-redefs
-      [metabot/call! (fn [& _] (throw (ex-info "boom" {:status 503})))]
+      [metabot/call-llm! (fn [& _] (throw (ex-info "boom" {:status 503})))]
       (with-llm-configured!
         (fn []
           (is (nil? (call {}))))))))
@@ -232,7 +232,7 @@
 (deftest score-and-describe-llm-error-code-logged-test
   (testing "a failure surfaces the ex-data :error-code in the warn log so nil scores are diagnosable"
     (mt/with-dynamic-fn-redefs
-      [metabot/call!
+      [metabot/call-llm!
        (fn [& _] (throw (ex-info "bad json" {:error-code "structured-output-invalid"})))]
       (with-llm-configured!
         (fn []
@@ -257,7 +257,7 @@
 (deftest score-and-describe-surfaces-reasoning-test
   (testing "the LLM's reasoning flows all the way through to the public result map"
     (mt/with-dynamic-fn-redefs
-      [metabot/call!
+      [metabot/call-llm!
        (constantly {:score 0.7 :chart_description "c" :reasoning "because revenue"})]
       (with-llm-configured!
         (fn []
@@ -286,9 +286,9 @@
   [overrides]
   (let [captured (atom nil)]
     (mt/with-dynamic-fn-redefs
-      [metabot/call! (fn [_feature-id opts]
-                       (reset! captured (:prompt opts))
-                       {:score 0.7 :chart_description "c" :reasoning "x"})]
+      [metabot/call-llm! (fn [_feature-id opts]
+                           (reset! captured (:prompt opts))
+                           {:score 0.7 :chart_description "c" :reasoning "x"})]
       (with-llm-configured! (fn [] (call overrides))))
     @captured))
 

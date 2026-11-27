@@ -99,7 +99,7 @@ Always return a single object matching the supplied schema. Do not respond with 
   "Score and describe the chart in the <chart> block for the question in the <user_question> block.")
 
 (defn- build-prompt
-  "The [[metabase.metabot.core/call!]] prompt. Instructions live in [[rubric-preamble]] and [[user-request]]; every
+  "The [[metabase.metabot.core/call-llm!]] prompt. Instructions live in [[rubric-preamble]] and [[user-request]]; every
   variable part is an `:untrusted` block, which the call fences with a boundary no value can forge. Everything
   variable here is attacker-reachable: card descriptions and chart titles are user-authored, series names and
   sample values come straight out of the warehouse, and the compiled SQL has parameter values inlined.
@@ -134,7 +134,7 @@ Always return a single object matching the supplied schema. Do not respond with 
          :reasoning          (some-> (:reasoning response) str/trim not-empty)}))))
 
 (def feature-id
-  "The [[metabase.metabot.core/call!]] feature id of the scorer. Explorations run in the Metabase app, so its calls
+  "The [[metabase.metabot.core/call-llm!]] feature id of the scorer. Explorations run in the Metabase app, so its calls
   serve the `:internal` audience."
   :contextual-interestingness/score)
 
@@ -144,12 +144,12 @@ Always return a single object matching the supplied schema. Do not respond with 
   usage limit reached)."
   [{:keys [card-description] :as inputs}]
   (try
-    (let [response (metabot/call! feature-id
-                                  {:audience :internal
-                                   :prompt   (build-prompt inputs)
-                                   :response {:schema      (response-schema (str/blank? card-description))
-                                              :max-tokens  max-tokens
-                                              :temperature temperature}})]
+    (let [response (metabot/call-llm! feature-id
+                                      {:audience :internal
+                                       :prompt   (build-prompt inputs)
+                                       :response {:schema      (response-schema (str/blank? card-description))
+                                                  :max-tokens  max-tokens
+                                                  :temperature temperature}})]
       (or (parse-response response)
           (do (log/warnf "Contextual interestingness: malformed LLM response %s"
                          (pr-str response))

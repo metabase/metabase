@@ -873,7 +873,7 @@
 
 (defn call-llm-structured-unchecked
   "[[call-llm-structured-with-trace]] without its usage-limit and permission checks, for a caller that has run its own
-  checks first, such as [[metabase.metabot.ai-features/call!]].
+  checks first, such as [[metabase.metabot.ai/call-llm!]].
 
   `opts` also takes `:max-attempts`, the attempt count for transient failures, `:fast?`, which asks for the
   provider's fast mode, and `:deadline-nanos`, the `System/nanoTime` by which the call must finish: each request's

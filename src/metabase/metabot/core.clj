@@ -1,7 +1,7 @@
 (ns metabase.metabot.core
   "API namespace for the `metabase.metabot` module."
   (:require
-   [metabase.metabot.ai-features]
+   [metabase.metabot.ai]
    [metabase.metabot.config]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
@@ -53,15 +53,15 @@
   llm-call-unavailable-reason])
 
 (p/import-vars
- [metabase.metabot.ai-features
-  call!
+ [metabase.metabot.ai
+  call-llm!
   new-boundary
   render-untrusted])
 
-(p/import-fn metabase.metabot.ai-features/available? ai-feature-available?)
-(p/import-fn metabase.metabot.ai-features/check! check-ai-feature!)
+(p/import-fn metabase.metabot.ai/available? ai-feature-available?)
+(p/import-fn metabase.metabot.ai/check! check-ai-feature!)
 (p/import-fn metabase.metabot.config/request-audience ai-feature-request-audience)
-(p/import-fn metabase.metabot.ai-features/unavailable-reason ai-feature-unavailable-reason)
-(p/import-fn metabase.metabot.ai-features/sources ai-feature-sources)
-(p/import-fn metabase.metabot.ai-features/message-sources ai-feature-message-sources)
-(p/import-def metabase.metabot.ai-features/registry ai-feature-registry)
+(p/import-fn metabase.metabot.ai/unavailable-reason ai-feature-unavailable-reason)
+(p/import-fn metabase.metabot.ai/sources ai-feature-sources)
+(p/import-fn metabase.metabot.ai/message-sources ai-feature-message-sources)
+(p/import-def metabase.metabot.ai/registry ai-feature-registry)

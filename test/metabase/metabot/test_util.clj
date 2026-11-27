@@ -202,7 +202,7 @@
 
 (defmacro with-fake-llm!
   "Run `body` with the LLM provider faked, so a test of a one-call feature runs the real checks, prompt rendering and
-  answer validation of [[metabase.metabot.ai-features/call!]].
+  answer validation of [[metabase.metabot.ai/call-llm!]].
 
   `answer` is what the model sends back: a map is the arguments of its structured-output tool call, a string is a text
   reply, and a Throwable is thrown by the provider, such as the ex-info of a provider API error. A function of the
@@ -214,7 +214,7 @@
   assert on the prompt.
 
     (with-fake-llm! [sent {:title \"Orders by month\"}]
-      (ai-features/call! :metabot/conversation-title opts)
+      (metabot.ai/call-llm! :metabot/conversation-title opts)
       (:system (first @sent)))"
   {:style/indent 1}
   [[sent answer] & body]

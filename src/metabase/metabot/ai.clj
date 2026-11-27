@@ -1,10 +1,10 @@
-(ns metabase.metabot.ai-features
+(ns metabase.metabot.ai
   "One-call LLM features: features that make a single structured call to a model, not a Metabot agent turn.
 
-  A feature has one entry in [[registry]], and calls the model with [[call!]]. The call runs every check before it
+  A feature has one entry in [[registry]], and calls the model with [[call-llm!]]. The call runs every check before it
   contacts the provider, renders the prompt with untrusted values fenced off, calls the model of the feature's role,
   and checks the answer against the feature's Malli schema. It returns the answer or throws a typed error.
-  [[unavailable-reason]] runs the same checks, so it says what [[call!]] would do."
+  [[unavailable-reason]] runs the same checks, so it says what [[call-llm!]] would do."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -133,7 +133,7 @@
   (into [:enum] (sort metabot.config/audiences)))
 
 (mr/def ::options
-  "The options of [[call!]], checked as a closed map in production, so a misspelled key fails instead of being
+  "The options of [[call-llm!]], checked as a closed map in production, so a misspelled key fails instead of being
   ignored."
   [:map {:closed true}
    [:audience        ::audience]
@@ -147,7 +147,7 @@
 ;;; -------------------------------------------------- Errors --------------------------------------------------------
 
 (defn- error
-  "A typed error of [[call!]]. Its message is translated and safe to show any user. Provider detail goes in the cause,
+  "A typed error of [[call-llm!]]. Its message is translated and safe to show any user. Provider detail goes in the cause,
   for the logs."
   ([type status-code error-code message]
    (error type status-code error-code message nil nil))
@@ -227,16 +227,16 @@
       {:entry entry :model-ref model-ref})))
 
 (defn check!
-  "Throw the typed error [[call!]] would throw for `feature-id` serving `audience` before it contacts the provider, or
+  "Throw the typed error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the provider, or
   return nil when the call would go ahead. Call it first in an endpoint, before reading any data for the prompt.
-  Runs the same checks as [[call!]], except the options and the prompt size. Resolves against the current user."
+  Runs the same checks as [[call-llm!]], except the options and the prompt size. Resolves against the current user."
   [feature-id audience]
   (check-call! feature-id audience nil)
   nil)
 
 (defn unavailable-reason
-  "The `:type` of the error [[call!]] would throw for `feature-id` serving `audience` before it contacts the provider,
-  or nil when the call would go ahead. Runs the same checks as [[call!]], except the options, so a feature can hide
+  "The `:type` of the error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the provider,
+  or nil when the call would go ahead. Runs the same checks as [[call-llm!]], except the options, so a feature can hide
   its AI options when the call would refuse. Resolves against the current user."
   [feature-id audience]
   (try
@@ -245,7 +245,7 @@
       (or (:type (ex-data e)) (throw e)))))
 
 (defn available?
-  "Whether [[call!]] for `feature-id` serving `audience` would go ahead now for the current user. See
+  "Whether [[call-llm!]] for `feature-id` serving `audience` would go ahead now for the current user. See
   [[unavailable-reason]]."
   [feature-id audience]
   (nil? (unavailable-reason feature-id audience)))
@@ -359,7 +359,7 @@
            {:feature-id feature-id :provider-failure kind} e)))
 
 (defn- typed-call-error
-  "The typed error of [[call!]] for `e`, thrown by the structured call."
+  "The typed error of [[call-llm!]] for `e`, thrown by the structured call."
   [feature-id ^Throwable e]
   (let [data (ex-data e)]
     (cond
@@ -447,7 +447,7 @@
         (catch ExecutionException e
           (throw (or (.getCause e) e)))))))
 
-(defn call!
+(defn call-llm!
   "Call the model of the one-call feature `feature-id` and return its answer, checked against the feature's schema,
   with keyword keys at every level.
 

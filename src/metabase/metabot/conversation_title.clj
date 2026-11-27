@@ -2,7 +2,7 @@
   "Generate and persist short titles for Metabot conversations."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.ai-features :as ai-features]
+   [metabase.metabot.ai :as metabot.ai]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -114,14 +114,14 @@
   been reached."
   [conversation-id audience message]
   (try
-    (:title (ai-features/call! :metabot/conversation-title
-                               {:audience        audience
-                                :prompt          {:system    title-system-prompt
-                                                  :user      "Write a title for this conversation."
-                                                  :untrusted {:session message}}
-                                :response        {:schema     title-schema
-                                                  :max-tokens title-max-tokens}
-                                :conversation-id conversation-id}))
+    (:title (metabot.ai/call-llm! :metabot/conversation-title
+                                  {:audience        audience
+                                   :prompt          {:system    title-system-prompt
+                                                     :user      "Write a title for this conversation."
+                                                     :untrusted {:session message}}
+                                   :response        {:schema     title-schema
+                                                     :max-tokens title-max-tokens}
+                                   :conversation-id conversation-id}))
     (catch clojure.lang.ExceptionInfo e
       ;; titles respect the usage limit too, like metabot.self/call-llm, without a warning for each one
       (when-not (= :metabot/usage-limit-reached (:type (ex-data e)))
