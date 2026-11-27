@@ -107,7 +107,7 @@
           (.stop server))))))
 
 (deftest stop-cuts-off-requests-after-the-stop-timeout-test
-  (testing "a request that outlasts the stop timeout is cut off, and the stop does not throw"
+  (testing "a request that outlasts the stop timeout leaves nothing running, and the stop does not throw"
     (let [started (CountDownLatch. 1)
           finish  (CountDownLatch. 1)
           handler (fn [_request respond _raise]

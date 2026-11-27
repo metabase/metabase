@@ -144,7 +144,8 @@
       (.setStopTimeout (:stop-timeout options 0)))))
 
 (defn- stop-server!
-  "Stop `server`, letting the requests in flight finish within its stop timeout."
+  "Stop `server`, letting the requests in flight finish within its stop timeout.
+  A stop that only outlasts the timeout logs a warning and returns nil; any other failure to stop throws."
   [^Server server]
   (log/info "Shutting Down Embedded Jetty Webserver")
   (try
