@@ -1,6 +1,6 @@
 import type { PrototypeDefinition } from "../types";
 
-import { NotesPrototype } from "./NotesPrototype";
+import { NotesPrototype, QuestionsPrototype } from "./NotesPrototype";
 
 export const NOTES_PROTOTYPES: PrototypeDefinition[] = [
   {
@@ -8,5 +8,11 @@ export const NOTES_PROTOTYPES: PrototypeDefinition[] = [
     name: "Notes",
     description: "Decisions and reasoning behind the prototypes.",
     Component: NotesPrototype,
+  },
+  {
+    id: "questions",
+    name: "Questions",
+    description: "Open questions the prototypes raise.",
+    Component: QuestionsPrototype,
   },
 ];
