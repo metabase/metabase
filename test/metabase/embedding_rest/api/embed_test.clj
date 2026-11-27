@@ -12,6 +12,8 @@
    [java-time.api :as t]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
+   [metabase.embedding-rest.api.embed :as api.embed]
+   [metabase.embedding.util :as embedding.util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
@@ -29,6 +31,7 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -989,6 +992,42 @@
         #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 
+(deftest embed-card-goal-values-measure-test
+  (testing "GET /api/embed/card/:token/goal-values resolves a measure goal source in the card's viz settings"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition (let [mp (mt/metadata-provider)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                        (lib/aggregate (lib/count))))}]
+        (with-temp-card [card {:enable_embedding       true
+                               :display                :scalar
+                               :visualization_settings
+                               {:scalar.segments [{:min   {:id measure-id :type "measure" :column "count"}
+                                                   :max   nil
+                                                   :color "red"}]}}]
+          (testing "the chart response carries no goal values"
+            (is (not (contains? (:data (client/client :get 202 (card-query-url card ""))) :referenced_entities))))
+          (is (=? {:status "completed" :data {:rows [[100]]}}
+                  (-> (client/client :get 202 (str (card-url card) "/goal-values"))
+                      (get-in [:measure measure-id])))))))))
+
+(deftest embed-dashcard-goal-values-test
+  (testing "GET /api/embed/dashboard/:token/dashcard/:id/card/:id/goal-values resolves the dynamic goal in the card's viz settings"
+    (with-embedding-enabled-and-new-secret-key!
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:display                :scalar
+                                              :visualization_settings
+                                              {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                                  :max   nil
+                                                                  :color "red"}]}}}]
+          (testing "the chart response carries no goal values"
+            (is (not (contains? (:data (client/client :get 202 (dashcard-url dashcard))) :referenced_entities))))
+          (is (= [[1000]]
+                 (-> (client/client :get 202 (str (dashcard-url dashcard) "/goal-values"))
+                     (get-in [:card goal-id :data :rows])))))))))
+
 (deftest running-card-as-logged-in-user-does-not-set-last-used-param-values
   (testing "running the card does not set last used param values"
     (with-embedding-enabled-and-new-secret-key!
@@ -1211,7 +1250,7 @@
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
     (is (= []
-           (#'api.embed.common/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
+           (embedding.util/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
@@ -1254,6 +1293,27 @@
                        "/card/" (:card_id dashcard))]
           (is (some? (client/client-full-response :get url)))
           (is (<= 400 (:status (client/client-full-response :get url)) 499)))))))
+
+(deftest non-map-token-params-throw-400-without-schema-validation-test
+  (testing "with input schema validation off, as in prod, a non-map signed :params throws a 400 with a message"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (t2/update! :model/Card :id (:card_id dashcard) {:enable_embedding true})
+        (letfn [(thrown [thunk]
+                  (try
+                    (mu/disable-enforcement (thunk))
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      {:message (ex-message e), :status-code (:status-code (ex-data e))})))]
+          (testing "dashcard routes"
+            (is (= {:message "Token params must be a map.", :status-code 400}
+                   (thrown #(#'api.embed/resolve-dashcard-context
+                             (sign {:resource {:dashboard (:dashboard_id dashcard)} :params []})
+                             (u/the-id dashcard) (:card_id dashcard) {})))))
+          (testing "card routes"
+            (is (= {:message "Token params must be a map.", :status-code 400}
+                   (thrown #(#'api.embed/resolve-card-context
+                             (card-token (:card_id dashcard) {:params []}) {}))))))))))
 
 ;;; ------------------------------- GET /api/embed/card/:token/params/:param/values --------------------------------
 

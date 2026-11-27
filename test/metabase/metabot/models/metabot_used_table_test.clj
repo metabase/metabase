@@ -1,6 +1,8 @@
 (ns metabase.metabot.models.metabot-used-table-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.events.test-util :as events.tu]
+   [metabase.metabot.models.metabot-used-table :as metabot-used-table]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -66,3 +68,15 @@
       (is (= 1 (t2/count :model/MetabotUsedTable :message_id msg-id)))
       (t2/delete! :model/Table :id table-id)
       (is (zero? (t2/count :model/MetabotUsedTable :message_id msg-id))))))
+
+(deftest create-metabot-used-tables-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/User                {user-id :id}         {}
+                 :model/MetabotConversation {conversation-id :id} {:user_id user-id}]
+    (let [tables  [(mt/id :orders) (mt/id :people) (mt/id :products) (mt/id :reviews) (mt/id :venues) (mt/id :users)]
+          counted (fn [n]
+                    (mt/with-temp [:model/MetabotMessage {msg-id :id} {:conversation_id conversation-id}]
+                      (events.tu/statement-count!
+                       #(metabot-used-table/create-metabot-used-tables!
+                         (mapv (fn [table-id] {:message_id msg-id :table_id table-id}) (take n tables))))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))

@@ -1,16 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabasesEndpoints,
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
@@ -18,8 +21,15 @@ import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDat
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { Database } from "metabase-types/api";
+import {
+  createMockDatabase,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { ROUTED_DATABASE } from "../routed-database";
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 const TEST_DATABASE = createSampleDatabase();
@@ -33,17 +43,26 @@ const TEST_GROUPS = [
   }),
 ];
 
+interface SetupOpts {
+  initialRoute?: string;
+  databases?: Database[];
+}
+
 const setup = async ({
   initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
-} = {}) => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
+  databases = [TEST_DATABASE],
+}: SetupOpts = {}) => {
+  setupDatabasesEndpoints(databases);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, databases);
   setupGroupsEndpoint(TEST_GROUPS);
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-  );
+  // GET /api/database/:id/metadata does not return router_user_attribute
+  databases.forEach((database) => {
+    fetchMock.get(`path:/api/database/${database.id}/metadata`, {
+      ...database,
+      router_user_attribute: undefined,
+    });
+  });
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
@@ -112,6 +131,31 @@ describe("GroupsPermissionsPage", () => {
     });
   });
 
+  describe("database routing", () => {
+    it("marks a database with routing enabled in the group's database list", async () => {
+      await setup({ databases: [ROUTED_DATABASE] });
+
+      expect(
+        within(screen.getByTestId("permission-table")).getByText(
+          "(Database routing enabled)",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("marks a database with routing enabled in the breadcrumbs of the group's table list", async () => {
+      await setup({
+        databases: [TEST_DATABASE, ROUTED_DATABASE],
+        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${ROUTED_DATABASE.id}`,
+      });
+
+      expect(
+        within(
+          await screen.findByTestId("permissions-editor-breadcrumbs"),
+        ).getByText("(Database routing enabled)"),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("triggering beforeunload events", () => {
     it("should generate beforeunload event when user edits database permissions", async () => {
       const { mockEventListener } = await setup();
@@ -129,6 +173,35 @@ describe("GroupsPermissionsPage", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+  });
+
+  // Initializing the plugin is global for this file, so this block runs last
+  describe("instance analytics database (metabase#44856)", () => {
+    const AUDIT_DATABASE = createMockDatabase({
+      id: 13371337,
+      name: "Internal Metabase database",
+      is_audit: true,
+    });
+
+    beforeEach(() => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({ audit_app: true }),
+      });
+      setupEnterpriseOnlyPlugin("audit_app");
+    });
+
+    it("does not list the instance analytics database in a group's permissions", async () => {
+      await setup({
+        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[0].id}`,
+        databases: [AUDIT_DATABASE, TEST_DATABASE],
+      });
+
+      const table = await screen.findByTestId("permission-table");
+      expect(within(table).getByText(TEST_DATABASE.name)).toBeInTheDocument();
+      expect(
+        within(table).queryByText(AUDIT_DATABASE.name),
+      ).not.toBeInTheDocument();
     });
   });
 });

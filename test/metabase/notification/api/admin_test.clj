@@ -2,6 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.events.test-util :as events.tu]
+   [metabase.notification.api :as notification.api]
+   [metabase.notification.db :as notification.db]
+   [metabase.notification.models :as models.notification]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -55,7 +59,7 @@
                                        :notification_id inactive-id :status :failed
                                        :started_at (t/instant) :ended_at (t/instant)}]
         ;; Legacy alerts can lack creators, but new alert validation requires a creator ID.
-        (t2/query {:update :notification :set {:creator_id nil} :where [:= :id creatorless-id]})
+        (t2/query {:update (t2/table-name :model/Notification) :set {:creator_id nil} :where [:= :id creatorless-id]})
         (is (= {:all (+ all-total 4), :failing (inc failing-total), :ownerless (+ ownerless-total 2)}
                (mt/user-http-request :crowberto :get 200 "notification/admin/counts")))
         (is (= {:all (+ all-total 4), :failing (inc failing-total), :ownerless (+ ownerless-total 2)}
@@ -1765,3 +1769,34 @@
               "n1 last_check is nil — the card-level task_run is for n2 only")
           (is (nil? (:last_send resp-n1))
               "n1 last_send is nil — the channel-send belongs to n2"))))))
+
+(deftest publish-notification-updates-statement-count-test
+  (testing "recording the update of 10 notifications runs as many statements as 40, with one audit row for each"
+    (mt/with-model-cleanup [:model/Notification :model/NotificationCard :model/AuditLog]
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Card {card-id :id} {}]
+          (mt/with-test-user :crowberto
+            (let [publish! (fn [n]
+                             (let [created (models.notification/create-notifications!
+                                            (vec (for [_ (range n)]
+                                                   {:payload_type  :notification/card
+                                                    :active        true
+                                                    :payload       {:card_id card-id}
+                                                    :subscriptions [{:type          :notification-subscription/cron
+                                                                     :cron_schedule "0 0 0 * * ?"}]
+                                                    :handlers      [{:channel_type :channel/email
+                                                                     :recipients   [{:type    :notification-recipient/user
+                                                                                     :user_id (mt/user->id :rasta)}]}]})))
+                                   ids     (mapv :id created)
+                                   before  (vec (models.notification/hydrate-notification (notification.db/card-notifications ids)))
+                                   pairs   (mapv (fn [b] [(assoc b :active false) b]) before)
+                                   stmts   (events.tu/real-statement-count!
+                                            #(notification.api/publish-notification-updates! pairs))]
+                               {:count  stmts
+                                :audits (t2/count :model/AuditLog :topic "notification-update" :model "Notification"
+                                                  :model_id [:in ids])}))]
+              (publish! 2)
+              (let [small (publish! 10)
+                    large (publish! 40)]
+                (is (= (:count small) (:count large)))
+                (is (= [10 40] [(:audits small) (:audits large)]))))))))))

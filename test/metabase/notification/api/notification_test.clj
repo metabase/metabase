@@ -193,7 +193,12 @@
                                                   :type "notification-subscription/cron"
                                                   :event_name nil
                                                   :cron_schedule "0 0 0 * * ?"}]
-                                 :handlers [{:recipients [{:id (mt/malli=? int?)
+                                 :handlers [{:id            (mt/malli=? int?)
+                                             :channel_type  "channel/email"
+                                             :channel_id    nil
+                                             :template_id   nil
+                                             :active        true
+                                             :recipients [{:id (mt/malli=? int?)
                                                            :type "notification-recipient/user"
                                                            :user_id (mt/user->id :rasta)
                                                            :permissions_group_id nil
@@ -215,6 +220,16 @@
               slack-details (-> created :handlers first :recipients first :details)]
           (is (=? {:value "#work" :channel_id "C001"}
                   slack-details)))))))
+
+(deftest create-notification-invalid-cron-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp [:model/Card {card-id :id}]
+      (testing "an invalid cron schedule is a 400"
+        (mt/user-http-request :crowberto :post 400 "notification"
+                              {:payload       {:card_id card-id}
+                               :payload_type  "notification/card"
+                               :subscriptions [{:type          "notification-subscription/cron"
+                                                :cron_schedule "not a cron"}]})))))
 
 (deftest create-notification-error-test
   (testing "require auth"
@@ -774,10 +789,10 @@
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
-                                            (t2/update! :notification :id (:id notification) {:creator_id user-id}))
+                                            (t2/update! (t2/table-name :model/Notification) :id (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card :id (-> notification :payload :card_id)
-                                                        {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
+                                                        {:collection_id (personal-collection-id user-id)}))]
           (mt/with-premium-features #{}
             (testing "admin can update"
               (update! :crowberto 200))
@@ -1385,6 +1400,47 @@
               (let [emails (update-notification! noti-id notification
                                                  (assoc-in notification [:payload :send_condition] "goal_above"))]
                 (is (empty? emails))))))))))
+
+(deftest archive-notification-reads-deactivated-recipients-once-test
+  (mt/with-model-cleanup [:model/Notification]
+    (notification.tu/with-channel-fixtures [:channel/email]
+      (mt/with-temp [:model/User u1 {:is_active false}
+                     :model/User u2 {:is_active false}
+                     :model/User u3 {:is_active false}
+                     :model/User u4 {:is_active false}
+                     :model/User u5 {:is_active false}
+                     :model/User u6 {:is_active false}]
+        (let [users    [u1 u2 u3 u4 u5 u6]
+              archive! (fn [n]
+                         (notification.tu/with-card-notification
+                           [{noti-id :id :as notification}
+                            {:notification {:creator_id (mt/user->id :crowberto)}
+                             :card         {:name "Test Card"}
+                             :handlers     [{:channel_type "channel/email"
+                                             :recipients   (into [{:type    :notification-recipient/raw-value
+                                                                   :details {:value "user@example.com"}}
+                                                                  {:type    :notification-recipient/user
+                                                                   :user_id (mt/user->id :rasta)}]
+                                                                 (map (fn [user]
+                                                                        {:type    :notification-recipient/user
+                                                                         :user_id (:id user)}))
+                                                                 (take n users))}]}]
+                           (let [calls  (atom nil)
+                                 emails (notification.tu/with-mock-inbox-email!
+                                          (with-send-messages-sync!
+                                            (t2/with-call-count [call-count]
+                                              (mt/user-http-request :crowberto :put 200 (format "notification/%d" noti-id)
+                                                                    (assoc notification :active false))
+                                              (reset! calls (call-count)))))]
+                             {:calls @calls
+                              :bcc   (set (mapcat :bcc emails))})))]
+          (archive! 2)
+          (let [two (archive! 2)
+                six (archive! 6)]
+            (is (= (:calls two) (:calls six)))
+            (testing "every deactivated recipient is notified"
+              (is (= (into #{"user@example.com" "rasta@metabase.com"} (map :email) users)
+                     (:bcc six))))))))))
 
 (deftest validate-email-domains-test
   (mt/when-ee-evailable

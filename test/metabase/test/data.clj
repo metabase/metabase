@@ -291,7 +291,7 @@
   current DB. Tables and Fields are copied as well."
   {:style/indent 0}
   [& body]
-  `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
+  `(data.impl/do-with-temp-copy-of-db! (^:once fn* [] ~@body)))
 
 (defn- create-h2-db-script! [create-sample-content?]
   (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
@@ -327,6 +327,7 @@
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script-empty)])
+     (mdb/recompile-h2-views! conn#)
      (mdb/finish-db-setup!)
      ;; This app DB must remain empty, so `with-temp` must not materialize the test-data Database in it.
      (binding [data.impl/*skip-dataset-prewarm?* true]
@@ -338,6 +339,7 @@
   [& body]
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script-with-sample-content)])
+     (mdb/recompile-h2-views! conn#)
      (mdb/finish-db-setup!)
      ;; This app DB must remain empty, so `with-temp` must not materialize the test-data Database in it.
      ~@body))

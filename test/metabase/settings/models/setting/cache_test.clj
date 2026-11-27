@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.env :as mdb.env]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.search.test-util :as search.tu]
+   [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.system.core :as system]
@@ -11,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -36,18 +38,18 @@
   []
   (let [ts (-> (t2/query-one
                 {:select [[(let [db-type          (mdb/db-type)
-                                 now-form         (h2x/current-datetime-honeysql-form db-type)
+                                 now-form         [:current-timestamp]
                                  target-cast-type (case db-type
                                                     (:h2 :postgres) :text
                                                     :mysql          :char)]
                              [:cast
                               ;; make it one second in the future so we don't end up getting an exact match when we try
                               ;; to test to see if things update below
-                              (h2x/add-interval-honeysql-form db-type now-form 1 :second)
+                              [:date-add now-form 1 :second]
                               target-cast-type])
                            :timestamp]]})
                :timestamp)]
-    (t2/update! :setting {:key setting.cache/settings-last-updated-key}
+    (t2/update! (t2/table-name :model/Setting) {:key setting.cache/settings-last-updated-key}
                 {:value          ts
                  :value_with_aad (encryption/maybe-encrypt ts {:aad (mdb.setting/setting-aad setting.cache/settings-last-updated-key)})})))
 
@@ -71,14 +73,132 @@
       (is (string? (settings-last-updated-value-in-cache))))
     (testing "..and if I update it again, will the value be updated?"
       (let [first-value (setting-test/settings-last-updated-value-in-db)]
-        ;; MySQL only has the resolution of one second on the timestamps here so we should wait that long to make sure
-        ;; the second-value actually ends up being greater than the first
-        (Thread/sleep (if (= (mdb/db-type) :mysql) 1200 50))
+        ;; the second marker must differ from the first
+        (Thread/sleep 50)
         (setting-test/toucan-name! "Bird Can")
         (let [second-value (setting-test/settings-last-updated-value-in-db)]
-          ;; first & second values should be different, and first value should be "less than" the second value
-          (is (not= first-value second-value))
-          (is (neg? (compare first-value second-value))))))))
+          (is (not= first-value second-value)))))))
+
+;;; Another instance is a connection of its own, outside this instance's pool, writing rows the way
+;;; [[setting.cache/update-settings-last-updated!]] and a setting write do.
+
+(defn- open-another-instance-connection
+  ^java.sql.Connection []
+  (.getConnection mdb.env/data-source))
+
+(defn- write-as-another-instance!
+  "Writes `settings`, a map of key to string value, on `conn`, then the marker: `marker` if given, else the app DB's
+  timestamp as `conn` renders it. Returns the marker."
+  [^java.sql.Connection conn settings & [marker]]
+  (t2/with-connection [_ conn]
+    (let [marker (or marker (settings.db/current-timestamp-string))]
+      (doseq [[k v] (concat settings [[setting.cache/settings-last-updated-key marker]])]
+        (let [v-with-aad (encryption/maybe-encrypt v {:aad (mdb.setting/setting-aad k)})]
+          (when (zero? (settings.db/update-raw-setting-row! k v v-with-aad))
+            (settings.db/insert-raw-setting-row! k v v-with-aad))))
+      marker)))
+
+(defn- force-check-and-read-test-setting-1! []
+  (setting.cache/restore-cache-if-needed! :force-check? true)
+  (setting-test/test-setting-1))
+
+(deftest marker-that-sorts-lower-is-a-change-test
+  (testing "another instance's write is seen even when its marker sorts below the one this cache holds"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "this instance")
+      (with-open [conn (open-another-instance-connection)]
+        (let [cached-marker (setting.cache/cached-marker)
+              marker        (write-as-another-instance! conn
+                                                        {"test-setting-1" "another instance"}
+                                                        "2000-01-01 00:00:00")]
+          (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
+          (is (= "another instance" (force-check-and-read-test-setting-1!))))))))
+
+(deftest first-marker-is-a-change-test
+  (testing "a cache loaded while no marker was stored sees another instance's write of the first marker"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "this instance")
+      (setting-test/clear-settings-last-updated-value-in-db!)
+      (setting.cache/restore-cache!)
+      (is (nil? (setting.cache/cached-marker)) "premise: the cache holds no marker")
+      (with-open [conn (open-another-instance-connection)]
+        (write-as-another-instance! conn {"test-setting-1" "another instance"}))
+      (is (= "another instance" (force-check-and-read-test-setting-1!))))))
+
+(deftest marker-write-reloads-what-others-committed-test
+  (testing "after this instance writes the marker, its cache holds every write committed before then"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "this instance")
+      (setting.cache/restore-cache!)
+      ;; Another instance commits after this cache was loaded and before this instance writes the marker. A marker
+      ;; write that waits for the other instance's lock on the marker row runs in this order.
+      (with-open [conn (open-another-instance-connection)]
+        (write-as-another-instance! conn {"test-setting-1" "another instance"}))
+      (setting.cache/update-settings-last-updated!)
+      (is (= "another instance" (force-check-and-read-test-setting-1!))))))
+
+(deftest marker-from-an-earlier-transaction-start-is-a-change-test
+  (testing "another instance's marker is a change even when its transaction began before this instance's write"
+    (mt/discard-setting-changes [test-setting-1 test-setting-2]
+      (setting-test/test-setting-1! "this instance")
+      (with-open [conn (open-another-instance-connection)]
+        (.setAutoCommit conn false)
+        (try
+          ;; Starts the transaction: on Postgres and H2 its `now()` is the time it began.
+          (t2/with-connection [_ conn]
+            (settings.db/current-timestamp-string))
+          (Thread/sleep 10)
+          (setting-test/test-setting-2! "this instance, later")
+          (write-as-another-instance! conn {"test-setting-1" "another instance"})
+          (.commit conn)
+          (finally
+            (.rollback conn))))
+      (is (= "another instance" (force-check-and-read-test-setting-1!))))))
+
+(deftest marker-in-another-session-time-zone-is-a-change-test
+  (when (= :postgres (mdb/db-type))
+    (testing "another instance's write is seen when its app DB session's time zone is west of this one's"
+      (mt/discard-setting-changes [test-setting-1]
+        (setting-test/test-setting-1! "this instance")
+        (with-open [conn (open-another-instance-connection)]
+          ;; pgjdbc gives a session its JVM's default zone, so this is the session of an instance whose JVM runs in
+          ;; this zone. The westernmost zone renders the lowest wall time, whatever this instance's zone is.
+          (t2/with-connection [_ conn]
+            (t2/query ["SET TIME ZONE 'Etc/GMT+12'"]))
+          (let [cached-marker (setting.cache/cached-marker)
+                marker        (write-as-another-instance! conn {"test-setting-1" "another instance"})]
+            (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
+            (is (= "another instance" (force-check-and-read-test-setting-1!)))))))))
+
+(deftest rolled-back-write-is-undone-in-the-cache-test
+  (testing "a write rolled back by its caller's transaction is gone from the cache after the next check"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "committed")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"roll back"
+                            (t2/with-transaction [_conn]
+                              (setting-test/test-setting-1! "rolled back")
+                              (testing "inside the transaction, the write's reload of the cache sees the write"
+                                (is (= "rolled back" (setting-test/test-setting-1))))
+                              (throw (ex-info "roll back" {})))))
+      (is (= "committed" (force-check-and-read-test-setting-1!))))))
+
+(deftest nested-rolled-back-write-is-undone-in-the-cache-test
+  (testing "a write rolled back by a nested scope is gone from the cache while the enclosing transaction goes on"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "committed")
+      (t2/with-transaction [_conn]
+        (setting-test/test-setting-1! "outer")
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (setting-test/test-setting-1! "nested"))
+        (is (= "outer" (setting-test/test-setting-1)))))))
+
+(deftest write-in-with-temp-is-undone-in-the-cache-test
+  (testing "a write inside `mt/with-temp`, which rolls back, is gone from the cache after the next check"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "committed")
+      (mt/with-temp [:model/Card _ {}]
+        (setting-test/test-setting-1! "in with-temp"))
+      (is (= "committed" (setting-test/test-setting-1))))))
 
 (deftest cache-out-of-date-test
   (testing "If there is no cache, it should be considered out of date!"
@@ -150,13 +270,16 @@
            (setting-test/toucan-name)))))
 
 (deftest sync-test-3
-  (mt/discard-setting-changes [site-locale]
-    (clear-cache!)
-    (system/site-locale! "en")
-    (simulate-another-instance-updating-setting! :site-locale "fr")
-    (reset-last-update-check!)
-    (is (= "fr"
-           (system/site-locale)))))
+  ;; On Postgres a `site-locale` change reindexes search in a future that reads settings; if that future holds the
+  ;; restore lock when the read below runs, the read skips the restore and returns the stale "en".
+  (search.tu/with-sync-search-indexing
+    (mt/discard-setting-changes [site-locale]
+      (clear-cache!)
+      (system/site-locale! "en")
+      (simulate-another-instance-updating-setting! :site-locale "fr")
+      (reset-last-update-check!)
+      (is (= "fr"
+             (system/site-locale))))))
 
 (deftest per-app-db-cache-test
   (testing "settings caches are per app-DB id: another id gets its own, and a copy with the root's id shares it"
@@ -241,3 +364,32 @@
                   :root-check-due?        (#'setting.cache/time-for-another-update-check? last-update-check)})))
         (finally
           (.unlock restore-lock))))))
+
+(deftest in-transaction-write-survives-concurrent-check-test
+  (testing "a write committed by its caller's transaction is in the cache, even after another thread checked the cache
+           while the write was uncommitted"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "before")
+      (t2/with-transaction [_conn]
+        (setting-test/test-setting-1! "after")
+        ;; A plain Thread, so that the check runs on a connection of its own: `future` conveys this transaction's.
+        (doto (Thread. (fn [] (setting.cache/restore-cache-if-needed! :force-check? true)))
+          .start
+          (.join 10000)))
+      (is (= "after" (setting-test/test-setting-1))))))
+
+(deftest another-threads-check-keeps-an-uncommitted-write-test
+  (testing "while a write is uncommitted, another thread's check does not revert the shared cache to the committed values"
+    ;; A revert fires the `:on-change` handlers of the reverted settings, and again when the next check restores the
+    ;; write: for `report-timezone`, each one closes every database's connection pool.
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "before")
+      (t2/with-transaction [_conn]
+        (setting-test/test-setting-1! "after")
+        (let [reloaded? (atom ::not-run)]
+          ;; A plain Thread, so that the check runs on a connection of its own: `future` conveys this transaction's.
+          (doto (Thread. #(reset! reloaded? (setting.cache/restore-cache-if-needed! :force-check? true)))
+            .start
+            (.join 10000))
+          (is (not= ::not-run @reloaded?) "premise: the other thread's check ran")
+          (is (= "after" (get (setting.cache/cache) "test-setting-1"))))))))

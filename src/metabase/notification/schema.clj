@@ -13,8 +13,9 @@
     [:id           ms/PositiveInt]]])
 
 (mr/def ::notification.update
-  "What an update (or insert) of a Notification accepts: every column of `:notification` except `id`, all optional."
+  "What an update of a Notification takes: its `:id` and the columns to change, every column of `:notification`."
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:payload_type {:optional true} [:maybe [:or :keyword :string]]]
    [:active       {:optional true} [:maybe :boolean]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
@@ -103,3 +104,50 @@
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:cron_schedule   {:optional true} [:maybe :string]]
    [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]])
+
+(mr/def ::notification-card.create
+  "What a caller gives to create a NotificationCard."
+  [:map {:closed true}
+   [:card_id        ::lib.schema.id/card]
+   [:send_once      {:optional true} [:maybe :boolean]]
+   [:send_condition {:optional true} [:maybe [:or :keyword :string]]]
+   [:disable_links  {:optional true} [:maybe :boolean]]])
+
+(mr/def ::notification.create
+  "What a caller gives to create a Notification, with the NotificationCard `:payload` of a card notification."
+  [:map {:closed true}
+   [:payload_type [:or :keyword :string]]
+   [:active       {:optional true} [:maybe :boolean]]
+   [:internal_id  {:optional true} [:maybe :string]]
+   [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
+   [:payload      {:optional true} [:maybe [:or ::notification-card.create :metabase.notification.models/SystemEventPayload.request]]]])
+
+(mr/def ::notification-subscription.create
+  "What a caller gives to create a NotificationSubscription."
+  [:map {:closed true}
+   [:type            [:or :keyword :string]]
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:event_name      {:optional true} [:maybe [:or :keyword :string]]]
+   [:cron_schedule   {:optional true} [:maybe :string]]
+   [:ui_display_type {:optional true} [:maybe [:or :keyword :string]]]])
+
+(mr/def ::notification-recipient.create
+  "What a caller gives to create a NotificationRecipient."
+  [:map {:closed true}
+   [:type                    [:or :keyword :string]]
+   [:notification_handler_id {:optional true} [:maybe ms/PositiveInt]]
+   [:user_id                 {:optional true} [:maybe ::lib.schema.id/user]]
+   [:permissions_group_id    {:optional true} [:maybe ms/PositiveInt]]
+   [:details                 {:optional true} [:maybe ::notification-recipient.details]]])
+
+(mr/def ::notification-handler.create
+  "What a caller gives to create a NotificationHandler, with its `:recipients` and optionally the `:template` to create
+  for it."
+  [:map {:closed true}
+   [:channel_type    [:or :keyword :string]]
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:channel_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:template_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:active          {:optional true} [:maybe :boolean]]
+   [:template        {:optional true} [:maybe :metabase.channel.schema/channel-template.create]]
+   [:recipients      {:optional true} [:maybe [:sequential ::notification-recipient.create]]]])

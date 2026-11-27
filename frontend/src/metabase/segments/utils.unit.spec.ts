@@ -13,11 +13,9 @@ describe("getSegmentQuery", () => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
   });
-  const definition = Lib.toLegacyQuery(
-    Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [{ source: { type: "table", id: ORDERS_ID } }],
-    }),
-  );
+  const definition = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
+  });
 
   // The memoisation is what keeps `useSelector` from handing the component a
   // new query on every store action.

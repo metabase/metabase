@@ -7,15 +7,12 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
    [metabase.channel.db :as channel.db]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.channel.schema :as channel.schema]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
-   [metabase.util :as u]
    [metabase.util.api-error :as api-error]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -39,14 +36,13 @@
   (->> (if include_inactive
          (channel.db/channels)
          (channel.db/active-channels))
-       (#(t2/hydrate % :can_read :can_write))
-       (filter mi/can-read?)
+       (#(t2/hydrate % :can_write))
+       mi/readable
        (map remove-details-if-needed)))
 
 (def ^:private ChannelType
   (mu/with-api-error-message
-   [:fn {:decode/string keyword, :json-schema {:type "string"}}
-    #(= "channel" (namespace (keyword %)))]
+   ::channel.schema/channel.type
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
 (defn- channel-body-schema
@@ -56,10 +52,6 @@
    (conj (channel.schema/details-by-type :details-optional? details-optional?)
          [nil [:map {:closed true}
                [:details {:optional true} [:maybe ::channel.schema/channel.details]]]])])
-
-(defn- details-schema-for-type
-  [channel-type]
-  (channel.schema/channel-type->details-schema channel-type))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -74,12 +66,11 @@
                                        [:description {:optional true} [:maybe ms/NonBlankString]]
                                        [:type        ChannelType]
                                        [:active      {:optional true} [:maybe {:default true} :boolean]]])]
-  (perms/check-has-application-permission :setting)
+  (api/create-check :model/Channel body)
   (when (channel.db/channel-name-exists? channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
-  (u/prog1 (channel.db/insert-channel! body)
-    (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
+  (first (models.channel/create-channels! [body])))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -106,16 +97,9 @@
              [:type        {:optional true} [:maybe ChannelType]]
              [:active      {:optional true} [:maybe :boolean]]]
             :details-optional? true)]
-  (let [channel-before-update (api/write-check (channel.db/channel id))]
-    (when (and (:details body) (nil? (:type body)))
-      (when-let [schema (details-schema-for-type (:type channel-before-update))]
-        (when-not (mr/validate schema (:details body))
-          (throw (ex-info (tru "Invalid channel details") {:status-code 400})))))
-    (channel.db/update-channel! id body)
-    (u/prog1 (channel.db/channel id)
-      (events/publish-event! :event/channel-update {:object          <>
-                                                    :user-id         api/*current-user-id*
-                                                    :previous-object channel-before-update}))))
+  (api/write-check (channel.db/channel id))
+  (models.channel/update-channels! [(assoc body :id id)])
+  (channel.db/channel id))
 
 (defn- test-channel-connection!
   "Test if a channel can be connected, throw an exception if it fails."
@@ -142,5 +126,5 @@
    _query-params
    {:keys [type details]} :- (channel-body-schema
                               [[:type ChannelType]])]
-  (perms/check-has-application-permission :setting)
+  (api/create-check :model/Channel {:type type, :details details})
   (test-channel-connection! type details))

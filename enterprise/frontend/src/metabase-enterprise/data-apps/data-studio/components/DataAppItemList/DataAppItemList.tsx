@@ -7,17 +7,17 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useNavigate } from "metabase/router";
 import {
   Card,
-  Ellipsified,
   Flex,
   Icon,
   Stack,
   TextInput,
   TreeTable,
-  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import type { CollectionItem, DataApp } from "metabase-types/api";
+
+import { getColumns } from "./utils";
 
 type DataAppItemListProps = {
   app: DataApp;
@@ -47,18 +47,7 @@ export function DataAppItemList({
     [navigate, getItemUrl],
   );
 
-  const columns = useMemo<TreeTableColumnDef<CollectionItem>[]>(
-    () => [
-      {
-        id: "name",
-        accessorKey: "name",
-        header: t`Name`,
-        minWidth: 200,
-        cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
-      },
-    ],
-    [],
-  );
+  const columns = useMemo(() => getColumns(), []);
 
   const treeTableInstance = useTreeTableInstance({
     data: items,

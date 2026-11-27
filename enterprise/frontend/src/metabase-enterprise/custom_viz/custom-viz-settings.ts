@@ -5,7 +5,6 @@ import type {
   ReservedVisualizationSettingId,
   Widgets,
 } from "custom-viz";
-import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import type {
@@ -189,9 +188,7 @@ function copyPluginProps(props: unknown): Record<string, unknown> {
   }
 }
 
-function isComponentWidget(
-  widget: unknown,
-): widget is ComponentType<Record<string, unknown>> {
+function isComponentWidget(widget: unknown) {
   return typeof widget === "function";
 }
 

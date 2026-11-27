@@ -1,0 +1,16 @@
+(ns metabase.revisions.sql
+  "The SQL that reads the Revisions of entities, which every module that lists entities with their last edit shares,
+  kept free of the models of the revisions module so that those modules can require it."
+  (:require
+   [toucan2.core :as t2]))
+
+(defn newest-revision-clause
+  "The where-clause true when the Revision under `alias` is the newest of the `model-name` entity whose id is the
+  column `entity-id`, read as the one lookup of `max(id)` of that entity's Revisions."
+  [alias model-name entity-id]
+  [:= (keyword (str (name alias) ".id"))
+   ^:allow-subquery {:select [[[:max :newest.id]]]
+                     :from   [[(t2/table-name :model/Revision) :newest]]
+                     :where  [:and
+                              [:= :newest.model [:literal model-name]]
+                              [:= :newest.model_id entity-id]]}])

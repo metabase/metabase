@@ -34,12 +34,13 @@
     tool-title-type})
 
 (defn persistable-data-part?
-  "True if `part` should be written to MetabotMessage.data. `state` parts are
-  skipped because their value is diffed separately into MetabotMessage.state;
-  duplicating the full blob in the message data would bloat storage. Non-data
-  parts are always persistable here; the caller is responsible for filtering
-  stream-level metadata
-  (`:start`, `:usage`, `:finish`) separately."
+  "True if `part` should be written to MetabotMessage.data.
+
+  `state` parts are skipped because their value is diffed separately into MetabotMessage.state;
+  duplicating the full blob in the message data would bloat storage. Non-data parts are always
+  persistable here; each caller removes the stream metadata it does not store. Storage keeps
+  `:start` as the `step-start` part that history replay splits steps at
+  (see [[metabase.metabot.persistence/parts->storable-content]])."
   [part]
   (not (and (= :data (:type part))
             (contains? ephemeral-data-types (:data-type part)))))
@@ -206,6 +207,39 @@
                            (cond-> dp
                              (map? (:data dp)) (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
+
+(defn combine-text-parts-xf
+  "Transducer that merges each run of consecutive `:text` parts with the same `:id` into one `:text` part.
+
+  The parts of one run are the deltas of one text block. Two text blocks stay two parts, as the stream to the client
+  keeps them (see [[metabase.metabot.self.core/parts->aisdk-sse-xf]]). Parts with no `:id` also merge. Other parts
+  pass through unchanged. A `nil` part is dropped."
+  []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (vreset! pending nil)
+           (rf (if p (unreduced (rf result p)) result))))
+        ([result part]
+         (let [prev @pending]
+           (cond
+             (nil? part)
+             result
+
+             (and prev
+                  (= :text (:type prev) (:type part))
+                  (= (:id prev) (:id part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+
+             :else
+             (let [ret (if prev (rf result prev) result)]
+               ;; after a reduced result no part goes downstream, so none waits for the completion
+               (vreset! pending (when-not (reduced? ret) part))
+               ret))))))))
 
 (defn post-process-xf
   "Composed transducer for post-processing agent output.

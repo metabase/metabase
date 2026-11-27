@@ -8,8 +8,6 @@ redirect_from:
 
 # Setting up Metabase
 
-This guide will help you set up Metabase once you’ve gotten it installed.
-
 ## Install Metabase
 
 If you don't have Metabase yet, you'll need to install it first. The easiest way to get going is [Metabase Cloud](https://www.metabase.com/cloud), where we run Metabase for you. If you'd rather host Metabase yourself, you can run it with Docker or as a JAR file. See [Installing Metabase](../installation-and-operation/installing-metabase.md) for all your options.
@@ -93,7 +91,7 @@ Once you're done here simply follow the link to **Take me to Metabase**. And if 
 
 If you click **Set up AI**, Metabase walks you through [connecting an AI provider](../ai/settings.md).
 
-The providers you set up here power Metabase's built-in AI features. The [MCP server](../ai/mcp.md#turn-on-the-mcp-server) doesn't use them; your MCP client brings its own model.
+The providers you set up here power Metabase's built-in AI features. The [MCP server](../ai/mcp.md#turn-the-mcp-server-on-or-off) doesn't use them; your MCP client brings its own model.
 
 ## Getting started with Metabase
 

@@ -17,7 +17,7 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                     :model/Table table {:is_published false :collection_id (:id collection)}]
+                     :model/Table table {}]
         (perms/grant-collection-read-permissions! group-id (:id collection))
         (mt/with-current-user user-id
           (is (false? (boolean (published-tables/can-access-via-collection? table)))))))))
@@ -29,7 +29,8 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                     :model/Table table {:is_published true :collection_id (:id collection)}]
+                     :model/Table table {}
+                     :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id collection)}]
         (perms/grant-collection-read-permissions! group-id (:id collection))
         (mt/with-current-user user-id
           (is (true? (boolean (published-tables/can-access-via-collection? table)))))))))
@@ -41,7 +42,8 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                     :model/Table table {:is_published true :collection_id (:id collection)}]
+                     :model/Table table {}
+                     :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id collection)}]
         ;; Don't grant collection permissions
         (perms/revoke-collection-permissions! group-id (:id collection))
         (perms/revoke-collection-permissions! (perms/all-users-group) (:id collection))
@@ -55,7 +57,8 @@
                      :model/PermissionsGroup {group-id :id} {}
                      :model/User {user-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                     :model/Table table {:is_published true :collection_id (:id collection)}]
+                     :model/Table table {}
+                     :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id collection)}]
         (perms/grant-collection-read-permissions! group-id (:id collection))
         (mt/with-current-user user-id
           (is (false? (boolean (published-tables/can-access-via-collection? table)))))))))
@@ -75,11 +78,15 @@
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
                      :model/Database {db-id :id} {}
                      :model/Table {visible-pub-id :id}
-                     {:db_id db-id :is_published true :collection_id allowed-coll-id :active true}
+                     {:db_id db-id :active true}
+                     :model/TableUserSettings _
+                     {:table_id visible-pub-id :is_published true :collection_id allowed-coll-id}
                      :model/Table {hidden-pub-id :id}
-                     {:db_id db-id :is_published true :collection_id blocked-coll-id :active true}
+                     {:db_id db-id :active true}
+                     :model/TableUserSettings _
+                     {:table_id hidden-pub-id :is_published true :collection_id blocked-coll-id}
                      :model/Table {unpub-id :id}
-                     {:db_id db-id :is_published false :collection_id allowed-coll-id :active true}]
+                     {:db_id db-id :active true}]
         (perms/grant-collection-read-permissions! group-id allowed-coll-id)
         (perms/revoke-collection-permissions! group-id blocked-coll-id)
         (perms/revoke-collection-permissions! (perms/all-users-group) blocked-coll-id)
@@ -87,7 +94,7 @@
                (into #{}
                      (map :id)
                      (t2/query {:select [:mt.id]
-                                :from   [[:metabase_table :mt]]
+                                :from   [[(t2/table-name :model/Table) :mt]]
                                 :where  [:and
                                          [:in :mt.id [visible-pub-id hidden-pub-id unpub-id]]
                                          (published-tables/published-table-clause
@@ -103,15 +110,21 @@
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
                      :model/Database {db-id :id} {}
                      :model/Table {pub-allowed :id}
-                     {:db_id db-id :is_published true :collection_id allowed-coll-id :active true}
+                     {:db_id db-id :active true}
+                     :model/TableUserSettings _
+                     {:table_id pub-allowed :is_published true :collection_id allowed-coll-id}
                      :model/Table {pub-blocked :id}
-                     {:db_id db-id :is_published true :collection_id blocked-coll-id :active true}
+                     {:db_id db-id :active true}
+                     :model/TableUserSettings _
+                     {:table_id pub-blocked :is_published true :collection_id blocked-coll-id}
                      :model/Table {unpub-allowed :id}
-                     {:db_id db-id :is_published false :collection_id allowed-coll-id :active true}
+                     {:db_id db-id :active true}
                      :model/Table {pub-blocked-by-view-data :id}
-                     {:db_id db-id :is_published true :collection_id allowed-coll-id :active true}
+                     {:db_id db-id :active true}
+                     :model/TableUserSettings _
+                     {:table_id pub-blocked-by-view-data :is_published true :collection_id allowed-coll-id}
                      :model/Table {plain-allowed :id}
-                     {:db_id db-id :is_published false :active true}]
+                     {:db_id db-id :active true}]
         (mt/with-no-data-perms-for-all-users!
           (perms/grant-collection-read-permissions! group-id allowed-coll-id)
           (perms/revoke-collection-permissions! group-id blocked-coll-id)

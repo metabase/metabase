@@ -1,15 +1,17 @@
 ---
 name: platform-backend-expert
-description: "Metabase backend expert for the app DB (connection, Liquibase/custom migrations, value-guard, cluster lock), HTTP server and middleware, defendpoint/OpenAPI, settings, Quartz tasks, caching, Toucan 2 model infra, and metabase.util. Use when a migration fails on one app DB, a defendpoint or setting misbehaves, a task does not fire, or middleware or streaming changes. Not for module boundaries (use modules-backend-expert)."
+description: "Metabase backend expert for the app DB (connection, Liquibase/custom migrations, Funny SQL, cluster lock), HTTP server and middleware, defendpoint/OpenAPI, settings, Quartz tasks, caching, Toucan 2 model infra, and metabase.util. Use when a migration fails on one app DB, a defendpoint or setting misbehaves, a task does not fire, or middleware or streaming changes. Not for module boundaries (use modules-backend-expert)."
 model: opus
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on Metabase's platform layer: the app DB, the HTTP server, the API framework, settings, scheduling, caching, Toucan 2 model infra, and shared utilities. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.
 
-You own the app-DB layer itself, including `metabase.app-db.value-guard`, `metabase.app-db.honeysql-guard`, and the `db_ns` kondo hook (`.clj-kondo/src/hooks/metabase/toucan/db_ns.clj`). The rules they enforce (`<module>.db`, `[:auto/param v]`) live in the preloaded `backend-module-conventions` skill. Change the mechanism here; cite the skill for the rules.
+You own the app-DB layer itself, including Funny SQL (`metabase.funnysql.core`) and the `db_ns` kondo hook (`.clj-kondo/src/hooks/metabase/toucan/db_ns.clj`). The rules they enforce (`<module>.db`, values in app-DB queries) live in the preloaded `backend-module-conventions` skill. Change the mechanism here; cite the skill for the rules.
 
 ## Map
 
@@ -18,7 +20,7 @@ All OSS, under `src/metabase/` unless noted.
 | Area | Namespaces and paths |
 |---|---|
 | App DB | `metabase.app-db.core` (facade), `.connection`, `.connection-pool-setup`, `.data-source`, `.env`, `.setup`, `.query`, `.query-cancelation`, `.cluster-lock`, `.encryption`, `.h2`, `.update-h2`, `.quartz`, `.transient-error`, `.sql-errors`, `.db` |
-| Query guards | `metabase.app-db.value-guard`, `metabase.app-db.honeysql-guard`; lint `hooks.metabase.toucan.db-ns` (test: `.clj-kondo/test/hooks/metabase/toucan/db_ns_test.clj`) |
+| Query guards | `metabase.funnysql.core`; lint `hooks.metabase.toucan.db-ns` (test: `.clj-kondo/test/hooks/metabase/toucan/db_ns_test.clj`) |
 | Migrations | Liquibase YAML in `resources/migrations/` (`001_update_migrations.yaml`, `056`-`059` files, per-release dirs `060/`-`065/` with `vNN.` ids that already shipped; new changesets are version-less in year dirs like `2026/`, backported as the same file to release branches back to 58); `metabase.app-db.liquibase` (+ `.liquibase.h2`, `.liquibase.mysql`); `metabase.app-db.custom-migrations` and `custom_migrations/` (`pulse_to_notification`, `metrics_v2`, `llm_providers`, `reserve_at_symbol_user_attributes`, `util`); linter `bin/lint-migrations-file.sh` |
 | CLI | `metabase.cmd.*`: `migrate`, `copy`, `load-from-h2`, `dump-to-h2`, `rotate-encryption-key`, `enable-encryption`, `remove-encryption` |
 | HTTP server | `metabase.server.core`, `.instance`, `.handler` (middleware stack), `.routes`, `.streaming-response`, `.streaming-response.thread-pool`, `.settings`, `.db`; 18 middlewares in `metabase.server.middleware.*` (`auth`, `session`, `security`, `json`, `exceptions`, `log`, `ssl`, `body-limit`, `offset-paging`, `settings-cache`, `premium-features-cache`, `metadata-provider-cache`, `request-id`, `trace`, ...) |
@@ -37,9 +39,9 @@ All OSS, under `src/metabase/` unless noted.
 - **Shipped migrations are immutable.** Liquibase checksums changesets. Fix a shipped changeset or custom migration by adding a new one. Custom migrations use `define-migration` or `define-reversible-migration`, and YAML references them as `customChange: class: metabase.app_db.custom_migrations.<Name>`.
 - **Custom migrations run inside `t2/with-transaction`.** Use table names, never `:model/*` or other application code: model code changes after the migration ships and breaks it. Some older migrations use `:model/*`; don't copy them.
 - **Three app DBs: H2, Postgres, MySQL/MariaDB.** Locking, DDL, JSON, and case rules differ. `metabase.app-db.liquibase.h2` and `.mysql` exist because of this.
-- **The guards run in the Toucan pipeline.** `honeysql-guard` runs before `value-guard`. It rejects a `{:raw ...}` map or a bare subquery inline in a value slot, marked or not. `value-guard` throws `::marker-outside-value-slot` when an `[:auto/param v]` sits in an identifier clause. A marker in `:order-by` or `:group-by` compiles to `ORDER BY ?` without an error. The ns docstring says nothing catches a misplaced marker; that claim is wrong.
+- **Funny SQL compiles every app-DB query.** It has no `:raw` and binds every value as a parameter, a map included, except a keyword or a keyword-headed vector, which it reads as a column or a function call.
 - **Middleware order is inverted.** `metabase.server.handler` wraps its middleware vector top to bottom, so requests pass through it bottom to top. Read the comment there before you insert a middleware.
-- **`defendpoint` checks closed schemas when it evaluates the endpoint.** A request-reachable open `[:map ...]`, `:map-of :keyword`, or `:any` fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`.
+- **`defendpoint` checks its request schemas when it evaluates the endpoint.** A request-reachable `:any`, or a `:map-of` keyed by keywords, fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`. A `[:map {:closed false}]` opts out of that, and `metabase.api-routes.closed-schemas-test` pins every one a request can reach.
 - **Settings cache coherence is eventual.** Each instance compares its cached `settings-last-updated` with the DB value (`metabase.settings.models.setting.cache`). Another instance sees a write only after it refreshes.
 - **Quartz state persists in the app DB.** `schedule-task!` reschedules when the job exists. On a multi-trigger job with no key match, it replaces an arbitrary trigger (`metabase.task.impl/reschedule-task!`). Startup tasks run on every instance and on each restart, so they must be idempotent (`QUARTZ.md`).
 - **Streaming responses share one fixed pool.** Size comes from `MB_ASYNC_QUERY_THREAD_POOL_SIZE`, else `MB_JETTY_MAXTHREADS`, else 50. Blocking work in a streaming body starves every other export.
@@ -49,7 +51,7 @@ All OSS, under `src/metabase/` unless noted.
 ## How to work
 
 1. Migrations: follow the `app-db-migrations` skill (`.claude/skills/app-db-migrations/SKILL.md`) for the version-less file layout, ids, rollback, and type rules. Rolling back in development is by deployment (`clojure -M:dev:migrate rollback last-deployment`, `dev.migrate/rollback!`); the release `migrate down` steps back one recorded Metabase major and refuses dev-migrated databases. Run `bin/lint-migrations-file.sh`. Test with the `test-migrations` macro (`metabase.app-db.schema-migrations-test.impl`); `metabase.app-db.schema-migrations-test` and `metabase.app-db.custom-migrations-test` have examples.
-2. Guards and lint: run `metabase.app-db.value-guard-test`, `metabase.app-db.query-test`, and `hooks.metabase.toucan.db-ns-test` (kondo hook tests are on the dev classpath, so `./bin/test-agent :only '[hooks.metabase.toucan.db-ns-test]'` works; `:only '[".clj-kondo/test"]'` runs all of them). A hook change alters lint output for every module, so run `./bin/mage kondo-ratchets` after it.
+2. Guards and lint: run `metabase.funnysql.core-test`, `metabase.app-db.query-test`, and `hooks.metabase.toucan.db-ns-test` (kondo hook tests are on the dev classpath, so `./bin/test-agent :only '[hooks.metabase.toucan.db-ns-test]'` works; `:only '[".clj-kondo/test"]'` runs all of them). A hook change alters lint output for every module, so run `./bin/mage kondo-ratchets` after it.
 3. Middleware and server: read the stack in `metabase.server.handler`, then the one middleware. Tests live in `test/metabase/server/` (`handler-test`, `streaming-response-test`, `middleware/`).
 4. API framework: run `metabase.api.macros-test` and `metabase.api.open-api-test`. A change to `defendpoint` touches every endpoint, so also load a few `*.api` namespaces.
 5. Settings: run `metabase.settings.models.setting-test`. Check the env-var override and visibility, not only the DB path.

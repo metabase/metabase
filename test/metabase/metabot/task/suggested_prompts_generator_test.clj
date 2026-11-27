@@ -1,7 +1,6 @@
 (ns metabase.metabot.task.suggested-prompts-generator-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.config :as metabot.config]
@@ -21,8 +20,7 @@
         (let [original-metabot (t2/select-one :model/Metabot
                                               :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        lib.convert/->legacy-MBQL)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               admin-id (:id (mt/fetch-user :crowberto))]
           (mt/with-model-cleanup [:model/MetabotPrompt]
             (mt/with-temp
@@ -97,8 +95,7 @@
         (mt/with-temporary-setting-values [metabot.settings/metabot-enabled?          true
                                            metabot.settings/embedded-metabot-enabled? true]
           (let [mp (mt/metadata-provider)
-                query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                          lib.convert/->legacy-MBQL)
+                query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                 internal-id (:id (metabot.config/resolve-metabot metabot.config/internal-metabot-id))
                 embedded-id (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))]
             (mt/with-model-cleanup [:model/MetabotPrompt]
@@ -122,8 +119,7 @@
         (let [original-metabot (t2/select-one :model/Metabot
                                               :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        lib.convert/->legacy-MBQL)]
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
           (mt/with-model-cleanup [:model/MetabotPrompt]
             (mt/with-temp [:model/Card
                            {card-id :id}

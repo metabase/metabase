@@ -26,6 +26,11 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **clj-nrepl-eval** - This is another good mechanism for running Clojure code on an nrepl server.
 
+### Models
+
+- **[backend-model-rules](.claude/skills/backend-model-rules/SKILL.md)** - Where a rule about a model lives: hooks for what the row alone answers (no statements), bulk write functions in the model file for the rest, `mi/can-*?` for per-user rules
+- **[backend-worktree-rules](.claude/skills/backend-worktree-rules/SKILL.md)** - Remote sync worktrees: which app DB tables get `worktree_id`, their composite foreign keys and per-worktree unique keys, and the `:hook/worktree-id` model trait
+
 ### Application database
 
 - **[app-db-migrations](.claude/skills/app-db-migrations/SKILL.md)** - Add, test, run and roll back application-database (Liquibase) migrations: version-less changesets, lint rules, dev rollback by deployment

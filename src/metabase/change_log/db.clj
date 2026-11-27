@@ -1,11 +1,10 @@
 (ns metabase.change-log.db
   "Application database queries for the change-log module."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
@@ -14,30 +13,24 @@
 (mu/defn insert-entries!
   "Adds `entries` to the change log."
   [entries :- [:sequential [:map {:closed true} [:table_name :string] [:row_id :int] [:action :string]]]]
-  (t2/insert! :change_log entries))
+  (t2/insert! :model/ChangeLog entries))
 
 (mu/defn unnumbered-ids
   "The ids of up to `limit` committed entries that have no `position`, lowest first."
   [limit :- ms/PositiveInt]
-  (t2/select-fn-vec :id [:change_log :id] {:where [:= :position nil], :order-by [[:id :asc]], :limit limit}))
+  (t2/select-fn-vec :id [:model/ChangeLog :id] {:where [:= :position nil], :order-by [[:id :asc]], :limit limit}))
 
 (mu/defn highest-position
   "The highest `position` of an entry, or nil when no entry has one."
   []
-  (t2/select-one-fn :position :change_log {:select [[[:max :position] :position]]}))
+  (t2/select-one-fn :position :model/ChangeLog {:select [[[:max :position] :position]]}))
 
 (mu/defn set-positions!
   "Sets the `position` of each entry in `ids` to `start + (id - lowest-id)`."
   [ids       :- [:sequential ms/PositiveInt]
    start     :- ms/PositiveInt
    lowest-id :- ms/PositiveInt]
-  (t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id ids]}))
-
-(mu/defn mariadb? :- :boolean
-  "Whether the app DB is MariaDB, whose app DB type is `:mysql` too. The driver answers without a query."
-  []
-  (t2/with-connection [^Connection conn]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+  (mdb/sum-batched mdb/update-partition-size #(t2/query-one {:update (t2/table-name :model/ChangeLog), :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id %]}) ids))
 
 (mu/defn foreign-keys
   "The foreign keys of the app DB's tables, as JDBC's `DatabaseMetaData.getImportedKeys` reports them."
@@ -56,8 +49,7 @@
 (mu/defn matching-pks
   "The primary keys of the rows of `model` that match `conditions`."
   [model      :- :keyword
-   conditions :- [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
-                  [:sequential :any]]]
+   conditions :- [:sequential [:maybe [:fn {:description "what `t2/select` takes after the model"} some?]]]]
   (apply t2/select-pks-vec model conditions))
 
 (mu/defn rows-where
@@ -66,30 +58,16 @@
    column     :- :keyword
    values     :- [:sequential [:or :int :string]]
    columns    :- [:sequential :keyword]]
-  (t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column values]}))
-
-(mu/defn rows-to-change
-  "The `columns` of the rows that a Toucan write to `model` will change, selected with the write's own `parsed-args`
-  and `resolved-query`."
-  [model             :- :keyword
-   select-query-type :- :keyword
-   parsed-args       :- [:schema {::mr/deliberately-open true, :description "the write's Toucan parsed args"} :map]
-   resolved-query    :- [:schema {::mr/deliberately-open true, :description "the write's Toucan resolved query"} :any]
-   columns           :- [:sequential :keyword]]
-  (t2.pipeline/transduce-query (t2.pipeline/default-rf select-query-type)
-                               select-query-type
-                               model
-                               (assoc (dissoc parsed-args :queryable :changes) :columns (vec (distinct columns)))
-                               resolved-query))
+  (mdb/select-batched #(t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column %]}) values))
 
 (mu/defn delete-before-by-id-subquery!
   "Deletes up to `batch-size` entries created before `cutoff`, lowest ids first, and returns how many."
   [cutoff     :- ms/TemporalInstant
    batch-size :- ms/PositiveInt]
-  (t2/query-one {:delete-from :change_log
+  (t2/query-one {:delete-from (t2/table-name :model/ChangeLog)
                  :where       [:in :id ^:allow-subquery {:select   [:id]
-                                                         :from     :change_log
-                                                         :where    [:< :created_at [:auto/param cutoff]]
+                                                         :from     (t2/table-name :model/ChangeLog)
+                                                         :where    [:< :created_at cutoff]
                                                          :order-by [[:id :asc]]
                                                          :limit    batch-size}]}))
 
@@ -97,6 +75,6 @@
   "Deletes up to `batch-size` entries created before `cutoff`, and returns how many."
   [cutoff     :- ms/TemporalInstant
    batch-size :- ms/PositiveInt]
-  (t2/query-one {:delete-from :change_log
-                 :where       [:< :created_at [:auto/param cutoff]]
+  (t2/query-one {:delete-from (t2/table-name :model/ChangeLog)
+                 :where       [:< :created_at cutoff]
                  :limit       batch-size}))

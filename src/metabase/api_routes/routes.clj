@@ -27,6 +27,7 @@
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
+   [metabase.dynamic-goals.api]
    [metabase.eid-translation.api]
    [metabase.embedding-hub.api]
    [metabase.embedding-rest.api]
@@ -101,6 +102,7 @@
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
+         metabase.dynamic-goals.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
@@ -236,6 +238,7 @@
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
+   "/dynamic-goal"         (+auth 'metabase.dynamic-goals.api)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
    "/embed"                (+message-only-exceptions (+without-current-user metabase.embedding-rest.api/embedding-routes))
@@ -275,6 +278,7 @@
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/public"               (+public-exceptions (+without-current-user metabase.public-sharing-rest.api/routes))
+   "/public-link-refusal"  (+auth metabase.public-sharing-rest.api/refusal-routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
@@ -296,7 +300,8 @@
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
-   "/util"                 'metabase.api.util})
+   "/util"                 'metabase.api.util
+   "/warehouse"            (+auth metabase.sync.api/warehouse-routes)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

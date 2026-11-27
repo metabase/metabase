@@ -8,23 +8,25 @@
 
 (p/import-vars
  [metabase.query-permissions.impl
-  can-query-table?
+  assoc-can-query
   check-parameter-field-permissions
-  can-run-query?
-  can-run-query-with-resolved-source-ids?
-  check-card-read-perms
+  query-run-answers
   check-cards-read-perms
   check-card-result-metadata-data-perms
+  check-cards-result-metadata-data-perms
   check-data-perms
   check-result-metadata-data-perms
-  check-run-permissions-for-query
+  check-run-permissions-for-queries
   has-perm-for-query?
   merge-resolved-source-ids
+  native-query-database-ids
   perms-exception
+  queryable-table-ids
   query->resolved-source-ids
   query->source-ids
-  query->source-table-ids
   required-perms-for-query
+  resolved-query-run-answers
+  resolved-source-ids-answers
   resolved-source-ids-transform
   ResolvedSourceIds
   stamped-resolved-source-ids

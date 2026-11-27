@@ -4,26 +4,26 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.content :as content]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.protocol :as protocol]
-   [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
-(defn state
-  "What a push or pull of `branch` of `repo` compares, with `base-version` the version of the tree the app DB last
-  synced with: the `:tip` version, the `:base`, `:ours` and `:theirs` documents, and whether the remote changed or its
-  history was rewritten."
-  [repo branch base-version]
+(defn- fetch-tip!
+  "Fetches `repo` and returns the version at the tip of `branch`, throwing when the branch is gone."
+  [repo branch]
   (protocol/fetch! repo)
-  (let [tip    (or (protocol/version repo branch)
-                   (throw (ex-info (tru "The branch {0} doesn''t exist in the repository any more. Switch to another branch." branch)
-                                   {:branch branch})))
-        known? (and base-version (protocol/has-version? repo base-version))
+  (or (protocol/version repo branch)
+      (throw (ex-info (tru "The branch {0} doesn''t exist in the repository any more. Switch to another branch." branch)
+                      {:branch branch}))))
+
+(defn- tip-state
+  "The map [[state]] returns for a branch of `repo` whose tip is the fetched version `tip`."
+  [repo tip base-version]
+  (let [known? (and base-version (protocol/has-version? repo base-version))
         base   (content/tree-documents repo (when known? base-version))
         theirs (if (= tip base-version) base (content/tree-documents repo tip))
         ours   (content/local-documents)]
@@ -33,6 +33,13 @@
      :theirs             theirs
      :remote-changed?    (not (content/same-documents? base theirs))
      :history-rewritten? (and (some? base-version) (not known?))}))
+
+(defn state
+  "What a push or pull of `branch` of `repo` compares, with `base-version` the version of the tree the app DB last
+  synced with: the `:tip` version, the `:base`, `:ours` and `:theirs` documents, and whether the remote changed or its
+  history was rewritten."
+  [repo branch base-version]
+  (tip-state repo (fetch-tip! repo branch) base-version))
 
 (defn- changed-keys
   "The keys of the entities whose documents differ between `a` and `b`, maps from key to document."
@@ -59,9 +66,8 @@
 (defn- delete-rows!
   "Deletes the rows `ours` exports the documents with the keys `ks` from, each after the rows that depend on it."
   [ours ks]
-  (binding [mi/*deserializing?* true]
-    (doseq [{:keys [model keys]} (reverse (serialization/load-order ks #(mapv (comp :entity ours) %)))]
-      (remote-sync.db/delete-rows! model (mapv (comp second :row ours) keys)))))
+  (doseq [{:keys [model keys]} (reverse (serialization/load-order ks #(mapv (comp :entity ours) %)))]
+    (serialization/delete! model (mapv (comp second :row ours) keys))))
 
 (defn- apply!
   "Makes the app DB, whose documents are `ours`, hold the `merged` documents, returning how many entities changed."
@@ -122,11 +128,11 @@
                     {:kind "pushed" :count (count (changed-keys theirs merged))}
                     {:kind "push-skipped"})}))))
 
-(defn pull!
-  "Pulls the content of `branch` of `repo` into the app DB, keeping its changes since `base-version` unless `force?`,
-  and stops when the kept changes depend on content the pull removes."
-  [repo branch base-version {:keys [force? report] :or {report no-report}}]
-  (let [{:keys [tip base ours theirs]} (state repo branch base-version)
+(defn- pull-tip!
+  "Pulls the content of `tip`, the fetched version at the tip of the branch, into the app DB with the options of
+  [[pull!]], reading the documents even when `tip` is `base-version`."
+  [repo tip base-version {:keys [force? report] :or {report no-report}}]
+  (let [{:keys [base ours theirs]} (tip-state repo tip base-version)
         {:keys [merged conflicts]} (if force?
                                      {:merged theirs}
                                      (remote-sync.merge/merge-documents base ours theirs))
@@ -149,6 +155,18 @@
             {:status  :success
              :version tip
              :outcome (if (pos? changed) {:kind "pulled" :count changed} {:kind "pull-skipped"})})))))
+
+(defn pull!
+  "Pulls the content of `branch` of `repo` into the app DB, keeping its changes since `base-version` unless `force?`,
+  and stops when the kept changes depend on content the pull removes; a pull that keeps them reads no documents when
+  the tip of the branch is `base-version`."
+  [repo branch base-version {:keys [force?] :as options}]
+  (let [tip (fetch-tip! repo branch)]
+    (if (and (= tip base-version) (not force?))
+      {:status  :success
+       :version tip
+       :outcome {:kind "pull-skipped"}}
+      (pull-tip! repo tip base-version options))))
 
 (defn local-changes
   "The `{:key :status :doc}` of each synced entity of the app DB that changed since the `base` documents of the tree it

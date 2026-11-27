@@ -1,6 +1,6 @@
 ---
 title: Modular embedding - authentication
-summary: Adding SSO with JWT or SAML for authenticating modular embeds.
+summary: Set up SSO with JWT or SAML to authenticate people in your modular embeds.
 redirect_from:
   - /docs/latest/embedding/sdk/authentication
 ---

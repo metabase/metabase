@@ -8,11 +8,11 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.oauth-server.core :as oauth-server]
-   [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
@@ -268,10 +268,10 @@
             (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
             (testing "authenticates before deactivation"
               (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User :id user-id {:is_active false})
+            (user/update-users! [{:id user-id :is_active false}])
             (testing "after deactivation the token no longer authenticates"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User :id user-id {:is_active true})
+            (user/update-users! [{:id user-id :is_active true}])
             (testing "after reactivation the same token STILL does not authenticate"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))))))))
 
@@ -295,13 +295,13 @@
             (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
             (testing "resolves while the user is active"
               (is (= user-id (:user-id (oauth-server/resolve-access-token token)))))
-            (t2/query {:update :core_user :set {:is_active false} :where [:= :id user-id]})
+            (t2/query {:update (t2/table-name :model/User) :set {:is_active false} :where [:= :id user-id]})
             (testing "stops resolving once the user is deactivated"
               (is (nil? (oauth-server/resolve-access-token token)))
               (testing "and the token itself was not revoked — the resolver's gate did the refusing"
                 (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token token)))))
             (finally
-              (t2/query {:update :core_user :set {:is_active true} :where [:= :id user-id]})
+              (t2/query {:update (t2/table-name :model/User) :set {:is_active true} :where [:= :id user-id]})
               (t2/delete! :model/OAuthAccessToken :token token))))))))
 
 (deftest bearer-only-paths-ignore-sessions-and-api-keys-test

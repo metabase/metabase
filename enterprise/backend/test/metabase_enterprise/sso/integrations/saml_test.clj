@@ -316,10 +316,10 @@
 (defn- embedding-relay-state-key!
   "Persist a relay-state entry like the embedding GET flow does, returning its RelayState key."
   [origin]
-  (relay-state/persist! {:id           (relay-state/generate-key)
-                         :continue-url (str (system/site-url) "/auth/sso")
-                         :origin       origin
-                         :embedding?   true}))
+  (relay-state/create-sso-relay-state! {:id           (relay-state/generate-key)
+                                        :continue-url (str (system/site-url) "/auth/sso")
+                                        :origin       origin
+                                        :embedding?   true}))
 
 (defn- some-saml-attributes [user-nickname]
   {"http://schemas.auth0.com/identities/default/provider"   "auth0"
@@ -1059,7 +1059,7 @@
                                              saml-attribute-tenant "tenant"]
             (do-with-some-validators-disabled!
              (fn []
-               (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+               (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
                  (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                               default-redirect-uri)
                        response    (client/client-real-response :post 302 "/auth/sso" req-options)]

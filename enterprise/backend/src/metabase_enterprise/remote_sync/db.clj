@@ -3,6 +3,7 @@
   the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -10,6 +11,21 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn checkout-worktree-id :- [:maybe ms/PositiveInt]
+  "The id of the worktree the user with `user-id` checked out, or nil."
+  [user-id :- ms/PositiveInt]
+  (t2/select-one-fn :worktree_id :model/RemoteSyncWorktreeUser :user_id user-id))
+
+(mu/defn worktree-by-id :- [:maybe ::remote-sync.schema/worktree]
+  "The worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/RemoteSyncWorktree :id worktree-id))
+
+(mu/defn non-default-worktree :- [:maybe ::remote-sync.schema/worktree]
+  "The worktree other than the default one with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/RemoteSyncWorktree :id worktree-id :is_default false))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
@@ -24,43 +40,34 @@
   [model :- :keyword]
   (t2/count model (first (t2/primary-keys model)) [:in (remote-sync/synced-ids-clause model nil)]))
 
-(mu/defn delete-rows!
-  "Deletes the rows of `model` with the primary keys `pks`, running its hooks."
-  [model :- :keyword
-   pks   :- [:sequential [:or :int :string]]]
-  (t2/delete! model (first (t2/primary-keys model)) [:in pks]))
-
 (mu/defn built-in-entity-ids :- [:set :string]
   "Those of the `entity-ids` of rows of `model` that every instance has."
   [model      :- :keyword
    entity-ids :- [:sequential :string]]
-  (if (seq entity-ids)
-    (into #{}
-          (map :entity_id)
-          (t2/query {:select [:row.entity_id]
-                     :from   [[(t2/table-name model) :row]]
-                     :where  [:and [:in :row.entity_id entity-ids] (remote-sync/built-in-filter-clause model :row)]}))
-    #{}))
+  (into #{}
+        (map :entity_id)
+        (mdb/select-batched #(t2/query {:select [:row.entity_id]
+                                        :from   [[(t2/table-name model) :row]]
+                                        :where  [:and
+                                                 [:in :row.entity_id %]
+                                                 (remote-sync/built-in-filter-clause model :row)]})
+                            entity-ids)))
 
 (mu/defn rows-not-built-in
   "The rows of `model` with the primary keys `pks` that not every instance has."
   [model :- :keyword
    pks   :- [:sequential [:or :int :string]]]
-  (if (seq pks)
-    (let [pk (u/qualified-key :row (first (t2/primary-keys model)))]
-      (t2/select [model :row.*] {:from  [[(t2/table-name model) :row]]
-                                 :where [:and [:in pk pks] [:not (remote-sync/built-in-filter-clause model :row)]]}))
-    []))
+  (let [pk (u/qualified-key :row (first (t2/primary-keys model)))]
+    (mdb/select-batched #(t2/select [model :row.*] {:from  [[(t2/table-name model) :row]]
+                                                    :where [:and
+                                                            [:in pk %]
+                                                            [:not (remote-sync/built-in-filter-clause model :row)]]})
+                        pks)))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
-
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (mdb/select-batched #(t2/select :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn synced-card-counts-by-type :- [:map-of :keyword :int]
   "The number of Cards remote sync syncs, by `:type`."
@@ -72,7 +79,7 @@
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id]))
+  (t2/select-one :model/RemoteSyncTask :id task-id))
 
 (mu/defn task-cancelled?
   "The cancelled flag of the RemoteSyncTask with `task-id`."
@@ -167,7 +174,7 @@
                  :where  [:and stale [:in :id ids]]}))
     ids))
 
-(mu/defn delete-tasks-started-before!
+(mu/defn delete-remote-sync-tasks-for-cleanup!
   "Delete the RemoteSyncTasks started before `cutoff` but the one with `kept-id`, returning the number deleted."
   [cutoff  :- ms/TemporalInstant
    kept-id :- [:maybe ms/PositiveInt]]
@@ -176,4 +183,57 @@
 (mu/defn users-by-id
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
-  (t2/select-pk->fn identity :model/User :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/User :id [:in %]) user-ids))
+
+(mu/defn worktree-users :- [:sequential :map]
+  "The active users who checked out the worktrees with `worktree-ids`, each with the `worktree_id` they checked out."
+  [worktree-ids :- [:sequential ms/PositiveInt]]
+  (let [user (t2/table-name :model/User)
+        col  (partial u/qualified-key user)]
+    (t2/select [:model/User [(col :id) :id] (col :email) (col :first_name) (col :last_name) :wu.worktree_id]
+               {:join     [[(t2/table-name :model/RemoteSyncWorktreeUser) :wu] [:= :wu.user_id (col :id)]]
+                :where    [:and [:in :wu.worktree_id worktree-ids] [:= (col :is_active) true]]
+                :order-by [[(col :id) :asc]]})))
+
+(mu/defn worktrees :- [:sequential ::remote-sync.schema/worktree]
+  "Every worktree but the default one, by branch."
+  []
+  (t2/select :model/RemoteSyncWorktree :is_default false {:order-by [[:branch :asc] [:id :asc]]}))
+
+(mu/defn worktree-branch :- [:maybe :string]
+  "The branch of the worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one-fn :branch :model/RemoteSyncWorktree :id worktree-id))
+
+(mu/defn insert-worktree! :- ::remote-sync.schema/worktree
+  "Insert the worktree `worktree` and return it."
+  [worktree :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/RemoteSyncWorktree worktree))
+
+(mu/defn update-worktree!
+  "Set the columns `changes` of the worktree with `worktree-id`."
+  [worktree-id :- ms/PositiveInt
+   changes     :- ::remote-sync.schema/worktree.update]
+  (t2/update! :model/RemoteSyncWorktree :id worktree-id changes))
+
+(mu/defn delete-worktree!
+  "Delete the worktree with `worktree-id`, the database deleting its content and the checkouts of it."
+  [worktree-id :- ms/PositiveInt]
+  (t2/delete! :model/RemoteSyncWorktree :id worktree-id))
+
+(mu/defn delete-checkout!
+  "Delete the checkout of the user with `user-id`, who then works in the main app."
+  [user-id :- ms/PositiveInt]
+  (t2/delete! :model/RemoteSyncWorktreeUser :user_id user-id))
+
+(mu/defn delete-checkouts! :- :nil
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree."
+  [user-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/RemoteSyncWorktreeUser :user_id [:in user-ids])
+  nil)
+
+(mu/defn insert-checkout!
+  "Record that the user with `user-id` checked out the worktree with `worktree-id`."
+  [user-id     :- ms/PositiveInt
+   worktree-id :- ms/PositiveInt]
+  (t2/insert! :model/RemoteSyncWorktreeUser {:user_id user-id :worktree_id worktree-id}))

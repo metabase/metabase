@@ -5,6 +5,8 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on the Metabase backend paths that write to the customer's warehouse: actions, uploads, transforms and model persistence. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.

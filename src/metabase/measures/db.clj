@@ -2,7 +2,8 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema :as measures.schema]
@@ -24,18 +25,6 @@
                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
                       :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
-(mu/defn insert-measure!
-  "Insert a Measure and return the inserted instance."
-  [creator-id   :- ::lib.schema.id/user
-   measure-name :- :string
-   description  :- [:maybe :string]
-   definition   :- [:maybe ::measures.schema/measure.definition]]
-  (t2/insert-returning-instance! :model/Measure
-                                 :creator_id  creator-id
-                                 :name        measure-name
-                                 :description description
-                                 :definition  definition))
-
 (mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
@@ -45,12 +34,6 @@
   "The unarchived Measures, in case-insensitive name order."
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
-
-(mu/defn update-measure!
-  "Apply `changes` to the Measure with `id`."
-  [id      :- ::lib.schema.id/measure
-   changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure :id id changes))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -65,7 +48,7 @@
 (mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
   [id                 :- ::lib.schema.id/measure
-   dimensions         :- [:maybe sequential?]
+   dimensions         :- [:maybe [:sequential ::measures.schema/measure.dimension]]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
 
@@ -73,6 +56,20 @@
   "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Measure :id :name :table_id] :id [:in %]) ids)
         (t2/hydrate [:table [:collection :effective_ancestors]])
-        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))
+        (->> (mapv (fn [row] (update row :table #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
+
+(mu/defn dependency-measure-items :- :map
+  "The query of the Measures the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
+  tables the user queries, located by their table."
+  [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
+  {:select    [[:measure.id :entity_id] [:measure.name :name] [:table.display_name :location]]
+   :from      [[(t2/table-name :model/Measure) :measure]]
+   :left-join [[(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id]]
+   :where     (into [:and]
+                    (remove nil?)
+                    [[:in :measure.table_id ^:allow-subquery {:select [(u/qualified-key (t2/table-name :model/Table) :id)]
+                                                              :from   [(t2/table-name :model/Table)]
+                                                              :where  (collections.listing/visible-tables-clause (u/qualified-key (t2/table-name :model/Table) :id) opts)}]
+                     (collections.listing/archived-clause :measure include-archived)])})

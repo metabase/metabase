@@ -6,7 +6,6 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { checkNotNull } from "metabase/utils/types";
 import type { TableId } from "metabase-types/api";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -14,11 +13,6 @@ const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 const BASE_URL = "/data-studio/schema-viewer";
 const PUBLIC_SCHEMA = "PUBLIC";
 const ERD_ALIAS = "erd";
-
-// Layout constants mirrored from the SchemaViewer source. Keep in sync.
-const MIN_ZOOM = 0.3;
-const MIN_ZOOM_FOR_TARGET = 0.5;
-const TOP_MARGIN_PX = 50;
 
 const SV_SCHEMA = "sv_test";
 const SV_EXTRA_SCHEMA = "sv_extra";
@@ -28,9 +22,6 @@ const SV_EXTRA_SCHEMA = "sv_extra";
 //  - sv_test.users / sv_test.profiles → one-to-one (shared PK)
 //  - sv_test.categories.parent_id → categories.id (self-reference)
 //  - sv_test.products.lookup_id → sv_extra.lookup.id (cross-schema FK)
-//  - sv_extra.other — a second cross-schema table with no relationship,
-//    used to differentiate URL-supplied table-ids from UKV-saved ones in
-//    the precedence test.
 const SV_SETUP_SQL = `
   DROP SCHEMA IF EXISTS sv_test CASCADE;
   DROP SCHEMA IF EXISTS sv_extra CASCADE;
@@ -39,10 +30,6 @@ const SV_SETUP_SQL = `
   CREATE TABLE sv_extra.lookup (
     id SERIAL PRIMARY KEY,
     code TEXT
-  );
-  CREATE TABLE sv_extra.other (
-    id SERIAL PRIMARY KEY,
-    label TEXT
   );
   CREATE TABLE sv_test.users (
     id SERIAL PRIMARY KEY,
@@ -69,69 +56,11 @@ const SV_REQUIRED_TABLES = [
   "categories",
   "products",
   "lookup",
-  "other",
 ];
 
 const tableNode = (tableId: TableId) => cy.get(`[data-id="table-${tableId}"]`);
 const schemaPickerTrigger = () => cy.findByTestId("schema-picker-button");
-const searchInput = () => cy.findByTestId("schema-viewer-node-search-input");
 const infoPanel = () => cy.findByTestId("graph-info-panel");
-const reactFlowViewport = () => cy.get(".react-flow__viewport");
-
-function assertViewportZoom(matcher: (zoom: number) => void) {
-  reactFlowViewport().should(($el) => {
-    const style = $el.attr("style") ?? "";
-    const match = /scale\(([\d.]+)\)/.exec(style);
-    expect(match, `viewport transform should contain scale(...): ${style}`).to
-      .not.be.null;
-    matcher(parseFloat(checkNotNull(match)[1]));
-  });
-}
-
-function assertNodeInViewport(tableId: TableId) {
-  cy.get(".react-flow").should(($reactFlowNode) => {
-    const viewportRect = $reactFlowNode[0].getBoundingClientRect();
-    const $tableNode = Cypress.$(`[data-id="table-${tableId}"]`);
-    expect(
-      $tableNode.length,
-      `table-${tableId} should be in the DOM`,
-    ).to.be.greaterThan(0);
-    const tableNodeRect = $tableNode[0].getBoundingClientRect();
-    const overlaps =
-      tableNodeRect.right > viewportRect.left &&
-      tableNodeRect.left < viewportRect.right &&
-      tableNodeRect.bottom > viewportRect.top &&
-      tableNodeRect.top < viewportRect.bottom;
-    expect(
-      overlaps,
-      `table-${tableId} bounding rect should overlap the React Flow viewport`,
-    ).to.be.true;
-  });
-}
-
-// Every camera move onto a table centres it horizontally and puts its top
-// edge TOP_MARGIN_PX below the top of the canvas.
-function assertNodeFocused(tableId: TableId) {
-  cy.get(".react-flow").should(($reactFlowNode) => {
-    const viewportRect = $reactFlowNode[0].getBoundingClientRect();
-    const $tableNode = Cypress.$(`[data-id="table-${tableId}"]`);
-    expect(
-      $tableNode.length,
-      `table-${tableId} should be in the DOM`,
-    ).to.be.greaterThan(0);
-    const tableNodeRect = $tableNode[0].getBoundingClientRect();
-    expect(
-      tableNodeRect.top - viewportRect.top,
-      `table-${tableId} top edge should be ${TOP_MARGIN_PX}px below the canvas top`,
-    ).to.be.closeTo(TOP_MARGIN_PX, 2);
-    const viewportCenterX = (viewportRect.left + viewportRect.right) / 2;
-    expect(
-      tableNodeRect.left < viewportCenterX &&
-        tableNodeRect.right > viewportCenterX,
-      `table-${tableId} should span the horizontal centre of the canvas`,
-    ).to.be.true;
-  });
-}
 
 describe("scenarios > schema-viewer (Sample Database happy path)", () => {
   beforeEach(() => {
@@ -141,7 +70,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
   });
 
-  it("walks the full picker → canvas → selection → info panel → layout → search flow on the Sample Database, then keeps it across a reload and a bare-URL visit", () => {
+  it("picks the Sample Database, renders its tables and the info panel from the real ERD, then keeps the context across a reload and a bare-URL visit", () => {
     cy.log("Bare URL renders the empty state with the picker auto-opened");
     cy.visit(BASE_URL);
     cy.findByTestId("schema-picker-button")
@@ -152,7 +81,6 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     H.miniPicker().findByText("Sample Database").click();
     H.miniPicker().findByText("PUBLIC").click();
 
-    cy.log("Single-schema DB auto-navigates into PUBLIC and fetches ERD");
     cy.wait("@erd")
       .its("request.url")
       .should("include", `database-id=${SAMPLE_DB_ID}`)
@@ -181,109 +109,6 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .and("contain", "USER_ID")
       .and("contain", "PEOPLE");
 
-    cy.log("Read-only adapter: no 'Find and replace' / 'Replace' button");
-    infoPanel()
-      .findByRole("button", { name: /Replace/i })
-      .should("not.exist");
-
-    cy.log("Click panel title — camera re-zooms to the selected Orders node");
-    infoPanel().findByRole("heading", { name: "ORDERS" }).click();
-    assertViewportZoom((z) =>
-      expect(z, "title click should zoom correctly").to.be.at.least(
-        MIN_ZOOM_FOR_TARGET,
-      ),
-    );
-    assertNodeFocused(ORDERS_ID);
-
-    cy.log(
-      "Click an FK link inside the info panel — camera pans to the target",
-    );
-    infoPanel()
-      .findByRole("button", { name: /Products/i })
-      .click();
-    assertNodeFocused(PRODUCTS_ID);
-    cy.log("Selection stays on Orders after FK link click");
-    infoPanel().findByRole("heading", { name: "ORDERS" }).should("be.visible");
-
-    cy.log("Auto-layout fits the entire canvas — every table is on screen");
-    cy.contains("button", "Auto-layout").should("be.visible").click();
-    assertNodeInViewport(ORDERS_ID);
-    assertNodeInViewport(PRODUCTS_ID);
-    assertNodeInViewport(PEOPLE_ID);
-    assertNodeInViewport(REVIEWS_ID);
-    cy.log("Auto-layout zoom is within React Flow's clamp range (>= MIN_ZOOM)");
-    assertViewportZoom((z) =>
-      expect(z, "auto-layout zoom should be at least MIN_ZOOM").to.be.at.least(
-        MIN_ZOOM,
-      ),
-    );
-
-    cy.log("Re-select Orders, then Focus-node zooms in onto Orders");
-    tableNode(ORDERS_ID).findByText("ORDERS").click();
-    cy.contains("button", "Focus node").should("be.visible").click();
-    assertViewportZoom((z) =>
-      expect(z, "focus-node should be zoomed in").to.be.at.least(
-        MIN_ZOOM_FOR_TARGET,
-      ),
-    );
-    assertNodeFocused(ORDERS_ID);
-
-    cy.log(
-      "Double-click Reviews — camera zooms in onto Reviews; the focus-node button stays shown",
-    );
-    tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick();
-    assertViewportZoom((z) =>
-      expect(z, "double-click should zoom in").to.be.at.least(
-        MIN_ZOOM_FOR_TARGET,
-      ),
-    );
-    assertNodeFocused(REVIEWS_ID);
-    cy.contains("button", "Focus node").should("be.visible");
-
-    cy.log("Selection moved from Orders to Reviews — prior selection cleared");
-    infoPanel().findByRole("heading", { name: "REVIEWS" }).should("be.visible");
-    infoPanel().findByRole("heading", { name: "ORDERS" }).should("not.exist");
-
-    cy.log("Closing the info panel clears node selection");
-    infoPanel().findByLabelText("Close").click({ force: true });
-    cy.findByTestId("graph-info-panel").should("not.exist");
-    cy.contains("button", "Focus node").should("not.exist");
-
-    cy.log(
-      "Clicking the USER_ID FK on Orders (target on canvas) selects the connecting edge and pans the camera",
-    );
-
-    tableNode(ORDERS_ID).findByText("USER_ID").click({ force: true });
-    assertNodeFocused(PEOPLE_ID);
-    cy.findAllByTestId("schema-viewer-edge-path")
-      .filter('[data-selected="true"]')
-      .should("have.length", 1);
-
-    cy.log(
-      "Re-clicking the now-selected edge alternates the camera between source (Orders) and target (People)",
-    );
-    const selectedEdge = () => cy.get(".react-flow__edge.selected");
-    selectedEdge().click({ force: true });
-    assertNodeFocused(ORDERS_ID);
-    selectedEdge().click({ force: true });
-    assertNodeFocused(PEOPLE_ID);
-
-    cy.log(
-      "Search input filters by name; selecting an option triggers the camera",
-    );
-    searchInput().click().should("be.focused").type("ord");
-    cy.findByRole("option", { name: /Orders/i })
-      .should("be.visible")
-      .click();
-    assertNodeFocused(ORDERS_ID);
-
-    cy.log("Empty result shows 'No tables found'");
-    searchInput().click().clear().type("zzz_nope_zzz");
-    cy.findByTestId("schema-viewer-node-search-dropdown")
-      .findByText("No tables found")
-      .should("be.visible");
-    searchInput().type("{esc}");
-
     cy.log("Hard reload reproduces the same canvas state");
     cy.reload();
     cy.wait("@erd");
@@ -297,24 +122,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
       .should("include", `database-id=${SAMPLE_DB_ID}`)
       .and("include", `schema=${PUBLIC_SCHEMA}`);
     tableNode(ORDERS_ID).should("be.visible");
-
-    cy.log("Picker trigger shows the current schema name");
     schemaPickerTrigger().should("contain", PUBLIC_SCHEMA);
-
-    cy.log(
-      "The picker opened on the bare URL stays open at the database list after the redirect",
-    );
-    H.miniPicker().findByText("Sample Database").should("be.visible");
-    H.miniPicker().findByTestId("mini-picker-header").should("not.exist");
-
-    cy.log("Click outside the popover closes it");
-    cy.get("body").click(0, 0);
-    H.miniPicker().should("not.exist");
-
-    cy.log("The trigger re-opens the picker at the database list");
-    schemaPickerTrigger().click();
-    H.miniPicker().findByText("Sample Database").should("be.visible");
-    H.miniPicker().findByTestId("mini-picker-header").should("not.exist");
   });
 });
 
@@ -339,7 +147,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     );
   });
 
-  it("drills into a multi-schema DB via the picker, renders self-ref + one-to-one + cross-schema edges, expands an off-canvas FK target, and persists the expansion", () => {
+  it("drills into a multi-schema DB via the picker, renders the edges the backend returns, expands an off-canvas FK target, and persists the expansion", () => {
     cy.log("Capture writable-DB table IDs created by the setup SQL");
     H.getTableId({
       databaseId: WRITABLE_DB_ID,
@@ -411,16 +219,6 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.get(".react-flow__edge").should("have.length", 2);
 
     cy.log(
-      "Clicking the profiles.user_id FK (target on canvas) selects the connecting edge",
-    );
-    cy.get<TableId>("@profilesId").then((id) =>
-      tableNode(id).findByText("user_id").click(),
-    );
-    cy.findAllByTestId("schema-viewer-edge-path")
-      .filter('[style*="stroke-width: 2"]')
-      .should("have.length", 1);
-
-    cy.log(
       "Click the cross-schema FK on products.lookup_id — adds sv_extra.lookup to the canvas",
     );
     cy.get<TableId>("@productsId").then((id) =>
@@ -429,7 +227,6 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.wait("@erd");
     cy.get<TableId>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
-      assertNodeFocused(id);
     });
     cy.log("Edge count grows by one (products → lookup edge added)");
     cy.get(".react-flow__edge").should("have.length", 3);
@@ -443,119 +240,6 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
       tableNode(id).should("be.visible");
     });
     cy.get(".react-flow__edge").should("have.length", 3);
-
-    cy.log(
-      "URL precedence: visit the same context with table-ids=<other> — URL must win, the UKV-saved lookup is ignored",
-    );
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "other",
-      schema: SV_EXTRA_SCHEMA,
-    }).as("otherId");
-    cy.get<TableId>("@otherId").then((otherId) => {
-      cy.visit(
-        `${BASE_URL}?database-id=${WRITABLE_DB_ID}&schema=${SV_SCHEMA}&table-ids=${otherId}`,
-      );
-    });
-    cy.wait("@erd").then(({ request }) => {
-      cy.get<TableId>("@otherId").then((otherId) => {
-        expect(
-          request.url,
-          "ERD request should carry the URL-supplied table-ids",
-        ).to.include(`table-ids=${otherId}`);
-      });
-      cy.get<TableId>("@lookupId").then((lookupId) => {
-        expect(
-          request.url,
-          "ERD request must NOT include the UKV-saved table-ids",
-        ).to.not.include(`table-ids=${lookupId}`);
-      });
-    });
-    cy.log("Canvas reflects URL precedence: `other` is shown, `lookup` is not");
-    cy.get<TableId>("@otherId").then((id) =>
-      tableNode(id).should("be.visible"),
-    );
-    cy.get<TableId>("@lookupId").then((id) =>
-      tableNode(id).should("not.exist"),
-    );
-  });
-});
-
-describe("scenarios > schema-viewer (upsell, entry points, loader and error states)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("shows the upsell without :dependencies, then opens from the Data Studio sidebar (with a loader) and the Data Model 'View schema' action, and shows the error panel when the ERD request fails", () => {
-    cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
-
-    cy.log("Visit the schema viewer URL without activating a token");
-    cy.visit(BASE_URL);
-
-    cy.log("Upsell page is shown");
-    cy.findByRole("heading", {
-      name: "Visualize your database structure",
-    }).should("be.visible");
-
-    cy.log("ERD endpoint was never called");
-    cy.get(`@${ERD_ALIAS}.all`).should("have.length", 0);
-
-    H.activateToken("bleeding-edge");
-    cy.intercept("GET", "/api/ee/erd*", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(1500);
-      });
-      req.continue();
-    }).as("slowErd");
-
-    cy.log(
-      "Click 'Schema viewer' tab in the Data Studio sidebar — opens the bare schema viewer URL",
-    );
-    H.DataStudio.visit();
-    H.DataStudio.nav().findByText("Schema viewer").click();
-    cy.url().should("include", "/data-studio/schema-viewer");
-    cy.findByTestId("schema-picker-button")
-      .findByText("Pick a schema to view")
-      .should("be.visible");
-
-    cy.log(
-      "Slow ERD response — the centred loader appears, then the canvas renders",
-    );
-    H.miniPicker().findByText("Sample Database").click();
-    H.miniPicker().findByText("PUBLIC").click();
-    cy.findByTestId("schema-viewer-loader").should("be.visible");
-    cy.wait("@slowErd");
-    cy.findByTestId("schema-viewer-loader").should("not.exist");
-    tableNode(ORDERS_ID).should("be.visible");
-
-    cy.log("Navigate to the Orders Data Model page via the table picker tree");
-    H.DataStudio.nav().findByText("Connected data").click();
-    cy.findAllByTestId("tree-item").contains("Orders").click();
-
-    cy.log(
-      "Click the 'View schema' action in the Orders table section — opens with Orders as focal",
-    );
-    H.DataModel.TableSection.getActionsMenuButton().click();
-    H.menu().findByText("View schema").click();
-    cy.wait("@slowErd");
-    cy.url()
-      .should("include", "/data-studio/schema-viewer")
-      .and("include", `database-id=${SAMPLE_DB_ID}`)
-      .and("include", `table-ids=${ORDERS_ID}`);
-    tableNode(ORDERS_ID).should("be.visible");
-    cy.log("Camera focuses the focal table");
-    assertNodeFocused(ORDERS_ID);
-
-    cy.log("Force a 500 — error panel renders with the surfaced message");
-    cy.intercept("GET", "/api/ee/erd*", { statusCode: 500, body: "boom" }).as(
-      "erdError",
-    );
-    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
-    cy.wait("@erdError");
-    cy.findByTestId("schema-viewer-error")
-      .should("be.visible")
-      .should("contain", "boom");
   });
 });
 

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -125,6 +126,23 @@
             (is (=? {:status :success} (remote-sync.tu/pull! url v1 {:force? true})))
             (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
 
+(deftest pull-skips-unmoved-tip-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+        (let [{v1 :version} (remote-sync.tu/push! url nil)]
+          (t2/update! :model/Card :id (:id card) {:name "Renamed locally"})
+          (testing "pull of unmoved tip reads no local documents and keeps local changes"
+            (mt/with-dynamic-fn-redefs [content/local-documents (fn [] (throw (ex-info "read local documents" {})))]
+              (is (=? {:status :success :version v1 :outcome {:kind "pull-skipped"}}
+                      (remote-sync.tu/pull! url v1))))
+            (is (= "Renamed locally" (t2/select-one-fn :name :model/Card :id (:id card)))))
+          (testing "forced pull of unmoved tip still discards local changes"
+            (is (=? {:status :success :version v1 :outcome {:kind "pulled" :count 1}}
+                    (remote-sync.tu/pull! url v1 {:force? true})))
+            (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card))))))))))
+
 (deftest pull-refuses-to-remove-what-local-changes-depend-on-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
@@ -172,3 +190,35 @@
             (t2/update! :model/Card :id (:id card) {:name "Renamed card"})
             (testing "a new entity is created and a changed one updated"
               (is (= #{["create" "New card"] ["update" "Renamed card"]} (changes))))))))))
+
+(deftest push-refuses-unsynced-goal-sources-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced   {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection unsynced {:name "Unsynced" :location "/"}
+                     :model/Card       source   {:name "Unsynced goal source" :collection_id (:id unsynced)}
+                     :model/Card       _        {:name                   "Synced chart"
+                                                 :collection_id          (:id synced)
+                                                 :display                :line
+                                                 :visualization_settings {:graph.show_goal  true
+                                                                          :graph.goal_value {:id     (:id source)
+                                                                                             :type   "card"
+                                                                                             :column "total"}}}]
+        (testing "a push fails, naming the goal source, when a synced chart's goal reads unsynced content"
+          (is (=? {:status :error :message #"Synced chart uses Card .+, which isn't synced\..*"}
+                  (remote-sync.tu/push! url nil))))))))
+
+(deftest push-refuses-unsynced-measure-goal-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced  {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Measure    measure {:name "Unsynced measure"}
+                     :model/Card       _       {:name                   "Synced chart"
+                                                :collection_id          (:id synced)
+                                                :display                :progress
+                                                :visualization_settings {:progress.goal {:id     (:id measure)
+                                                                                         :type   "measure"
+                                                                                         :column "count"}}}]
+        (testing "a push names a goal's measure that isn't synced"
+          (is (=? {:status :error :message #"Synced chart uses Measure .+, which isn't synced\..*"}
+                  (remote-sync.tu/push! url nil))))))))

@@ -1,9 +1,9 @@
 (ns metabase.documents.recent-views-test
   (:require
    [clojure.test :refer :all]
-   [metabase.activity-feed.core :as activity-feed]
-   [metabase.activity-feed.models.recent-views :as recent-views.model]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -40,8 +40,8 @@
 
 (deftest select-documents-for-recents-empty-input-test
   (testing "returns empty vector when given empty document-ids"
-    (is (= [] (#'recent-views.model/document-recents [])))
-    (is (= [] (#'recent-views.model/document-recents nil)))))
+    (is (= [] (documents.db/recent-view-documents [])))
+    (is (= [] (documents.db/recent-view-documents nil)))))
 
 (deftest select-documents-for-recents-with-collection-test
   (testing "returns documents with collection information"
@@ -54,7 +54,7 @@
                    :model/Document {doc2-id :id} {:name "Document 2"
                                                   :collection_id coll-id
                                                   :archived false}]
-      (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
+      (let [results (documents.db/recent-view-documents [doc1-id doc2-id])]
         (is (= 2 (count results)))
         ;; Check first document
         (let [doc1 (first (filter #(= (:id %) doc1-id) results))]
@@ -74,7 +74,7 @@
     (mt/with-temp [:model/Document {doc-id :id} {:name "Orphan Document"
                                                  :collection_id nil
                                                  :archived false}]
-      (let [results (#'recent-views.model/document-recents [doc-id])]
+      (let [results (documents.db/recent-view-documents [doc-id])]
         (is (= 1 (count results)))
         (let [doc (first results)]
           (is (= "Orphan Document" (:name doc)))
@@ -92,15 +92,14 @@
       (mt/with-temp [:model/Document {doc-id :id} {:name "Personal Document"
                                                    :collection_id coll-id
                                                    :archived false}]
-        (let [doc (first (#'recent-views.model/document-recents [doc-id]))]
+        (let [doc (first (documents.db/recent-view-documents [doc-id]))]
           (is (= coll-id (:collection_id doc)))
           (is (= "Rasta Toucan's Personal Collection" (:collection_name doc))))))))
 
 (deftest select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
     (mt/with-temp [:model/Collection {archived-coll-id :id} {:name "Archived Collection"
-                                                             :authority_level "official"
-                                                             :archived true}
+                                                             :authority_level "official"}
                    :model/Collection {active-coll-id :id} {:name "Active Collection"
                                                            :authority_level "official"
                                                            :archived false}
@@ -110,7 +109,8 @@
                    :model/Document {doc2-id :id} {:name "Document in Active Collection"
                                                   :collection_id active-coll-id
                                                   :archived false}]
-      (let [results (#'recent-views.model/document-recents [doc1-id doc2-id])]
+      (t2/update! (t2/table-name :model/Collection) :id archived-coll-id {:archived true})
+      (let [results (documents.db/recent-view-documents [doc1-id doc2-id])]
         (is (= 2 (count results)))
         ;; Document from archived collection should have nil collection info
         (let [doc1 (first (filter #(= (:id %) doc1-id) results))]
@@ -134,7 +134,7 @@
                    :model/Document {doc-id :id} {:name "Archived Document"
                                                  :collection_id coll-id
                                                  :archived true}]
-      (let [results (#'recent-views.model/document-recents [doc-id])]
+      (let [results (documents.db/recent-view-documents [doc-id])]
         (is (= 1 (count results)))
         (let [doc (first results)]
           (is (= "Archived Document" (:name doc)))
@@ -142,14 +142,14 @@
 
 (deftest select-documents-for-recents-nonexistent-ids-test
   (testing "handles non-existent document IDs gracefully"
-    (let [results (#'recent-views.model/document-recents [999999 888888])]
+    (let [results (documents.db/recent-view-documents [999999 888888])]
       (is (= [] results)))))
 
 (deftest select-documents-for-recents-mixed-ids-test
   (testing "handles mixed existing and non-existing document IDs"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Existing Document"
                                                  :archived false}]
-      (let [results (#'recent-views.model/document-recents [doc-id 999999])]
+      (let [results (documents.db/recent-view-documents [doc-id 999999])]
         (is (= 1 (count results)))
         (is (= "Existing Document" (:name (first results))))))))
 
@@ -157,43 +157,45 @@
   (testing "preserves order and handles duplicates in document-ids"
     (mt/with-temp [:model/Document {doc1-id :id} {:name "Document 1" :archived false}
                    :model/Document {doc2-id :id} {:name "Document 2" :archived false}]
-      (let [results (#'recent-views.model/document-recents [doc1-id doc2-id doc1-id])]
+      (let [results (documents.db/recent-view-documents [doc1-id doc2-id doc1-id])]
         ;; Should return unique documents even if IDs are duplicated
         (is (= 2 (count results)))
         (is (= #{doc1-id doc2-id} (set (map :id results))))))))
 
 (deftest recents-api-returns-documents-test
   (testing "/recents API returns viewed documents"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Document {doc-id :id} {:name "Test Document"
-                                                 :collection_id coll-id
-                                                 :archived false}]
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
-      (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
-        (is (some #(and (= (:model %) "document")
-                        (= (:id %) doc-id)
-                        (= (:name %) "Test Document"))
-                  (:recents response))
-            "Document should be present in recents")))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "Test Collection"}]))]
+        (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
+                                                     :collection_id coll-id
+                                                     :archived false}]
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
+          (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
+            (is (some #(and (= (:model %) "document")
+                            (= (:id %) doc-id)
+                            (= (:name %) "Test Document"))
+                      (:recents response))
+                "Document should be present in recents")))))))
 
 (deftest recents-api-excludes-exploration-documents-test
   (testing "/recents API hides documents attached to an exploration"
-    (mt/with-temp [:model/Collection  {coll-id :id}   {:name "Test Collection"}
-                   :model/Exploration {expl-id :id}   {:name "Expl"
-                                                       :creator_id (mt/user->id :rasta)}
-                   :model/Document    {plain-id :id}  {:name "Plain Document"
+    (mt/with-model-cleanup [:model/Collection]
+      (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "Test Collection"}]))]
+        (mt/with-temp [:model/Exploration {expl-id :id} {:name "Expl"
+                                                         :creator_id (mt/user->id :rasta)}
+                       :model/Document {plain-id :id} {:name "Plain Document"
                                                        :collection_id coll-id
                                                        :archived false}
-                   :model/Document    {expl-doc :id}  {:name "Exploration Document"
+                       :model/Document {expl-doc :id} {:name "Exploration Document"
                                                        :collection_id coll-id
                                                        :exploration_id expl-id
                                                        :archived false}]
-      ;; Bypass the write-time filter to simulate historical rows already present in recent_views.
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
-      (let [recents (:recents (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views]))
-            ids    (set (map :id (filter #(= (:model %) "document") recents)))]
-        (is (contains? ids plain-id)
-            "Plain document should appear in recents")
-        (is (not (contains? ids expl-doc))
-            "Exploration-attached document should be filtered out of recents")))))
+          ;; Bypass the write-time filter to simulate historical rows already present in recent_views.
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
+          (let [recents (:recents (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views]))
+                ids    (set (map :id (filter #(= (:model %) "document") recents)))]
+            (is (contains? ids plain-id)
+                "Plain document should appear in recents")
+            (is (not (contains? ids expl-doc))
+                "Exploration-attached document should be filtered out of recents")))))))

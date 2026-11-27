@@ -1,6 +1,8 @@
 (ns metabase.explorations.models.exploration-thread-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration-thread :as exploration-thread]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -37,7 +39,7 @@
 (defn- raw-transcript
   [id]
   (:query_plan_transcript (t2/query-one {:select [:query_plan_transcript]
-                                         :from   [:exploration_thread]
+                                         :from   [(t2/table-name :model/ExplorationThread)]
                                          :where  [:= :id id]})))
 
 (deftest transcript-is-stored-as-json-test
@@ -68,7 +70,7 @@
 (deftest transcript-unparseable-reads-as-nil-test
   (testing "an unparseable blob is logged and read as nil rather than breaking the thread read"
     (let [id (thread-with-transcript! nil)]
-      (t2/query {:update :exploration_thread
+      (t2/query {:update (t2/table-name :model/ExplorationThread)
                  :set    {:query_plan_transcript "{not json ]["}
                  :where  [:= :id id]})
       (is (nil? (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))
@@ -78,3 +80,35 @@
     (let [id (thread-with-transcript! transcript-with-full-plan-item)]
       (is (= transcript-with-full-plan-item
              (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Exploration {exploration-id :id} {}]
+    (let [started-at (java.time.Instant/now)
+          rows    (fn [n] (mapv (fn [i] {:exploration_id exploration-id :position i :name (mt/random-name)}) (range n)))
+          fresh!  (fn [n] (mapv :id (exploration-thread/create-threads! (rows n))))
+          counted (fn [f]
+                    (f 1)
+                    (is (= (f 2) (f 6))))]
+      (testing "creating threads"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration-thread/create-threads! rows))))))
+      (testing "updating threads, some already holding the new value"
+        (counted (fn [n]
+                   (let [ids (fresh! n)]
+                     (exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) (take-nth 2 ids)))
+                     (events.tu/statement-count!
+                      #(exploration-thread/update-threads! (mapv (fn [id] {:id id :started_at started-at}) ids))))))))))
+
+(deftest thread-without-position-goes-after-last-one-test
+  (mt/with-temp [:model/Exploration {exploration-id :id} {}
+                 :model/Exploration {other-id :id}       {}]
+    (let [position (fn [id] (t2/select-one-fn :position :model/ExplorationThread :id id))]
+      (testing "the first thread without a position goes after position 0, the next one after it"
+        (let [[a b] (repeatedly 2 #(t2/insert-returning-pk! :model/ExplorationThread {:exploration_id exploration-id}))]
+          (is (= [1 2] [(position a) (position b)]))))
+      (testing "a position that is given is kept, and the next thread goes after the highest one"
+        (let [given (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id exploration-id :position 7})
+              next  (first (exploration-thread/create-threads! [{:exploration_id exploration-id}]))]
+          (is (= 7 (position given)))
+          (is (= 8 (:position next)))))
+      (testing "the Explorations are counted apart"
+        (is (= 1 (position (t2/insert-returning-pk! :model/ExplorationThread {:exploration_id other-id}))))))))

@@ -65,12 +65,17 @@
   nil)
 
 (defn- collect-text-from-parts
-  "Collect all text content from parts into a single string."
+  "The text of `parts` as one string, with the text blocks separated by a blank line.
+
+  Example: the parts `\"First \"` and `\"point.\"` of block `t1` and `\"Second point.\"` of block `t2` give
+  `\"First point.\\n\\nSecond point.\"`. A text block that is only whitespace is left out."
   [parts]
   (->> parts
+       (into [] (streaming/combine-text-parts-xf))
        (filter #(= :text (:type %)))
        (map :text)
-       (str/join "")))
+       (remove str/blank?)
+       (str/join "\n\n")))
 
 (defn- summarize-tool-ios
   "Summarize tool inputs and outputs from parts."
@@ -144,7 +149,8 @@
   [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
-   [:content :string]])
+   [:content :string]
+   [:is_error {:optional true} :boolean]])
 
 (mr/def ::message
   "A single message in the conversation history.
@@ -191,14 +197,9 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
-(defn- terminal-tool-call?
+(defn- successful-terminal-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
-  tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
-  `:sql` profile after a successful `edit_sql_query`, or `ask_for_sql_clarification`) instead of
-  forcing the model to keep emitting tool calls under `:required-tool-call?`.
-
-  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  tool-name strings), whatever the `:non-terminal?` marks on the results."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
@@ -208,6 +209,22 @@
                     (contains? terminal-tools (:function p))
                     (successful-tool-output? (get outputs (:id p)))))
              parts)))))
+
+(defn- terminal-tool-call?
+  "Whether `parts` contain a successful call to one of the profile's `terminal-tools` that ends the turn. This lets a
+  profile end the turn as soon as it produces its answer (e.g. the `:sql` profile after a successful `edit_sql_query`,
+  or `ask_for_sql_clarification`) instead of forcing the model to keep emitting tool calls under
+  `:required-tool-call?`.
+
+  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct. No call
+  ends it while any result in `parts` is marked `:non-terminal?`, such as SQL with new reference
+  warnings: the model has not read that result yet. On the last step [[finish-reason]] ignores the marks."
+  [terminal-tools parts]
+  ;; Checked over every output, not only the terminal call's own: a second call that repeats the warning of a
+  ;; first one in the same response is accepted and unmarked, though the model has seen neither.
+  (and (not-any? #(and (= :tool-output (:type %)) (get-in % [:result :non-terminal?])) parts)
+       (successful-terminal-call? terminal-tools parts)))
 
 (defn- truncated?
   "Whether the provider cut this iteration off at its output-token limit. A truncated
@@ -280,15 +297,20 @@
        (not (errored? parts))))
 
 (defn- finish-reason
-  "Determine why the agent loop stopped."
+  "Determine why the agent loop stopped.
+
+  On the last step a successful terminal-tool call ends the turn as `:terminal-tool` even when a result is marked
+  `:non-terminal?`: the model has no step left to act on the mark."
   [iteration max-iterations terminal-tools parts]
-  (cond
-    (truncated? parts)                         :length
-    (errored? parts)                           :error
-    (terminal-tool-call? terminal-tools parts) :terminal-tool
-    (and (>= iteration max-iterations)
-         (has-tool-calls? parts))              :max-iterations
-    :else                                      :stop))
+  (let [last-step? (>= iteration max-iterations)]
+    (cond
+      (truncated? parts)                               :length
+      (errored? parts)                                 :error
+      (if last-step?
+        (successful-terminal-call? terminal-tools parts)
+        (terminal-tool-call? terminal-tools parts))    :terminal-tool
+      (and last-step? (has-tool-calls? parts))         :max-iterations
+      :else                                            :stop)))
 
 ;;; Call LLM
 (defn- part->invert-links-key
@@ -314,14 +336,22 @@
           parts)))
 
 (defn- turn-input-parts
-  "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
-  Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
-  the turn, and Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything
-  before it has changed."
-  [sent-parts context memory tools link-registry]
-  (into sent-parts
-        (invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
-                      link-registry)))
+  "The AISDK parts for this call of the turn.
+
+  Only the first call builds the history, with the `<context>` block [[init-agent]] rendered for the turn. A later
+  call sends what the previous call sent, exactly as sent, then the parts of the steps added since. The steps' parts
+  come last in [[messages/build-message-history]], so the result has the same order as a new build.
+
+  `sent-steps` is the number of memory steps that `sent-parts` holds, or nil before the first call."
+  [sent-parts sent-steps context memory tools link-registry]
+  (if sent-steps
+    ;; Do not build the history again. A new build inverts links against a registry that grows within the turn.
+    ;; Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything before it has
+    ;; changed.
+    (into sent-parts
+          (invert-links (messages/steps->parts (drop sent-steps (memory/get-steps memory)))
+                        link-registry))
+    (invert-links (messages/build-message-history context memory tools) link-registry)))
 
 (defn- call-llm
   "Call the LLM and stream processed parts.
@@ -407,11 +437,29 @@
    memory
    parts))
 
+(defn- step-parts
+  "The `parts` of an iteration, each text block merged; blank text stays, and the request drops it.
+
+  Examples:
+
+  - The deltas `[{:type :text :id \"t1\" :text \"Let me \"} {:type :text :id \"t1\" :text \"check.\"}
+    {:type :tool-input ...}]` become `[{:type :text :id \"t1\" :text \"Let me check.\"} {:type :tool-input ...}]`.
+  - The parts `[{:type :text :id \"t1\" :text \"First.\"} {:type :text :id \"t2\" :text \"Second.\"}]` have two ids, so
+    they stay two parts.
+
+  Blank text is text that is only whitespace. [[messages/sent-part?]] is the one place that drops it before the
+  request goes to a provider adapter."
+  [parts]
+  ;; Memory must keep each text block as one part, as the stored turn does (both use `combine-text-parts-xf`).
+  ;; Text streams as one part per delta. When memory keeps the deltas, the next turn's history does not start with
+  ;; the bytes that this turn sent, and the provider's prompt cache misses.
+  (into [] (streaming/combine-text-parts-xf) parts))
+
 (defn- update-memory
   "Update memory with parts from an iteration."
   [memory parts]
   (-> memory
-      (memory/add-step parts)
+      (memory/add-step (step-parts parts))
       (extract-queries parts)
       (extract-charts parts)))
 
@@ -573,8 +621,10 @@
 
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
-  does (see [[turn-input-parts]])."
-  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
+  does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps. The web
+  chat stores the turn with that block."
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan
+           full-context-replayed?]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -600,7 +650,9 @@
                          (assoc :conversation-id conversation-id
                                 :tool-names (set (keys base-tools))
                                 :request-canceled-chan request-canceled-chan)
-                         (memory/add-client-ids (client-content-ids context)))
+                         (memory/add-client-ids (client-content-ids context))
+                         (as-> m (memory/set-context-block
+                                  m (messages/render-context-block context m (not full-context-replayed?)))))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
@@ -654,6 +706,7 @@
      :status              :continue
      :usage-atom          usage-atom
      :sent-parts          []
+     :sent-steps          nil
      :undeclared-failures 0}))
 
 (defn- final-state-part [memory]
@@ -680,9 +733,13 @@
                  :result (rf result (final-state-part @(:memory-atom agent))))))))
 
 (defn- error-part [^Exception e]
-  {:type :error, :error (or (self/context-overflow-error e)
-                            (self/provider-error e)
-                            {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
+  (m/assoc-some {:type :error, :error (or (self/context-overflow-error e)
+                                          (self/provider-error e)
+                                          ;; An exception can have no message, such as a `NullPointerException`.
+                                          {:message (or (not-empty (.getMessage e)) (tru "Something went wrong."))
+                                           :type    (str (type e))
+                                           :data    (ex-data e)})}
+                :provider-failure (self/call-failure e)))
 
 (defn- usage-model
   "The model that token usage is keyed by: `provider-and-model` without its `metabase/` routing prefix."
@@ -748,8 +805,10 @@
   serves was canceled. When building its input or making it throws, its parts are only the usage it reported before
   that, which the turn's saved usage still has to count. The tools stay declared, since a changed tool set misses the
   prompt cache's tool and system prefix and invalidates the thinking that Claude replays, but the `none` tool choice
-  lets the model call none of them."
-  [{:keys [agent iteration usage-atom]} sent-parts]
+  lets the model call none of them.
+
+  `sent-parts` and `sent-steps` are what the turn's last loop call sent, in the form [[turn-input-parts]] takes."
+  [{:keys [agent iteration usage-atom]} sent-parts sent-steps]
   (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
         memory @memory-atom]
     (when-not (some-> (:request-canceled-chan memory) a/poll!)
@@ -757,7 +816,7 @@
             link-registry-atom (atom (get-in memory [:state :link-registry] {}))
             parts-atom         (atom [])]
         (try
-          (let [input-parts (conj (turn-input-parts sent-parts context memory tools @link-registry-atom)
+          (let [input-parts (conj (turn-input-parts sent-parts sent-steps context memory tools @link-registry-atom)
                                   {:role :user :content step-limit-instruction})]
             (u/prog1 (ait/with-llm-call {:ai/iteration iteration
                                          :ai/model     (:model profile)}
@@ -804,7 +863,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts undeclared-failures consumer-stopped?] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts sent-steps undeclared-failures consumer-stopped?] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -814,7 +873,9 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
+          input-parts        (turn-input-parts sent-parts sent-steps context memory tools @link-registry-atom)
+          ;; the steps that `input-parts` holds: `memory` is read before this call's step is added
+          input-steps        (memory/iteration-count memory)
           xf                 (comp (call-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -857,16 +918,17 @@
 
               (should-continue? iteration max-iter terminal-tools parts)
               (assoc loop-state
-                     :result result'
-                     :iteration (inc iteration)
-                     :sent-parts input-parts
+                     :result              result'
+                     :iteration           (inc iteration)
+                     :sent-parts          input-parts
+                     :sent-steps          input-steps
                      :undeclared-failures undeclared-failures)
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
                 ;; A model that must call a tool can't reply; elsewhere the web chat and Slack show a notice
                 (if (and (= reason :max-iterations) (:required-tool-call? profile))
-                  (let [reply-parts (step-limit-reply-parts loop-state input-parts)
+                  (let [reply-parts (step-limit-reply-parts loop-state input-parts input-steps)
                         reply?      (text-reply? reply-parts)]
                     (ended-loop-state loop-state
                                       (result-after-parts rf result' (cond->> reply-parts
@@ -970,6 +1032,9 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
+            ;; True when `:messages` replay the full `<context>` block of an earlier turn, so this turn's block holds
+            ;; only the time and what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`).
+            [:full-context-replayed? {:optional true} [:maybe :boolean]]
             ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)

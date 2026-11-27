@@ -21,11 +21,11 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         withToken: "bleeding-edge",
       });
 
-      cy.intercept("GET", "http://localhost:4000/auth/sso").as("sso");
+      cy.intercept("GET", `${H.METABASE_INSTANCE_URL}/auth/sso`).as("sso");
       cy.intercept("GET", "http://auth-provider/sso?response=json").as(
         "ssoProvider",
       );
-      cy.intercept("POST", "http://localhost:4000/auth/sso").as(
+      cy.intercept("POST", `${H.METABASE_INSTANCE_URL}/auth/sso`).as(
         "tokenInSessionOut",
       );
     });
@@ -36,7 +36,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         <!DOCTYPE html>
           <html>
           <body>
-            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script src="${H.METABASE_INSTANCE_URL}/app/embed.js" ></script>
             <script>
               function defineMetabaseConfig(settings) {
                 window.metabaseConfig = settings;
@@ -44,7 +44,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
             </script>
             <script>
               defineMetabaseConfig({
-                "instanceUrl": "http://localhost:4000",
+                "instanceUrl": "${H.METABASE_INSTANCE_URL}",
                 "jwtProviderUri": "http://auth-provider/sso?response=json",
               });
             </script>
@@ -70,7 +70,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         <!DOCTYPE html>
           <html>
           <body>
-            <script src="http://localhost:4000/app/embed.js" ></script>
+            <script src="${H.METABASE_INSTANCE_URL}/app/embed.js" ></script>
             <script>
               function defineMetabaseConfig(settings) {
                 window.metabaseConfig = settings;
@@ -78,7 +78,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
             </script>
             <script>
               defineMetabaseConfig({
-                "instanceUrl": "http://localhost:4000",
+                "instanceUrl": "${H.METABASE_INSTANCE_URL}",
               });
             </script>
             <metabase-dashboard dashboard-id='${ORDERS_DASHBOARD_ID}' />
@@ -131,7 +131,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
+    cy.visit("/");
 
     cy.log(
       "visit a test page with an origin of example.com using the existing user session",
@@ -272,7 +272,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
         .should("not.exist");
 
       cy.log("restore the current page's domain");
-      cy.visit("http://localhost:4000");
+      cy.visit("/");
 
       cy.log("visit a test page with an origin of example.com using api keys");
       const productionFrame = H.loadSdkIframeEmbedTestPage({

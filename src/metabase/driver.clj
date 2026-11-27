@@ -10,6 +10,8 @@
    [[metabase.driver.sql-jdbc]] for more details."
   (:refer-clojure :exclude [mapv empty?])
   (:require
+   ;; loaded for the `ManyToManyChannel` class used in `::execute-reducible-query.context`
+   [clojure.core.async.impl.channels]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -29,7 +31,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? mapv]]
-   [potemkin :as p]))
+   [potemkin :as p])
+  (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)))
 
 (set! *warn-on-reflection* true)
 
@@ -677,8 +681,56 @@
 
 (defmethod extra-info ::driver [_] nil)
 
+(mr/def ::execute-reducible-query.context
+  [:map
+   {:closed true}
+   [:canceled-chan (lib.schema.common/instance-of-class ManyToManyChannel)]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata.cols
+  [:sequential
+   [:map
+    [:name          string?] ; allowed to be a blank string :(
+    ;; can be `nil` when the driver has no base type for the database type, e.g. H2's `NULL`
+    [:base_type     [:maybe ::lib.schema.common/base-type]]
+    [:database_type ::lib.schema.common/non-blank-string]]])
+
+(mr/def ::execute-reducible-query.respond-fn.results-metadata
+  [:map
+   [:cols ::execute-reducible-query.respond-fn.results-metadata.cols]])
+
+(mr/def ::execute-reducible-query.respond-fn.rows
+  [:or
+   (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+   [:fn {:error/message "sequential?"} sequential?]])
+
+(mr/def ::execute-reducible-query.respond-fn
+  [:=>
+   [:cat ::execute-reducible-query.respond-fn.results-metadata ::execute-reducible-query.respond-fn.rows]
+   ;; return value is ignored
+   :any])
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66):
+
+    {:stages             [{:lib/type :mbql.stage/native
+                           :native   \"SELECT * FROM table WHERE id = ?\"
+                           :params   [1]}]
+     :qp/original-stages <original MBQL stages if this was compiled from MBQL>
+     :info               ...}
+
+  Otherwise `query` is in a Legacy MBQL shape:
+
+    {:native {:query  \"SELECT * FROM table WHERE id = ?\"
+              :params [1]}
+     :query  <original legacy MBQL 'inner query' if this was compiled from MBQL>
+     :info   ...}
+
+  Note that in 69 or later `query` will always be in an MBQL 5 shape as legacy shapes will be unsupported.
+
+  `context` is a map that matches the shape of `::execute-reducible-query.context`.
 
   Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
@@ -883,6 +935,18 @@
     ;; Does the driver support atomic multi-table renaming
     :atomic-renames
     ;;
+    ;; Test-only acknowledgements of how a Python transform replaces an existing target on this driver. Without
+    ;; `:atomic-renames`, the replacement isn't atomic, and a test fails unless the driver's test extensions support
+    ;; exactly the one of these that matches.
+    ;;
+    ;; With `:rename` but not `:atomic-renames`: the transform loads a new table, drops the target, then renames the
+    ;; new table into place. Between the drop and the rename, readers find no table.
+    :test/python-transforms-without-atomic-renames
+    ;;
+    ;; With neither: the transform drops the target, then creates and fills it again. Readers find the table missing,
+    ;; then partly filled, and a failed run loses the old data.
+    :test/python-transforms-without-renames
+    ;;
     ;; Does the driver support CREATE OR REPLACE TABLE syntax
     :create-or-replace-table
     ;;
@@ -892,6 +956,10 @@
     ;;
     ;; Does the driver support editing data within database tables.
     :actions/data-editing
+    ;;
+    ;; Can a single row action (`:model.row/*`, `:table.row/*`) act on several rows at once? Drivers that support this
+    ;; should make the whole batch atomic.
+    :actions/bulk
     ;;
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting
@@ -1060,6 +1128,12 @@
     ;; Thrift transport on the server side, causing subsequent statement close() to throw).
     :jdbc/set-query-timeout
     ;;
+    ;; May [[query-on-connection]] cap a query's rows with `Statement.setMaxRows`? Defaults to true. False for Redshift:
+    ;; in a data-test run there, a capped query left the transaction aborted, and the next statement failed with "current
+    ;; transaction is aborted". What triggers it is unknown; the same sequence passes in other tests. Without the flag,
+    ;; [[query-on-connection]] streams the result and stops reading at the cap. Only [[query-on-connection]] consults it.
+    :jdbc/set-max-rows
+    ;;
     ;; Does this driver provide :database-default on (describe-fields) or (describe-table)
     :describe-default-expr
     ;;
@@ -1085,14 +1159,29 @@
     ;; Does this driver support compiling multi-stage queries to CTEs instead of nested subselects?
     ;; The driver should support putting a CTE at the start of a statement, or after `CREATE TABLE`
     ;; or `INSERT INTO`, or the driver should change these statements so they are valid
-    ;; (e.g. `driver/compile-insert :sqlserver`). See also `:stage-ctes/nested`.
+    ;; (e.g. `driver/compile-insert :sqlserver`). Queries with a native stage that has its own CTE, and cards that a
+    ;; native query references with `{{#123}}`, always compile with nested subselects.
     :stage-ctes
     ;;
-    ;; Does this driver support CTEs inside another query, e.g. in the body of another CTE or in a subquery?
-    ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
-    ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
-    ;; this has the same value as `:stage-ctes`.
-    :stage-ctes/nested})
+    ;; Should an aggregation with no breakouts over a previous stage go in its own stage CTE? This is for databases
+    ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
+    ;; Only applies to queries compiled with `:stage-ctes`.
+    :stage-ctes/nest-single-row-aggregation
+    ;;
+    ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
+    ;;
+    ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
+    ;; MBQL shape? Default `false` This only affects the shape of arguments passed to
+    ;; [[execute-reducible-query]]. See driver changelog for more notes on the differences between the shapes.
+    ;;
+    :mbql-5-native-query-execution})
+
+(mr/def ::feature
+  "Valid driver feature keyword: one of [[features]], or a namespace-qualified keyword, which [[database-supports?]]
+  accepts without it being listed there (allowed since tests define them for various purposes)."
+  [:or
+   (into [:enum {:error/message "valid driver feature"}] (sort features))
+   qualified-keyword?])
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -1120,8 +1209,11 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports?
-  :default [_driver _feature _] false)
+(mu/defmethod database-supports? :default
+  [_driver   :- :keyword
+   _feature  :- ::feature
+   _database :- [:maybe :map]]
+  false)
 
 (doseq [[feature supported?] {:convert-timezone                       false
                               :basic-aggregations                     true
@@ -1154,11 +1246,6 @@
 (defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
   [driver _feature database]
   (database-supports? driver :regex database))
-
-;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
-(defmethod database-supports? [::driver :stage-ctes/nested]
-  [driver _feature database]
-  (database-supports? driver :stage-ctes database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -1500,9 +1587,51 @@
   [_]
   nil)
 
+;;; The row actions -- the implicit actions of models and Data Apps, and table editing -- act on one row at a time
+;;; through these three methods. Drivers that support `:actions` implement all three.
+;;;
+;;; Rows and primary keys are maps of column name to value, using the names of the Table's Fields. `pk` holds a value
+;;; for every primary key column of the Table, which Metabase knows from the Fields with `:semantic-type :type/PK`.
+;;; Values come as the user entered them: the driver converts them to the column's type. The rows a method returns
+;;; also use the Field names.
+;;;
+;;; Each call changes at most one row, or nothing. A driver whose database has transactions makes each call atomic; a
+;;; driver whose database lacks them must check before it writes, and should document that the check can race with
+;;; other writers. Errors are `ex-info`s with `:status-code 400`, and the error types in `metabase.actions.error` where
+;;; they apply.
+
+(defmulti action-create-row!
+  "Insert `row` into the Table with `table-id` of `database`, and return the row as the database stored it.
+
+  `pk-columns` are the names of the Table's primary key columns."
+  {:added "0.66.0", :arglists '([driver database {:keys [table-id pk-columns row]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti action-update-row!
+  "Set the columns in `row` on the one row of the Table with `table-id` of `database` whose primary key is `pk`, and
+  return `{:before row, :after row}`.
+
+  Throw a 400 if no row has that primary key, or if more than one does; in that case nothing may have changed."
+  {:added "0.66.0", :arglists '([driver database {:keys [table-id pk row]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti action-delete-row!
+  "Delete the one row of the Table with `table-id` of `database` whose primary key is `pk`, and return `{:before row}`.
+
+  Throw a 400 if no row has that primary key, or if more than one does; in that case nothing may have changed."
+  {:added "0.66.0", :arglists '([driver database {:keys [table-id pk]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
-  Drivers that support `:actions/custom` must implement this method."
+  Drivers that support `:actions/custom` must implement this method.
+
+  `query` is in MBQL 5 shape (`:metabase.lib.schema/native-only-query`) if the driver supports
+  `:mbql-5-native-query-execution` (added in 66), otherwise the query is in Legacy MBQL shape. See docstring
+  for [[execute-reducible-query]] for more information."
   {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

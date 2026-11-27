@@ -365,23 +365,23 @@
                  :model/Card {id1 :id} (stale-card {:name "A" :collection_id col-id})
                  :model/Card {id2 :id} (stale-card {:name "B" :collection_id col-id})]
     ;; card 1 is verified, then unverified - it should be included
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id1
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              "verified"}])
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id1
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              nil}])
     ;; card 2 is unverified, then verified - it should NOT be included.
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id2
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              nil}])
+    (moderation-review/create-moderation-reviews! [{:moderated_item_id   id2
+                                                    :moderator_id        user-id
+                                                    :moderated_item_type "card"
+                                                    :status              "verified"}])
     (is (= {:rows  [{:id id1 :model :model/Card}]
             :total 1}
            (stale/find-candidates
@@ -491,9 +491,7 @@
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard {dash-id :id} (stale-dashboard {:name          "A"
                                                                   :collection_id col-id})
-                 :model/Pulse _ {:alert_condition "rows"
-                                 :alert_first_only false
-                                 :creator_id (mt/user->id :rasta)
+                 :model/Pulse _ {:creator_id (mt/user->id :rasta)
                                  :name nil
                                  :dashboard_id dash-id}]
     (is (= {:rows []
@@ -509,8 +507,8 @@
 (deftest questions-used-as-data-source-for-sandboxes-are-excluded
   (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
     (let [gtap-card-id (:id (t2/query-one {:select [:c.id]
-                                           :from   [[:report_card :c]]
-                                           :left-join [[:sandboxes :s] [:= :s.card_id :c.id]]
+                                           :from   [[(t2/table-name :model/Card) :c]]
+                                           :left-join [[(t2/table-name :model/Sandbox) :s] [:= :s.card_id :c.id]]
                                            :where     [:= :s.group_id (:id &group)]}))]
       (t2/update! :model/Card :id gtap-card-id {:last_used_at (datetime-months-ago 7)})
       (is (= {:rows []
@@ -554,7 +552,7 @@
                (rows (assoc base :models #{:model/Dashboard})))))
       (testing "a model with no registered staleness method fails loud (no silent drop)"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"No staleness method registered for"
+                              #"No staleness spec registered for"
                               (rows (assoc base :models #{:model/Card :model/Collection}))))))))
 
 (deftest things-that-are-already-archived-do-not-appear

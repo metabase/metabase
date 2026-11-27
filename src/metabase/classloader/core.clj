@@ -9,6 +9,7 @@
 (p/import-vars
  [metabase.classloader.impl
   add-url-to-classpath!
+  compile-to-temp-dir!
   require
   shared-context-classloader
   the-classloader])

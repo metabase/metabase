@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.core :as mdb]
    [metabase.channel.core :as channel]
    [metabase.config.core :as config]
    [metabase.notification.db :as notification.db]
@@ -226,7 +227,7 @@
                                 (:payload_id notification-info))]
           (when-not (notification.db/notification-card-exists? payload-id)
             (log/warnf "Payload for notification %d no longer exists, deleting" id)
-            (notification.db/delete-notification! id)
+            (models.notification/delete-notifications! [id])
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
@@ -451,11 +452,13 @@
   (BlockingQueue. (ArrayBlockingQueue. default-blocking-queue-size)))
 
 (defn- queue-notification!
-  "Put `notification` in `queue`, with the log context and the current task run in its metadata."
+  "Put `notification` in `queue`, with the log context, the current task run and the remote sync worktree scope in its
+  metadata."
   [queue notification]
   (let [tagged   (-> notification
                      log/with-context-meta
-                     task-history/track-run-work!)
+                     task-history/track-run-work!
+                     (vary-meta assoc ::worktree-scope (mdb/worktree-scope)))
         replaced (try
                    (put-notification! queue tagged)
                    (catch Throwable e
@@ -499,7 +502,9 @@
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
                                                    (log/with-restored-context-from-meta notification
                                                      (task-history/with-restored-run-id notification
-                                                       (send-notification-sync! notification))))
+                                                       (mdb/with-worktree-scope
+                                                         (::worktree-scope (meta notification) mdb/default-worktree-scope)
+                                                         (send-notification-sync! notification)))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))

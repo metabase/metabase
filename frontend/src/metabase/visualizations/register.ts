@@ -26,10 +26,13 @@ import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSe
 import { ChartSettingColorPicker } from "./components/settings/ChartSettingColorPicker";
 import { ChartSettingColorsPicker } from "./components/settings/ChartSettingColorsPicker";
 import { ChartSettingEnumToggle } from "./components/settings/ChartSettingEnumToggle";
-import { ChartSettingFieldPicker } from "./components/settings/ChartSettingFieldPicker";
+import {
+  ChartSettingFieldPicker,
+  ChartSettingSingleFieldPicker,
+} from "./components/settings/ChartSettingFieldPicker";
 import { ChartSettingFieldsPartition } from "./components/settings/ChartSettingFieldsPartition";
 import { ChartSettingFieldsPicker } from "./components/settings/ChartSettingFieldsPicker";
-import { ChartSettingGoalInput } from "./components/settings/ChartSettingGoalInput";
+import { ChartSettingGoalValue } from "./components/settings/ChartSettingGoalValue";
 import { ChartSettingIconRadio } from "./components/settings/ChartSettingIconRadio";
 import { ChartSettingInput } from "./components/settings/ChartSettingInput";
 import { ChartSettingInputNumeric } from "./components/settings/ChartSettingInputNumeric";
@@ -200,7 +203,8 @@ function registerVisualizationSettingWidgets() {
     select: ChartSettingSelect,
     toggle: ChartSettingToggle,
     segmentedControl: ChartSettingSegmentedControl,
-    field: ChartSettingFieldPicker,
+    field: ChartSettingSingleFieldPicker,
+    listField: ChartSettingFieldPicker,
     fields: ChartSettingFieldsPicker,
     fieldsPartition: ChartSettingFieldsPartition,
     color: ChartSettingColorPicker,
@@ -211,7 +215,7 @@ function registerVisualizationSettingWidgets() {
     tableFormatting: ChartSettingsTableFormatting,
     multiselect: ChartSettingMultiSelect,
     enumToggle: ChartSettingEnumToggle,
-    goalInput: ChartSettingGoalInput,
+    goalValue: ChartSettingGoalValue,
     maxCategories: ChartSettingMaxCategories,
     orderedSimple: ChartSettingOrderedSimple,
     segmentsEditor: ChartSettingSegmentsEditor,

@@ -5,7 +5,6 @@
   be plaintext under a key, or ciphertext under a key not yet in effect, which that model's strict read rejects."
   (:require
    [metabase.app-db.db :as mdb.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -269,10 +268,10 @@
   rows so a large column does not have to be held in memory all at once.
 
   When `clear-undecryptable?` is true, a value that cannot be decrypted with the current key is reset to an empty
-  JSON object (with a warning) instead of aborting. Only pass true when the current key is known to be correct for
-  this database (see `encryption-check-status`) and the column can legitimately hold values written with some other
-  key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
-  nothing that was usable."
+  JSON object (with a warning) instead of aborting. Only pass true when no key but the current one is known to have
+  encrypted this database (see `encryption-check-status`) and the column can legitimately hold values written with
+  some other key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them
+  loses nothing that was usable."
   [table column encrypt-str-fn clear-undecryptable?]
   (run! (fn [{:keys [id value]}]
           (when (some? value)
@@ -391,7 +390,11 @@
                           {})))
         (doseq [[table column] encrypted-string-columns]
           (reencrypt-encrypted-column! table column encrypt-str-fn
-                                       (and (= check-status :valid)
+                                       ;; with no sentinel, encrypting turns a database not yet encrypted under any
+                                       ;; key into one encrypted under this key, so an undecryptable value in these
+                                       ;; columns is a leftover from some other instance's key
+                                       (and (or (= check-status :valid)
+                                                (and encrypting? (= check-status :absent)))
                                             (contains? clearable-when-undecryptable [table column])))))
       ;; Read the settings raw (via `:setting`, not `:model/Setting`) to bypass the model's strict decrypt-on-read:
       ;; a setting that is plaintext at rest while a key is configured (e.g. one newly designated encrypted but not yet
@@ -402,7 +405,7 @@
       ;; predating that column reads it, so a rollback must not land on ciphertext under the old key.
       (doseq [{:keys [key value value_with_aad]} (mdb.db/settings)]
         (case key
-          "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
+          "settings-last-updated" (let [now (mdb.db/current-timestamp-string db-type)]
                                     (mdb.db/update-setting-values! key {:value now, :value_with_aad (encrypt-setting-fn now key)}))
           "encryption-check" nil
           (let [aad-opts {:aad (mdb.setting/setting-aad key)}

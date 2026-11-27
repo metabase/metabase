@@ -42,21 +42,22 @@
 
 (defn- render-csv-for-dashcard
   [part]
-  (-> part
-      (assoc-in [:card :include_csv] true)
-      (email.result-attachment/result-attachment api/*current-user-id*)
-      first
-      :content
-      slurp
-      csv-to-html-table))
+  (let [part (assoc-in part [:card :include_csv] true)]
+    (-> part
+        (email.result-attachment/result-attachment (first (email.result-attachment/download-levels [part] api/*current-user-id*)))
+        first
+        :content
+        slurp
+        csv-to-html-table)))
 
 (defn- render-one-dashcard
-  [{:keys [card dashcard result] :as dashboard-result}]
+  [{:keys [card dashcard result goal-values] :as dashboard-result}]
   (letfn [(cellfn [content]
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render.card/render-pulse-card :inline (render.card/defaulted-timezone card) card dashcard result)
+      (let [base-render (render.card/render-pulse-card :inline (render.card/defaulted-timezone card) card dashcard result
+                                                       {:channel.render/goal-values goal-values})
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)

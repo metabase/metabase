@@ -109,8 +109,8 @@
      (spec-for-table {:engine :bigquery-cloud-sdk, :details {:project-id \"p\"}}
                      {:name \"orders\", :schema \"ds\"})
      ;; => {:db \"p\", :schema \"ds\", :table \"orders\"}"
-  [database :- [:map {::mr/deliberately-open true, :description "a Database row"} [:engine :keyword]]
-   table    :- [:map {::mr/deliberately-open true, :description "a Table row"} [:name :string]]]
+  [database :- [:map {:description "a Database row"} [:engine :keyword]]
+   table    :- [:map {:description "a Table row"} [:name :string]]]
   (let [components (set (driver/qualified-name-components (:engine database)))
         positions  (ws/engine-namespace-positions database table)]
     {:db     (normalize-level (when (:db components)     (:db positions)))
@@ -326,26 +326,25 @@
       (nil? (:db from-spec))     (assoc :db     (:db positions))
       (nil? (:schema from-spec)) (assoc :schema (:schema positions)))))
 
+(defn table-remapper
+  "A function of a canonical `from-spec` to the `{:db :schema :name}` of its workspace destination, or nil, built from
+  the remappings of `database-id` and, when there are any, its Database, each read once."
+  [database-id]
+  (let [remappings (ws.remapping/remappings-for-db database-id)
+        database   (when (seq remappings)
+                     (ws.db/database database-id))]
+    (if database
+      (let [driver (keyword (:engine database))]
+        (fn [from-spec]
+          (some-> (canonical->isolated driver remappings (consumer-shape->spec (enrich-from-spec database from-spec)))
+                  spec->consumer-shape)))
+      (constantly nil))))
+
 (defn remap-table
-  "Returns `{:db :schema :name}` for the workspace destination of canonical
-   `from-spec`, or nil if no remapping exists.
-
-   Called per-table during sync via the `workspace-remap-schema+name` defenterprise hook.
-   Uses driver-aware key projection so engines like MySQL (whose canonical/isolated
-   tables differ at the `:db` AST position rather than `:schema`) match correctly.
-
-   `from-spec` is `{:db :schema :name}`. Output uses nil-instead-of-empty-string for
-   slots the driver doesn't emit."
+  "Returns `{:db :schema :name}` for the workspace destination of canonical `from-spec` on the Database with
+  `database-id`, or nil if no remapping exists, as [[table-remapper]] does for one Table."
   [database-id from-spec]
-  ;; Remappings first: outside workspace mode they usually cost no query on a database without any, and then neither
-  ;; does this.
-  (let [remappings (ws.remapping/remappings-for-db database-id)]
-    (when (seq remappings)
-      (when-let [database (ws.db/database database-id)]
-        (let [driver   (keyword (:engine database))
-              enriched (enrich-from-spec database from-spec)]
-          (some-> (canonical->isolated driver remappings (consumer-shape->spec enriched))
-                  spec->consumer-shape))))))
+  ((table-remapper database-id) from-spec))
 
 (defenterprise workspace-remap-schema+name
   "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
@@ -356,6 +355,13 @@
   :feature :none
   [db-id from-spec]
   (remap-table db-id from-spec))
+
+(defenterprise workspace-table-remapper
+  "The [[table-remapper]] of the Database with `db-id`, ungated on premium features like
+  [[workspace-remap-schema+name]]."
+  :feature :none
+  [db-id]
+  (table-remapper db-id))
 
 (defn all-mappings-for-db
   "Return all remappings for a given database as a map of `from-spec` to `to-spec`,

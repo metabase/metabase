@@ -10,6 +10,7 @@
    [metabase.global-system.system :as system]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
+   [metabase.search.appdb.specialization.mysql :as mysql]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
@@ -28,6 +29,7 @@
 
 (comment
   h2/keep-me
+  mysql/keep-me
   postgres/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -187,8 +189,6 @@
   []
   ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
   ;; Postgres keeps DDL inside the transaction, where it does no harm.
-  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
-  ;; adding support does not quietly bring the rollback failure back.
   (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
 
 (defn delete-obsolete-tables!
@@ -215,7 +215,20 @@
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (search.db/create-search-index-table! table-name)))
+    (specialization/with-table-creation-settings #(search.db/create-search-index-table! table-name))))
+
+(defn- discard-abandoned!
+  "The pending index `table-name`, or nil after dropping it and its metadata because its creation was abandoned."
+  [table-name]
+  (if-not (specialization/table-abandoned? table-name)
+    table-name
+    (do
+      (log/warnf "Pending index %s was left without some indexes, dropping it to create it again" table-name)
+      (t2/with-connection [conn (mdb/app-db)]
+        (search-index-metadata/delete-search-index-metadata-for-index! conn (name table-name)))
+      (drop-table! table-name)
+      (sync-tracking-atoms!)
+      nil)))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
@@ -229,7 +242,7 @@
             (mc/swap! indexes-component assoc :pending table-name)
             table-name))
       ;; The database is the source of truth
-      (let [{:keys [pending]} (sync-tracking-atoms!)]
+      (let [pending (some-> (:pending (sync-tracking-atoms!)) discard-abandoned!)]
         (or pending
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
@@ -241,7 +254,7 @@
                     (log/errorf "Error creating pending index table, cleaning up metadata: %s" (ex-message e))
                     (try
                       (t2/with-connection [safe-conn (mdb/app-db)]
-                        (search.db/delete-index-metadata-by-name! safe-conn (name table-name)))
+                        (search-index-metadata/delete-search-index-metadata-for-index! safe-conn (name table-name)))
                       (catch Exception del-e
                         (log/warnf "Error clearing out search metadata after failure: %s" (ex-message del-e))))
                     (sync-tracking-atoms!))))
@@ -270,7 +283,13 @@
          (track-tables! {:pending nil, :active pending})
          true))
       ;; Ensure the metadata is updated and pruned.
-      (let [{:keys [pending]} (sync-tracking-atoms!)]
+      (let [{:keys [pending]} (sync-tracking-atoms!)
+            ;; A rebuild outside the cluster lock can populate a young pending table whose creator then died, so
+            ;; check its indexes here too. It stays pending until it counts as abandoned, and is then created again.
+            pending           (if (and pending (not (specialization/table-complete? pending)))
+                                (do (log/warnf "Not activating pending index %s: it is missing indexes" pending)
+                                    nil)
+                                pending)]
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)
@@ -510,16 +529,16 @@
         (mc/binding indexes-component {:active table-name}
                     (fn []
                       (try
-                        (search.db/insert-index-metadata! {:engine     :appdb
-                                                           :version    version
-                                                           :lang_code  (i18n/site-locale-string)
-                                                           :status     :pending
-                                                           :index_name (name table-name)})
+                        (search-index-metadata/create-search-index-metadata! {:engine     :appdb
+                                                                              :version    version
+                                                                              :lang_code  (i18n/site-locale-string)
+                                                                              :status     :pending
+                                                                              :index_name (name table-name)})
                         (create-table! table-name)
                         (thunk)
                         (finally
                           (drop-table! table-name)
-                          (search.db/delete-index-metadata-by-version! version)))))))))
+                          (search-index-metadata/delete-search-index-metadata-for-version! version)))))))))
 
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."

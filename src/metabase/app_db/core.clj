@@ -13,17 +13,17 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
-   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
-   [metabase.app-db.value-guard]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
@@ -31,10 +31,8 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
-         metabase.app-db.query-cancelation/keep-me
-         metabase.app-db.value-guard/keep-me)
+         metabase.app-db.query-cancelation/keep-me)
 
 (p/import-vars
  [mdb.connection
@@ -46,7 +44,9 @@
   with-application-db
   do-before-commit
   do-after-commit
+  do-after-rollback
   in-transaction?
+  mariadb?
   quartz-data-source
   quoting-style
   unique-identifier
@@ -58,6 +58,16 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
+ [mdb.worktree
+  check-default-worktree
+  default-worktree-id
+  default-worktree-scope
+  do-with-worktree-scope
+  with-worktree-scope
+  worktree-id
+  non-default-worktree?
+  worktree-id->scope
+  worktree-scope]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption
@@ -76,17 +86,37 @@
   spec]
  [metabase.app-db.query
   compile
-  current-timestamp-string
+  create-partition-size
+  delete-partition-size
   isa
   join
   qualify
+  select-partition-size
+  type-keyword->descendants
+  upsert-query
+  update-partition-size
+  with-conflict-retry]
+ [mdb.db
+  create-batched!
+  current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  increment-counts!
+  insert-returning-instances!
   query
+  select-batched
+  select-batched-by-keys
+  select-batched-map
+  select-batched-reducible
+  select-batched-set
   select-or-insert!
+  select-partitions
   streaming-reducible
   streaming-reducible-query
-  type-keyword->descendants
-  update-or-insert!
-  with-conflict-retry]
+  sum-batched
+  update-batched!
+  update-grouped!
+  update-or-insert!]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
@@ -104,13 +134,26 @@
   []
   (reset! (:status (mdb.connection/current-application-db)) ::setup-finished))
 
+(defn recompile-h2-views!
+  "Recompile every view of the H2 app DB on `conn`, which H2 leaves invalid when a script restore creates a view before
+  a table it reads (https://github.com/h2database/h2database/issues/3942)."
+  [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (let [view-names (with-open [rs (.executeQuery stmt (str "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS "
+                                                             "WHERE TABLE_SCHEMA = 'PUBLIC'"))]
+                       (loop [acc []]
+                         (if (.next rs) (recur (conj acc (.getString rs 1))) acc)))]
+      (doseq [view-name view-names]
+        (.execute stmt (format "ALTER VIEW \"%s\" RECOMPILE" view-name))))))
+
 (defn verify-application-db-connection!
   "Open a connection to the bound application DB and check its server version. Throws on failure.
   Does *not* run migrations or any encryption checks — use [[setup-db!]] for the full bootstrap.
   This is the public, no-argument hook for tools that need to confirm appdb connectivity without
   modifying the schema."
   []
-  (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source)))
+  (mdb.connection/record-mariadb!
+   (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source))))
 
 (defn setup-db-without-migrations!
   "Like [[setup-db!]] but never runs migrations or mutates the schema. Idempotent: no-ops if the
@@ -161,6 +204,7 @@
             (mdb.setup/setup-db! db-type data-source {:auto-migrate?            auto-migrate?
                                                       :create-sample-content?   create-sample-content?
                                                       :manage-encryption-state? manage-encryption-state?}))
+          (mdb.worktree/init-worktree-tables!)
           (finish-db-setup!)))))
   :done)
 

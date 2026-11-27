@@ -6,6 +6,10 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
@@ -15,9 +19,11 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2])
   (:import
@@ -80,7 +86,7 @@
                                    (filter (comp #{:this :search_index} first))
                                    (map (comp keyword u/->kebab-case-en name second))
                                    ;; Remove db-specific fields
-                                   (remove #{:search-vector :query}))
+                                   (remove #{:search-vector :query :search-terms :name-terms}))
                              (vals (scoring/scorers {:search-engine :search.engine/appdb
                                                      :search-string ""}
                                                     {})))
@@ -104,7 +110,7 @@
      {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
      {:model "card" :id 6 :name "ordering"}]
     (case (mdb/db-type)
-      :postgres
+      (:postgres :mysql)
       ;; WARNING: this is likely to diverge between appdb types as we support more.
       (testing "Preferences according to textual matches"
         ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
@@ -121,6 +127,19 @@
       ;; TODO text ranking (probably in-memory
       nil)))
 
+(deftest connection-collation-test
+  (when (= :mysql (mdb/db-type))
+    (testing "Search works when the connection's collation differs from the index columns'"
+      (with-index-contents
+        [{:model "card", :id 1, :name "orders"}]
+        (t2/with-connection [_conn]
+          (let [{:keys [collation]} (t2/query-one {:select [[[:system-variable :collation_connection] :collation]]})]
+            (t2/query ["SET SESSION collation_connection = 'utf8mb4_general_ci'"])
+            (try
+              (is (= [["card" 1 "orders"]] (search-results* "orders")))
+              (finally
+                (t2/query [(str "SET SESSION collation_connection = '" collation "'")])))))))))
+
 (deftest ^:parallel exact-test
   (with-index-contents
     [{:model "card" :id 1 :name "the any most of stop words very"}
@@ -131,6 +150,9 @@
         (is (= [["card" 1 "the any most of stop words very"]
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very"))))
+      :mysql
+      (is (= [["card" 1 "the any most of stop words very"]]
+             (search-results* "the any most of stop words very")))
       :h2
       ;; TODO text ranking (probably in-memory
       nil)))
@@ -143,6 +165,22 @@
       (is (= [["card" 1 "Sales,  Revenue"]
               ["card" 2 "Sales Revenue Report"]]
              (search-results :exact "sales revenue"))))))
+
+(deftest ^:parallel title-scores-respect-accents-test
+  (when (#{:mysql :postgres} (mdb/db-type))
+    (testing "An accented title that matched only through its description scores no title match"
+      (with-index-contents
+        [{:model "card", :id 1, :name "Café", :description "cafe"}
+         {:model "card", :id 2, :name "Cafe"}]
+        (is (= [["card" 2 "Cafe"]
+                ["card" 1 "Café"]]
+               (search-results :exact "cafe"))))
+      (with-index-contents
+        [{:model "card", :id 1, :name "Cafés",     :description "cafeteria"}
+         {:model "card", :id 2, :name "Cafeteria"}]
+        (is (= [["card" 2 "Cafeteria"]
+                ["card" 1 "Cafés"]]
+               (search-results :prefix "cafe")))))))
 
 (deftest ^:parallel prefix-test
   (with-index-contents
@@ -229,8 +267,7 @@
                 card-with-view  #(merge (mt/with-temp-defaults :model/Card)
                                         {:name       search-term
                                          :view_count %})
-                ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
-                ;; NOTE: we have brought in the outlier *a lot* to compensate for h2 not calculating a real percentile.
+                ;; Keep the outlier below H2's approximate percentile ceiling.
                 outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88 #_100000))
                 _               (t2/insert! :model/Card (concat (repeatedly 20 #(card-with-view 0))
                                                                 (for [i (range 1 81)]
@@ -239,11 +276,15 @@
                                  (#'search.ingestion/query->documents
                                   (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
                                  [])
-                first-result-id (-> (search-results* search-term) first second)]
-            (is (some? first-result-id))
-            ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
-            ;; but we can solve this later if it actually becomes a flake
-            (is (not= outlier-card-id first-result-id))))))))
+                results         (search-results** search-term {})
+                view-score      (fn [result]
+                                  (some (fn [{scorer-name :name, :keys [score]}]
+                                          (when (= scorer-name :view-count) score))
+                                        (:all-scores result)))
+                outlier-score   (some #(when (= outlier-card-id (:id %)) (view-score %)) results)]
+            (is (== 1 outlier-score))
+            (testing "the outlier ties with other cards at the percentile ceiling"
+              (is (<= 2 (count (filter #(== 1 (view-score %)) results)))))))))))
 
 (deftest ^:parallel dashboard-count-test
   (testing "cards used in dashboard have higher rank"
@@ -363,7 +404,7 @@
       (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
                      :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
                      :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
-                     :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
+                     :model/Collection sub       {:name "sub of lib"     :type "library-data" :location (format "/%d/" (:id lib))}
                      :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                      :model/Collection other     {:name "non-library"    :location "/"}]
         (with-index-contents
@@ -382,18 +423,34 @@
               (is (= [false false true true true true true]
                      (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- table-definition
+  "A full query on `table-id` with an always-true filter."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
 (deftest measure-segment-library-test
   ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
   (search.tu/with-temp-index-table
     (testing "measures and segments on a published Library table inherit its library boost and curated status"
       (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
-                       :model/Table   plain-tbl {:name "plain_tbl"}
-                       :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
-                       :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
-                       :model/Segment _ {:name "foo segment lib"   :table_id (:id lib-tbl)}
-                       :model/Segment _ {:name "foo segment plain" :table_id (:id plain-tbl)}]
-          (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
+        (mt/with-model-cleanup [:model/Segment :model/Measure :model/Table]
+          (let [[lib-tbl plain-tbl] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "lib_tbl")
+                                                           (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "plain_tbl")])
+                _                   (table-user-settings/create-table-user-settings! [{:table_id (:id lib-tbl) :is_published true :collection_id (:id data)}])
+                _                   (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure lib" :definition (table-measure-definition (:id lib-tbl)))
+                                                               (assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure plain" :definition (table-measure-definition (:id plain-tbl)))])
+                _                   (segment/create-segments! [(assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment lib" :definition (table-definition (:id lib-tbl)))
+                                                               (assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment plain" :definition (table-definition (:id plain-tbl)))])
+                results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
             (is (=? [{:name #".* lib",   :curated true}
                      {:name #".* lib",   :curated true}
                      {:name #".* plain", :curated false}
@@ -411,10 +468,11 @@
   (search.tu/with-temp-index-table
     (testing "measures and segments follow a table published and unpublished through its user settings"
       (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   {table-id :id :as table} {:name "tbl"}
-                       :model/Measure _ {:name "foo measure" :table_id table-id}
-                       :model/Segment _ {:name "foo segment" :table_id table-id}]
-          (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
+        (mt/with-model-cleanup [:model/Segment :model/Measure :model/Table]
+          (let [[{table-id :id :as table}] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "tbl")])
+                _       (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure" :definition (table-measure-definition table-id))])
+                _       (segment/create-segments! [(assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment" :definition (table-definition table-id))])
+                curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
             (is (= [[false false] [true true] [false false]]
                    [(curated)
                     (do (table-user-settings/upsert-table-user-settings!
@@ -532,7 +590,7 @@
     [{:model "table"  :id 1 :name "foo orders" :data_layer "final"}
      {:model "metric" :id 2 :name "bar metric" :description "mentions foo"}]
     (case (mdb/db-type)
-      :postgres
+      (:postgres :mysql)
       (testing "with Metabot weights, a final-layer table whose name matches outranks a metric that only mentions the term"
         (is (= [1 2] (map second (search-results* "foo" :context :metabot)))))
       :h2

@@ -8,22 +8,23 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   ;; Loaded first, so that `original-describe-database` captures the driver's method.
+   [metabase.driver.motherduck]
    [metabase.driver.sql-jdbc.connection-test :as connection-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table-test :as describe-table-test]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
-   [metabase.driver.util :as driver.u]
-   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    ;; Load the inherited test extensions, including the row-xform method used below.
    [metabase.test.data.postgres]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log]
-   [metabase.util.random :as u.random])
+   [metabase.util.random :as u.random]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
@@ -137,8 +138,34 @@
     [_driver _type]
     db-type))
 
-;; DuckDB has no SERIAL type. Use INTEGER and let row-xform generate the IDs.
+;; DuckDB has no SERIAL type. Use INTEGER; `create-table-sql` below gives the column a sequence default.
 (defmethod sql.tx/pk-sql-type :motherduck [_] "INTEGER")
+
+(def ^:private pk-sequence-start
+  "The first id a primary-key sequence hands out. The loader inserts explicit ids, which don't advance the sequence,
+  so it starts above any id a test dataset holds, and above any integer checkpoint a transform test records."
+  1000000)
+
+(defn- pk-sequence-default
+  "Rewrite the primary-key column of `create-table-sql` to default to a sequence, as MotherDuck recommends in place
+  of SERIAL, by prepending a `CREATE SEQUENCE` statement. Tests written for Postgres insert rows without an id and
+  expect the database to fill it in; without this, the NOT NULL constraint rejects them. The endpoint accepts the
+  two statements in one string. Returns `sql` unchanged when the table has no plain `id` column of the primary-key
+  type.
+
+  The sequence name keeps only the letters, digits and underscores of the table name. `nextval` misreads a doubled
+  `\"\"` inside a quoted name, so it can't find the sequence of a table named, say, `q'd\"b`."
+  [driver database-name table-name sql]
+  (let [pk-column (str (sql.tx/format-and-quote-field-name driver (sql.tx/pk-field-name driver))
+                       " " (sql.tx/pk-sql-type driver))
+        sequence  (sql.tx/qualify-and-quote driver
+                                            database-name
+                                            (str (str/replace table-name #"[^A-Za-z0-9_]" "_") "_id_seq"))]
+    (if-not (str/includes? sql pk-column)
+      sql
+      (str (format "CREATE SEQUENCE IF NOT EXISTS %s START %d; " sequence pk-sequence-start)
+           (str/replace-first sql pk-column
+                              (format "%s DEFAULT nextval('%s')" pk-column (str/replace sequence "'" "''")))))))
 
 ;; Qualify test tables with DuckDB's default schema rather than Postgres public.
 (defmethod sql.tx/session-schema :motherduck [_driver] "main")
@@ -185,7 +212,8 @@
 (defmethod sql.tx/create-table-sql :motherduck
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as tabledef}]
   (let [fks (keep #(inline-fk-sql driver dbdef table-name %) field-definitions)
-        sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+        sql (->> ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)
+                 (pk-sequence-default driver database-name table-name))]
     (if (empty? fks)
       sql
       ;; The inherited statement ends its column list with the PRIMARY KEY clause.
@@ -235,59 +263,6 @@
   200)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Statement execution                                                      |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; The endpoint returns a result set for some statements, including SET and COMMENT ON, even in
-;; Metabase compatibility mode. Use Statement.execute, which accepts result sets, instead of executeUpdate.
-(defmethod execute/execute-sql! :motherduck
-  [driver ^Connection conn sql]
-  (execute/default-execute-sql!
-   driver conn sql :execute!
-   (fn [^Connection conn ^String sql]
-     (with-open [stmt (.createStatement conn)]
-       (.execute stmt sql)))))
-
-(defmethod load-data/do-insert! :motherduck
-  [driver ^Connection conn table-identifier rows]
-  ;; The inherited method uses executeUpdate for SET, which rejects the endpoint's result set.
-  ;; Set the session time zone with execute before loading rows.
-  (with-open [stmt (.createStatement conn)]
-    (.execute stmt "SET SESSION TIMEZONE TO 'UTC';"))
-  ;; Prevent parameter binding from looking up the database time zone before sync completes.
-  (mt/with-database-timezone-id nil
-    (doseq [[sql & params] (ddl/insert-rows-dml-statements driver table-identifier rows)]
-      (try
-        (with-open [stmt (.prepareStatement conn ^String sql)]
-          (when (seq params)
-            (sql-jdbc.execute/set-parameters! driver stmt params))
-          (.execute stmt))
-        (catch Throwable e
-          (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
-                          {:driver driver
-                           :sql    sql}
-                          e)))))))
-
-;; Reuse the SQL-JDBC view builders with the execution method above, which accepts result sets.
-(defmethod tx/create-view-of-table! :motherduck
-  [driver database view-name table-name options]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver (driver.u/ensure-lib-database database) {:write? true}
-   (fn [conn]
-     (->> (sql.tx/create-view-of-table-sql driver database view-name table-name options)
-          first
-          (execute/execute-sql! driver conn)))))
-
-(defmethod tx/drop-view! :motherduck
-  [driver database view-name options]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver (driver.u/ensure-lib-database database) {:write? true}
-   (fn [conn]
-     (->> (sql.tx/drop-view-sql driver database view-name options)
-          first
-          (execute/execute-sql! driver conn)))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      create / load / cleanup lifecycle                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -325,6 +300,73 @@
   created-databases
   (atom #{}))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        First sync of shared datasets                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Tests in other JVMs and CI jobs create and drop tables in the shared datasets. If one of those tables is dropped
+;; between the time the first sync lists it and the time sync reads it, the read fails, and the test harness then fails
+;; the whole dataset. So the first sync of a shared dataset lists only the tables in its definition.
+
+(defonce ^:private ^{:doc "Shared database name -> table names in its dataset definition."}
+  shared-dataset-tables
+  (atom {}))
+
+(defn- dataset-table-names
+  "Names of the tables in the definition of `dbdef`, as they are named in the database."
+  [dbdef]
+  (into #{}
+        (map #(ddl.i/format-name :motherduck (:table-name %)))
+        (:table-definitions dbdef)))
+
+(defn- remember-shared-dataset-tables!
+  "Records the table names of `dbdef` under its shared database name, if `dbdef` is static."
+  [dbdef]
+  (when (static? dbdef)
+    (swap! shared-dataset-tables assoc
+           (qualified-db-name dbdef)
+           (dataset-table-names dbdef))))
+
+(defn- first-sync-tables
+  "Returns `tables` limited to those in the dataset definition when `database` is a shared dataset that has not
+  finished its first sync; otherwise returns `tables`."
+  [database tables]
+  (let [dataset-tables (get @shared-dataset-tables (get-in database [:details :dbname]))]
+    ;; `database` is a lib metadata database, which has no :initial_sync_status, so read the status from the app DB.
+    (if (and dataset-tables
+             (not= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id database))))
+      (into #{} (filter (comp dataset-tables :name)) tables)
+      tables)))
+
+(defonce ^:private ^{:arglists '([driver database])} original-describe-database
+  (get-method driver/describe-database* :motherduck))
+
+(defmethod driver/describe-database* :motherduck
+  [driver database]
+  (update (original-describe-database driver database) :tables #(first-sync-tables database %)))
+
+(defn- shared-db-complete?
+  "Does the existing shared database of `dbdef` have every table of its definition? Other tests may add tables to it,
+  so extra tables don't count."
+  [driver dbdef]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (spec/dbdef->spec driver :db dbdef)
+   {:write? false}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)
+                 rset (.executeQuery stmt (str "SELECT table_name FROM duckdb_tables() "
+                                               "WHERE database_name = current_database()"))]
+       (let [present (into #{} (map :table_name) (resultset-seq rset))]
+         (every? present (dataset-table-names dbdef)))))))
+
+(defn- shared-db-loaded?
+  "Has the shared database of `dbdef` been published with all of its tables? Existing is not enough: a shared database
+  that lacks its tables would otherwise be reused, and fail every job, until the next UTC day."
+  [driver dbdef]
+  (and (database-exists? (qualified-db-name dbdef))
+       (shared-db-complete? driver dbdef)))
+
 (defn- load-db! [driver dbdef options]
   (apply load-data/create-db! driver (update dbdef :table-definitions parents-first) options))
 
@@ -333,7 +375,10 @@
   zero-copy clone. Other jobs therefore see the shared database complete or not at all, never half-loaded.
 
   Two jobs that miss the same dataset at the same time both load it, and the second clone is a no-op. Loading twice
-  is the price of not needing a lock between jobs."
+  is the price of not needing a lock between jobs.
+
+  A shared database that exists but lacks tables of its definition is dropped and cloned again. Check it again right
+  before the drop, so that a job never drops a complete copy that another job published in the meantime."
   [driver dbdef options]
   (let [shared  (qualified-db-name dbdef)
         staging (sql.tu.unique-prefix/unique-prefix (str "staging_" (:database-name dbdef)))]
@@ -345,6 +390,10 @@
                     (assoc :database-name staging)
                     (update :options dissoc :static))
                 options)
+      (when (and (database-exists? shared)
+                 (not (shared-db-complete? driver dbdef)))
+        (log/warnf "Shared database %s lacks tables of its dataset; replacing it" shared)
+        (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" shared)))
       (execute-on-server! (format "CREATE DATABASE IF NOT EXISTS \"%s\" FROM \"%s\";" shared staging))
       (finally
         (try
@@ -372,9 +421,10 @@
 
 (defmethod tx/dataset-already-loaded? :motherduck
   [driver dbdef]
+  ;; The test harness calls this method before the first sync of every dataset.
+  (remember-shared-dataset-tables! dbdef)
   (if (static? dbdef)
-    ;; A shared database exists only once its load has finished; see create-shared-db!.
-    (database-exists? (qualified-db-name dbdef))
+    (shared-db-loaded? driver dbdef)
     (do
       ;; Include reused datasets in cleanup, even when create-db! does not run.
       (swap! created-databases conj (qualified-db-name dbdef))

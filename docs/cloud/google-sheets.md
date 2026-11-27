@@ -15,8 +15,6 @@ layout: new-docs
 
 ![Sync Google Sheets](./images/connect-google-sheets.png)
 
-If you've set up [Metabase Cloud Storage](https://www.metabase.com/docs/latest/cloud/storage), an admin can set up Metabase to sync with Google Sheets in a Google Drive folder. Metabase will create tables in your Metabase Cloud Storage for the synced Google Sheets.
-
 Currently, you can't sync Google Sheets to your own database.
 
 ## How to sync Google Sheets with Metabase
@@ -84,6 +82,7 @@ Here's what you need to know when syncing Google Sheets:
 - **Renaming sheet columns will create new table columns**. If you rename a column in a spreadsheet, Metabase will create a new column with the new name in the synced table. The original column will remain in the table but it'll become empty. You'll be able to hide the old column in Table Metadata settings.
 - **Empty sheets won't import**. We won't import completely empty sheets or sheets that only have column headers. There needs to be some actual data in there.
 - **Google Sheets must have unique names**. If files in the synced Google Drive folder (and its subfolders) have the same name (e.g., one sheet is in the root folder, another sheet in a subfolder), the sheets might not sync properly.
+- **File names can't contain slashes**. If a file in the synced Google Drive folder (or its subfolders) has a slash (`/`) in its name, the sync can fail. Rename the file to remove the slash.
 
 ## Metabase Cloud Storage quota management
 

@@ -3,11 +3,13 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.funnysql.util :as funnysql.util]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [toucan2.core :as t2]))
 
 (def default-search-ctx
   {:search-string                  nil
@@ -174,10 +176,10 @@
   (testing "with search string"
     (is (= [:and
             [:or
-             [:like [:lower :card.name] (h2x/like-substring "a")]
-             [:like [:lower :card.name] (h2x/like-substring "string")]
-             [:like [:lower :card.description] (h2x/like-substring "a")]
-             [:like [:lower :card.description] (h2x/like-substring "string")]]
+             [:like [:lower :card.name] (funnysql.util/like-substring "a")]
+             [:like [:lower :card.name] (funnysql.util/like-substring "string")]
+             [:like [:lower :card.description] (funnysql.util/like-substring "a")]
+             [:like [:lower :card.description] (funnysql.util/like-substring "string")]]
             [:= :card.archived false]]
            (:where (search.filter/build-filters
                     base-search-query "card"
@@ -237,31 +239,35 @@
             base-search-query "card"
             (merge default-search-ctx {:created-at "2016-04-18~2016-04-23"}))))))
 
+(def ^:private newest-revision
+  "The filter that keeps the newest Revision of a card."
+  (revisions.sql/newest-revision-clause :rev "Card" :card.id))
+
 (deftest ^:parallel last-edited-at-filter-test
   (testing "last edited at filter"
     (is (= {:select [:*]
             :from   [:table]
-            :join   [:revision [:= :revision.model_id :card.id]]
+            :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
-                     [:= :revision.model "Card"]
-                     [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
+                     [:= :rev.model "Card"]
+                     newest-revision
+                     [:>= [:cast :rev.timestamp :date] #t "2016-04-18"]
+                     [:< [:cast :rev.timestamp :date] #t "2016-04-24"]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
     (testing "do not join twice if has both last-edited-at and last-edited-by"
       (is (= {:select [:*]
               :from   [:table]
-              :join   [:revision [:= :revision.model_id :card.id]]
+              :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]
               :where  [:and
                        [:= :card.archived false]
-                       [:= :revision.most_recent true]
-                       [:= :revision.model "Card"]
-                       [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                       [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
-                       [:= :revision.user_id 1]]}
+                       [:= :rev.model "Card"]
+                       newest-revision
+                       [:>= [:cast :rev.timestamp :date] #t "2016-04-18"]
+                       [:< [:cast :rev.timestamp :date] #t "2016-04-24"]
+                       [:= :rev.user_id 1]]}
              (search.filter/build-filters
               base-search-query "dataset"
               (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
@@ -295,10 +301,10 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
-                     [:= :revision.model "Card"]
-                     [:= :revision.user_id 1]]
-            :join   [:revision [:= :revision.model_id :card.id]]}
+                     [:= :rev.model "Card"]
+                     newest-revision
+                     [:= :rev.user_id 1]]
+            :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
@@ -310,10 +316,10 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
-                     [:= :revision.model "Card"]
-                     [:in :revision.user_id #{1 2}]]
-            :join   [:revision [:= :revision.model_id :card.id]]}
+                     [:= :rev.model "Card"]
+                     newest-revision
+                     [:in :rev.user_id #{1 2}]]
+            :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
@@ -327,10 +333,10 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:= :moderation_review.status "verified"]
-                          [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
-                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+                          [:= :vmr.status "verified"]
+                          [:= :vmr.moderated_item_type "card"]
+                          [:= :vmr.most_recent true]]
+                 :join   [[(t2/table-name :model/ModerationReview) :vmr] [:= :vmr.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -343,10 +349,10 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:= :moderation_review.status "verified"]
-                          [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
-                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+                          [:= :vmr.status "verified"]
+                          [:= :vmr.moderated_item_type "card"]
+                          [:= :vmr.most_recent true]]
+                 :join   [[(t2/table-name :model/ModerationReview) :vmr] [:= :vmr.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
@@ -392,7 +398,7 @@
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-impersonated-or-routed-user? (constantly false)]
       (is (= [:and
-              [:or [:like [:lower :model-index-value.name] (h2x/like-substring "foo")]]
+              [:or [:like [:lower :model-index-value.name] (funnysql.util/like-substring "foo")]]
               [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
@@ -415,7 +421,7 @@
     (testing model
       (testing "do not search for native query by default"
         (is (= [:and
-                [:or [:like [:lower :card.name] (h2x/like-substring "foo")] [:like [:lower :card.description] (h2x/like-substring "foo")]]
+                [:or [:like [:lower :card.name] (funnysql.util/like-substring "foo")] [:like [:lower :card.description] (funnysql.util/like-substring "foo")]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -427,11 +433,11 @@
     (testing model
       (testing "search in both name, description and dataset_query if is enabled"
         (is (= [:and [:or
-                      [:like [:lower :card.name] (h2x/like-substring "foo")]
-                      [:like [:lower :card.description] (h2x/like-substring "foo")]
+                      [:like [:lower :card.name] (funnysql.util/like-substring "foo")]
+                      [:like [:lower :card.description] (funnysql.util/like-substring "foo")]
                       [:and
                        [:= :card.query_type "native"]
-                       [:like [:lower :card.dataset_query] (h2x/like-substring "foo")]]]
+                       [:like [:lower :card.dataset_query] (funnysql.util/like-substring "foo")]]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -442,7 +448,7 @@
   (testing "action"
     (testing "do not search for native query by default"
       (is (= [:and
-              [:or [:like [:lower :action.name] (h2x/like-substring "foo")] [:like [:lower :action.description] (h2x/like-substring "foo")]]
+              [:or [:like [:lower :action.name] (funnysql.util/like-substring "foo")] [:like [:lower :action.description] (funnysql.util/like-substring "foo")]]
               [:= :action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query
@@ -454,9 +460,9 @@
     (testing "search in both name, description and dataset_query if is enabled"
       (is (= [:and
               [:or
-               [:like [:lower :action.name] (h2x/like-substring "foo")]
-               [:like [:lower :action.description] (h2x/like-substring "foo")]
-               [:like [:lower :query_action.dataset_query] (h2x/like-substring "foo")]]
+               [:like [:lower :action.name] (funnysql.util/like-substring "foo")]
+               [:like [:lower :action.description] (funnysql.util/like-substring "foo")]
+               [:like [:lower :query_action.dataset_query] (funnysql.util/like-substring "foo")]]
               [:= :action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query

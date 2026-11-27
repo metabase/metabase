@@ -5,6 +5,7 @@ import {
   fetchDataOrError,
   findDashCardForInlineParameter,
   getCurrentTabDashboardCards,
+  getDashcardGoalSourcesScope,
   getDashcardResultsError,
   getVisibleCardIds,
   hasDatabaseActionsEnabled,
@@ -872,6 +873,57 @@ describe("Dashboard utils", () => {
           "5",
         ]);
       });
+    });
+  });
+});
+
+describe("getDashcardGoalSourcesScope", () => {
+  const PUBLIC_UUID = "c2f4a3b1-1d2e-4f5a-8b6c-7d8e9f0a1b2c";
+  const EMBED_TOKEN = "header.payload.signature";
+
+  it("posts the sources of a dashcard on a saved dashboard with its id", () => {
+    expect(
+      getDashcardGoalSourcesScope({ id: 2, card_id: 1, dashboard_id: 5 }),
+    ).toEqual({ type: "signed-in", dashboard_id: 5 });
+  });
+
+  it("posts the sources of a dashcard on a transient dashboard without an id", () => {
+    expect(
+      getDashcardGoalSourcesScope({
+        id: 2,
+        card_id: 1,
+        dashboard_id: "/auto/dashboard/table/1",
+      }),
+    ).toEqual({ type: "signed-in" });
+  });
+
+  it("reads a public dashcard from its goal values route", () => {
+    expect(
+      getDashcardGoalSourcesScope({
+        id: 2,
+        card_id: 1,
+        dashboard_id: PUBLIC_UUID,
+      }),
+    ).toEqual({
+      type: "public-dashcard",
+      uuid: PUBLIC_UUID,
+      dashcardId: 2,
+      cardId: 1,
+    });
+  });
+
+  it("reads an embedded dashcard from its goal values route", () => {
+    expect(
+      getDashcardGoalSourcesScope({
+        id: 2,
+        card_id: 1,
+        dashboard_id: EMBED_TOKEN,
+      }),
+    ).toEqual({
+      type: "embed-dashcard",
+      token: EMBED_TOKEN,
+      dashcardId: 2,
+      cardId: 1,
     });
   });
 });

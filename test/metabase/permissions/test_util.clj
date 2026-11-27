@@ -23,13 +23,15 @@
       (finally
         (binding [perms/*allow-root-entries* true
                   perms/*allow-admin-permissions-changes* true]
-          (when config/ee-available?
-            (t2/delete! :model/Sandbox))
-          (t2/delete! :model/Permissions)
-          ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
-          (t2/insert! :model/Permissions original-perms)
-          (when config/ee-available?
-            (t2/insert! :model/Sandbox original-sandboxes)))))))
+          ;; One transaction, so that a restore that fails or is cut off leaves the rows it found rather than none.
+          (t2/with-transaction [_conn]
+            (when config/ee-available?
+              (t2/delete! :model/Sandbox))
+            (t2/delete! :model/Permissions)
+            ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
+            (t2/insert! :model/Permissions original-perms)
+            (when config/ee-available?
+              (t2/insert! :model/Sandbox original-sandboxes))))))))
 
 (defmacro with-restored-perms!
   "Runs `body`, and restores permissions and sandboxes to their original state afterwards."
@@ -61,8 +63,13 @@
                                                 (or (nil? (:table_id p))
                                                     (contains? existing-table-ids (:table_id p)))))
                                    original-perms)]
-          (t2/delete! :model/DataPermissions {:where select-condition})
-          (t2/insert! :model/DataPermissions still-valid-perms))))))
+          ;; One transaction, so that a restore that fails or is cut off leaves the rows it found rather than none:
+          ;; a database whose rows were lost here stays without them, since test setup grants them only on creation.
+          (t2/with-transaction [_conn]
+            (t2/delete! :model/DataPermissions {:where select-condition})
+            (doseq [rows (vals (into (sorted-map)
+                                     (group-by #(= :perms/transforms (:perm_type %)) still-valid-perms)))]
+              (t2/insert! :model/DataPermissions rows))))))))
 
 (defmacro with-restored-data-perms!
   "Runs `body`, and restores all permissions to their original state afterwards."
@@ -173,10 +180,11 @@
 
 (defn do-with-db-perms-for-group!
   "Implementation of `with-db-perms-for-group!`. Sets several data permissions for the given database to the given
-  values for the given permission group for the duration of the test."
+  values for the given permission group for the duration of the test, the transforms permission last since it needs
+  native query access set first."
   [group-or-id db-id perm-type->value thunk]
   (with-restored-data-perms-for-group! (u/the-id group-or-id)
-    (doseq [[perm-type value] perm-type->value]
+    (doseq [[perm-type value] (sort-by (comp #{:perms/transforms} key) perm-type->value)]
       (data-perms/set-database-permission! group-or-id db-id perm-type value))
     (thunk)))
 

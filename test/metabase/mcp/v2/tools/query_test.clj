@@ -791,13 +791,10 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (mt/with-temp [:model/Measure {measure-id :id}
                      {:name       "query-test order count"
-                      :table_id   (mt/id :orders)
                       :creator_id (mt/user->id :crowberto)
-                      :definition {:lib/type :mbql/query
-                                   :database (mt/id)
-                                   :stages   [{:lib/type     :mbql.stage/mbql
-                                               :source-table (mt/id :orders)
-                                               :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]}]}}]
+                      :definition (let [mp (mt/metadata-provider)]
+                                    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                        (lib/aggregate (lib/count))))}]
         (let [sid  (str (random-uuid))
               body (payload (call! sid {:query (numeric-orders-query
                                                 {:aggregation [["measure" {} measure-id]]})}))]
@@ -811,7 +808,6 @@
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (mt/with-temp [:model/Segment {segment-id :id}
                      {:name       "query-test first three orders"
-                      :table_id   (mt/id :orders)
                       :creator_id (mt/user->id :crowberto)
                       :definition {:lib/type :mbql/query
                                    :database (mt/id)
@@ -1201,6 +1197,6 @@
         (mt/with-current-user (mt/user->id :rasta)
           (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
                                                           (t2/with-transaction [_conn]
-                                                            (t2/query ["SELECT no_such_column FROM metabase_field"])))]
+                                                            (t2/query {:select [:no_such_column] :from [(t2/table-name :model/Field)]})))]
             (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
                    (call! sid {:query_handle handle})))))))))

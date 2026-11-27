@@ -130,7 +130,7 @@
 (defn- check-goal-line!
   "A goal condition compares results to the question's goal line; without one the notification
    backend can only fail at send time, silently. Reject it here instead, mirroring
-   [[metabase.util.ui-logic/find-goal-value]]'s reading of where a goal lives per display.
+   [[metabase.visualization-settings.ui-logic/find-goal-value]]'s reading of where a goal lives per display.
 
    The FE alert modal gates on `graph.show_goal` instead, and toggling the goal line on persists
    no `graph.goal_value` (the rendered 0 is a render-time default) — so a chart can draw a goal
@@ -172,13 +172,14 @@
 
 ;;; --------------------------------------------------- handlers ---------------------------------------------------
 
-(defn- email-recipient
-  "One email-handler recipient: an integer is a Metabase user, a string is a bare email address."
-  [recipient]
-  (let [[kind value] (mcp.recipients/classify recipient)]
-    (case kind
-      :user  {:type :notification-recipient/user :user_id value}
-      :email {:type :notification-recipient/raw-value :details {:value value}})))
+(defn- email-recipients
+  "The email-handler recipients of `recipients`: an integer is a Metabase user, a string is a bare email address."
+  [recipients]
+  (mapv (fn [[kind value]]
+          (case kind
+            :user  {:type :notification-recipient/user :user_id value}
+            :email {:type :notification-recipient/raw-value :details {:value value}}))
+        (mcp.recipients/classify-all recipients)))
 
 (defn- slack-recipient
   "The single raw-value recipient a slack handler carries: the channel's display name plus its
@@ -244,7 +245,7 @@
         (assoc base
                :channel_type :channel/email
                :recipients   (cond
-                               (seq recipients)         (mapv email-recipient recipients)
+                               (seq recipients)         (email-recipients recipients)
                                (seq (:recipients base)) (:recipients base)
                                :else [{:type    :notification-recipient/user
                                        :user_id api/*current-user-id*}]))))))

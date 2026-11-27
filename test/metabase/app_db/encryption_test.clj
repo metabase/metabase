@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- recipient-details []
-  (t2/select-fn-vec :details :notification_recipient :details [:!= nil]))
+  (t2/select-fn-vec :details (t2/table-name :model/NotificationRecipient) :details [:!= nil]))
 
 (deftest encrypt-plaintext-columns!-test
   ;; Re-enacts how a boot of a pre-encryption build undoes the one-shot encryption backfills: its seeding reads the
@@ -27,7 +27,7 @@
         (is (seq seeded) "seeding created recipients with details")
         (is (every? encryption/decryptable-string? seeded) "seeded through the current build: encrypted at rest")
         (testing "an old build's seed re-writes the rows plaintext; the heal re-encrypts them"
-          (t2/query {:update :notification_recipient
+          (t2/query {:update (t2/table-name :model/NotificationRecipient)
                      :set    {:details "{\"pattern\":\"plain\"}"}
                      :where  [:!= :details nil]})
           (is (not-any? encryption/decryptable-string? (recipient-details)) "now plaintext, as an old build leaves them")
@@ -46,7 +46,7 @@
             (mdb/encrypt-plaintext-columns!)
             (is (= snapshot (recipient-details)))))
         (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION the heal refuses instead, leaving the rows as they are"
-          (t2/query {:update :notification_recipient
+          (t2/query {:update (t2/table-name :model/NotificationRecipient)
                      :set    {:details "{\"pattern\":\"plain\"}"}
                      :where  [:!= :details nil]})
           (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]

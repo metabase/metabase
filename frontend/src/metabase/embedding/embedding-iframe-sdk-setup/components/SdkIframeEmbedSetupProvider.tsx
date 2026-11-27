@@ -95,16 +95,17 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
     if (initialState?.resourceType && initialState.resourceId) {
-      // When the resources are already pre-selected,
-      // start at the options step when the experience supports it.
-      const selectOptionsStep = EMBED_STEPS.find(
+      // When the resource is already pre-selected, skip the experience step.
+      // Dashboards and questions start at the options step, while data apps
+      // have no options and start at the code step.
+      const stepAfterExperience = EMBED_STEPS.find(
         (step) =>
-          step.id === "select-embed-options" &&
+          step.id !== "select-embed-experience" &&
           !step.excludedExperiences?.includes(defaultSettings.experience),
       );
 
-      if (selectOptionsStep) {
-        return selectOptionsStep.id;
+      if (stepAfterExperience) {
+        return stepAfterExperience.id;
       }
     }
 

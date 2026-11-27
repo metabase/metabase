@@ -48,7 +48,7 @@
         (lib/breakout (lib/with-temporal-bucket created-at :month)))))
 
 (defn- set-default-metric-dimension! [metric-id display-name]
-  (metrics/sync-dimensions! :metadata/metric metric-id)
+  (metrics/sync-dimensions! :metadata/metric [metric-id])
   (let [metric    (t2/select-one :model/Card :id metric-id)
         dimension (some #(when (= display-name (:display-name %)) %) (:dimensions metric))
         dimensions (mapv #(if (= (:id dimension) (:id %))
@@ -687,7 +687,7 @@
   (testing "param mapped to a native model is ignored, but applied to a sibling MBQL card (#44288)"
     (mt/dataset test-data
       (let [mp         (mt/metadata-provider)
-            cat-target [:dimension (lib.convert/->legacy-MBQL
+            cat-target [:dimension (lib.convert/->legacy-MBQL-ref
                                     (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
         (mt/with-temp
           [:model/Card {mbql-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
@@ -766,7 +766,7 @@
                          cnt (first (filter #(= (:name %) "count") (lib/visible-columns q1)))
                          q2  (lib/expression q1 "5xCount" (lib/* 5 cnt))]
                      (lib/with-fields q2 [(lib/expression-ref q2 "5xCount")]))
-            cc-ref (lib.convert/->legacy-MBQL (lib/expression-ref query "5xCount"))]
+            cc-ref (lib.convert/->legacy-MBQL-ref (lib/expression-ref query "5xCount"))]
         (mt/with-temp
           [:model/Card {card-id :id}
            {:dataset_query query}
@@ -798,7 +798,7 @@
           :card_id            nested-id
           :parameter_mappings [{:parameter_id "_ID_"
                                 :card_id      nested-id
-                                :target       [:dimension (lib.convert/->legacy-MBQL
+                                :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                            (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :id))))]}]}]
         (is (= 1
                (count (mt/rows (run-query-for-dashcard dashboard-id nested-id dashcard-id

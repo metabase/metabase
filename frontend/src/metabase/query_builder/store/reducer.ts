@@ -1,4 +1,5 @@
 import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import {
   createCardPublicLink,
@@ -8,15 +9,19 @@ import {
 } from "metabase/api";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
+  ADD_METABOT_CARD_BASELINE,
   API_UPDATE_QUESTION,
   EDIT_SUMMARY,
   INITIALIZE_QB,
   RESET_QB,
+  SET_PENDING_METABOT_CARD,
   SET_UI_CONTROLS,
 } from "metabase/redux/query-builder";
 import type {
   ForeignKeyReference,
   InitialChartSettingState,
+  MetabotCardBaseline,
+  PendingMetabotCard,
   QueryBuilderLoadingControls,
   QueryBuilderParentEntityState,
   QueryBuilderQueryStatus,
@@ -268,7 +273,9 @@ const uiControls = createReducer<QueryBuilderUIControls>(
             | undefined;
         }
       >(OPEN_CHART_SETTINGS, (state, action) => {
-        const { initialChartSettings, showSidebarTitle = false } =
+        const isSidebarTitleShown =
+          state.isShowingChartSettingsSidebar && state.showSidebarTitle;
+        const { initialChartSettings, showSidebarTitle = isSidebarTitleShown } =
           action.payload ?? {};
         return {
           ...state,
@@ -463,6 +470,30 @@ const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
     )
     .addCase(CLEAR_QUERY_RESULT, () => null);
 });
+
+const pendingMetabotCard = createReducer<PendingMetabotCard | null>(
+  null,
+  (builder) => {
+    builder.addCase<
+      string,
+      { type: string; payload: PendingMetabotCard | null }
+    >(SET_PENDING_METABOT_CARD, (_state, action) => action.payload);
+  },
+);
+
+// Never cleared, so Back and Forward return to questions that still match.
+const metabotCardBaselines = createReducer<MetabotCardBaseline[]>(
+  [],
+  (builder) => {
+    builder.addCase<string, { type: string; payload: MetabotCardBaseline }>(
+      ADD_METABOT_CARD_BASELINE,
+      (state, action) =>
+        state.some((baseline) => _.isEqual(baseline, action.payload))
+          ? state
+          : [...state, action.payload],
+    );
+  },
+);
 
 const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   {},
@@ -718,6 +749,8 @@ const card = createReducer<Card | null>(null, (builder) => {
 
 export const queryBuilderReducer: Reducer<QueryBuilderState> = combineReducers({
   uiControls,
+  pendingMetabotCard,
+  metabotCardBaselines,
   loadingControls,
   queryStatus,
   zoomedRowObjectId,

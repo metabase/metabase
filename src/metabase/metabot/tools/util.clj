@@ -12,8 +12,7 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
   "Return an output for legacy agent errors, rethrowing declared tool errors and other exceptions.
@@ -537,7 +536,7 @@
   (when (seq card-ids)
     (into {}
           (u/index-by :id)
-          (filterv mi/can-read? (t2/hydrate (metabot.db/card-source-rows card-ids) :can_read)))))
+          (mi/readable (metabot.db/card-source-rows card-ids)))))
 
 (defn card-source-table-id
   "Return the ID of the table that the card with `card-id` reads from, following its source cards.

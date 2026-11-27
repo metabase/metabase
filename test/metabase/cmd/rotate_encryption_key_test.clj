@@ -1,10 +1,10 @@
 (ns metabase.cmd.rotate-encryption-key-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -41,10 +41,9 @@
   :encryption :when-encryption-key-set)
 
 (defn- raw-value [keyy]
-  (:value (first (jdbc/query {:datasource (mdb/data-source)}
-                             [(if (= driver/*driver* :h2)
-                                "select \"VALUE\" from setting where setting.\"KEY\"=?;"
-                                "select value from setting where setting.key=?;") keyy]))))
+  (:value (t2/query-one {:select [:value]
+                         :from   [(t2/table-name :model/Setting)]
+                         :where  [:= :key keyy]})))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
   (mt/with-dynamic-fn-redefs [rotate-encryption-key! #(throw (Exception. "err"))
@@ -95,7 +94,11 @@
                 (binding [copy/*copy-h2-database-details* true]
                   (load-from-h2/load-from-h2! h2-fixture-db-file))
                 (t2/insert! :model/Setting {:key "rotate-test-plaintext-setting", :value "unencrypted value"})
-                (t2/insert! :model/Setting {:key "settings-last-updated", :value original-timestamp})
+                (t2/insert! (t2/table-name :model/Setting) {:key            "settings-last-updated"
+                                                            :value          original-timestamp
+                                                            :value_with_aad (encryption/maybe-encrypt
+                                                                             original-timestamp
+                                                                             {:aad (mdb.setting/setting-aad "settings-last-updated")})})
                 (let [u (first (t2/insert-returning-instances! :model/User {:email        "nobody@nowhere.com"
                                                                             :first_name   "No"
                                                                             :last_name    "Body"
@@ -187,33 +190,33 @@
 (defn- set-encryption-check-raw!
   "Set the raw value of the `encryption-check` sentinel setting, replacing any existing row."
   [value]
-  (t2/delete! :setting :key "encryption-check")
-  (t2/insert! :setting {:key "encryption-check" :value value}))
+  (t2/delete! (t2/table-name :model/Setting) :key "encryption-check")
+  (t2/insert! (t2/table-name :model/Setting) {:key "encryption-check" :value value}))
 
 (defn- insert-user-with-raw-settings!
   "Insert a row directly into the `core_user` table (bypassing model transforms) and return its id."
   [raw-settings]
-  (first (t2/insert-returning-pks! :core_user {:email         (str (mt/random-name) "@nowhere.test")
-                                               :first_name    "No"
-                                               :last_name     "Body"
-                                               :password      "nopassword"
-                                               :password_salt "nosalt"
-                                               :date_joined   :%now
-                                               :is_superuser  false
-                                               :is_active     true
-                                               ;; NOT NULL, and the model hook that fills it is bypassed
-                                               :entity_id     (u/generate-nano-id)
-                                               :settings      raw-settings})))
+  (first (t2/insert-returning-pks! (t2/table-name :model/User) {:email         (str (mt/random-name) "@nowhere.test")
+                                                                :first_name    "No"
+                                                                :last_name     "Body"
+                                                                :password      "nopassword"
+                                                                :password_salt "nosalt"
+                                                                :date_joined   :%now
+                                                                :is_superuser  false
+                                                                :is_active     true
+                                                                ;; NOT NULL, and the model hook that fills it is bypassed
+                                                                :entity_id     (u/generate-nano-id)
+                                                                :settings      raw-settings})))
 
 (defn- insert-channel-with-raw-details!
   "Insert a row directly into the `channel` table (bypassing model transforms) and return its id."
   [raw-details]
-  (first (t2/insert-returning-pks! :channel {:name       (mt/random-name)
-                                             :type       "channel/http"
-                                             :details    raw-details
-                                             :active     true
-                                             :created_at :%now
-                                             :updated_at :%now})))
+  (first (t2/insert-returning-pks! (t2/table-name :model/Channel) {:name       (mt/random-name)
+                                                                   :type       "channel/http"
+                                                                   :details    raw-details
+                                                                   :active     true
+                                                                   :created_at :%now
+                                                                   :updated_at :%now})))
 
 (deftest decrypt-db-undecryptable-values-test
   (let [k1        "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
@@ -226,25 +229,25 @@
           (let [good-id (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}"))
                 bad-id  (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"fr\"}" {:secret-key k2-hashed}))]
             (mdb/decrypt-db :h2 (mdb/data-source))
-            (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
-            (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
-            (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check")))))))
+            (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings (t2/table-name :model/User) :id good-id)))
+            (is (= "{}" (t2/select-one-fn :settings (t2/table-name :model/User) :id bad-id)))
+            (is (= "unencrypted" (t2/select-one-fn :value (t2/table-name :model/Setting) :key "encryption-check")))))))
     (testing "when encryption-check does not decrypt, decryption aborts before touching any rows"
       (mt/with-empty-h2-app-db!
         (let [user-id (encryption-test/with-secret-key k1
                         (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
                         (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}")))
-              raw-settings (t2/select-one-fn :settings :core_user :id user-id)]
+              raw-settings (t2/select-one-fn :settings (t2/table-name :model/User) :id user-id)]
           (encryption-test/with-secret-key k2
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"
                  (mdb/decrypt-db :h2 (mdb/data-source)))))
-          (is (= raw-settings (t2/select-one-fn :settings :core_user :id user-id))))))
+          (is (= raw-settings (t2/select-one-fn :settings (t2/table-name :model/User) :id user-id))))))
     (testing "without an encryption-check sentinel, an undecryptable value still aborts even in a clearable column"
       (mt/with-empty-h2-app-db!
         (encryption-test/with-secret-key k1
-          (t2/delete! :setting :key "encryption-check")
+          (t2/delete! (t2/table-name :model/Setting) :key "encryption-check")
           (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"fr\"}" {:secret-key k2-hashed}))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo

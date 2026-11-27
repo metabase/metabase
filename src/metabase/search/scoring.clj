@@ -4,16 +4,19 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [toucan2.core :as t2]))
 
 (def ^:private seconds-in-a-day 86400)
 
 (defn truthy
-  "Prefer it when a (potentially nullable) boolean is true."
-  [column]
-  [:coalesce [:cast column :integer] [:inline 0]])
+  "An SQL expression that scores a nullable boolean column as 0 or 1.
+  The optional database type selects the integer cast."
+  ([column] (truthy (mdb/db-type) column))
+  ([db-type column]
+   [:coalesce [:cast column (if (= :mysql db-type) :signed :integer)] [:inline 0]]))
 
 (defn equal
   "Prefer it when it matches a specific (non-null) value"
@@ -23,22 +26,20 @@
 (defn prefix
   "Prefer it when the given value is a completion of a specific (non-null) value"
   [column value]
-  [:coalesce [:case [:like column (h2x/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
+  [:coalesce [:case [:like column (funnysql.util/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
   lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
-  `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
-  rejects 'g'.
-  Only :postgres and :h2 can reach this: the appdb engine is gated to those (see
-  [[metabase.search.appdb.core/supported-db?]]) and semantic search passes :postgres explicitly."
+  The database type selects the regexp_replace dialect.
+  PostgreSQL requires the 'g' flag; H2 and MySQL replace all by default."
   ([expr] (normalize-text-expr (mdb/db-type) expr))
   ([db-type expr]
    ;; Replace commas with a space, not nothing, so `a,b` doesn't collapse into `ab`.
    (let [stripped [:replace [:lower expr] "," " "]
          collapsed (case db-type
                      :postgres [:regexp_replace stripped "\\s+" " " "g"]
-                     :h2       [:regexp_replace stripped "\\s+" " "])]
+                     (:h2 :mysql) [:regexp_replace stripped "\\s+" " "])]
      [:trim collapsed])))
 
 (defn normalize-text
@@ -76,34 +77,36 @@
            [:coalesce
             [[:timestampdiff :second from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
-           [[::h2x/extract :epoch [:- to-column from-column]]])
+           [[:extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]
        [:inline 0]]
       ceiling])))
 
 (defn- cast-to-text
   [column]
-  [:cast column (if (= :mysql (mdb/db-type))
-                  :char
-                  :text)])
+  (if (= :mysql (mdb/db-type))
+    ;; A cast takes the connection's collation, which the server's defaults can set to something other than the
+    ;; `utf8mb4_unicode_ci` of the index columns it is compared with, such as MariaDB's `utf8mb4_general_ci`.
+    [:collate [:cast column :char] "utf8mb4_unicode_ci"]
+    [:cast column :text]))
 
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+  (let [one-day-ago [:date-add :%now -1 :day]]
     ^:allow-subquery
     {:select [[[:case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
                 [:= :search_index.model "transform"]
                 one-day-ago
                 :else
-                [:max :recent_views.timestamp]]
+                [:max (u/qualified-key (t2/table-name :model/RecentViews) :timestamp)]]
                :last_viewed_at]]
-     :from   [:recent_views]
+     :from   [(t2/table-name :model/RecentViews)]
      :where  [:and
-              [:= :recent_views.user_id current-user-id]
-              [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
-              [:= :recent_views.model
+              [:= (u/qualified-key (t2/table-name :model/RecentViews) :user_id) current-user-id]
+              [:= (cast-to-text (u/qualified-key (t2/table-name :model/RecentViews) :model_id)) :search_index.model_id]
+              [:= (u/qualified-key (t2/table-name :model/RecentViews) :model)
                [:case
                 [:= :search_index.model "dataset"] "card"
                 [:= :search_index.model "metric"] "card"
@@ -112,7 +115,7 @@
 (defn library-score-expr
   "Score expression: 1 when `:root_collection_type` is one of the library collection types, else 0."
   []
-  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-type` (walks the
+  ;; `:root-collection-type` is set at ingestion via `collection/root-collection-types` (walks the
   ;; materialized path), so deeply nested items in a library tree still match.
   [:case
    (into [:or]
@@ -165,16 +168,19 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
+(def ^:private bookmark-models
+  {:card :model/CardBookmark, :collection :model/CollectionBookmark, :dashboard :model/DashboardBookmark})
+
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
-        table-name (str model-name "_bookmark")]
-    [(keyword table-name)
+        alias      (keyword (str model-name "_bookmark"))]
+    [[(t2/table-name (bookmark-models model)) alias]
      [:and
       (if-let [sms (bookmarked-sub-models model)]
         [:in :search_index.model (mapv name sms)]
         [:= :search_index.model model-name])
-      [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id (cast-to-text (keyword (str table-name "." model-name "_id")))]]]))
+      [:= (u/qualified-key alias :user_id) user-id]
+      [:= :search_index.model_id (cast-to-text (u/qualified-key alias (str model-name "_id")))]]]))
 
 (defn join-bookmarks
   "Add join clause to bookmark tables for :bookmarked scorer."

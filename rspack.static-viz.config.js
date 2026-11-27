@@ -82,9 +82,6 @@ module.exports = (env) => {
                     syntax: "typescript",
                     tsx: true,
                   },
-                  experimental: {
-                    plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
-                  },
                 },
 
                 sourceMaps: false,

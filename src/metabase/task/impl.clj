@@ -26,6 +26,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.task.job-factory :as job-factory]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -34,7 +35,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobListener
-               JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey
+               JobPersistenceException ObjectAlreadyExistsException Scheduler SchedulerException Trigger TriggerKey
                TriggerListener)))
 
 (set! *warn-on-reflection* true)
@@ -222,13 +223,27 @@
     (catch Throwable e
       (log/errorf "Error rescheduling job: %s" (ex-message e)))))
 
+(def ^:private worktree-id-key
+  "The key of the job data entry that names the remote sync worktree whose thread scheduled a trigger."
+  "worktree-id")
+
+(defn- in-worktree
+  "`trigger`, its job data naming the remote sync worktree other than the default one this thread works in, or
+  `previous`'s, when there is one."
+  ^Trigger [^Trigger trigger ^Trigger previous]
+  (when-let [worktree-id (or (when (mdb/non-default-worktree?) (mdb/worktree-id))
+                             (some-> previous .getJobDataMap (.get worktree-id-key)))]
+    (.put (.getJobDataMap trigger) ^String worktree-id-key ^Object worktree-id))
+  trigger)
+
 (mu/defn reschedule-trigger!
-  "Reschedule a trigger with the same key as the given trigger.
+  "Reschedule a trigger with the same key as the given trigger, in the remote sync worktree of the trigger it replaces.
 
   Used to update trigger properties like priority."
   [trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
-    (.rescheduleJob scheduler (.getKey ^Trigger trigger) trigger)))
+    (let [trigger-key (.getKey ^Trigger trigger)]
+      (.rescheduleJob scheduler trigger-key (in-worktree trigger (.getTrigger scheduler trigger-key))))))
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
@@ -240,7 +255,7 @@
     trigger   :- (ms/InstanceOfClass Trigger)]
    (when scheduler
      (try
-       (qs/schedule scheduler job trigger)
+       (qs/schedule scheduler job (in-worktree trigger nil))
        (catch ObjectAlreadyExistsException _
          (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
          (reschedule-task! scheduler job trigger))))))
@@ -254,10 +269,34 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
+(def metrics-job-name-key
+  "The key of a job data entry that names the job in metrics in place of its job key, for jobs with a key per target."
+  "metrics-job-name")
+
+(mu/defn schedule-once! :- [:maybe :boolean]
+  "Store the one-shot `trigger` of `job` in place of a stored trigger with its key, whether that one waits or its run is
+  in progress, and return true, or nil when this node has no running scheduler or Quartz refuses the trigger."
+  [job     :- (ms/InstanceOfClass JobDetail)
+   trigger :- (ms/InstanceOfClass Trigger)]
+  (when-let [scheduler (scheduler)]
+    (when-not (.isInStandbyMode scheduler)
+      (try
+        (.scheduleJob scheduler ^JobDetail job ^java.util.Set (hash-set trigger) true)
+        true
+        (catch SchedulerException e
+          (log/warnf "Could not schedule trigger %s: %s" (.getName (.getKey ^Trigger trigger)) (ex-message e)))))))
+
+(defn- running-scheduler
+  "The scheduler, or nil when there is none or it has been shut down, which leaves nothing to remove from it."
+  ^Scheduler []
+  (when-let [^Scheduler s (scheduler)]
+    (when-not (.isShutdown s)
+      s)))
+
 (mu/defn delete-task!
   "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
-  (when-let [scheduler (scheduler)]
+  (when-let [scheduler (running-scheduler)]
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
@@ -268,15 +307,16 @@
     (qs/add-job scheduler job true)))
 
 (mu/defn add-trigger!
-  "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"
+  "Add a trigger, run in the remote sync worktree this thread works in. Assumes the trigger is already associated to a
+  job (i.e. `trigger/for-job`)"
   [trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
-    (qs/add-trigger scheduler trigger)))
+    (qs/add-trigger scheduler (in-worktree trigger nil))))
 
 (mu/defn delete-trigger!
   "Remove `trigger-key` from the scheduler"
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
-  (when-let [scheduler (scheduler)]
+  (when-let [scheduler (running-scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
 
 (mu/defn delete-all-triggers-of-job!
@@ -397,7 +437,7 @@
    :persist-data? {:annotation 'org.quartz.PersistJobDataAfterExecution, :when true}})
 
 (def ^:private job-option-keys
-  (into #{:saved-class} (keys job-option-annotations)))
+  (into #{:saved-class :worktree-scope} (keys job-option-annotations)))
 
 (defn- job-definition-error [macro-name type-name message data]
   (ex-info (format "Invalid (task/%s %s ...): %s" macro-name type-name message)
@@ -434,6 +474,9 @@
 
       (not (string? saved-class))
       (throw (error "its `:saved-class` must be a string literal." {:saved-class saved-class}))
+
+      (not (contains? #{nil :each} (:worktree-scope options)))
+      (throw (error "its `:worktree-scope` must be `:each`." {:worktree-scope (:worktree-scope options)}))
 
       (not (re-matches #"[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)+" saved-class))
       (throw (error (format (str "its `:saved-class` %s is not a fully qualified Java class name, such as %s."
@@ -517,12 +560,29 @@
   (let [{:keys [more], :as definition} (parse-job-definition "defjob-type" type-name args)]
     (job-type-form type-name definition more)))
 
+(defn job-worktree-scope
+  "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`, or of the default
+  worktree without one."
+  [^JobExecutionContext job-context]
+  (mdb/worktree-id->scope (or (some-> job-context .getMergedJobDataMap (.get worktree-id-key)) mdb/default-worktree-id)))
+
+(defn run-in-each-worktree
+  "Calls `thunk` once in each remote sync worktree, the default one first."
+  [thunk]
+  (doseq [worktree-id (into [mdb/default-worktree-id] (map :id) (remote-sync/non-default-worktrees))]
+    (mdb/with-worktree-scope (mdb/worktree-id->scope worktree-id)
+      (thunk))))
+
 (defn- job-body-form
-  "The `body` of a [[defjob]], inside its log context and its tracing span."
-  [type-name body]
+  "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and the remote
+  sync worktree that scheduled its trigger, or each worktree in turn with `worktree-scope` `:each`."
+  [type-name job-context worktree-scope body]
   `(log/with-context {:quartz-job-type (quote ~type-name)}
      (tracing/with-span :tasks (str "task." (quote ~type-name)) {:task/name (str (quote ~type-name))}
-       ~@body)))
+       ~(if (= :each worktree-scope)
+          `(run-in-each-worktree (fn [] ~@body))
+          `(mdb/with-worktree-scope (job-worktree-scope ~job-context)
+             ~@body)))))
 
 (defmacro defjob
   "Defines a Quartz job class that runs `body` with a log context and an OpenTelemetry tracing span around it.
@@ -546,11 +606,13 @@
     `org.quartz.DisallowConcurrentExecution` does.
   - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as
     `org.quartz.PersistJobDataAfterExecution` does.
+  - `:worktree-scope`: `:each` runs the job once in each remote sync worktree, for a sweep of rows that every
+    worktree keeps for itself; without it, the job runs in the worktree whose thread scheduled its trigger.
 
   For a job that implements more than `org.quartz.Job`, see [[defjob-type]]."
   {:arglists '([type-name docstring? options args & body])}
   [type-name & args]
-  (let [{[job-args & body] :more, :as definition} (parse-job-definition "defjob" type-name args)]
+  (let [{[job-args & body] :more, :keys [options], :as definition} (parse-job-definition "defjob" type-name args)]
     (when-not (and (vector? job-args) (= 1 (count job-args)))
       (throw (job-definition-error "defjob" type-name
                                    "its argument vector takes one binding, for the `JobExecutionContext`."
@@ -559,7 +621,7 @@
                    definition
                    `[org.quartz.Job
                      (~'execute [~'_this ~@job-args]
-                                ~(job-body-form type-name body))])))
+                                ~(job-body-form type-name (first job-args) (:worktree-scope options) body))])))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

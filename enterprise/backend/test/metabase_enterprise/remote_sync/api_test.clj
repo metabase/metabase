@@ -4,9 +4,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -122,14 +124,11 @@
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Table             table   {:db_id         (mt/id)
-                                                       :name          "synced_table"
-                                                       :is_published  true
-                                                       :collection_id (:id synced)}
+                                                       :name          "synced_table"}
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
                      :model/FieldUserSettings fs      {:field_id (:id field) :description "Synced"}
-                     :model/Segment           segment {:table_id   (:id table)
-                                                       :name       "Synced segment"
+                     :model/Segment           segment {:name       "Synced segment"
                                                        :definition (let [mp (mt/metadata-provider)]
                                                                      (-> (lib/query mp (lib.metadata/table mp (:id table)))
                                                                          (lib/filter (lib/= (lib.metadata/field mp (:id field)) 1))))}]
@@ -151,9 +150,7 @@
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
                        :model/Table             table     {:db_id         (mt/id)
-                                                           :name          "synced_table"
-                                                           :is_published  true
-                                                           :collection_id (:id synced)}
+                                                           :name          "synced_table"}
                        :model/Field             field     {:table_id (:id table) :name "user_id" :base_type :type/Integer}
                        :model/Field             target    {:table_id (:id table) :name "user_name" :base_type :type/Text}
                        :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
@@ -198,9 +195,7 @@
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
                        :model/Table             table     {:db_id         (mt/id)
-                                                           :name          "synced_table"
-                                                           :is_published  true
-                                                           :collection_id (:id synced)}
+                                                           :name          "synced_table"}
                        :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
                        :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
                        :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
@@ -215,18 +210,15 @@
 (deftest dimension-of-unsynced-table-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Collection        synced      {:name "Synced" :is_remote_synced true :location "/"}
+      (mt/with-temp [:model/Collection        _synced     {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Collection        unsynced    {:name "Unsynced" :location "/"}
                      :model/Table             unpublished {:db_id (mt/id) :name "unpublished_table"}
                      :model/Table             elsewhere   {:db_id         (mt/id)
-                                                           :name          "elsewhere_table"
-                                                           :is_published  true
-                                                           :collection_id (:id unsynced)}
+                                                           :name          "elsewhere_table"}
                      :model/Field             field-1     {:table_id (:id unpublished) :name "id" :base_type :type/Integer}
                      :model/Field             field-2     {:table_id (:id elsewhere) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _           {:table_id      (:id unpublished)
-                                                           :is_published  false
-                                                           :collection_id (:id synced)}
+                                                           :is_published  false}
                      :model/TableUserSettings _           {:table_id      (:id elsewhere)
                                                            :is_published  true
                                                            :collection_id (:id unsynced)}
@@ -291,6 +283,32 @@
       (t2/delete! :model/RemoteSyncTask)
       (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))
 
+(deftest dirty-statement-count-test
+  (testing "GET /api/ee/remote-sync/dirty costs as many statements for 10 cards as for 40, each in its own synced collection"
+    (let [statements (fn [n]
+                       (remote-sync.tu/with-repository [url]
+                         (remote-sync.tu/with-remote-sync [url :read-write]
+                           (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}]
+                             (mt/with-model-cleanup [:model/Card :model/Collection]
+                               (let [mp             (mt/metadata-provider)
+                                     collection-ids (t2/insert-returning-pks! :model/Collection
+                                                                              (for [i (range n)]
+                                                                                {:name             (str "Synced " i)
+                                                                                 :is_remote_synced true
+                                                                                 :location         (str "/" (:id synced) "/")}))]
+                                 (t2/insert! :model/Card (map-indexed (fn [i collection-id]
+                                                                        (assoc (mt/with-temp-defaults :model/Card)
+                                                                               :name          (str "Synced card " i)
+                                                                               :collection_id collection-id
+                                                                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+                                                                      collection-ids))
+                                 (is (= n (count (filter (comp #{"card"} :model)
+                                                         (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))))))
+                                 (t2/with-call-count [call-count]
+                                   (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+                                   (call-count))))))))]
+      (is (= (statements 10) (statements 40))))))
+
 (deftest dirty-with-unknown-base-version-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
@@ -315,6 +333,40 @@
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child))))
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {(:id parent) true}})
           (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id parent)))))))))
+
+(deftest settings-collections-statement-count-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/Collection]
+        (let [top-level  (fn [n prefix]
+                           (let [ids (t2/insert-returning-pks! :model/Collection
+                                                               (for [i (range n)] {:name (str prefix " " i) :location "/"}))]
+                             {:ids      ids
+                              :children (t2/insert-returning-pks! :model/Collection
+                                                                  (for [id ids] {:name     (str prefix " child " id)
+                                                                                 :location (str "/" id "/")}))}))
+              synced     (fn [{:keys [ids children]}]
+                           (t2/select-pks-set :model/Collection :id [:in (concat ids children)] :is_remote_synced true))
+              statements (fn [n synced?]
+                           (let [{:keys [ids] :as collections} (top-level n (str "Settings " n " " synced?))]
+                             (when-not synced?
+                               (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                     {:collections (zipmap ids (repeat true))}))
+                             (t2/with-call-count [call-count]
+                               (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                     {:collections (zipmap ids (repeat synced?))})
+                               (u/prog1 (call-count)
+                                 (is (= (if synced? (* 2 n) 0) (count (synced collections))))))))]
+          (statements 2 true)
+          (testing "PUT /api/ee/remote-sync/settings costs as many statements for 10 top-level collections as for 40"
+            (is (= (statements 10 true) (statements 40 true))))
+          (testing "and as many to stop syncing them"
+            (is (= (statements 10 false) (statements 40 false))))
+          (testing "a request naming one nested collection among top-level ones is refused and syncs none of them"
+            (let [{:keys [ids children] :as collections} (top-level 3 "Refused")]
+              (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                    {:collections (assoc (zipmap ids (repeat true)) (first children) true)})
+              (is (empty? (synced collections))))))))))
 
 (deftest settings-refuse-unsyncing-library-test
   (remote-sync.tu/with-repository [url]
@@ -399,3 +451,83 @@
             (testing "a branch other than the synced one is refused"
               (is (=? {:branch_mismatch true :current_branch "main"}
                       (mt/user-http-request :crowberto :get 409 "ee/remote-sync/export-preflight" :branch "other"))))))))))
+
+(defn- checked-out-worktree-id
+  "The id of the worktree the user `user` checked out, as the `:worktree` hydration of the user reads it, or nil."
+  [user]
+  (:id (:worktree (t2/hydrate (t2/select-one :model/User :id (mt/user->id user)) :worktree))))
+
+(deftest worktree-endpoints-require-superuser-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+    (doseq [[method path body] [[:get "ee/remote-sync/worktree" nil]
+                                [:get (str "ee/remote-sync/worktree/" worktree-id) nil]
+                                [:post "ee/remote-sync/worktree" {:branch "main"}]
+                                [:delete (str "ee/remote-sync/worktree/" worktree-id) nil]
+                                [:put "ee/remote-sync/checkout" {:worktree_id worktree-id}]]]
+      (testing (str method " " path)
+        (apply mt/user-http-request :rasta method 403 path (when body [body]))))
+    (testing "refused requests change nothing"
+      (is (t2/exists? :model/RemoteSyncWorktree :id worktree-id))
+      (is (nil? (checked-out-worktree-id :rasta))))))
+
+(deftest worktree-list-and-get-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+    (testing "list has worktree and not default worktree"
+      (let [worktrees (mt/user-http-request :crowberto :get 200 "ee/remote-sync/worktree")]
+        (is (=? [{:id worktree-id :branch "test-branch"}] (filter (comp #{worktree-id} :id) worktrees)))
+        (is (not-any? (comp #{mdb/default-worktree-id} :id) worktrees))))
+    (testing "worktree is read by id"
+      (is (=? {:id worktree-id :branch "test-branch" :users []}
+              (mt/user-http-request :crowberto :get 200 (str "ee/remote-sync/worktree/" worktree-id)))))
+    (testing "unknown worktree is not found"
+      (mt/user-http-request :crowberto :get 404 (str "ee/remote-sync/worktree/" (+ worktree-id 1000))))))
+
+(deftest create-worktree-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/RemoteSyncWorktree]
+        (testing "branch repository lacks is refused"
+          (mt/user-http-request :crowberto :post 400 "ee/remote-sync/worktree" {:branch "missing"}))
+        (let [worktree (mt/user-http-request :crowberto :post 200 "ee/remote-sync/worktree" {:branch "main"})]
+          (testing "created worktree checks out branch"
+            (is (=? {:branch "main" :creator {:id (mt/user->id :crowberto)} :users []} worktree)))
+          (testing "created worktree has built-in rows"
+            (mdb/with-worktree-scope {:type :worktree :worktree-id (:id worktree)}
+              (is (t2/exists? :model/Collection :entity_id "trashtrashtrashtrasht"))
+              (is (= (mdb/with-worktree-scope mdb/default-worktree-scope
+                       (t2/select-fn-set :entity_id :model/TransformTag :built_in_type [:not= nil]))
+                     (t2/select-fn-set :entity_id :model/TransformTag :built_in_type [:not= nil]))))))))))
+
+(deftest checkout-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+    (testing "checkout makes user work in worktree"
+      (mt/user-http-request :crowberto :put 204 "ee/remote-sync/checkout" {:worktree_id worktree-id})
+      (is (= worktree-id (checked-out-worktree-id :crowberto)))
+      (is (=? {:users [{:id (mt/user->id :crowberto)}]}
+              (mt/user-http-request :crowberto :get 200 (str "ee/remote-sync/worktree/" worktree-id)))))
+    (testing "checkout of nothing moves user to default worktree"
+      (mt/user-http-request :crowberto :put 204 "ee/remote-sync/checkout" {:worktree_id nil})
+      (is (nil? (checked-out-worktree-id :crowberto))))
+    (testing "default worktree and unknown worktree cannot be checked out"
+      (mt/user-http-request :crowberto :put 400 "ee/remote-sync/checkout" {:worktree_id mdb/default-worktree-id})
+      (mt/user-http-request :crowberto :put 404 "ee/remote-sync/checkout" {:worktree_id (+ worktree-id 1000)})
+      (is (nil? (checked-out-worktree-id :crowberto))))))
+
+(deftest delete-worktree-test
+  (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}        {:branch "test-branch"}
+                 :model/Collection         {main-collection-id :id} {}
+                 :model/Card               {main-card-id :id}       {:collection_id main-collection-id}]
+    (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:collection_id collection-id}]
+        (mt/user-http-request :crowberto :put 204 "ee/remote-sync/checkout" {:worktree_id worktree-id})
+        (mt/user-http-request :crowberto :delete 204 (str "ee/remote-sync/worktree/" worktree-id))
+        (mdb/with-worktree-scope {:type :all}
+          (testing "deleted worktree is gone with its content and checkouts"
+            (is (not (t2/exists? :model/RemoteSyncWorktree :id worktree-id)))
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (is (not (t2/exists? :model/Collection :id collection-id)))
+            (is (nil? (checked-out-worktree-id :crowberto))))
+          (testing "default worktree content is untouched"
+            (is (t2/exists? :model/Card :id main-card-id))
+            (is (t2/exists? :model/Collection :id main-collection-id))))))))

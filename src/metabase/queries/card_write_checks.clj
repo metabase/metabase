@@ -4,17 +4,16 @@
    same checks and can't drift apart."
   (:require
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,13 +27,12 @@
                       {:type        card-type
                        :status-code 400})))))
 
-(defn check-no-save-cycle!
-  "Run [[metabase.lib.core/check-card-overwrite]] for `card-id`/`query` (cycle detection),
-   re-throwing its error as a 400. Pass `:metabase.queries.card-write-checks/no-id` for `card-id`
-   on create."
-  [card-id query]
+(defn- check-no-save-cycle
+  "Run [[metabase.lib.core/check-card-overwrite]] for a Card that is not saved yet and `query`, re-throwing its error as a
+  400."
+  [query]
   (try
-    (lib/check-card-overwrite card-id query)
+    (lib/check-card-overwrite ::no-id query)
     (catch clojure.lang.ExceptionInfo e
       (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400))))))
 
@@ -61,37 +59,20 @@
 
       :else nil)))
 
-(defn- check-allowed-to-remove-from-existing-dashboards [card]
-  (let [dashboards (t2/hydrate (queries.db/card-dashboards card) :can_write)]
-    (doseq [dashboard dashboards]
-      (api/write-check dashboard))))
-
 (mu/defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? (:dataset_query card-before-updates) (get card-updates :dataset_query ::api/not-provided))
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
+    (query-perms/check-run-permissions-for-queries [(dissoc (:dataset_query card-updates) :query-permissions/perms)])))
 
-(defn- check-allowed-to-change-embedding
-  "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
-  enabled."
+(defn- check-embedding-enabled-to-change-embedding
+  "Embedding must be enabled to change the value of `enable_embedding`, `embedding_type` or `embedding_params`."
   [card-before-updates card-updates]
   (when (or (api/column-will-change? (:enable_embedding card-before-updates) (get card-updates :enable_embedding ::api/not-provided))
             (api/column-will-change? (:embedding_type card-before-updates) (get card-updates :embedding_type ::api/not-provided))
             (api/column-will-change? (:embedding_params card-before-updates) (get card-updates :embedding_params ::api/not-provided)))
-    (embedding.validation/check-embedding-enabled)
-    (api/check-superuser)))
-
-(mu/defn- check-allowed-to-move
-  [card-before-update :- ::queries.schema/card
-   card-updates       :- ::queries.schema/card]
-  (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
-    (check-allowed-to-remove-from-existing-dashboards card-before-update)
-    (when-let [dashboard-id (:dashboard_id card-updates)]
-      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
-                                                         [(merge card-before-update card-updates)])))
-  (collection/check-allowed-to-change-collection card-before-update card-updates))
+    (embedding.validation/check-embedding-enabled)))
 
 (mu/defn- check-update-result-metadata-data-perms
   [card-before-updates :- ::queries.schema/card
@@ -106,30 +87,38 @@
   [query]
   ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
   ;; any value already on the incoming query is dropped here.
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)]))
 
 (defn check-allowed-to-create-card!
-  "The full pre-write permission/validation stack for creating a card, mirroring `POST /api/card`.
-   `card` is the create body (with `:dataset_query`, and `:collection_id` and/or `:dashboard_id`);
-   `card-type` its keyword type. Runs run-permissions on the query, create-permission on the
-   target collection, and cycle detection. Throws on any failure."
+  "Throws unless `card` can be saved as `card-type` and the current user may create it and run its query."
   [card card-type]
-  (let [query (:dataset_query card)]
-    (check-card-can-be-saved! query card-type)
-    (check-allowed-to-run-query! query)
-    ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
-    (check-no-save-cycle! ::no-id query)))
+  (check-card-can-be-saved! (:dataset_query card) card-type)
+  (check-allowed-to-run-query! (:dataset_query card))
+  ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
+  (api/create-check :model/Card (assoc card :collection_id (actual-collection-id card)))
+  (queries.card/check-new-card-goal-references card)
+  (check-no-save-cycle (:dataset_query card)))
 
 (mu/defn check-allowed-to-update-card!
-  "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.
-   Run *after* the card's write-check: `card-before-update` is the existing card, `card-updates`
-   the patch (after [[metabase.api.common/updates-with-archived-directly]]). Checks
-   result-metadata data perms, collection/dashboard moves, query-run perms, and embedding changes."
+  "Throws unless the current user may apply `card-updates` to `card-before-update`."
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
+  (check-embedding-enabled-to-change-embedding card-before-update card-updates)
+  (api/update-check card-before-update card-updates)
+  (queries.card/check-updated-goal-references [[card-before-update card-updates]])
   (doseq [f [check-update-result-metadata-data-perms
-             check-allowed-to-move
-             check-allowed-to-modify-query
-             check-allowed-to-change-embedding]]
+             check-allowed-to-modify-query]]
     (f card-before-update card-updates)))
+
+(defn check-allowed-to-update-cards!
+  "Throws a 403 unless the current user may apply to each of `card-changes`, `[card changes]` pairs of Cards hydrated
+  with `:can_write`, its changes, with what the Cards depend on read together, publishing the failure for the first
+  Card that they may not."
+  [card-changes]
+  (when-not (queries.card/can-update-cards? card-changes)
+    (events/publish-event! :event/update-permission-failure
+                           {:user-id api/*current-user-id*
+                            :object  (first (or (queries.card/first-update-refused card-changes)
+                                                (first card-changes)))})
+    (api/check-403 false))
+  (queries.card/check-updated-goal-references card-changes))

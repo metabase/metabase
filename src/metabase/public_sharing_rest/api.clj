@@ -8,9 +8,12 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :as routes.common]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.database-routing.core :as database-routing]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,6 +26,7 @@
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.public-sharing-rest.api.refusal]
    [metabase.public-sharing-rest.db :as public-sharing-rest.db]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -75,11 +79,12 @@
   "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
   filters, aggregations, template tags, etc.) are never exposed to the general public. MBQL queries keep only their
   source table or source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can
-  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
-  [query]
+  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs, a
+  source table being looked up in `id->table`, a map of table ids to their metadata."
+  [query id->table]
   (if (lib/native? query)
     (lib/native-query query "-")
-    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+    (if-let [source (or (some->> (lib/primary-source-table-id query) (get id->table))
                         (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
       (reduce lib/aggregate
               (lib/query query source)
@@ -94,26 +99,43 @@
   (m/update-existing card-or-dashboard :param_fields
                      #(select-keys % (into #{} (map :id) (:parameters card-or-dashboard)))))
 
+(defn- table-metadata-by-id
+  "A map of table ids to their metadata for the source tables of the queries of `cards`, loaded once per database."
+  [cards]
+  (into {}
+        (mapcat (fn [[_database-id queries]]
+                  (let [table-ids (into #{} (keep lib/primary-source-table-id) queries)]
+                    (when (seq table-ids)
+                      (map (juxt :id identity) (lib.metadata/bulk-metadata (first queries) :metadata/table table-ids))))))
+        (group-by lib/database-id
+                  (into []
+                        (comp (keep :dataset_query) (filter seq) (remove lib/native?))
+                        cards))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
 
-  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]].
+  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]], whose source tables
+  come from `id->table`, a map of table ids to their metadata, loaded for the card alone when not given.
 
   This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
   consistent filtering of sensitive fields across all public sharing endpoints."
-  [card]
-  ;; We need to check this to resolve params - we set `request/as-admin` there
-  (if qp.perms/*param-values-query*
-    card
-    (mi/instance
-     :model/Card
-     (-> card
-         (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
-                       :dataset_query])
-         (update :dataset_query (fn [query]
-                                  (cond-> query
-                                    (seq query) blank-dataset-query)))
-         params/remove-param-fields-non-public-columns))))
+  ([card]
+   (remove-card-non-public-columns card nil))
+  ([card id->table]
+   ;; We need to check this to resolve params - we set `request/as-admin` there
+   (if qp.perms/*param-values-query*
+     card
+     (mi/instance
+      :model/Card
+      (-> card
+          (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
+                        :dataset_query])
+          (update :dataset_query (fn [query]
+                                   (cond-> query
+                                     (seq query) (blank-dataset-query (or id->table
+                                                                          (table-metadata-by-id [card]))))))
+          params/remove-param-fields-non-public-columns)))))
 
 (defn public-card
   "Return the public Card with the given `card-id`, removing all columns that should not be visible to the general
@@ -254,12 +276,23 @@
               :make-run   process-query-for-card-with-id-run-fn
               options)))
 
+;;; Chart context resolvers: one per public chart identity shape. A chart route and its `/goal-values` route resolve
+;;; through the same fn with the same arguments, so a check added to a resolver guards both. A public link signs no
+;;; parameter values, so `:signed-parameter-ids` is always empty.
+
+(defn- resolve-public-card
+  "`{:card card}` for the public Card with `uuid`. 400 when public sharing is disabled, 404 when no unarchived Card
+  has the uuid."
+  [uuid]
+  (public-sharing.validation/check-public-sharing-enabled)
+  {:card                 (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))
+   :signed-parameter-ids #{}})
+
 (defn ^:private process-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
+  (let [{:keys [card]} (resolve-public-card uuid)]
     (apply process-query-for-card-with-id card export-format parameters options)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
@@ -351,15 +384,16 @@
 
 (defn- public-dashcards
   [dashcards]
-  (let [events (public-timeline-events (into #{} (mapcat public-dashcard-timeline-ids) dashcards))]
+  (let [events    (public-timeline-events (into #{} (mapcat public-dashcard-timeline-ids) dashcards))
+        id->table (table-metadata-by-id (mapcat (fn [dashcard] (cons (:card dashcard) (:series dashcard))) dashcards))]
     (for [dashcard dashcards]
       (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
                                  :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
           (assoc :timeline_events (public-dashcard-timeline-events dashcard events))
-          (update :card remove-card-non-public-columns)
+          (update :card remove-card-non-public-columns id->table)
           (update :series (fn [series]
                             (for [series series]
-                              (remove-card-non-public-columns series))))
+                              (remove-card-non-public-columns series id->table))))
           (m/update-existing :action public-action)))))
 
 (mu/defn public-dashboard :- ::dashboards.schema/dashboard
@@ -401,6 +435,19 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
+
+(defn- resolve-public-dashcard
+  "`{:dashboard :dashcard :card}` for Card `card-id` on DashboardCard `dashcard-id` of the public Dashboard with
+  `uuid`. 400 when public sharing is disabled; 404 when the Card or Dashboard is missing or archived, the
+  DashboardCard is missing, or they don't belong together."
+  [uuid dashcard-id card-id]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
+        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+    ;; [[qp.dashboard/process-query-for-dashcard]] checks this again for the chart routes
+    (qp.dashboard/check-card-and-dashcard-are-in-dashboard (:id dashboard) card-id dashcard)
+    {:dashboard dashboard, :dashcard dashcard, :card card, :signed-parameter-ids #{}}))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for pre-loaded Card `card` on pre-loaded DashboardCard `dashcard` belonging to
@@ -463,10 +510,7 @@
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
-        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+  (let [{:keys [dashboard dashcard card]} (resolve-public-dashcard uuid dashcard-id card-id)]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -490,10 +534,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
-        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+  (let [{:keys [dashboard dashcard card]} (resolve-public-dashcard uuid dashcard-id card-id)]
     (u/prog1 (process-query-for-dashcard
               :dashboard     dashboard
               :card          card
@@ -739,10 +780,7 @@
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
-        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+  (let [{:keys [dashboard dashcard card]} (resolve-public-dashcard uuid dashcard-id card-id)]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -915,6 +953,14 @@
     (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
     document))
 
+(defn- resolve-public-document-card
+  "`{:card card}` for Card `card-id` embedded in the public Document with `uuid`. 400 when public sharing is disabled,
+  404 when the Document or Card is missing or archived, or the Card isn't embedded in the Document."
+  [uuid card-id]
+  (public-sharing.validation/check-public-sharing-enabled)
+  {:card                 (validate-card-in-public-document uuid card-id)
+   :signed-parameter-ids #{}})
+
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
   :- ::query-result-response
   "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
@@ -924,8 +970,7 @@
                               [:card-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true} [:maybe ::parameters.schema/api.parameter-values]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (validate-card-in-public-document uuid card-id)]
+  (let [{:keys [card]} (resolve-public-document-card uuid card-id)]
     ;; Run the query as admin since public documents are available to everyone anyway
     (u/prog1 (process-query-for-card-with-id
               card
@@ -948,8 +993,7 @@
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
-  (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (validate-card-in-public-document uuid card-id)]
+  (let [{:keys [card]} (resolve-public-document-card uuid card-id)]
     (process-query-for-card-with-id
      card
      export-format
@@ -960,12 +1004,66 @@
                   :format-rows?          format_rows
                   :pivot?                pivot_results})))
 
+;;; ----------------------------------------------- Dynamic goal values ------------------------------------------------
+
+(mr/def ::goal-values-response
+  "Response schema for a public or embed `/goal-values` endpoint."
+  (qp.streaming/response-schema ::dynamic-goals/goal-values))
+
+(api.macros/defendpoint :get "/card/:uuid/goal-values"
+  :- ::goal-values-response
+  "Fetch the values of the dynamic goals of a publicly-accessible Card. Does not require auth credentials. Public
+  sharing must be enabled."
+  [{:keys [uuid]} :- [:map {:closed true}
+                      [:uuid ms/UUIDString]]]
+  (dynamic-goals/chart-context-goal-values-response (resolve-public-card uuid)))
+
+(api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/goal-values"
+  :- ::goal-values-response
+  "Fetch the values of the dynamic goals of a Card in a publicly-accessible Dashboard. Does not require auth
+  credentials. Public sharing must be enabled."
+  [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
+                                          [:uuid        ms/UUIDString]
+                                          [:dashcard-id ms/PositiveInt]
+                                          [:card-id     ms/PositiveInt]]]
+  (dynamic-goals/chart-context-goal-values-response (resolve-public-dashcard uuid dashcard-id card-id)))
+
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id/goal-values"
+  :- ::goal-values-response
+  "Fetch the values of the dynamic goals of a Card embedded in a public Document. Does not require auth credentials.
+  Public sharing must be enabled."
+  [{:keys [uuid card-id]} :- [:map {:closed true}
+                              [:uuid    ms/UUIDString]
+                              [:card-id ms/PositiveInt]]]
+  (dynamic-goals/chart-context-goal-values-response (resolve-public-document-card uuid card-id)))
+
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
 ;; TODO - a smart person would probably just parse the UUIDs automatically in middleware as appropriate for
 ;;`/dashboard` vs `/card`
 
+;;; A public link has no user attributes to route by, so public queries use the router database when it grants anonymous
+;;; access.
+
+(defn- enforce-anonymous-database-routing
+  "Ring middleware that runs a public request with database routing resolved for anonymous access (see above)."
+  [handler]
+  (fn [request respond raise]
+    (database-routing/with-database-routing-off-if-granted
+      (handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +anonymous-database-routing
+  (routes.common/wrap-middleware-for-open-api-spec-generation enforce-anonymous-database-routing))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/public` routes. Enforces public-sharing-enabled check via middleware, in addition to
-  per-endpoint checks."
-  (api.macros/ns-handler *ns* public-sharing.validation/+public-sharing-enabled))
+  per-endpoint checks, and resolves database routing for anonymous access (see above)."
+  (api.macros/ns-handler *ns*
+                         public-sharing.validation/+public-sharing-enabled
+                         +anonymous-database-routing))
+
+(comment metabase.public-sharing-rest.api.refusal/keep-me)
+
+(def ^{:arglists '([request respond raise])} refusal-routes
+  "`/api/public-link-refusal` routes."
+  (api.macros/ns-handler 'metabase.public-sharing-rest.api.refusal api/+check-superuser))

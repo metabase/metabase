@@ -11,6 +11,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
+  createMockUser,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
@@ -46,9 +47,10 @@ const REVERT_REVISION = createMockRevision({
 
 interface SetupOpts {
   canWrite: boolean;
+  revertError?: { status: number; message: string };
 }
 
-async function setupRevisionHistory({ canWrite }: SetupOpts) {
+async function setupRevisionHistory({ canWrite, revertError }: SetupOpts) {
   const card = createMockCard({
     ...TEST_STRUCTURED_CARD,
     name: "Orders renamed",
@@ -65,6 +67,18 @@ async function setupRevisionHistory({ canWrite }: SetupOpts) {
 
   // Registered before `setup` so this route wins over its static card mock.
   fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+  if (revertError) {
+    // Registered first, so it answers the revert of this card instead of the
+    // route `setupRevertableRevisionsEndpoints` adds.
+    fetchMock.post(
+      "path:/api/revision/revert",
+      {
+        status: revertError.status,
+        body: { message: revertError.message },
+      },
+      { body: { entity: "card", id: card.id }, matchPartialBody: true },
+    );
+  }
   setupRevertableRevisionsEndpoints({
     entity: "card",
     id: card.id,
@@ -77,7 +91,7 @@ async function setupRevisionHistory({ canWrite }: SetupOpts) {
   setupUsersEndpoints([createMockUserListResult()]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
 
-  await setup({ card });
+  await setup({ card, withUndos: true });
 
   return { card };
 }
@@ -135,6 +149,38 @@ describe("QueryBuilder > revision history", () => {
     });
   });
 
+  it("shows the backend message in a toast when a revert fails (UXW-310)", async () => {
+    const { card } = await setupRevisionHistory({
+      canWrite: true,
+      revertError: { status: 500, message: "Cannot revert: missing card" },
+    });
+
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    const history = await findHistory();
+    await userEvent.click(
+      await within(history).findByRole("button", {
+        name: "revert to You created this",
+      }),
+    );
+
+    expect(
+      await within(await screen.findByTestId("toast-undo")).findByText(
+        "Cannot revert: missing card",
+      ),
+    ).toBeInTheDocument();
+    const revertCalls = fetchMock.callHistory.calls(
+      "path:/api/revision/revert",
+      { method: "POST" },
+    );
+    expect(revertCalls).toHaveLength(1);
+    const body: unknown = JSON.parse(String(revertCalls[0].options.body));
+    expect(body).toEqual({
+      entity: "card",
+      id: card.id,
+      revision_id: CREATION_REVISION.id,
+    });
+  });
+
   it("does not show revert buttons to a user who cannot write to the question (metabase#13229)", async () => {
     await setupRevisionHistory({ canWrite: false });
 
@@ -150,5 +196,93 @@ describe("QueryBuilder > revision history", () => {
     expect(
       within(history).queryByTestId("question-revert-button"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("QueryBuilder > last edit info", () => {
+  const CURRENT_USER = createMockUser({
+    id: 7,
+    first_name: "Testy",
+    last_name: "McTestface",
+    email: "testy@metabase.test",
+  });
+  const OTHER_EDITOR = createMockUser({
+    id: 8,
+    first_name: "Robert",
+    last_name: "Tableton",
+    email: "robert@metabase.test",
+  });
+
+  // Mirrors the backend: the last editor and edit time change only when the
+  // PUT for this card renames it.
+  async function setupLastEditInfo() {
+    const card = createMockCard({
+      ...TEST_STRUCTURED_CARD,
+      name: "Orders",
+      can_write: true,
+      "last-edit-info": {
+        id: OTHER_EDITOR.id,
+        email: OTHER_EDITOR.email,
+        first_name: OTHER_EDITOR.first_name,
+        last_name: OTHER_EDITOR.last_name,
+        timestamp: "2023-05-18T13:33:30.198622-07:00",
+      },
+    });
+    let currentCard: Card = card;
+
+    // Registered before `setup` so these routes win over its static card mocks.
+    fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+    fetchMock.put(`path:/api/card/${card.id}`, (call) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("name" in body) ||
+        typeof body.name !== "string"
+      ) {
+        return { status: 400, body: {} };
+      }
+      currentCard = {
+        ...currentCard,
+        name: body.name,
+        "last-edit-info": {
+          id: CURRENT_USER.id,
+          email: CURRENT_USER.email,
+          first_name: CURRENT_USER.first_name,
+          last_name: CURRENT_USER.last_name,
+          timestamp: new Date().toISOString(),
+        },
+      };
+      return currentCard;
+    });
+    setupListNotificationEndpoints({ card_id: card.id }, []);
+
+    await setup({ card, currentUser: CURRENT_USER });
+
+    return { card };
+  }
+
+  it("shows the last editor's name, and the edit moment and 'you' after the current user renames the question", async () => {
+    const { card } = await setupLastEditInfo();
+
+    expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
+      /^Edited \d+ years ago by Robert Tableton$/,
+    );
+
+    await userEvent.type(getHeaderTitle(), "!");
+    await userEvent.tab();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
+        "Edited a few seconds ago by you",
+      ),
+    );
+    expect(getHeaderTitle()).toHaveValue("Orders!");
+    const putCalls = fetchMock.callHistory.calls(`path:/api/card/${card.id}`, {
+      method: "PUT",
+    });
+    expect(putCalls).toHaveLength(1);
+    const body: unknown = JSON.parse(String(putCalls[0].options.body));
+    expect(body).toMatchObject({ name: "Orders!" });
   });
 });

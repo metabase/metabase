@@ -5,6 +5,9 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.test-util :as search.tu]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -177,7 +180,10 @@
                     :msg-re       #"Field .* is missing from the source database"}]]
             (testing label
               (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}
-                                 :model/Segment {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
+                                 :model/Segment {segment-id :id} {:name       "Seg"
+                                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                                    (lib/filter (lib/= 1 1))))}
                                  :model/Card    _ {:name          "Card"
                                                    :collection_id coll-id
                                                    :database_id   db-id
@@ -247,3 +253,42 @@
               (is (= #{[:model/Collection child-id]
                        [:model/Card embed-card-id]}
                      (deps "Document" doc-id))))))))))
+
+(deftest dependency-validation-dynamic-goal-ref-test
+  (testing "Export aborts when a dynamic goal references something the archive won't satisfy"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database   {db-id :id}       {:engine :postgres}
+                         :model/Table      {table-id :id}    {:db_id db-id :name "T"}
+                         :model/Collection {coll-id :id}     {:name "Target Collection"}
+                         :model/Collection {outside-id :id}  {:name "Somewhere Else"}
+                         :model/Card       {goal-card :id}   {:name "Goal Source" :collection_id outside-id}
+                         :model/Measure    {measure-id :id}  {:name       "M"
+                                                              :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                            (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                                (lib/aggregate (lib/count))))}]
+        (let [opts {:targets       [[:model/Collection coll-id]]
+                    :no-settings   true
+                    :no-data-model true
+                    :no-transforms true}]
+          (testing "a card goal pointing outside the exported collection"
+            (ts/with-temp-dpc [:model/Card _ {:name          "Revenue"
+                                              :collection_id coll-id
+                                              :visualization_settings
+                                              {:graph.goal_value {:id goal-card :type "card" :column "total"}}}]
+              (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                (extract-aborts! opts)
+                (is (some #(re-find #"Card .* is not included in the export" %) (map :message (messages)))
+                    "the warning names the unsatisfied goal reference"))))
+          (testing "a measure goal pointing at a measure deleted from the appdb"
+            (ts/with-temp-dpc [:model/Card _ {:name          "Revenue"
+                                              :collection_id coll-id
+                                              :visualization_settings
+                                              {:progress.goal {:id measure-id :type "measure" :column "avg"}}}]
+              (testing "with the measure present, the export succeeds"
+                (is (seq (into [] (extract/extract opts)))))
+              (t2/delete! :model/Measure :id measure-id)
+              (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                (extract-aborts! opts)
+                (is (some #(re-find #"Measure .* is missing from the source database" %) (map :message (messages)))
+                    "the warning names the unsatisfied measure reference")))))))))

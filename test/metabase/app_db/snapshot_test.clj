@@ -22,6 +22,7 @@
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.snapshot-test-util :as snapshot]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
@@ -207,7 +208,7 @@
   (into (sorted-map)
         (map (fn [{:keys [id author filename] :as row}]
                [[id author filename] (select-keys row [:md5sum :exectype])]))
-        (jdbc/query {:connection conn} ["SELECT id, author, filename, md5sum, exectype FROM DATABASECHANGELOG"])))
+        (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select [:id :author :filename :md5sum :exectype] :from [:DATABASECHANGELOG]}))))
 
 (defn- recorded-changesets
   "The `[id author filename]` of every changeset DATABASECHANGELOG records as run.
@@ -216,7 +217,7 @@
   (into #{}
         (comp (remove versions/legacy-version-tracking-marker?)
               (map (juxt :id :author :filename)))
-        (jdbc/query {:connection conn} ["SELECT id, author, filename FROM DATABASECHANGELOG"])))
+        (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select [:id :author :filename] :from [:DATABASECHANGELOG]}))))
 
 ;; If a migration starts seeding randomness into some other column, the drift test fails on that column; add it here.
 (def ^:private generated-columns
@@ -408,6 +409,6 @@
       (let [recorded (recorded-changesets conn)]
         (impl/run-migrations-in-range! conn ["v00.00-000" nil] {:skip-ran? true})
         (is (= []
-               (jdbc/query {:connection conn} ["SELECT id FROM DATABASECHANGELOG WHERE exectype = 'RERAN'"])))
+               (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select [:id] :from [:DATABASECHANGELOG] :where [:= :exectype "RERAN"]}))))
         (is (= (set (snapshot/changesets conn))
                (set/union recorded (recorded-changesets conn))))))))

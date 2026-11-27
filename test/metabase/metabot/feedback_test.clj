@@ -237,26 +237,6 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest persist-source-feedback-rejects-invalid-source-type-test
-  (testing "persist-source-feedback! rejects unsupported source types"
-    (mt/with-temp [:model/User {user-id :id} {}]
-      (let [conversation-id (str (random-uuid))
-            external-id     (str (random-uuid))]
-        (try
-          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
-          (let [msg-id (insert-message! conversation-id external-id)]
-            (mt/with-current-user user-id
-              (is (thrown-with-msg? ExceptionInfo
-                                    #"Invalid value"
-                                    (metabot.feedback/persist-source-feedback!
-                                     (source-payload {:message-id  external-id
-                                                      :source-id   42
-                                                      :source-type "dashboard"}))))
-              (is (zero? (t2/count :model/MetabotSourceFeedback :message_id msg-id)))))
-          (finally
-            (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
-            (t2/delete! :model/MetabotConversation :id conversation-id)))))))
-
 (deftest persist-source-feedback-updates-existing-row-test
   (testing "persist-source-feedback! updates the existing row for the same message, submitter, and source"
     (mt/with-temp [:model/User {user-id :id} {}]

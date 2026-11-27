@@ -9,6 +9,7 @@
    :model/FieldUserSettings
    :model/Measure
    :model/Segment
+   :model/SegmentTest
    :model/Table
    :model/TableUserSettings
    :model/Channel])
@@ -21,7 +22,10 @@
    :model/Field
    :model/FieldUserSettings
    :model/Dimension
-   :model/Segment])
+   :model/Segment
+   :model/SegmentTest
+   ;; a dynamic goal in viz settings can name a Measure
+   :model/Measure])
 
 (def content
   "Content model types"
@@ -52,6 +56,7 @@
            :model/OsiAiContext
            :model/PythonLibrary
            :model/Setting
+           :model/TestSuite
            :model/Transform
            :model/TransformJob
            :model/TransformTag
@@ -67,6 +72,7 @@
    :model/DashboardCardSeries
    :model/MetabotPrompt
    :model/TableIndex
+   :model/TestSuiteMember
    :model/TimelineEvent
    :model/TransformJobTransformTag
    :model/TransformTransformTag])
@@ -86,6 +92,9 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
+   :model/CardFavorite
+   :model/CardLabel
+   :model/ChangeLog
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark
@@ -96,6 +105,7 @@
    :model/ContentDiagnosticsFinding
    :model/ContentTranslation
    :model/DashboardBookmark
+   :model/DashboardFavorite
    :model/DataComplexityScore
    :model/DataPermissions
    :model/DatabaseRouter
@@ -159,6 +169,8 @@
    :model/RecentViews
    :model/ReplacementRun
    :model/RemoteSyncTask
+   :model/RemoteSyncWorktree
+   :model/RemoteSyncWorktreeUser
    :model/ResultMetadataStatus
    :model/Revision
    :model/Sandbox
@@ -172,6 +184,7 @@
    :model/SourceMetricDaily
    :model/SourceSegmentCompositeDaily
    :model/SourceSegmentDaily
+   :model/SqlParsingShadowDifference
    :model/SsoRelayState
    :model/StoredResult
    :model/StoredResultUse
@@ -185,6 +198,7 @@
    :model/TransformRun
    :model/TransformRunCancelation
    :model/DataTestRun
+   :model/TestSuiteRun
    :model/Undo
    :model/User
    :model/UserKeyValue

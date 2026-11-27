@@ -1,11 +1,34 @@
+import fetchMock from "fetch-mock";
+
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import {
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { PLUGIN_API } from "metabase/api/client";
+import * as embeddingConfig from "metabase/embedding/config";
+import { setupEmbedPreviewRewrite } from "metabase/embedding/lib/override-requests-for-embeds";
 import {
   createMockActionDashboardCard,
   createMockImplicitQueryAction,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
+import {
+  RC1,
+  createTimeSeriesDashcard,
+  expectReadOnlyDashboardEvents,
+  getTimeSeriesDashCard,
+  setupTimeSeriesChart,
+} from "./timeline-events";
+
+// `timeline-events` registers the interactive visualizations the charts need
+jest.mock("metabase/static-viz/register", () => ({
+  registerStaticVisualizations: jest.fn(),
+}));
 
 const DASHBOARD_TITLE = '"My test dash"';
 
@@ -15,6 +38,13 @@ const setupCommon = async (opts?: Partial<SetupOpts>) => {
     dashboardTitle: DASHBOARD_TITLE,
   });
 };
+
+// the preview case installs the production rewrite; teardown puts the default back
+const DEFAULT_REWRITE_EMBED_PREVIEW_URL =
+  PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl;
+
+const EMBED_DASHBOARD_PATH = "http://localhost/api/embed/dashboard/";
+const PREVIEW_DASHBOARD_PATH = "http://localhost/api/preview_embed/dashboard/";
 
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeEach(() => {
@@ -136,5 +166,68 @@ describe("PublicOrEmbeddedDashboardPage", () => {
     expect(
       screen.getByRole("link", { name: "Powered by Metabase" }),
     ).toBeInTheDocument();
+  });
+
+  describe("timeline events", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+      PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl =
+        DEFAULT_REWRITE_EMBED_PREVIEW_URL;
+    });
+
+    it("shows only the saved events, read-only, on a static embed dashboard", async () => {
+      jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true);
+      setupTimeSeriesChart();
+      await setupCommon({ extraDashcards: [createTimeSeriesDashcard([RC1])] });
+
+      await expectReadOnlyDashboardEvents();
+      expect(
+        fetchMock.callHistory.called(`begin:${EMBED_DASHBOARD_PATH}`),
+      ).toBe(true);
+    });
+
+    // Metabase iframed in itself, with the production rewrite sending `/api/embed`
+    // requests to `/api/preview_embed`
+    it("shows only the saved events, read-only, in a dashboard embed preview", async () => {
+      jest.spyOn(embeddingConfig, "isStaticEmbedding").mockReturnValue(true);
+      jest.spyOn(embeddingConfig, "isEmbedPreview").mockReturnValue(true);
+      setupEmbedPreviewRewrite();
+      setupTimeSeriesChart();
+      await setupCommon({
+        extraDashcards: [createTimeSeriesDashcard([RC1])],
+        embedPreview: true,
+      });
+
+      await expectReadOnlyDashboardEvents();
+      expect(
+        fetchMock.callHistory.called(`begin:${PREVIEW_DASHBOARD_PATH}`),
+      ).toBe(true);
+      expect(
+        fetchMock.callHistory.called(`begin:${EMBED_DASHBOARD_PATH}`),
+      ).toBe(false);
+    });
+  });
+
+  describe("development watermark", () => {
+    it.each([true, false])(
+      "shows the watermark on a chart only in development mode (development mode: %s)",
+      async (isDevelopmentMode) => {
+        setupTimeSeriesChart();
+        await setup({
+          dashboardTitle: DASHBOARD_TITLE,
+          extraDashcards: [createTimeSeriesDashcard([])],
+          tokenFeatures: createMockTokenFeatures({
+            development_mode: isDevelopmentMode,
+          }),
+        });
+
+        const dashcard = await waitFor(() => getTimeSeriesDashCard());
+        // the chart redraws its axis labels and detaches the found node, so only wait for it
+        await within(dashcard).findByText("Created At: Month");
+        expect(
+          within(dashcard).queryAllByTestId("development-watermark"),
+        ).toHaveLength(isDevelopmentMode ? 1 : 0);
+      },
+    );
   });
 });

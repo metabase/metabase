@@ -43,8 +43,6 @@ You'll note several styling patterns in the codebase. Currently you should prefe
 2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
 3. Global utility classes (in `/css/core`) should only be used where Mantine style props cannot be used.
 
-Don't use Emotion styled components in new, moved, or otherwise edited code. Untouched legacy usage may remain; editing a neighboring line doesn't require a whole-file migration. When moving or editing the usage itself, use Mantine style props or CSS Modules instead.
-
 Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
 
 ## Colors

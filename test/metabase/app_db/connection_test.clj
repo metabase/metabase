@@ -11,9 +11,10 @@
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
    (com.mchange.v2.c3p0 DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
-   (java.sql Connection SQLException Savepoint)
+   (java.sql Connection DatabaseMetaData SQLException Savepoint)
    (java.util.concurrent Semaphore)
-   (java.util.concurrent.locks ReentrantReadWriteLock)))
+   (java.util.concurrent.locks ReentrantReadWriteLock)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -209,7 +210,7 @@
       (mdb.connection/do-after-commit
        (fn []
          (swap! calls conj :a)
-         ;; the run binds *after-commit-callbacks* to nil, so a do-after-commit here runs immediately (we are
+         ;; the run binds *end-callbacks* to nil, so a do-after-commit here runs immediately (we are
          ;; logically outside the transaction) rather than enqueuing for a later pass
          (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested-from-a)))))
       (mdb.connection/do-after-commit (fn [] (swap! calls conj :b))))
@@ -355,6 +356,45 @@
           "neither before- nor after-commit callbacks run when no commit occurs")
       (finally
         (t2/delete! :model/User :email email)))))
+
+(deftest after-rollback-callback-test
+  (let [run (fn [body]
+              (let [calls (atom [])
+                    note! (fn [k] (mdb.connection/do-after-rollback
+                                   #(swap! calls conj [k (mdb.connection/in-transaction?)])))]
+                (try (body note!) (catch clojure.lang.ExceptionInfo _))
+                @calls))]
+    (testing "an outermost rollback runs the callback outside the transaction"
+      (is (= [[:a false]]
+             (run (fn [note!] (t2/with-transaction [_conn] (note! :a) (throw (ex-info "roll back" {}))))))))
+    (testing "a rollback-only scope runs it"
+      (is (= [[:a false]]
+             (run (fn [note!] (t2/with-transaction [_conn nil {:rollback-only true}] (note! :a)))))))
+    (testing "a commit does not"
+      (is (= [] (run (fn [note!] (t2/with-transaction [_conn] (note! :a)))))))
+    (testing "outside a transaction it never runs"
+      (is (= [] (run (fn [note!] (note! :a))))))
+    (testing "a nested rollback runs the nested scope's callbacks at once, inside the enclosing transaction"
+      (is (= [[:nested true]]
+             (run (fn [note!]
+                    (t2/with-transaction [_conn]
+                      (note! :outer)
+                      (t2/with-transaction [_conn nil {:rollback-only true}]
+                        (note! :nested))))))))
+    (testing "an enclosing rollback runs the callbacks of a nested scope that succeeded"
+      (is (= [[:outer false] [:nested false]]
+             (run (fn [note!]
+                    (t2/with-transaction [_conn]
+                      (note! :outer)
+                      (t2/with-transaction [_conn]
+                        (note! :nested))
+                      (throw (ex-info "roll back" {}))))))))
+    (testing "a callback registered after the rollback, by a thread started inside the transaction, runs at once"
+      (let [register-late (t2/with-transaction [_conn nil {:rollback-only true}]
+                            (bound-fn [f] (mdb.connection/do-after-rollback f)))
+            ran?          (atom false)]
+        (register-late #(reset! ran? true))
+        (is @ran?)))))
 
 (deftest with-temp-rollback-boundary-discards-after-commit-callback-test
   (let [calls (atom [])]
@@ -802,14 +842,14 @@
                                "ambient resolution must be suppressed mid-reduction")
                            (conj acc (into {} row)))
                          []
-                         (t2/reducible-query conn ["select 1 as x"]))]
+                         (t2/reducible-query conn {:select [[[:inline 1] :x]]}))]
         (is (= 1 (count rows)))))
     (testing "a transaction opened while the unshared connection is in use gets its own connection"
       (reduce (fn [_ _row]
                 (t2/with-transaction [tx-conn]
                   (is (not (identical? tx-conn conn)))))
               nil
-              (t2/reducible-query conn ["select 1 as x"])))))
+              (t2/reducible-query conn {:select [[[:inline 1] :x]]})))))
 
 (deftest unshared-connection-borrower-work-commits-independently-test
   (let [email (mt/random-email)]
@@ -822,7 +862,7 @@
           (reduce (fn [_ _row]
                     (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
                   nil
-                  (t2/reducible-query conn ["select 1 as x"])))
+                  (t2/reducible-query conn {:select [[[:inline 1] :x]]})))
         (is (t2/exists? :model/User :email email)))
       (finally
         (t2/delete! :model/User :email email)))))
@@ -846,10 +886,17 @@
                                       ;; unrelated toucan work mid-stream, resolved ambiently, that commits
                                       (when (= n 30)
                                         (t2/with-transaction [_]
-                                          (t2/query ["select 1"])))
+                                          (t2/query {:select [[[:inline 1] :one]]})))
                                       (inc n))
                                     0
-                                    (t2/reducible-query conn ["select g from generate_series(1, 1000) g"]))))]
+                                    (t2/reducible-query conn {:with-recursive [[:series
+                                                                                ^:allow-subquery
+                                                                                {:union-all [^:allow-subquery {:select [[[:inline 1] :g]]}
+                                                                                             ^:allow-subquery {:select [[[:+ :g 1] :g]]
+                                                                                                               :from   [:series]
+                                                                                                               :where  [:< :g 1000]}]}]]
+                                                              :select         [:g]
+                                                              :from           [:series]}))))]
       (testing "control: an ordinary connection is ambiently visible mid-reduction; the borrower commit kills the portal"
         (with-open [^Connection raw (.getConnection (mdb.connection/data-source))]
           (let [e (try (stream! raw) nil (catch Throwable e e))]
@@ -872,8 +919,7 @@
                             :columns     [:lock_name]
                             :values      [[lock-name]]})
         (testing "the write is visible on the unshared connection before close"
-          (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
-                                          lock-name]))))))
+          (is (= 1 (count (t2/query conn {:select [:*] :from [:metabase_cluster_lock] :where [:= :lock_name lock-name]}))))))
       (testing "the uncommitted write vanished at pool check-in"
         (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
       (finally
@@ -934,3 +980,79 @@
                 (.. lock writeLock unlock)))
             (is (true? (deref acquire 5000 ::timed-out))
                 "getConnection should proceed once the write lock is released")))))))
+
+(defn- product-data-source
+  "A data source whose connections report `product`, counting its `getConnection` calls in `calls`.
+  Calls `on-connect`, when given, with the call's number before connecting."
+  [product calls on-connect]
+  (reify DataSource
+    (getConnection [_]
+      (let [n (swap! calls inc)]
+        (when on-connect
+          (on-connect n)))
+      (reify Connection
+        (getMetaData [_] (reify DatabaseMetaData (getDatabaseProductName [_] product)))
+        (close [_])))))
+
+(defn- do-with-product-app-db
+  "Bind an application DB of `db-type` whose connections report `product`, and call `f` with a function returning
+  how many connections it has opened.
+  Calls `on-connect`, when given, with the call's number before connecting."
+  [db-type product on-connect f]
+  (let [calls (atom 0)]
+    (mdb.connection/with-application-db
+      (mdb.connection/application-db db-type (product-data-source product calls on-connect))
+      (f #(deref calls)))))
+
+(deftest mariadb?-test
+  (testing "a :mysql application DB reads the product name once"
+    (doseq [[product expected] {"MariaDB" true, "MySQL" false}]
+      (do-with-product-app-db
+       :mysql product nil
+       (fn [calls]
+         (is (= {:answers [expected expected], :calls 1}
+                {:answers [(mdb.connection/mariadb?) (mdb.connection/mariadb?)], :calls (calls)}))))))
+  (testing "a failed read is not cached, so the next call tries again"
+    (do-with-product-app-db
+     :mysql "MariaDB" #(when (= 1 %) (throw (SQLException. "unreachable")))
+     (fn [calls]
+       (is (thrown? SQLException (mdb.connection/mariadb?)))
+       (is (true? (mdb.connection/mariadb?)))
+       (is (= 2 (calls))))))
+  (testing "other application DB types are never MariaDB, and never connect"
+    (do-with-product-app-db
+     :h2 "MariaDB" nil
+     (fn [calls]
+       (is (= {:answer false, :calls 0}
+              {:answer (mdb.connection/mariadb?), :calls (calls)})))))
+  (testing "reads the product name under the lock, so concurrent first callers share one read"
+    (let [held?             (atom nil)
+          record-lock-held! (fn [_]
+                              (reset! held? (Thread/holdsLock (:mariadb? (mdb.connection/current-application-db)))))]
+      (do-with-product-app-db
+       :mysql "MariaDB" record-lock-held!
+       (fn [_]
+         (mdb.connection/mariadb?)
+         (is (true? @held?)))))))
+
+(deftest record-mariadb!-test
+  (testing "a recorded answer is used without connecting"
+    (do-with-product-app-db
+     :mysql "MySQL" nil
+     (fn [calls]
+       (mdb.connection/record-mariadb! true)
+       (is (= {:answer true, :calls 0}
+              {:answer (mdb.connection/mariadb?), :calls (calls)})))))
+  (testing "an answer already read is kept"
+    (do-with-product-app-db
+     :mysql "MySQL" nil
+     (fn [_calls]
+       (mdb.connection/mariadb?)
+       (mdb.connection/record-mariadb! true)
+       (is (false? (mdb.connection/mariadb?))))))
+  (testing "a recorded answer is ignored for types other than :mysql"
+    (do-with-product-app-db
+     :h2 "MariaDB" nil
+     (fn [_calls]
+       (mdb.connection/record-mariadb! true)
+       (is (false? (mdb.connection/mariadb?)))))))

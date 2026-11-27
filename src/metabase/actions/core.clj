@@ -8,6 +8,7 @@
    [metabase.actions.execution]
    [metabase.actions.hierarchy]
    [metabase.actions.models]
+   [metabase.actions.row-actions]
    [metabase.actions.scope]
    [potemkin :as p]))
 
@@ -17,6 +18,7 @@
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
   metabase.actions.models/keep-me
+  metabase.actions.row-actions/keep-me
   metabase.actions.scope/keep-me)
 
 (p/import-vars
@@ -58,11 +60,9 @@
   check-implicit-action-table-pk
   check-implicit-actions-supported
   dashcard->action
-  insert!
   select-action
   select-actions
-  select-actions-for-ids
-  update!]
+  select-actions-for-ids]
  [metabase.actions.events
   publish-action-success!]
  [metabase.actions.scope

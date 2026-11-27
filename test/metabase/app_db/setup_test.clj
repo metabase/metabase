@@ -83,7 +83,9 @@
                      (mdb.setup/setup-db! :h2 data-source {:create-sample-content? true})))
               (is (= ["Administrators" "All Users" "All tenant users" "Data Analysts"]
                      (mapv :name (jdbc/query {:datasource data-source}
-                                             "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
+                                             (mdb.test-util/format-sql {:select   [:name]
+                                                                        :from     [(t2/table-name :model/PermissionsGroup)]
+                                                                        :order-by [[:name :asc]]}))))))]
       (let [subname (fn [] (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name)))]
         (testing "from a jdbc-spec map"
           (test* (mdb.data-source/broken-out-details->DataSource
@@ -101,7 +103,9 @@
                        ["E-commerce Insights"]
                        [])
                      (mapv :name (jdbc/query {:datasource data-source}
-                                             "SELECT name FROM report_dashboard ORDER BY name ASC;")))))))))))
+                                             (mdb.test-util/format-sql {:select   [:name]
+                                                                        :from     [(t2/table-name :model/Dashboard)]
+                                                                        :order-by [[:name :asc]]}))))))))))))
 
 (deftest setup-fresh-db-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -192,19 +196,19 @@
                 binary-major   64]
             (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" binary-major))]
               (testing "a recorded development version blocks a real binary, pointing at the dev tooling"
-                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = '%s'" versions-table versions/dev-version)])
+                (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword versions-table) :set {:metabase_version versions/dev-version}}))
                 (is (= versions/dev-version (versions/last-deployment-version conn db)))
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo #"(?s)development build.*dev\.migrate"
                      (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
               (testing "a recorded real version newer than this binary is a genuine downgrade and blocks"
-                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.999.0'" versions-table)])
+                (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword versions-table) :set {:metabase_version "x.999.0"}}))
                 (is (= "x.999.0" (versions/last-deployment-version conn db)))
                 (is (thrown-with-msg?
                      Exception #"migrate down` from version 999"
                      (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
               (testing "does not throw when the recorded version is not newer than this binary"
-                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table binary-major)])
+                (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword versions-table) :set {:metabase_version (format "x.%d.0" binary-major)}}))
                 (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))))))
 
 (deftest noop-boot-of-newer-binary-preserves-downgrade-test
@@ -219,21 +223,22 @@
                 latest         64]
             ;; make the recorded install version deterministic: this DB was installed by v0.<latest>
             (jdbc/execute! {:connection conn}
-                           [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest)])
+                           (mdb.test-util/format-sql {:update (keyword versions-table) :set {:metabase_version (format "x.%d.0" latest)}}))
             (testing "a no-op boot of the NEXT major is recorded as history, but does not move the schema's version"
               (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" (inc latest)))]
                 (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))
                 (mdb.setup/migrate! (mdb.connection/data-source) :up))
               (is (= 1 (count (jdbc/query {:connection conn}
-                                          [(format "SELECT 1 FROM %s WHERE metabase_version LIKE 'x.%d.%%'"
-                                                   versions-table (inc latest))])))
+                                          (mdb.test-util/format-sql {:select [1]
+                                                                     :from   [(keyword versions-table)]
+                                                                     :where  [:like :metabase_version (format "x.%d.%%" (inc latest))]}))))
                   "the newer major's boot is captured in history"))
             (testing "the previous binary still boots"
               (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
                 (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))
             (testing "even a much newer boot row on the deployment cannot mask the version that ran it"
               (let [last-dep (:deployment_id (first (jdbc/query {:connection conn}
-                                                                [(format "SELECT deployment_id FROM %s LIMIT 1" versions-table)])))]
+                                                                (mdb.test-util/format-sql {:select [:deployment_id] :from [(keyword versions-table)] :limit 1}))))]
                 (versions/record-deployment-version! conn last-dep (format "x.%d.0" (+ latest 2)) false))
               (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
                 (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
@@ -252,8 +257,8 @@
         (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))
         (testing "version table exists and is populated when read from a separate connection"
           (is (seq (jdbc/query {:datasource (mdb.connection/data-source)}
-                               [(format "SELECT deployment_id, metabase_version FROM %s"
-                                        (versions/versions-table-name))]))))))))
+                               (mdb.test-util/format-sql {:select [:deployment_id :metabase_version]
+                                                          :from   [(keyword (versions/versions-table-name))]})))))))))
 
 (deftest migrations-sql-includes-version-tracking-test
   (testing "the manual-upgrade SQL (`migrate print`) records the version bookkeeping"
@@ -269,9 +274,9 @@
           (liquibase/with-liquibase [liquibase conn]
             (let [sql (liquibase/migrations-sql liquibase)]
               (testing "backfills the pre-upgrade version for the existing install"
-                (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
+                (is (re-find #"(?i)INSERT (IGNORE )?INTO [\"`]?databasechangelog_version[\"`]?[^;]+x\.45\.0\.0" sql)))
               (testing "records the upgrading version"
-                (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.64\.0" sql)))
+                (is (re-find #"(?i)INSERT (IGNORE )?INTO [\"`]?databasechangelog_version[\"`]?[^;]+x\.64\.0" sql)))
               (testing "ends with the marker older binaries read safely as the newest row (a versioned major's own ids
                         give them its major, so it is the low position marker)"
                 (is (re-find #"v56\.legacy-version-tracking" sql)))
@@ -289,7 +294,7 @@
                       liquibase/changelog-file "versionless-roc-run3.yaml"]
           (liquibase/with-liquibase [liquibase conn]
             (let [sql     (liquibase/migrations-sql liquibase)
-                  capture (some-> (re-find #"(?i)INSERT INTO databasechangelog_first_run[^;]+'roc_view'" sql) u/lower-case-en)
+                  capture (some-> (re-find #"(?i)INSERT INTO [\"`]?databasechangelog_first_run[\"`]?[^;]+'roc_view'" sql) u/lower-case-en)
                   update  (re-find #"(?i)UPDATE [^;]*databasechangelog[^;]+roc_view" sql)]
               (is (some? capture))
               (is (some? update) "sanity: Liquibase re-runs the view")
@@ -301,7 +306,7 @@
       (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
         (liquibase/with-liquibase [liquibase conn]
           (let [sql (liquibase/migrations-sql liquibase)]
-            (is (re-find #"(?i)INSERT INTO databasechangelog_version" sql))
+            (is (re-find #"(?i)INSERT INTO [\"`]?databasechangelog_version" sql))
             (is (re-find #"'x\.9999\.0\.0'" sql))
             (is (re-find #"v9999\.legacy-version-tracking" sql))
             (is (false? (versions/versions-table-exists? conn))
@@ -319,22 +324,21 @@
           ;; Insert fake changelog entries for versions 998 and 999
           (doseq [[i id] (map-indexed vector fake-ids)]
             (jdbc/execute! db-conn
-                           [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum)
-                                     VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
-                                    table)
-                            id (+ 99990 i)]))
+                           (mdb.test-util/format-sql {:insert-into (keyword table)
+                                                      :columns     [:id :author :filename :dateexecuted :orderexecuted :exectype :md5sum]
+                                                      :values      [[id "test" "test.yaml" [:raw "CURRENT_TIMESTAMP"] (+ 99990 i) "EXECUTED" "fake"]]})))
           ;; ... plus a version-less changeset applied by a later deployment: nothing in its id reveals its version,
           ;; only its deployment's recorded ran-version does
           (jdbc/execute! db-conn
-                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
-                                   VALUES ('zz_versionless_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99993, 'EXECUTED', 'fake', 'futuredep')"
-                                  table)])
+                         (mdb.test-util/format-sql {:insert-into (keyword table)
+                                                    :columns     [:id :author :filename :dateexecuted :orderexecuted :exectype :md5sum :deployment_id]
+                                                    :values      [["zz_versionless_cs" "test" "migrations/2026/test.yaml" [:raw "CURRENT_TIMESTAMP"] 99993 "EXECUTED" "fake" "futuredep"]]}))
           ;; ... plus an OLD changeset that merely re-ran (RERAN) under that later deployment (an edited runOnChange
           ;; changeset): it is not "from" the later version and must not be listed
           (jdbc/execute! db-conn
-                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
-                                   VALUES ('zz_reran_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99994, 'RERAN', 'fake', 'futuredep')"
-                                  table)])
+                         (mdb.test-util/format-sql {:insert-into (keyword table)
+                                                    :columns     [:id :author :filename :dateexecuted :orderexecuted :exectype :md5sum :deployment_id]
+                                                    :values      [["zz_reran_cs" "test" "migrations/2026/test.yaml" [:raw "CURRENT_TIMESTAMP"] 99994 "RERAN" "fake" "futuredep"]]}))
           (versions/record-deployment-version! conn "futuredep" "x.999.1" true)
           (try
             (let [later (versions/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
@@ -346,10 +350,10 @@
               ;; Clean up fake rows
               (doseq [id (conj fake-ids "zz_versionless_cs" "zz_reran_cs")]
                 (jdbc/execute! db-conn
-                               [(format "DELETE FROM %s WHERE id = ?" table) id]))
+                               (mdb.test-util/format-sql {:delete-from (keyword table) :where [:= :id id]})))
               (jdbc/execute! db-conn
-                             [(format "DELETE FROM %s WHERE deployment_id = 'futuredep'"
-                                      (versions/versions-table-name))]))))))))
+                             (mdb.test-util/format-sql {:delete-from (keyword (versions/versions-table-name))
+                                                        :where       [:= :deployment_id "futuredep"]})))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
@@ -367,17 +371,16 @@
                                       [:= :field.table_id :table.id]]
                           :where     [:= :table.db_id [:inline 0]]}))))))
 
-;; `delete!` below is ok in a parallel test since it's not actually executing anything
 (deftest ^:parallel build-before-delete-query-test
   (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
            (t2/build
-             (t2/select :model/Field
+             (t2/select :toucan2.tools.before-delete/before-delete
                         {:delete-from [:metabase_field :field]
                          :where       [:= :field.id 0]}))))
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}
            (t2/build
-             (t2/select :model/Field
+             (t2/select :toucan2.tools.before-delete/before-delete
                         {:delete [:field]
                          :from   [[:metabase_field :field]]
                          :where  [:= :field.id 0]}))))))
@@ -389,19 +392,19 @@
       (let [ciphertext (encryption-test/with-secret-key "ABCDEFGH12345678"
                          (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
                          (t2/insert! :model/Setting {:key "site-name", :value "Sad Can"})
-                         (t2/select-one-fn :value_with_aad :setting :key "site-name"))]
+                         (t2/select-one-fn :value_with_aad (t2/table-name :model/Setting) :key "site-name"))]
         (is (encryption/possibly-encrypted-string? ciphertext))
         (testing "with no key the state is :missing-key, and a repair would only wrap the ciphertext as a value"
           (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
           (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
-          (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+          (is (= ciphertext (t2/select-one-fn :value_with_aad (t2/table-name :model/Setting) :key "site-name"))))))))
 
 (deftest setup-db-warns-about-settings-from-an-older-version-test
   (testing "a setting row written by a version without value_with_aad is reported once and then filled in"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
       (is (not (mdb.db/unmigrated-settings?)))
-      (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+      (t2/query {:insert-into (t2/table-name :model/Setting), :values [{:key "site-name", :value "Sad Can"}]})
       (is (mdb.db/unmigrated-settings?))
       (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
       (mt/with-log-messages-for-level [messages :warn]
@@ -409,7 +412,7 @@
         (is (=? [{:level :warn, :message #"(?s)Some settings were saved by an older version of Metabase.*"}]
                 (filter #(re-find #"older version" (:message %)) (messages)))))
       (is (not (mdb.db/unmigrated-settings?)))
-      (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
+      (is (= "Sad Can" (t2/select-one-fn :value_with_aad (t2/table-name :model/Setting) :key "site-name"))))))
 
 (deftest setup-fresh-db-with-legacy-encryption-disabled-test
   (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a fresh database starts: nothing is legacy, so nothing is refused or warned about"
@@ -423,7 +426,7 @@
             (is (empty? (filter #(re-find #"older version|legacy values" (:message %)) (messages)))))
           (is (= :valid (mdb/encryption-check-status)))
           (is (not (mdb.db/unmigrated-settings?)))
-          (is (= ["E-commerce Insights"] (t2/select-fn-vec :name :report_dashboard)) "sample content was created"))))))
+          (is (= ["E-commerce Insights"] (t2/select-fn-vec :name (t2/table-name :model/Dashboard))) "sample content was created"))))))
 
 (deftest setup-db-refuses-settings-from-an-older-version-when-legacy-encryption-disabled-test
   (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a setting row without value_with_aad refuses startup"
@@ -431,7 +434,7 @@
       (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "ABCDEFGH12345678"
         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
-        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+        (t2/query {:insert-into (t2/table-name :model/Setting), :values [{:key "site-name", :value "Sad Can"}]})
         (is (mdb.db/unmigrated-settings?))
         (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
           (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
@@ -446,13 +449,13 @@
     (testing "without a key there is nothing to encrypt, so the setting is converted with a warning as usual"
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? false)
-        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+        (t2/query {:insert-into (t2/table-name :model/Setting), :values [{:key "site-name", :value "Sad Can"}]})
         (is (mdb.db/unmigrated-settings?))
         (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
           (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
           (is (= :done (mdb/setup-db! :create-sample-content? false)))
           (is (not (mdb.db/unmigrated-settings?)))
-          (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+          (is (= "Sad Can" (t2/select-one-fn :value_with_aad (t2/table-name :model/Setting) :key "site-name"))))))))
 
 (deftest migrate-settings-decides-by-decrypting-test
   (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"
@@ -462,15 +465,15 @@
         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
         (let [shaped (str (apply str (repeat 86 "a")) "==")]
           (is (encryption/possibly-encrypted-string? shaped))
-          (t2/query {:insert-into :setting, :values [{:key "shaped", :value shaped}
-                                                     {:key "blank", :value (encryption/encrypt "")}]})
+          (t2/query {:insert-into (t2/table-name :model/Setting), :values [{:key "shaped", :value shaped}
+                                                                           {:key "blank", :value (encryption/encrypt "")}]})
           (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
           (is (= :done (mdb/setup-db! :create-sample-content? false)))
           (testing "a plaintext value that merely looks like ciphertext is a value, not skipped"
-            (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad :setting :key "shaped")
+            (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad (t2/table-name :model/Setting) :key "shaped")
                                                     {:aad (mdb.setting/setting-aad "shaped")}))))
           (testing "an encrypted blank value has nothing to store, and is written as NULL rather than failing"
-            (is (nil? (t2/select-one-fn :value_with_aad :setting :key "blank")))))))))
+            (is (nil? (t2/select-one-fn :value_with_aad (t2/table-name :model/Setting) :key "blank")))))))))
 
 (deftest encryption-check-status-falls-back-to-value-test
   (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
@@ -481,11 +484,11 @@
         (is (= :valid (mdb/encryption-check-status)))
         (testing "an authenticated value left under a key a rotation on an older version has since replaced"
           (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
-            (t2/update! :setting :key "encryption-check"
+            (t2/update! (t2/table-name :model/Setting) :key "encryption-check"
                         {:value_with_aad (encryption/encrypt (str (random-uuid))
                                                              {:secret-key old-key
                                                               :aad        (mdb.setting/setting-aad "encryption-check")})})
             (is (= :valid (mdb/encryption-check-status)))))
         (testing "the unencrypted marker an older version's remove-encryption writes to value alone"
-          (t2/update! :setting :key "encryption-check" {:value "unencrypted"})
+          (t2/update! (t2/table-name :model/Setting) :key "encryption-check" {:value "unencrypted"})
           (is (= :absent (mdb/encryption-check-status))))))))

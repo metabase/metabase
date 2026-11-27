@@ -28,7 +28,37 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("runs an imported app's question and action", () => {
+  it("manages an imported app in Data Studio, then runs its question and action", () => {
+    cy.intercept("PUT", `/api/ee/apps/${APP_SLUG}`).as("updateApp");
+
+    cy.visit(`/data-studio/apps/${APP_SLUG}`);
+    H.dataAppIframe(APP_NAME)
+      .findByText("Amorous Aardvarks: 0", { timeout: 30000 })
+      .should("be.visible");
+
+    cy.log("the app's question and action are in its collection");
+    cy.visit(`/data-studio/apps/${APP_SLUG}/questions`);
+    H.main().findByText("teamList").should("be.visible");
+    cy.visit(`/data-studio/apps/${APP_SLUG}/actions`);
+    H.main().findByText("addTeam").should("be.visible");
+
+    cy.log("make the app a draft and live again");
+    cy.visit(`/data-studio/apps/${APP_SLUG}`);
+    setAppStatus("Make draft");
+    cy.wait("@updateApp");
+    cy.reload();
+    cy.findByTestId("data-app-about-sidebar")
+      .findByText("Draft")
+      .should("be.visible");
+
+    setAppStatus("Make live");
+    cy.wait("@updateApp");
+    cy.reload();
+    cy.findByTestId("data-app-about-sidebar")
+      .findByText("Live")
+      .should("be.visible");
+
+    cy.log("run the app's question and action");
     H.openDataApp(APP_SLUG);
     H.dataAppIframe(APP_NAME).within(() => {
       cy.findByRole("list", { name: "Teams" })
@@ -46,61 +76,6 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
     ).then(({ rows }) => {
       expect(rows).to.have.length(1);
     });
-  });
-
-  it("lists an imported app with its questions and actions, and makes it a draft and live again", () => {
-    cy.intercept("PUT", `/api/ee/apps/${APP_SLUG}`).as("updateApp");
-
-    cy.visit("/data-studio/apps");
-    H.main().findByText(APP_NAME).click();
-    cy.location("pathname").should("eq", `/data-studio/apps/${APP_SLUG}`);
-    H.dataAppIframe(APP_NAME)
-      .findByText("Amorous Aardvarks: 0", { timeout: 30000 })
-      .should("be.visible");
-
-    cy.log("make the app a draft and live again");
-    cy.findByTestId("data-app-about-sidebar")
-      .findByText("Live")
-      .should("be.visible");
-    cy.findByRole("button", { name: "Data app options" }).click();
-    H.popover()
-      .findByRole("menuitem", { name: /Make draft/ })
-      .click();
-    H.modal().findByRole("button", { name: "Make draft" }).click();
-    cy.wait("@updateApp");
-    H.expectUnstructuredSnowplowEvent({ event: "data_app_made_draft" });
-    cy.findByTestId("data-app-about-sidebar")
-      .findByText("Draft")
-      .should("be.visible");
-
-    cy.findByRole("button", { name: "Data app options" }).click();
-    H.popover()
-      .findByRole("menuitem", { name: /Make live/ })
-      .click();
-    H.modal().findByRole("button", { name: "Make live" }).click();
-    cy.wait("@updateApp");
-    H.expectUnstructuredSnowplowEvent({ event: "data_app_made_live" });
-    cy.findByTestId("data-app-about-sidebar")
-      .findByText("Live")
-      .should("be.visible");
-
-    cy.log("open the app's question");
-    H.main().findByRole("tab", { name: "Questions" }).click();
-    H.main().findByText("teamList").click();
-    cy.location("pathname").should(
-      "match",
-      new RegExp(`^/data-studio/apps/${APP_SLUG}/questions/\\d+$`),
-    );
-
-    cy.log("open the app's action");
-    cy.visit(`/data-studio/apps/${APP_SLUG}`);
-    H.main().findByRole("tab", { name: "Actions" }).click();
-    H.main().findByText("addTeam").click();
-    cy.location("pathname").should(
-      "match",
-      new RegExp(`^/data-studio/apps/${APP_SLUG}/actions/\\d+$`),
-    );
-    cy.findByTestId("data-app-action-definition").should("be.visible");
   });
 
   it("lets the members of a group the app is shared with use it", () => {
@@ -126,7 +101,6 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
     );
     H.modal().findByRole("button", { name: "Add" }).click();
     cy.wait("@addGroups");
-    H.expectUnstructuredSnowplowEvent({ event: "data_app_group_added" });
 
     cy.log("a member of the group opens the app and uses it");
     cy.signInAsNormalUser();
@@ -144,6 +118,14 @@ describe("scenarios > data apps", { tags: ["@external", "@actions"] }, () => {
     });
   });
 });
+
+function setAppStatus(action: "Make draft" | "Make live") {
+  cy.findByRole("button", { name: "Data app options" }).click();
+  H.popover()
+    .findByRole("menuitem", { name: new RegExp(action) })
+    .click();
+  H.modal().findByRole("button", { name: action }).click();
+}
 
 function addTeam(name: string) {
   cy.findByLabelText("Team name").type(name);

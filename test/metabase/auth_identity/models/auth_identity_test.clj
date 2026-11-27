@@ -4,6 +4,8 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as auth-identity.model]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -151,7 +153,7 @@
           (is (= "legit"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret])))
-          (t2/update! :auth_identity {:user_id user-id :provider "google"}
+          (t2/update! (t2/table-name :model/AuthIdentity) {:user_id user-id :provider "google"}
                       {:credentials "{\"secret\":\"injected\"}"})
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
                                 (t2/select-one :model/AuthIdentity :user_id user-id :provider "google"))))))))
@@ -164,8 +166,23 @@
       (encryption-test/with-secret-key nil
         (mt/with-temp [:model/User {user-id :id}]
           (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {}})
-          (t2/update! :auth_identity {:user_id user-id :provider "google"}
+          (t2/update! (t2/table-name :model/AuthIdentity) {:user_id user-id :provider "google"}
                       {:credentials "{\"secret\":\"plain\"}"})
           (is (= "plain"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
+
+(deftest update-auth-identities-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/User {user-1 :id} {}
+                 :model/User {user-2 :id} {}
+                 :model/User {user-3 :id} {}
+                 :model/User {user-4 :id} {}
+                 :model/User {user-5 :id} {}
+                 :model/User {user-6 :id} {}]
+    (mt/with-model-cleanup [:model/AuthIdentity]
+      (doseq [user-id [user-1 user-2 user-3 user-4 user-5 user-6]]
+        (auth-identity.model/create-auth-identity! {:user_id user-id :provider "emailed-secret-password-reset"}))
+      (let [ids     (t2/select-pks-vec :model/AuthIdentity :user_id [:in [user-1 user-2 user-3 user-4 user-5 user-6]])
+            counted (fn [n] (events.tu/statement-count! #(auth-identity.model/update-auth-identities! (let [now (t/instant)] (mapv (fn [id] {:id id :expires_at now}) (take n ids))))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

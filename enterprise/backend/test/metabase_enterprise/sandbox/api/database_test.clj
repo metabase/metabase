@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -24,9 +25,9 @@
                                       ;; required alongside :card_schema for the Card schema upgrade
                                       :c.type :c.database_id :c.result_metadata
                                       :c.dimensions :c.dimension_mappings]
-                             :from   [[:sandboxes :s]]
-                             :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
-                                      [:report_card :c] [:= :c.id :s.card_id]]
+                             :from   [[(t2/table-name :model/Sandbox) :s]]
+                             :join   [[(t2/table-name :model/PermissionsGroup) :pg] [:= :s.group_id :pg.id]
+                                      [(t2/table-name :model/Card) :c] [:= :c.id :s.card_id]]
                              :where  [:= :pg.id (u/the-id group)]})
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
                                             (:dataset_query card)
@@ -34,7 +35,7 @@
     (mt/with-test-user :crowberto
       (if metadata
         (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-        (card.metadata/save-metadata-async! metadata-future card)))))
+        (queries.card/save-metadata-async! [{:future metadata-future :card card}])))))
 
 (deftest database-metadata-respects-column-sandbox-test
   (testing "GET /api/database/:id/metadata excludes columns hidden by a column-restricting sandbox."

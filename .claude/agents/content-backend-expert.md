@@ -5,6 +5,8 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on Metabase's content layer: collections and the items they hold, plus the history, events, and view
@@ -22,9 +24,9 @@ listed has a `db.clj` except `events` and `source_swap`.
 | Cards | `metabase.queries.models.card`, `.models.card.metadata` (result metadata), `.models.parameter-card`, `.models.query-field`, `.models.query-table`, `metabase.queries.card-write-checks`, `metabase.queries.events.*`; API `metabase.queries-rest.api.card`, `.api.cards` |
 | Metrics | cards with `:type :metric`; `metabase.metrics.*`; QP expansion in `metabase.query-processor.middleware.metrics` |
 | Dashboards | `metabase.dashboards.models.dashboard`, `.dashboard-card`, `.dashboard-card-series`, `.dashboard-tab`, `metabase.dashboards.write`, `.autoplace`; API `metabase.dashboards-rest.api`; param logic in `metabase.parameters.dashboard`, `metabase.parameters.params` |
-| Documents | `metabase.documents.models.document`, `.prose-mirror`, `.markdown`, `.revisions.impl`, `.view-log`, `.recent-views`; API `metabase.documents.api.document` |
+| Documents | `metabase.documents.models.document`, `.prose-mirror`, `.markdown`, `.view-log`, `.recent-views`; API `metabase.documents.api.document` |
 | Comments | `metabase.comments.*` (ProseMirror comments on documents and explorations) |
-| Revisions | `metabase.revisions.models.revision`, `.models.revision.diff`, `.models.revision.last-edit`, `metabase.revisions.events`, `metabase.revisions.impl.{card,dashboard,segment,measure,transform,exploration}` |
+| Revisions | `metabase.revisions.models.revision`, `.models.revision.diff`, `.models.revision.last-edit`, `metabase.revisions.events`, `metabase.revisions.spec` (each model's `revisions/spec`, its code in `<module>/revisions.clj`) |
 | Segments / measures | `metabase.segments.models.segment`, `metabase.segments.rest.api`; `metabase.measures.models.measure`, `metabase.measures.api` |
 | Other content | `metabase.bookmarks.*`, `metabase.timeline.*`, `metabase.native-query-snippets.*`, `metabase.glossary.*`, `metabase.content-verification.*` (moderation reviews) |
 | Events / views | `metabase.events.core` (bus), `metabase.events.impl`, `metabase.view-log.events.view-log` |
@@ -40,9 +42,10 @@ read it when a collection-wide change must cover every item type.
   live at its `location` plus its own id. `move-collection!` rewrites every descendant's `location` in one
   transaction.
 - Archive is a move into the Trash collection, not a flag flip. `move-collection!` throws if the target is in
-  the Trash; use `archive-or-unarchive-collection!`. Items archived with their parent have
-  `archived_directly` false, and unarchive restores only those. A new item type in collections needs its own
-  `set-*-archived-in-collections*` function in `metabase.collections.db`, called from both archive paths.
+  the Trash; archive through Collection's update write function. Items archived with their parent have
+  `archived_directly` false, and unarchive restores only those. A new item type in collections implements Collection's
+  cascade multimethods in its own model file with its bulk write functions, and the skill `backend-model-rules` covers
+  the archive rules.
 - Snippet collections are a separate collection `namespace` (`:snippets`). Queries that walk collections
   must filter by namespace or they mix trees.
 - Moving a collection into or out of a remote-synced parent flips `is_remote_synced` and runs dependency
@@ -65,13 +68,14 @@ read it when a collection-wide change must cover every item type.
 
 1. Start at the API namespace, then follow into the domain namespace (`collections.update`,
    `dashboards.write`, `queries.card-write-checks`). The REST and MCP tool paths share these.
-2. Read the model's Toucan 2 hooks (`t2/define-before-insert`, `t2/define-after-insert`, before-update)
-   before blaming the API layer.
-3. For side effects, find the subscribers of an event topic: `rg "derive! :event/<topic>"`, then
-   `rg "publish-event! ::<parent-topic>"`.
+2. Read the model's write functions (the `Writes` section of its model file) and its Toucan 2 hooks before blaming
+   the API layer. The hooks hold only what the row alone answers; everything else is in the write functions.
+3. For side effects, find the consumers of the events the write functions publish: consumers live in
+   `<module>/events.clj`, and `rg "derive! :event/<topic>"` finds the subscribers.
 4. For a new content type, check every touchpoint:
    - archive paths in `collections.models.collection`
-   - `revisions.impl.*` plus a `derive!` in `revisions.events`
+   - the model's `<feature>/spec` methods (the Specs table of the backend-model-rules skill), and the events its
+     write functions publish
    - bookmarks
    - the search spec (search-backend-expert)
    - serdes in `metabase.models.serialization` (enterprise-backend-expert)
@@ -80,7 +84,7 @@ read it when a collection-wide change must cover every item type.
    - Cards: `metabase.queries.models.card-test`, `metabase.queries.models.card.metadata-test`,
      `metabase.queries-rest.api.card-test`.
    - Dashboards: `metabase.dashboards.models.dashboard-card-test`, `metabase.dashboards-rest.api-test`.
-   - Revisions: `metabase.revisions.models.revision-test`, `metabase.revisions.impl.*-test`.
+   - Revisions: `metabase.revisions.models.revision-test`, `metabase.revisions.spec-test`, `metabase.revisions.specs.*-test`.
    - Documents: `metabase.documents.*`.
    - Helpers: `metabase.collections.test-utils`, `metabase.documents.test-util`.
 

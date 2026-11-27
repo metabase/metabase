@@ -8,6 +8,8 @@ import type {
   GetPublicDocument,
 } from "metabase-types/api";
 
+import type { MockResponse } from "./types";
+
 export function setupDocumentEndpoints(doc: Document) {
   fetchMock.get(`path:/api/document/${doc.id}`, doc);
   fetchMock.post(`path:/api/document/${doc.id}`, {});
@@ -86,7 +88,7 @@ export function setupPublicDocumentEndpoints(uuid: string, doc: Document) {
 export function setupPublicDocumentCardQueryEndpoint(
   uuid: string,
   cardId: CardId,
-  dataset: Dataset,
+  dataset: MockResponse<Dataset>,
 ) {
   fetchMock.get(`path:/api/public/document/${uuid}/card/${cardId}`, dataset);
 }

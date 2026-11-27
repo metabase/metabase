@@ -1,40 +1,42 @@
 (ns metabase.app-db.query
-  "Honey SQL 2 replacements for [[toucan.db/query]] and [[toucan.db/reducible-query]]. These are here to ease our
-  transition to Honey SQL 2 and Toucan 2. Once we switch over to the latter we can hopefully remove this namespace.
-
-  PRO TIPS:
-
-  1. You can enable debug logging for the compiled SQL locally by setting the log level for this namespace to
-     `:trace`:
-
-     ```
-     (metabase.test/set-ns-log-level! 'metabase.app-db.query :trace)
-     ```
-
-  2. If using CIDER, set
-
-     ```
-     (setq cider-stacktrace-fill-column nil)
-     ```
-
-     So the nicely-formatted SQL in error messages doesn't get wrapped into a big blob in the `*cider-error*` buffer."
+  "Honey SQL builders for the application database, which run nothing: the queries themselves live in
+  [[metabase.app-db.db]]."
   (:refer-clojure :exclude [compile])
   (:require
-   [clojure.string :as str]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.app-db.db :as app-db.db]
-   [metabase.app-db.format :as app-db.format]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.model :as t2.model])
+   [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
+
+(methodical/defmethod t2.pipeline/build :around [:toucan.query-type/select.exists :default clojure.lang.IPersistentMap]
+  "Mark the subquery that `t2/exists?` wraps in `[:exists ...]` with `^:allow-subquery`, which Funny SQL requires."
+  [query-type model parsed-args resolved-query]
+  (update-in (next-method query-type model parsed-args resolved-query)
+             [:select 0 0 1] vary-meta assoc :allow-subquery true))
+
+(methodical/defmethod t2.pipeline/compile :around [:default :default clojure.lang.IPersistentMap]
+  "Keep a Honey SQL query, but no record such as Toucan's identity query, to the rows of the remote sync worktree this
+  thread works in before Funny SQL compiles it."
+  [query-type model query]
+  (next-method query-type model (cond-> query (not (record? query)) mdb.worktree/sandbox-worktree-query)))
+
+(methodical/defmethod t2.pipeline/build :before [:default :default String]
+  "Throw on a lone string queried through a model, which Toucan runs as SQL text, as `(t2/select-one :model/X id)` does with a string `id`."
+  [_query-type model _parsed-args sql]
+  (when model
+    (throw (ex-info "A lone string queried through a model would run as SQL; filter by column instead, e.g. :id id"
+                    {:model model, :query sql})))
+  sql)
 
 (def ^:private NamespacedKeyword
   [:and :keyword [:fn (comp seq namespace)]])
@@ -106,74 +108,7 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honeysql]
-  (funnysql/format honeysql (mdb.connection/db-type)))
-
-(defn current-timestamp-string
-  "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
-  for the `settings-last-updated` marker that instances compare against each other."
-  ^String [db-type]
-  (app-db.db/current-timestamp-string db-type))
-
-;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
-(defn query
-  "Replacement for [[toucan.db/query]] -- uses Honey SQL 2 instead of Honey SQL 1, to ease the transition to the
-  former (and to Toucan 2).
-
-  Query the application database and return all results at once.
-
-  See namespace documentation for [[metabase.app-db.query]] for pro debugging tips."
-  [sql-args-or-honey-sql-map & {:as jdbc-options}]
-  (let [sql-args (compile sql-args-or-honey-sql-map)]
-    ;; catch errors running the query and rethrow with the failing generated SQL and the failing Honey SQL form -- this
-    ;; will help with debugging stuff. This should mostly be dev-facing because we should hopefully not be committing
-    ;; any busted code into the repo
-    (try
-      (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options* jdbc-options)]
-        (t2/query sql-args))
-      (catch Throwable e
-        (let [formatted-sql (app-db.format/format-sql (first sql-args))]
-          (throw (ex-info (str "Error executing SQL query: " (ex-message e)
-                               \newline
-                               \newline
-                               formatted-sql)
-                          {:sql        (str/split-lines (str/trim formatted-sql))
-                           :args       (rest sql-args)
-                           :uncompiled sql-args-or-honey-sql-map}
-                          e)))))))
-
-(defn streaming-reducible
-  "Returns a reducible that, when reduced, opens a transaction (autoCommit=false) with a
-  fetch-size set to enable server-side cursor streaming on PostgreSQL app databases.
-
-  `make-reducible-fn` is a 1-arg function called with the transaction `java.sql.Connection`.
-  Pass it explicitly to `t2/reducible-select` via `:conn` or to `t2/reducible-query` so the
-  query runs on the transaction connection — otherwise PostgreSQL ignores fetch-size.
-
-  WARNING: Because this opens a transaction, do not wrap any long-running logic in this which will hold the transaction open too long.
-
-  Example:
-    (streaming-reducible
-     (fn [conn]
-       (eduction (map t2.realize/realize)
-                 (t2/reducible-select :conn conn :model/Table :active true))))"
-  ([make-reducible-fn]
-   (streaming-reducible make-reducible-fn 500))
-  ([make-reducible-fn fetch-size]
-   (reify clojure.lang.IReduceInit
-     (reduce [_ f init]
-       (t2/with-transaction [conn]
-         (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options*
-                                                    {:fetch-size fetch-size})]
-           (reduce f init (make-reducible-fn conn))))))))
-
-(defn streaming-reducible-query
-  "Like `t2/reducible-query` but uses a transaction (autoCommit=false) and a fetch-size
-  to enable server-side cursor streaming on PostgreSQL. Returns a reducible of raw maps."
-  ([sql-args-or-honey-sql-map]
-   (streaming-reducible-query sql-args-or-honey-sql-map 500))
-  ([sql-args-or-honey-sql-map fetch-size]
-   (let [compiled (compile sql-args-or-honey-sql-map)]
-     (streaming-reducible (fn [conn] (t2/reducible-query conn compiled)) fetch-size))))
+  (funnysql/format (mdb.worktree/sandbox-worktree-query honeysql) (mdb.connection/db-type)))
 
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.
@@ -187,91 +122,40 @@
        ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
-(defn select-or-insert!
-  "Return a database record if it exists, otherwise create it.
+(def create-partition-size
+  "The number of rows one pass of a create write function takes."
+  1000)
 
-   The `select-map` is used to query the `model`, and if a result is found it is immediately returned.
-   If no value is found, `insert-fn` is called to generate the entity to be inserted.
+(def delete-partition-size
+  "The number of ids one DELETE statement of a write function takes, below the parameter limit of every app DB."
+  10000)
 
-   Note that this generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
-   will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
+(def update-partition-size
+  "The number of rows one pass of an update write function takes."
+  1000)
 
-   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
-   calculating initial values that may be expensive, or require side effects.
+(def select-partition-size
+  "The number of ids one SELECT statement of a read function takes, below the parameter limit of every app DB."
+  10000)
 
-   In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
-   rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
-   This may result in `insert-fn` being called a second time.
-
-   In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
-   To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
-  [model select-map insert-fn]
-  (let [select-kvs (mapcat identity select-map)
-        insert-fn  #(let [instance (insert-fn)]
-                      ;; the inserted values must be consistent with the select query
-                      (assert (not (u/conflicting-keys? select-map instance))
-                              "this should not be used to change any of the identifying values")
-                      ;; for convenience, we allow insert-fn's result to omit fields in the search-map
-                      (merge instance select-map))]
-    (with-conflict-retry
-      (or (apply t2/select-one model select-kvs)
-          ;; Wrap INSERT in a savepoint — see comment in [[update-or-insert!]].
-          (t2/with-transaction [_conn]
-            (t2/insert-returning-instance! model (insert-fn)))))))
-
-(defn update-or-insert!
-  "Update a database record, if it exists, otherwise create it.
-
-   The `select-map` is used to query the `model`, and if a result is found then we will update that entity, otherwise
-   a new entity will be created. We use `update-fn` to calculate both updates and initial values - in the first case
-   it will be called with the existing value, and in the second case it will be called with nil, analogous to the way
-   that [[clojure.core/update]] calls its function.
-
-   Note that the generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
-   will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
-
-   When called with an existing record, `update-fn` may return nil to signal that no update is needed. In this case
-   the existing row is left untouched and its primary key is returned. This is useful for \"get-or-create\" patterns.
-
-   This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
-   calculating initial values that may be expensive, or require side effects.
-
-   In the case where there is an underlying db constraint to prevent duplicates, this method takes care of handling
-   rejection from the database due to a concurrent insert, and will retry a single time to pick up the existing row.
-   This may result in `update-fn` being called a second time.
-
-   In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
-   To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
-  [model select-map & [update-fn]]
-  (let [update-fn  (or update-fn (constantly select-map))
-        select-kvs (mapcat identity select-map)
-        pks        (mapv keyword (t2/primary-keys model))
-        ;; The "pk" used to address an update and as the return value: a scalar for a single-column key
-        ;; (unchanged), a `[v1 v2 ...]` vector for a compound key — matching what `insert-returning-pk!`
-        ;; returns and what `t2/update!` accepts for a composite key.
-        pk-of      (fn [row] (if (= 1 (count pks)) ((first pks) row) (mapv #(% row) pks)))
-        update-fn  (fn [existing]
-                     (let [updated (update-fn existing)]
-                       ;; When called with an existing record, returning nil signals "no update needed".
-                       (when (or updated (not existing))
-                         ;; the inserted / updated values must be consistent with the select query
-                         (assert (not (u/conflicting-keys? select-map updated))
-                                 "This should not be used to change any of the identifying values")
-                         ;; For convenience, we allow the update-fn to omit fields in the search-map
-                         (merge updated select-map))))]
-    (with-conflict-retry
-      (if-let [existing (apply t2/select-one model select-kvs)]
-        (let [pk (pk-of existing)]
-          (if-let [updated (update-fn existing)]
-            ;; `model` is any model, so match on its own primary key, which may not be `:id` or may be composite.
-            (do (t2/update! model :toucan/pk pk updated)
-                ;; the primary key may have been changed by the update, and this is OK.
-                (pk-of (merge existing updated)))
-            ;; update-fn returned nil — no update needed, return existing pk.
-            pk))
-        ;; Wrap INSERT in a savepoint so that a constraint violation inside an existing
-        ;; PostgreSQL transaction doesn't abort the outer transaction. The savepoint is
-        ;; rolled back on failure, keeping the outer transaction usable for the retry
-        ;; in [[with-conflict-retry]].
-        (t2/with-transaction [_conn]
-          (t2/insert-returning-pk! model (update-fn nil)))))))
+(mu/defn upsert-query :- [:fn {:description "a Honey SQL upsert statement"} map?]
+  "The Honey SQL statement that inserts `row` into `table` or, when a row with the same values of the unique
+  `key-columns` exists, sets its other columns to those of `row`: `ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE`
+  on MySQL and MariaDB, and `MERGE ... KEY` on H2."
+  [table       :- :keyword
+   key-columns :- [:sequential {:min 1} :keyword]
+   row         :- [:fn {:description "a map of column keyword to value"} map?]]
+  (let [columns (vec (keys row))
+        updated (remove (set key-columns) columns)]
+    (case (mdb.connection/db-type)
+      :postgres {:insert-into   table
+                 :values        [row]
+                 :on-conflict   key-columns
+                 :do-update-set (into {} (map (fn [column] [column (u/qualified-key :excluded column)])) updated)}
+      :mysql    {:insert-into             table
+                 :values                  [row]
+                 :on-duplicate-key-update (into {} (map (fn [column] [column [:values column]])) updated)}
+      :h2       {:merge-into table
+                 :columns    columns
+                 :key        key-columns
+                 :values     [(mapv row columns)]})))

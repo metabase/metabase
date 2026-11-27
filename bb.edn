@@ -369,6 +369,23 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 
+  search-semantics-report
+  {:group "Local dev"
+   :doc "Write a browsable HTML report comparing the search engines' results on the shared semantics fixture"
+   :requires [[babashka.process :as p]
+              [mage.util :as u]]
+   :examples [["./bin/mage search-semantics-report" "Write target/search-semantics-report/index.html"]
+              ["./bin/mage search-semantics-report /tmp/report.html" "Write the report to /tmp/report.html"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "output" :description "Where to write the HTML file"}]]]
+   :task (let [{:keys [arguments]} (cli/parse! (current-task))]
+           ;; The page's rankings and weights come from the model module, and CI does not run its tests.
+           (when-not (zero? (:exit (p/shell {:dir u/project-root-directory, :continue true}
+                                            "node" "--test" "--test-reporter=dot"
+                                            "dev/test/search_semantics_report_model_test.mjs")))
+             (u/exit "The report model tests failed, so the report was not written." 1))
+           (apply p/shell (str u/project-root-directory "/bin/bb")
+                  "-cp" "test:test_resources" "dev/search_semantics_report.bb" arguments))}
+
   can-skip-driver-tests
   {:group "Tests & checks"
    :doc "Can we skip driver tests for this branch?"
@@ -506,10 +523,11 @@
   {:group "Local dev"
    :doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
    :examples [["./bin/mage docs-generate" "Regenerate every generated doc"]
-              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, CLI commands, and database feature support"]
               ["./bin/mage docs-generate usage-analytics" "Usage analytics reference"]
               ["./bin/mage docs-generate embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
-              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]]
+              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]
+              ["./bin/mage docs-generate docker-tags" "Pin the Docker tags in the install docs to the newest release"]]
    :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
    :arg-schema [:or
                 [:tuple]
@@ -517,7 +535,8 @@
                          "backend"
                          "usage-analytics"
                          "embedding-sdk"
-                         "embedding-eajs"]]]
+                         "embedding-eajs"
+                         "docker-tags"]]]
    :requires [[mage.docs-generate :as docs-generate]]
    :task (task! (docs-generate/run! (first (:arguments parsed)) (:options parsed)))}
 

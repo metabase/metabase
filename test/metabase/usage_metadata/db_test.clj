@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.db :as usage-metadata.db]
@@ -72,8 +74,17 @@
 
 (deftest unarchived-segments-by-table-test
   (testing "GHY-4588: the table id still narrows the Segments"
-    (mt/with-temp [:model/Segment {in-table :id}    {:table_id (mt/id :venues)}
-                   :model/Segment {other-table :id} {:table_id (mt/id :checkins)}]
+    (mt/with-temp [:model/Segment {in-table :id}    {:definition (let [mp (mt/metadata-provider)]
+                                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                       (lib/filter (lib/= 1 1))))}
+                   :model/Segment {other-table :id} {}]
       (let [ids (set (map :id (usage-metadata.db/unarchived-segments (mt/id :venues))))]
         (is (contains? ids in-table))
         (is (not (contains? ids other-table)))))))
+
+(deftest ^:synchronized reads-over-partitions-test
+  (let [field-ids (vec (take 5 (t2/select-pks-vec :model/Field :table_id (mt/id :venues) {:order-by [[:id :asc]]})))
+        f         #(usage-metadata.db/raw-field-fingerprints field-ids)]
+    (testing "maps hold every row"
+      (is (= (set field-ids) (set (keys (f)))))
+      (is (= (f) (mt/with-partition-size 2 (f)))))))

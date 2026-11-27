@@ -16,6 +16,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -93,20 +94,19 @@
 
 (deftest group-name-falls-back-to-all-users-test
   (testing "a key whose actor belongs to no group but All Users gets \"All Users\", not a null group_name"
-    (mt/with-temp
-      [;; every new non-tenant user is added to All Users on insert — no explicit membership needed
-       :model/User               {creator-id :id} {}
-       :model/User               {actor-id :id}   {}
-       :model/ApiKey             {key-id :id}     {::api-keys/unhashed-key "mb_0000000000"
-                                                   :name          "All Users only key"
-                                                   :user_id       actor-id
-                                                   :creator_id    creator-id
-                                                   :updated_by_id creator-id}
-       :model/ApiKeyUsageLog     {log-id :id}     (log-row {:api_key_id    key-id
-                                                            :user_id       actor-id
-                                                            :created_by_id creator-id})]
-      (is (= (:name (perms/all-users-group))
-             (:group_name (find-row (query-view [log-id]) log-id)))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[{creator-id :id} {actor-id :id}] (user/create-users! [{:email (mt/random-email)} {:email (mt/random-email)}])]
+        (mt/with-temp
+          [:model/ApiKey             {key-id :id}     {::api-keys/unhashed-key "mb_0000000000"
+                                                       :name          "All Users only key"
+                                                       :user_id       actor-id
+                                                       :creator_id    creator-id
+                                                       :updated_by_id creator-id}
+           :model/ApiKeyUsageLog     {log-id :id}     (log-row {:api_key_id    key-id
+                                                                :user_id       actor-id
+                                                                :created_by_id creator-id})]
+          (is (= (:name (perms/all-users-group))
+                 (:group_name (find-row (query-view [log-id]) log-id)))))))))
 
 (deftest missing-key-and-creator-test
   (testing "a row whose key/creator are gone (or were never set) survives, with null join columns"
@@ -176,8 +176,10 @@
     ;; metabase-lib silently excludes unknown-typed columns from the FE's sortable columns —
     ;; the view's own `CAST(... AS VARCHAR)` is what keeps this column a plain, sortable string.
     (when (= (mdb/db-type) :h2)
-      (let [column-type (-> (t2/query "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
-                                        WHERE TABLE_NAME = 'V_API_KEY_USAGE'
-                                          AND COLUMN_NAME = 'CREATOR_DISPLAY_NAME'")
+      (let [column-type (-> (t2/query {:select [:data_type]
+                                       :from   [:information_schema.columns]
+                                       :where  [:and
+                                                [:= :table_name "V_API_KEY_USAGE"]
+                                                [:= :column_name "CREATOR_DISPLAY_NAME"]]})
                             first :data_type)]
         (is (not= "VARCHAR_IGNORECASE" column-type))))))

@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.config :as cache.config]
-   [metabase.events.core :as events]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -194,7 +194,8 @@
       (mt/with-temporary-setting-values [persisted-models-enabled true]
         (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
                        :model/Card     card {:database_id (u/the-id db)}]
-          (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})
-          (is (zero? (count (t2/select :model/PersistedInfo :card_id (u/the-id card)))))
-          (events/publish-event! :event/card-create {:object (assoc card :type :model) :user-id (mt/user->id :rasta)})
+          (mt/with-current-user (mt/user->id :rasta)
+            (card/update-cards! [{:id (u/the-id card) :name "renamed"}])
+            (is (zero? (count (t2/select :model/PersistedInfo :card_id (u/the-id card)))))
+            (card/update-cards! [{:id (u/the-id card) :type :model}]))
           (is (= "off" (:state (t2/select-one :model/PersistedInfo :card_id (u/the-id card))))))))))

@@ -14,9 +14,12 @@
   (make-hierarchy))
 
 (defn derive!
-  "Make `parent` an ancestor of `tag` in the event [[hierarchy]]."
+  "Make `parent` an ancestor of `tag` in the event [[hierarchy]], which it may already be."
   [tag parent]
-  (alter-var-root #'hierarchy derive tag parent)
+  (alter-var-root #'hierarchy (fn [h]
+                                (if (clojure.core/isa? h tag parent)
+                                  h
+                                  (derive h tag parent))))
   nil)
 
 (defn underive!

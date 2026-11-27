@@ -3,12 +3,16 @@ import fetchMock from "fetch-mock";
 
 import { setupUpdateDataAppEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import type { DataApp, Settings } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppMoreMenu } from "./DataAppMoreMenu";
+
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
 
 jest.mock("metabase/embedding/hooks/use-open-embed-js-wizard");
 
@@ -16,6 +20,10 @@ const openEmbedWizard = jest.fn();
 
 beforeEach(() => {
   jest.mocked(useOpenEmbedJsWizard).mockReturnValue(openEmbedWizard);
+});
+
+afterEach(() => {
+  trackSimpleEvent.mockClear();
 });
 
 type SetupOpts = {
@@ -117,6 +125,7 @@ describe("DataAppMoreMenu", () => {
   it("makes a live app a draft only after confirmation", async () => {
     setup({
       app: createMockDataApp({
+        id: 7,
         slug: "sales",
         name: "Sales",
         enabled: true,
@@ -143,5 +152,53 @@ describe("DataAppMoreMenu", () => {
     expect(JSON.parse(String(calls[0].options.body))).toEqual({
       enabled: false,
     });
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "data_app_made_draft",
+        target_id: 7,
+      }),
+    );
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes a draft app live only after confirmation", async () => {
+    setup({
+      app: createMockDataApp({
+        id: 7,
+        slug: "sales",
+        name: "Sales",
+        enabled: false,
+      }),
+    });
+
+    await openMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Make live/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Make Sales live?")).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("path:/api/ee/apps/sales")).toHaveLength(
+      0,
+    );
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Make live" }),
+    );
+
+    const calls = fetchMock.callHistory.calls("path:/api/ee/apps/sales");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].options.method).toBe("PUT");
+    expect(JSON.parse(String(calls[0].options.body))).toEqual({
+      enabled: true,
+    });
+    await waitFor(() =>
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "data_app_made_live",
+        target_id: 7,
+      }),
+    );
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
   });
 });

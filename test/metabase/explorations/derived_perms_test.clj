@@ -5,10 +5,13 @@
   the batching that must not merge snapshots requiring different permissions."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.documents.models.document :as m.document]
+   [metabase.events.test-util :as events.tu]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -17,6 +20,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -28,6 +32,8 @@
   "A count metric over `table-kw`, so different tables mean genuinely different required perms."
   [table-kw]
   (let [mp (mt/metadata-provider)]
+    ;; existing usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
                            (lib/aggregate (lib/count))))))
 
@@ -192,8 +198,7 @@
   (let [mp   (mt/metadata-provider)
         base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                  (lib/aggregate (lib/count)))]
-    (lib/->legacy-MBQL
-     (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base)))))))
+    (lib/breakout base (first (filter :fk-field-id (lib/breakoutable-columns base))))))
 
 (deftest batching-does-not-merge-a-plain-breakout-with-an-fk-traversed-one-test
   (testing "the two halves of the verdict project the query differently — perms from the raw query,
@@ -218,7 +223,7 @@
   "A plain, unaggregated query over `table-kw` — a shape that works as a join source."
   [table-kw]
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id table-kw))))))
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
 
 (defn- card-joined-query
   "A venues count joined to a saved card that itself reads venues. Both of the key's query
@@ -237,7 +242,7 @@
                                              [:field (mt/id :venues :id) {:join-alias "J"}]]}]}})
 
 (deftest batching-does-not-merge-a-plain-query-with-a-card-joined-one-test
-  (testing "the verdict has a third projection the key must carry: `can-run-query?` reads `:card-ids`
+  (testing "the verdict has a third projection the key must carry: `query-run-answers` reads `:card-ids`
             off the *preprocessed* query and checks read perms on each card's collection. A plain
             breakout and one joined to a saved card over the same table agree on both projections the
             key does carry, so keyed on those alone they share a verdict — and a viewer who can query
@@ -279,7 +284,9 @@
                      (let [thread (thread-with-snapshots! (specs n))
                            calls  (atom 0)]
                        (dynamic-redefs/with-dynamic-fn-redefs
-                         [queries/viewer-can-view-cached-result? (fn [& _] (swap! calls inc) true)]
+                         [queries/cached-result-view-answers (fn [artifacts & _]
+                                                               (swap! calls + (count artifacts))
+                                                               (mapv (constantly true) artifacts))]
                          (request/with-current-user (mt/user->id :rasta)
                            (derived-perms/thread-ids-with-visible-derived-data [thread])))
                        @calls))]
@@ -296,9 +303,12 @@
                                            {:creator-id (mt/user->id :lucky) :table :venues :token token}))
           reads  (atom 0)]
       (dynamic-redefs/with-dynamic-fn-redefs
-        [data-access-token/sandbox-token-for-table (fn [table-id]
-                                                     (when (= venues table-id) (swap! reads inc))
-                                                     nil)]
+        [data-access-token/sandbox-token-for-table  (fn [table-id]
+                                                      (when (= venues table-id) (swap! reads inc))
+                                                      nil)
+         data-access-token/sandbox-tokens-for-tables (fn [table-ids]
+                                                       (swap! reads + (count (filter #{venues} table-ids)))
+                                                       (zipmap table-ids (repeat nil)))]
         (is (false? (visible? thread :rasta)) "the sandboxed creators' charts block an unsandboxed viewer"))
       (is (= 1 @reads)))))
 
@@ -315,10 +325,43 @@
                         (t2/with-call-count [call-count]
                           (derived-perms/thread-ids-with-visible-derived-data [thread])
                           (call-count)))))
+          _       (measure 1)
           small   (measure 2)
           large   (measure 25)]
-      (is (< large (* 2 small))
-          (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+      (is (= small large)
+          (format "resolution must not grow with charts (2 charts: %d queries, 25 charts: %d)" small large)))))
+
+(deftest verdict-cost-does-not-grow-with-groups-test
+  (testing "charts on distinct Tables, each its own group, are adjudicated together"
+    (let [tables  [:venues :checkins :users :categories :orders :people :products :reviews]
+          verdict (fn [thread]
+                    (request/with-current-user (mt/user->id :rasta)
+                      (t2/with-call-count [call-count]
+                        (derived-perms/thread-ids-with-visible-derived-data [thread])
+                        (call-count))))
+          measure (fn [table-keys]
+                    (verdict (thread-with-snapshots! (map #(hash-map :creator-id (mt/user->id :lucky) :table % :token {})
+                                                          table-keys))))]
+      (measure (take 2 (drop 6 tables)))
+      (let [preprocess! (fn [table-keys]
+                          (lib-be/with-metadata-provider-cache
+                            (let [queries (mapv count-query table-keys)]
+                              (request/as-admin (doseq [query queries] (qp.preprocess/preprocess query)))
+                              (t2/with-call-count [call-count]
+                                (request/as-admin (doseq [query queries] (qp.preprocess/preprocess query)))
+                                (call-count)))))]
+        (testing "only preprocessing statements that read no metadata grow with the groups"
+          (is (= (- (measure (take 6 (drop 2 tables))) (measure (take 2 tables)))
+                 (- (preprocess! (take 6 (drop 2 tables))) (preprocess! (take 2 tables))))))))))
+
+(deftest artifacts-resolved-one-by-one-when-resolving-together-throws-test
+  (testing "when resolving the artifacts' queries together throws, each is resolved on its own, to the same verdict"
+    (let [thread (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}
+                                          {:creator-id (mt/user->id :lucky) :table :checkins :token {}}
+                                          {:creator-id (mt/user->id :lucky) :table :users :token nil}])
+          base   (visible? thread :rasta)]
+      (dynamic-redefs/with-dynamic-fn-redefs [query-perms/resolved-source-ids-answers (fn [_] (throw (ex-info "boom" {})))]
+        (is (= base (visible? thread :rasta)))))))
 
 (deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
   (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])
@@ -330,10 +373,12 @@
                                                       {:table-ids #{(mt/id stamped-from)}})}))
         resolves (fn []
                    (let [calls (atom 0)
-                         orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)]
+                         orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)
+                         bulk  (dynamic-redefs/original-fn #'query-perms/resolved-source-ids-answers)]
                      (dynamic-redefs/with-dynamic-fn-redefs
-                       [queries/viewer-can-view-cached-result? (constantly true)
-                        query-perms/query->resolved-source-ids (fn [& args] (swap! calls inc) (apply orig args))]
+                       [queries/cached-result-view-answers  (fn [artifacts & _] (mapv (constantly true) artifacts))
+                        query-perms/query->resolved-source-ids  (fn [& args] (swap! calls inc) (apply orig args))
+                        query-perms/resolved-source-ids-answers (fn [queries] (swap! calls + (count queries)) (bulk queries))]
                        (request/with-current-user (mt/user->id :rasta)
                          (derived-perms/thread-ids-with-visible-derived-data [thread])))
                      @calls))]
@@ -346,9 +391,14 @@
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
 
+(defn- doc-content-visible-to-current-user?
+  "Whether the current user may see the content of `document`, as the visibility function answers for it alone."
+  [document]
+  ((derived-perms/doc-content-visibility-fn [document]) document))
+
 (defn- doc-content-visible? [document user-kw]
   (request/with-current-user (mt/user->id user-kw)
-    (derived-perms/doc-content-visible-to-current-user? document)))
+    (doc-content-visible-to-current-user? document)))
 
 (deftest doc-content-gate-does-not-fail-open-on-a-partial-select-test
   (testing "a Summary document whose exploration the viewer may not see"
@@ -388,6 +438,92 @@
             (is (true? (visible? thread :crowberto)))
             (is (true? (boolean (doc-content-visible? document :crowberto))))
             (is (zero? @loads))))))))
+
+(defn- reference-content-visible?
+  "The verdict the gate gave one document at a time, read from the threads of its Exploration."
+  [document]
+  (if-let [exploration-id (:exploration_id document)]
+    (or (boolean api/*is-superuser?*)
+        (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
+          (or (empty? thread-ids)
+              (= thread-ids (derived-perms/thread-ids-with-visible-derived-data thread-ids)))))
+    true))
+
+(defn- exploration-of-thread [thread-id]
+  (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id))
+
+(deftest content-gate-answers-many-documents-as-one-by-one-test
+  (testing "the gate answered for a list of Summary documents gives each the verdict it gets alone"
+    (mt/with-no-data-perms-for-all-users!
+      (let [group (perms-group/all-users)]
+        (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+        (let [lucky       (mt/user->id :lucky)
+              no-threads  (t2/insert-returning-pk! :model/Exploration {:name "none" :creator_id lucky})
+              visible     (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+              blocked     (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :checkins :token {}}]))
+              mixed       (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+              unstamped   (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token nil}]))
+              other       (thread-with-snapshots! [{:creator-id lucky :table :checkins :token {}}])]
+          (t2/update! :model/ExplorationThread :id other {:exploration_id mixed :position 1})
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Document {d-none :id}      {:collection_id coll-id :exploration_id no-threads}
+                         :model/Document {d-visible :id}   {:collection_id coll-id :exploration_id visible}
+                         :model/Document {d-blocked :id}   {:collection_id coll-id :exploration_id blocked}
+                         :model/Document {d-mixed :id}     {:collection_id coll-id :exploration_id mixed}
+                         :model/Document {d-unstamped :id} {:collection_id coll-id :exploration_id unstamped}
+                         :model/Document {d-plain :id}     {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! group coll-id)
+            (let [ids       [d-none d-visible d-blocked d-mixed d-unstamped d-plain]
+                  expected  {:rasta      [true true false false false true]
+                             :crowberto  [true true true true true true]}
+                  documents #(mapv (fn [id] (t2/select-one :model/Document :id id)) ids)]
+              (doseq [user [:rasta :crowberto]]
+                (request/with-current-user (mt/user->id user)
+                  (testing (name user)
+                    (let [docs (documents)]
+                      (is (= (expected user)
+                             (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
+                      (is (= (mapv reference-content-visible? docs)
+                             (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
+                      (is (= (mapv doc-content-visible-to-current-user? docs)
+                             (mapv (derived-perms/doc-content-visibility-fn docs) docs)))
+                      (testing "hydrated :can_read of all of them matches that of each alone"
+                        (is (= (mapv #(mi/can-read? (first (t2/hydrate [%] :can_read))) docs)
+                               (mapv mi/can-read? (t2/hydrate docs :can_read)))))
+                      (testing "hydrated :can_write of all of them matches that of each alone"
+                        (is (= (mapv #(mi/can-write? (first (t2/hydrate [%] :can_write))) docs)
+                               (mapv mi/can-write? (t2/hydrate docs :can_write))))))))))))))))
+
+(defn- summary-documents-statement-count!
+  "The number of statements of asking `:can_write` of `n` Summary documents whose Explorations have a thread each, as
+  rasta, who writes their Collection."
+  [n]
+  (let [lucky (mt/user->id :lucky)]
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (let [docs (doall
+                  (for [_ (range n)
+                        :let [expl (exploration-of-thread (thread-with-snapshots! [{:creator-id lucky :table :venues :token {}}]))
+                              id   (t2/insert-returning-pk! :model/Document {:name         "Summary"
+                                                                             :collection_id coll-id
+                                                                             :creator_id   lucky
+                                                                             :content_type documents/prose-mirror-content-type
+                                                                             :exploration_id expl})]]
+                    (t2/select-one :model/Document :id id)))]
+        (request/with-current-user (mt/user->id :rasta)
+          (events.tu/real-statement-count! #(t2/hydrate docs :can_write)))))))
+
+(deftest content-gate-statement-count-does-not-grow-with-documents-test
+  (testing "asking :can_write of Summary documents as a user who is not a superuser costs the same for more documents"
+    (mt/with-no-data-perms-for-all-users!
+      (let [group (perms-group/all-users)]
+        (perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-model-cleanup [:model/Document :model/Exploration :model/Card]
+          (summary-documents-statement-count! 2)
+          (is (= (summary-documents-statement-count! 2)
+                 (summary-documents-statement-count! 6))))))))
 
 ;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
 
@@ -438,8 +574,8 @@
 (defn- page-id-for-thread [thread-id]
   (t2/select-one-fn :id :model/ExplorationPage
                     {:select [:p.id]
-                     :from   [[:exploration_page :p]]
-                     :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
+                     :from   [[(t2/table-name :model/ExplorationPage) :p]]
+                     :join   [[(t2/table-name :model/ExplorationBlock) :b] [:= :b.id :p.exploration_block_id]]
                      :where  [:= :b.exploration_thread_id thread-id]}))
 
 (defn- comment-contexts [exploration-id user-kw]
@@ -505,7 +641,9 @@
                   orig  @gate
                   calls (atom 0)]
               (try
-                (reset! gate (fn [doc] (swap! calls inc) (orig doc)))
+                (reset! gate (fn [docs]
+                               (let [visible? (orig docs)]
+                                 (fn [doc] (swap! calls inc) (visible? doc)))))
                 (documents/with-content-gate-cache
                   (is (every? mi/can-read? (t2/hydrate cards :can_read))))
                 (is (= 1 @calls) "one verdict should serve every card")

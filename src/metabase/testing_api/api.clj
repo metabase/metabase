@@ -13,6 +13,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -20,8 +22,15 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
-   [metabase.permissions.core :as perms]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.models.ai-usage-log :as ai-usage-log]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
+   [metabase.metabot.models.metabot-message :as metabot-message]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.permissions.models.permissions-group :as permissions-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.models.card :as card]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
@@ -29,10 +38,15 @@
    [metabase.session.api :as session.api]
    [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
+   [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
@@ -111,22 +125,7 @@
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
       (jdbc/execute! {:connection conn} sql-args))
-    ;; We've found a delightful bug in H2 where if you:
-    ;; - create a table, then
-    ;; - create a view based on the table, then
-    ;; - modify the original table, then
-    ;; - generate a snapshot
-
-    ;; the generated snapshot has the `CREATE VIEW` *before* the `CREATE TABLE`. This results in a view that can't be
-    ;; queried successfully until it is recompiled. Our workaround is to recompile ALL views immediately after we
-    ;; restore the app DB from a snapshot. Bug report is here: https://github.com/h2database/h2database/issues/3942
-    (doseq [table-name
-            (->> (jdbc/query {:connection conn} ["SELECT table_name FROM information_schema.views WHERE table_schema=?" "PUBLIC"])
-                 (map :table_name))]
-      ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
-      ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
-      ;; table, so this is probably safe enough.
-      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name)))))
+    (mdb/recompile-h2-views! conn)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 (mdb/app-db))
@@ -173,12 +172,16 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(mr/def ::echo.body
+  "The body of an echo request, returned as it arrived."
+  [:map {:closed false, :description "echo request body"}])
+
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map {:closed true}
                       [:fail {:default false} ms/BooleanValue]]
-   body :- ms/OpaqueJSONObject]
+   body :- ::echo.body]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -242,14 +245,14 @@
                                       {:status-code 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
-      "card"      (testing-api.db/set-card-last-used-at! id date)
-      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date)
-      "document"  (testing-api.db/set-document-last-viewed-at! id date)
+      "card"      (card/set-last-used-at! id date)
+      "dashboard" (dashboard/set-last-viewed-at! id date)
+      "document"  (document/set-last-viewed-at! id date)
       "transform" (do
-                    (testing-api.db/set-transform-created-at! id date)
+                    (transform/update-transforms! [{:id id :created_at date}])
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
-                    (testing-api.db/set-transform-run-times! id date))
+                    (transform-run/set-run-times! id date))
       (throw (ex-info (str "unknown model: '" model "'") {:status-code 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -326,13 +329,18 @@
   []
   (refresh-cache-configs!))
 
+(mr/def ::query-spec
+  "A test query spec, of which only the database is read here."
+  [:map {:closed false, :description "a test query spec"}
+   [:database ::lib.schema.id/database]])
+
 (api.macros/defendpoint :post "/query" :- ::lib.schema/query
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
-  (-> (lib-be/application-database-metadata-provider (get query-spec "database"))
-      (lib/test-query (walk/keywordize-keys query-spec))))
+   query-spec :- ::query-spec]
+  (-> (lib-be/application-database-metadata-provider (:database query-spec))
+      (lib/test-query query-spec)))
 
 (def ^:private TestAdvisory
   "Schema for a single advisory in the testing seed endpoint."
@@ -350,22 +358,27 @@
    [:published_at      [:maybe :string]]
    [:updated_at        [:maybe :string]]])
 
+(defenterprise replace-security-advisories!
+  "Delete every SecurityAdvisory and insert `advisories`, which only EE has."
+  metabase-enterprise.security-center.models.security-advisory
+  [_advisories]
+  (throw (ex-info "Security advisories need the enterprise edition." {:status-code 400})))
+
 (api.macros/defendpoint :post "/security-advisories"
   "Nuke all existing security advisories and insert the provided ones."
   [_route-params
    _query-params
    {:keys [advisories]} :- [:map {:closed true}
                             [:advisories [:sequential TestAdvisory]]]]
-  (testing-api.db/delete-all-security-advisories!)
-  (testing-api.db/insert-security-advisories! (mapv #(m/update-existing % :matching_query walk/keywordize-keys) advisories)))
+  (replace-security-advisories! (mapv #(m/update-existing % :matching_query walk/keywordize-keys) advisories)))
 
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   native-query-spec :- (ms/string-keyed-object ["database" ::lib.schema.id/database])]
-  (-> (lib-be/application-database-metadata-provider (get native-query-spec "database"))
-      (lib/test-native-query (walk/keywordize-keys native-query-spec))))
+   native-query-spec :- ::query-spec]
+  (-> (lib-be/application-database-metadata-provider (:database native-query-spec))
+      (lib/test-native-query native-query-spec)))
 
 ;;;; Metabot AI usage seeding
 
@@ -387,29 +400,29 @@
 (defn- e2e-usage-auditing-group-id!
   []
   (or (testing-api.db/permissions-group-id e2e-usage-auditing-group-name)
-      (testing-api.db/insert-permissions-group! e2e-usage-auditing-group-name)))
+      (:id (first (permissions-group/create-permissions-groups! [{:name e2e-usage-auditing-group-name}])))))
 
 (defn- ensure-seeded-usage-auditing-group-membership!
   [user-id]
   (let [group-id (e2e-usage-auditing-group-id!)]
     (when-not (testing-api.db/group-membership-exists? user-id group-id)
-      (perms/add-user-to-group! user-id group-id))))
+      (perms-group-membership/add-users-to-groups! [{:user user-id :group group-id}]))))
 
 (defn- delete-seeded-usage-auditing-data!
   []
-  (testing-api.db/delete-ai-usage-logs-for-conversations! e2e-usage-auditing-conversation-ids)
-  (testing-api.db/delete-metabot-conversations! e2e-usage-auditing-conversation-ids))
+  (ai-usage-log/delete-ai-usage-logs! (ai-usage-log/ids-for-conversations e2e-usage-auditing-conversation-ids))
+  (metabot-conversation/delete-metabot-conversations! e2e-usage-auditing-conversation-ids))
 
 (defn- insert-seeded-usage-auditing-conversation!
   [{:keys [id user-id created-at source profile-id prompt-tokens completion-tokens total-tokens roles ip-address tenant-id]}]
-  (testing-api.db/insert-metabot-conversation!
+  (metabot-conversation/seed-metabot-conversation!
    {:id         id
     :user_id    user-id
     :title      "E2E usage auditing conversation"
     :created_at created-at
     :ip_address ip-address})
   (doseq [role roles]
-    (testing-api.db/insert-metabot-message!
+    (metabot-message/seed-metabot-message!
      {:conversation_id id
       :user_id         user-id
       :role            role
@@ -418,7 +431,7 @@
       :data_version    2
       :total_tokens    0
       :created_at      created-at}))
-  (testing-api.db/insert-ai-usage-log!
+  (ai-usage-log/seed-ai-usage-log!
    (cond-> {:source            source
             :model             "anthropic/claude-sonnet-4-6"
             :conversation_id   id
@@ -456,10 +469,9 @@
          out-of-bounds  (t/minus today (t/days 395))]
      (ensure-seeded-usage-auditing-group-membership! user-id)
      (ensure-seeded-usage-auditing-group-membership! second-user-id)
-     (when tenant-id
-       (testing-api.db/set-user-tenant! user-id tenant-id))
-     (when second-tenant-id
-       (testing-api.db/set-user-tenant! second-user-id second-tenant-id))
+     (user/update-users! (cond-> []
+                           tenant-id        (conj {:id user-id :tenant_id tenant-id})
+                           second-tenant-id (conj {:id second-user-id :tenant_id second-tenant-id})))
      (delete-seeded-usage-auditing-data!)
      (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
                             :user-id           user-id
@@ -591,6 +603,40 @@
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(mr/def ::retriever-arguments
+  "The arguments of a retrieval tool, passed through as they arrived: the selected tool's own schema validates them."
+  [:map {:closed false, :description "retrieval tool arguments"}])
+
+(api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
+  "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
+  Admins only, because the testing routes are not behind the authentication middleware.
+  Answers 400 when the tool rejects the arguments, and 502 when the call or any of its queries fails.
+  That way a caller can tell a failed or partial search from one that found nothing.
+  The 502 for a partial search still carries the other queries' `output`, for debugging."
+  [_route-params
+   _query-params
+   {:keys [retriever arguments]} :- [:map {:closed true}
+                                     [:retriever (into [:enum] metabot.tools/retriever-names)]
+                                     [:arguments ::retriever-arguments]]]
+  (api/check-superuser)
+  (let [{:keys [output error failed-queries]} (metabot.tools/run-retriever retriever arguments
+                                                                           (metabot.config/resolve-metabot nil))]
+    (cond
+      error
+      (throw (ex-info output {:status-code   (if (metabot.tools/retriever-caller-error? error) 400 502)
+                              :error-code    (u/qualified-name (:code error))
+                              :error-class   (:class error)
+                              :response/keys #{:error-class}}))
+
+      failed-queries
+      (throw (ex-info "The search failed for some of its queries."
+                      {:status-code    502
+                       :error-code     "search-incomplete"
+                       :failed-queries failed-queries
+                       :output         output
+                       :response/keys  #{:failed-queries :output}})))
+    {:output output}))
 
 (api.macros/defendpoint :post "/mcp/seed-tool-call"
   :- [:map

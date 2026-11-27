@@ -135,6 +135,17 @@ Once you've connected Slack, you can let people chat with [Metabot](../ai/metabo
 
 To remove the Metabot Slack configuration, click **Remove** at the bottom of the section.
 
+## Configure Slack with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md).
+
+| Setting                                                       | Environment variable                                                                          |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [Slack bot user OAuth token](#configure-your-app-in-metabase) | [`MB_SLACK_APP_TOKEN`](./environment-variables.md#mb_slack_app_token)                         |
+| [Client ID](#set-up-metabot-in-slack)                         | [`MB_SLACK_CONNECT_CLIENT_ID`](./environment-variables.md#mb_slack_connect_client_id)         |
+| [Client Secret](#set-up-metabot-in-slack)                     | [`MB_SLACK_CONNECT_CLIENT_SECRET`](./environment-variables.md#mb_slack_connect_client_secret) |
+| [Let people chat with Metabot](#set-up-metabot-in-slack)      | [`MB_SLACK_CONNECT_ENABLED`](./environment-variables.md#mb_slack_connect_enabled)             |
+
 ## Further reading
 
 - [Alerts](../questions/alerts.md)

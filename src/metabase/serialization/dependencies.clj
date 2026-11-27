@@ -15,7 +15,8 @@
    [metabase.serialization.util :as serialization.util]
    [metabase.serialization.visualization-settings :as viz]
    [metabase.util.json :as json]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -144,6 +145,17 @@
           (comp (map event-id) (filter event-ref?) (map (fn [id] [:model/TimelineEvent id])))
           excluded-ids)))
 
+(defn- dynamic-goals-deps
+  "The `[model id]` of the entities the dynamic goals in `settings` reference, nested visualizer settings included."
+  [settings {:keys [id-ref?]}]
+  (into #{}
+        (keep (fn [goal-value]
+                (let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
+                  (when-let [model (dynamic-goals/goal-entity-models type)]
+                    (when (or (mbql/entity-id? id) (id-ref? id))
+                      [model id])))))
+        (dynamic-goals/dashcard-goal-values settings)))
+
 (defn- visualization-settings-deps
   "The `[model id]` of what `:visualization_settings` refer to, read as [[export-opts]] or [[import-opts]] say."
   [viz opts]
@@ -160,7 +172,8 @@
                  [(mbql-deps viz opts)
                   (viz-link-card-deps viz opts)
                   (viz-click-behavior-deps viz)
-                  (timeline-events-deps viz opts)])
+                  (timeline-events-deps viz opts)
+                  (dynamic-goals-deps viz opts)])
          (filter some?)
          (reduce set/union #{}))))
 
@@ -196,23 +209,21 @@
   [settings]
   (visualization-settings-deps settings import-opts))
 
-(defmulti export-dependencies
+(defn export-dependencies
   "For each of `rows`, database rows of `model`, the set of `[model id]` of the entities it depends on, which an export
-  must contain or find."
-  {:arglists '([model rows])}
-  (fn [model _rows] model))
+  must contain or find, by the `:export-dependencies` of the spec of `model`, none by default."
+  [model rows]
+  (if-let [f (:export-dependencies (serialization.spec/spec model))]
+    (f rows)
+    (mapv (constantly #{}) rows)))
 
-(defmethod export-dependencies :default [_ rows]
-  (mapv (constantly #{}) rows))
-
-(defmulti import-dependencies
+(defn import-dependencies
   "For each of `entities`, entities of `model`, the set of `[model ref]` of the entities it depends on, which an import
-  loads first."
-  {:arglists '([model entities])}
-  (fn [model _entities] model))
-
-(defmethod import-dependencies :default [_ entities]
-  (mapv (constantly #{}) entities))
+  loads first, by the `:import-dependencies` of the spec of `model`, none by default."
+  [model entities]
+  (if-let [f (:import-dependencies (serialization.spec/spec model))]
+    (f entities)
+    (mapv (constantly #{}) entities)))
 
 (defn child-entities
   "The `[child-model entity]` of each child entity that `entity`, an entity of `model`, nests (see

@@ -15,6 +15,7 @@ import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
+  getDashcardGoalSourcesScope,
   getDashcardResultsError,
   isDashcardLoading,
 } from "metabase/dashboard/utils";
@@ -28,6 +29,7 @@ import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { GoalSourcesScopeProvider } from "metabase/visualizations/components/GoalSourcesScope";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
@@ -227,6 +229,11 @@ function DashCardInner({
   );
   const hasError = !!error;
 
+  const goalSourcesScope = useMemo(
+    () => getDashcardGoalSourcesScope(dashcard),
+    [dashcard],
+  );
+
   const gridSize = useMemo(
     () => ({ width: dashcard.size_x, height: dashcard.size_y }),
     [dashcard],
@@ -356,92 +363,96 @@ function DashCardInner({
 
   return (
     <ErrorBoundary>
-      <Box
-        data-testid="dashcard"
-        data-dashcard-key={dashcard.id}
-        className={cx(
-          S.DashboardCardRoot,
-          S.DashCardRoot,
-          DashboardS.Card,
-          EmbedFrameS.Card,
-          CS.relative,
-          CS.flex,
-          CS.flexColumn,
-          CS.hoverParent,
-          CS.hoverVisibility,
-          {
-            [S.hasHiddenBackground]: hasHiddenBackground,
-            [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
-            [S.isEmbeddingSdk]: isEmbeddingSdk(),
-            [S.isAction]: isAction,
-          },
-          className,
-        )}
-        style={(theme) => {
-          const { border } = theme.other.dashboard.card;
-          if (border) {
-            return { border };
-          }
-        }}
-        ref={cardRootRef}
-      >
-        {isEditingDashboardLayout && (
-          <DashCardActionsPanel
-            className={S.DashCardActionsPanel}
-            onMouseDown={preventDragging}
-            onLeftEdge={dashcard.col === 0}
-            series={series}
+      <GoalSourcesScopeProvider scope={goalSourcesScope}>
+        <Box
+          data-testid="dashcard"
+          data-dashcard-key={dashcard.id}
+          className={cx(
+            S.DashboardCardRoot,
+            S.DashCardRoot,
+            DashboardS.Card,
+            EmbedFrameS.Card,
+            CS.relative,
+            CS.flex,
+            CS.flexColumn,
+            CS.hoverParent,
+            CS.hoverVisibility,
+            {
+              [S.hasHiddenBackground]: hasHiddenBackground,
+              [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
+              [S.isEmbeddingSdk]: isEmbeddingSdk(),
+              [S.isAction]: isAction,
+            },
+            className,
+          )}
+          style={(theme) => {
+            const { border } = theme.other.dashboard.card;
+            if (border) {
+              return { border };
+            }
+          }}
+          ref={cardRootRef}
+        >
+          {isEditingDashboardLayout && (
+            <DashCardActionsPanel
+              className={S.DashCardActionsPanel}
+              onMouseDown={preventDragging}
+              onLeftEdge={dashcard.col === 0}
+              series={series}
+              dashcard={dashcard}
+              question={question}
+              isLoading={isLoading}
+              isPreviewing={isPreviewingCard}
+              hasError={hasError}
+              onDuplicate={handleDuplicateDashcard}
+              onRemove={onRemove}
+              onReplaceCard={onReplaceCard}
+              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+              onReplaceAllDashCardVisualizationSettings={
+                onReplaceAllDashCardVisualizationSettings
+              }
+              showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
+              onPreviewToggle={handlePreviewToggle}
+              isTrashedOnRemove={isTrashedOnRemove}
+              onAddParameter={handleAddParameter}
+              onEditVisualization={handleEditVisualization}
+            />
+          )}
+          <DashCardVisualization
             dashcard={dashcard}
             question={question}
-            isLoading={isLoading}
-            isPreviewing={isPreviewingCard}
-            hasError={hasError}
-            onDuplicate={handleDuplicateDashcard}
-            onRemove={onRemove}
-            onReplaceCard={onReplaceCard}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-            onReplaceAllDashCardVisualizationSettings={
-              onReplaceAllDashCardVisualizationSettings
+            series={series}
+            gridSize={gridSize}
+            gridItemWidth={gridItemWidth}
+            totalNumGridCols={totalNumGridCols}
+            headerIcon={headerIcon}
+            expectedDuration={expectedDuration}
+            error={error}
+            getHref={navigateToNewCardFromDashboard ? getHref : undefined}
+            getCardHref={
+              navigateToNewCardFromDashboard ? getCardHref : undefined
             }
-            showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
-            onPreviewToggle={handlePreviewToggle}
-            isTrashedOnRemove={isTrashedOnRemove}
-            onAddParameter={handleAddParameter}
-            onEditVisualization={handleEditVisualization}
+            isAction={isAction}
+            isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
+            isEditingDashboardLayout={isEditingDashboardLayout}
+            isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
+            isSlow={isSlow}
+            isPreviewing={isPreviewingCard}
+            isMobile={isMobile}
+            showClickBehaviorSidebar={showClickBehaviorSidebar}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            onChangeCardAndRun={
+              navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
+            }
+            onTogglePreviewing={handlePreviewToggle}
+            onEditVisualization={
+              isVisualizerDashboardCard(dashcard)
+                ? handleEditVisualization
+                : undefined
+            }
           />
-        )}
-        <DashCardVisualization
-          dashcard={dashcard}
-          question={question}
-          series={series}
-          gridSize={gridSize}
-          gridItemWidth={gridItemWidth}
-          totalNumGridCols={totalNumGridCols}
-          headerIcon={headerIcon}
-          expectedDuration={expectedDuration}
-          error={error}
-          getHref={navigateToNewCardFromDashboard ? getHref : undefined}
-          getCardHref={navigateToNewCardFromDashboard ? getCardHref : undefined}
-          isAction={isAction}
-          isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
-          isEditingDashboardLayout={isEditingDashboardLayout}
-          isClickBehaviorSidebarOpen={isClickBehaviorSidebarOpen}
-          isSlow={isSlow}
-          isPreviewing={isPreviewingCard}
-          isMobile={isMobile}
-          showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onChangeCardAndRun={
-            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
-          }
-          onTogglePreviewing={handlePreviewToggle}
-          onEditVisualization={
-            isVisualizerDashboardCard(dashcard)
-              ? handleEditVisualization
-              : undefined
-          }
-        />
-      </Box>
+        </Box>
+      </GoalSourcesScopeProvider>
     </ErrorBoundary>
   );
 }

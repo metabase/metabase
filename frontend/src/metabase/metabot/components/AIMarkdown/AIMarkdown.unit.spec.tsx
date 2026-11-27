@@ -57,7 +57,6 @@ const setup = (
       id: 5,
       display_name: "Orders",
       description: "Confirmed orders",
-      is_published: true,
       collection: createMockCollection({
         id: 10,
         name: "Data",
@@ -181,9 +180,7 @@ describe("AIMarkdown", () => {
         conversationCharts: {
           "chart-1": {
             queries: [
-              Lib.toLegacyQuery(
-                Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-              ),
+              Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
             ],
             visualization_settings: { chart_type: "bar" },
           },

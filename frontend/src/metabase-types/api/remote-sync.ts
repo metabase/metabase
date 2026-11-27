@@ -3,7 +3,7 @@ import type { Card } from "./card";
 import type { Collection, RegularCollectionId } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
-import type { CardTest, TransformTest } from "./data-test";
+import type { CardTest, SegmentTest, TransformTest } from "./data-test";
 import type { Document } from "./document";
 import type { FieldDimension, FieldUserSettings } from "./field";
 import type { GlossaryItem } from "./glossary";
@@ -83,6 +83,11 @@ export type RemoteSyncSegmentData = Pick<
   "id" | "name" | "table_id" | "table"
 >;
 
+export type RemoteSyncSegmentTestData = Pick<
+  SegmentTest,
+  "id" | "name" | "segment_id" | "segment"
+>;
+
 export type RemoteSyncTableUserSettingsData = Pick<
   TableUserSettings,
   "id" | "table_id" | "display_name" | "collection_id" | "table" | "collection"
@@ -120,6 +125,7 @@ type RemoteSyncItemDataByModel = {
   nativequerysnippet: RemoteSyncNativeQuerySnippetData;
   pythonlibrary: RemoteSyncPythonLibraryData;
   segment: RemoteSyncSegmentData;
+  segmenttest: RemoteSyncSegmentTestData;
   tableusersettings: RemoteSyncTableUserSettingsData;
   timeline: RemoteSyncTimelineData;
   transform: RemoteSyncTransformData;
@@ -335,4 +341,42 @@ export type TestRemoteSyncConnectionRequest = {
 
 export type TestRemoteSyncConnectionResponse = {
   status: "success";
+};
+
+export type RemoteSyncWorktreeUser = {
+  id: UserId;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  common_name: string | null;
+};
+
+export type RemoteSyncWorktreeId = number;
+
+export type RemoteSyncWorktree = {
+  id: RemoteSyncWorktreeId;
+  branch: string;
+  is_default: boolean;
+  creator_id: UserId | null;
+  creator?: RemoteSyncWorktreeUser | null;
+  users?: RemoteSyncWorktreeUser[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateWorktreeRequest = {
+  branch: string;
+};
+
+export type CheckoutWorktreeRequest = {
+  worktree_id: RemoteSyncWorktreeId | null;
+};
+
+export type CreateBranchRequest = {
+  name: string;
+};
+
+export type CreateBranchResponse = {
+  status: "success";
+  message: string;
 };

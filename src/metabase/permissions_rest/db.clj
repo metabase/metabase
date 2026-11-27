@@ -2,6 +2,7 @@
   "Application database queries for the permissions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -12,7 +13,7 @@
   [group-id-column manager-user-id]
   (when manager-user-id
     [:in group-id-column ^:allow-subquery {:select [:group_id]
-                                           :from   [:permissions_group_membership]
+                                           :from   [(t2/table-name :model/PermissionsGroupMembership)]
                                            :where  [:and
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
@@ -24,10 +25,10 @@
    [:= nil :magic_group_type]
    [:not= "data-analyst" :magic_group_type]
    [:exists ^:allow-subquery {:select [1]
-                              :from   [[:permissions_group_membership :pgm]]
-                              :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
+                              :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                              :join   [[(t2/table-name :model/User) :member] [:= :member.id :pgm.user_id]]
                               :where  [:and
-                                       [:= :pgm.group_id :permissions_group.id]
+                                       [:= :pgm.group_id (u/qualified-key (t2/table-name :model/PermissionsGroup) :id)]
                                        [:= :member.is_active true]]}]])
 
 (mu/defn permissions-groups
@@ -66,28 +67,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroup :id id))
 
-(mu/defn permissions-group-exists?
-  "Whether a PermissionsGroup with `id` exists."
-  [id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroup :id id))
-
-(mu/defn insert-permissions-group!
-  "Insert a PermissionsGroup and return the inserted instance."
-  [group-name    :- :string
-   tenant-group? :- :boolean]
-  (t2/insert-returning-instance! :model/PermissionsGroup :name group-name :is_tenant_group tenant-group?))
-
-(mu/defn rename-permissions-group!
-  "Set the name of the PermissionsGroup with `id`, returning the number updated."
-  [id         :- ms/PositiveInt
-   group-name :- :string]
-  (t2/update! :model/PermissionsGroup :id id {:name group-name}))
-
-(mu/defn delete-permissions-group!
-  "Delete the PermissionsGroup with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id id))
-
 (mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
   restricted to the groups `manager-user-id` manages, and excluding tenant groups when `exclude-tenant-groups?`."
@@ -101,24 +80,18 @@
                            [(managed-groups-clause :group_id manager-user-id)
                             (when exclude-tenant-groups?
                               [:not-in :group_id ^:allow-subquery {:select [:id]
-                                                                   :from   [:permissions_group]
+                                                                   :from   [(t2/table-name :model/PermissionsGroup)]
                                                                    :where  [:= :is_tenant_group true]}])])}))
-
-(mu/defn non-admin-user-exists?
-  "Whether the User with `user-id` exists and is not a superuser."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_superuser false))
 
 (mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroupMembership :id id))
 
-(mu/defn set-group-membership-manager!
-  "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
-  [id             :- ms/PositiveInt
-   group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership :id id {:is_group_manager group-manager?}))
+(mu/defn group-member-ids :- [:sequential ms/PositiveInt]
+  "The ids of the Users with a membership in the PermissionsGroup with `group-id`, active or not."
+  [group-id :- ms/PositiveInt]
+  (t2/select-fn-vec :user_id :model/PermissionsGroupMembership :group_id group-id))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
@@ -128,17 +101,9 @@
                                               (when excluded-database-id [:not= :id excluded-database-id])
                                               [:= :router_database_id nil]]}))
 
-(mu/defn data-permissions-reducible
-  "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
-  non-destination Databases, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding
-  `excluded-database-id` (nil for no restriction), ordered by group and database."
-  [{:keys [perm-type db-id group-id group-ids excluded-database-id]}
-   :- [:map {:closed true}
-       [:perm-type              {:optional true} [:maybe [:or :keyword :string]]]
-       [:db-id                  {:optional true} [:maybe ::lib.schema.id/database]]
-       [:group-id               {:optional true} [:maybe ms/PositiveInt]]
-       [:group-ids              {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-       [:excluded-database-id   {:optional true} [:maybe ::lib.schema.id/database]]]]
+(defn- data-permissions-partition-reducible
+  "The reducible rows [[data-permissions-reducible]] gives for one partition of `group-ids`."
+  [perm-type db-id group-id group-ids excluded-database-id]
   (t2/reducible-query
    {:select   [[:perm_type :type]
                [:group_id :group-id]
@@ -161,7 +126,24 @@
                                                               [:= :router_db.id :db_id]]}]])
     :order-by [:group_id :db_id]}))
 
+(mu/defn data-permissions-reducible
+  "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
+  non-destination Databases, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding
+  `excluded-database-id` (nil for no restriction), ordered by group and database."
+  [{:keys [perm-type db-id group-id group-ids excluded-database-id]}
+   :- [:map {:closed true}
+       [:perm-type              {:optional true} [:maybe [:or :keyword :string]]]
+       [:db-id                  {:optional true} [:maybe ::lib.schema.id/database]]
+       [:group-id               {:optional true} [:maybe ms/PositiveInt]]
+       [:group-ids              {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+       [:excluded-database-id   {:optional true} [:maybe ::lib.schema.id/database]]]]
+  (eduction
+   (mapcat #(data-permissions-partition-reducible perm-type db-id group-id % excluded-database-id))
+   (if (seq group-ids)
+     (mdb/select-partitions (sort (distinct group-ids)))
+     [group-ids])))
+
 (mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))
+  (mdb/select-batched #(t2/select [:model/Table :id :db_id :schema] :db_id [:in %]) database-ids))

@@ -4,12 +4,19 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
+   [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.core :as data-apps]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as card]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -98,7 +105,7 @@
          (is (mt/user-http-request :crowberto :post 200 "dataset/csv"
                                    (assoc-in as-data-app [:request-options :content-type]
                                              "application/x-www-form-urlencoded")
-                                   {:query (json/encode (lib/->legacy-MBQL query))})))
+                                   {:query (json/encode query)})))
        (testing "a custom column on it runs"
          (is (= "completed" (:status (run-query 202 (lib/expression query "Double price"
                                                                     (lib/* (lib.metadata/field (mt/metadata-provider)
@@ -119,7 +126,13 @@
                 (run-query 400 (card-query card-id) options)))))
      (testing "an app the user can't read is refused"
        (is (= "You don't have permissions to do that."
-              (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id))))))))
+              (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id)))))
+     (testing "a disabled app is not found by a user with access, and still runs for a superuser"
+       (group-access/add-groups! (t2/select-one :model/DataApp :slug "birds") [(:id (perms/all-users-group))])
+       (is (= "completed" (:status (mt/user-http-request :rasta :post 202 "dataset" as-data-app (card-query card-id)))))
+       (mt/user-http-request :crowberto :put 200 "ee/apps/birds" {:enabled false})
+       (is (= "Not found." (mt/user-http-request :rasta :post 404 "dataset" as-data-app (card-query card-id))))
+       (is (= "completed" (:status (run-query 202 (card-query card-id)))))))))
 
 (deftest foreign-keys-are-followed-test
   (do-with-app-card!
@@ -143,9 +156,11 @@
 (deftest other-cards-are-refused-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (mt/with-temp [:model/DataApp {other-collection-id :resource_collection_id} {:slug         "bees"
-                                                                                  :name         "Bees"
-                                                                                  :bundle_path  "bees.js"}
+     (mt/with-temp [:model/Collection {bees-id :id} {:namespace :data-apps}
+                    :model/DataApp {other-collection-id :resource_collection_id} {:slug                   "bees"
+                                                                                  :name                   "Bees"
+                                                                                  :bundle_path            "bees.js"
+                                                                                  :resource_collection_id bees-id}
                     :model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}
                     :model/Card {other-app-id :id} {:name          "Venues of bees"
                                                     :collection_id other-collection-id
@@ -160,9 +175,10 @@
 (deftest app-without-collection-uses-no-card-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
-     (mt/with-temp [:model/DataApp app             {:slug "wasps"}
-                    :model/Card    {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
-       (t2/delete! :model/Collection :id (:resource_collection_id app))
+     (mt/with-temp [:model/Collection {wasps-id :id}     {:namespace :data-apps}
+                    :model/DataApp    app                {:slug "wasps" :resource_collection_id wasps-id}
+                    :model/Card       {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
+       (collection/delete-collections! [(:resource_collection_id app)])
        (testing "an app without a collection can use no card, not even one in the root collection"
          (is (= (error-message :cards elsewhere-id)
                 (run-query 400 (card-query elsewhere-id) (as-app "wasps")))))))))
@@ -219,10 +235,8 @@
      (let [categories (table-query :categories)
            name-col   (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns categories))]
        (mt/with-temp [:model/Segment {segment-id :id} {:name       "Bars"
-                                                       :table_id   (mt/id :categories)
                                                        :definition (lib/filter categories (lib/= name-col "Bar"))}
                       :model/Measure {measure-id :id} {:name       "Names"
-                                                       :table_id   (mt/id :categories)
                                                        :definition (lib/aggregate categories (lib/distinct name-col))}]
          (let [mp           (mt/metadata-provider)
                with-segment #(lib/filter % (lib.metadata/segment mp segment-id))
@@ -261,8 +275,9 @@
          (is (= (card-error elsewhere-id)
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
        (testing "an app without a collection runs no card, not even one in the root collection"
-         (mt/with-temp [:model/DataApp app {:slug "wasps"}]
-           (t2/delete! :model/Collection :id (:resource_collection_id app))
+         (mt/with-temp [:model/Collection {wasps-id :id} {:namespace :data-apps}
+                        :model/DataApp    app            {:slug "wasps" :resource_collection_id wasps-id}]
+           (collection/delete-collections! [(:resource_collection_id app)])
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) (as-app "wasps"))))))
        (testing "a dev preview runs no saved card"
@@ -314,6 +329,144 @@
        (testing "an ID of a thousand or more appears as it is, not as 1,234,567"
          (is (= "A data app can run only the cards in its own collection, not the card 1234567."
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) as-data-app))))))))
+
+(defn- run-goals
+  "The response to a request through `POST /api/dynamic-goal/values` for `sources`, as `user`, by default a data app's."
+  ([sources]
+   (run-goals sources as-data-app))
+  ([sources options]
+   (run-goals :crowberto sources options))
+  ([user sources options]
+   (mt/user-http-request user :post 202 "dynamic-goal/values" options {:sources sources})))
+
+(defn- goal
+  "The result of the goal source card with `card-id` in `response`."
+  [response card-id]
+  (get-in response [:card card-id]))
+
+(defn- refused-goal
+  "The result of a goal source card the data app may not run, with `message`."
+  [message]
+  {:status "failed" :error message})
+
+(defn- do-with-goal-sources!
+  "Call `f` with `{:app-id :metric-id :native-id :outside-id :measure-id :venues-id}`: one-row cards in the app, in the
+  Library and outside the app (native and MBQL), a one-row measure of the unpublished CATEGORIES table, and the app's
+  VENUES card from [[do-with-app-card!]]."
+  [f]
+  (do-with-app-card!
+   (fn [venues-id collection-id]
+     (data-apps.tu/do-with-sources!
+      (fn [{:keys [metric-id]}]
+        (let [venue-count (lib/aggregate (data-apps.tu/venues-query) (lib/count))]
+          (mt/with-temp [:model/Card    {app-id :id}     {:name          "Venue count"
+                                                          :collection_id collection-id
+                                                          :dataset_query venue-count}
+                         :model/Card    {native-id :id}  {:name          "Secret"
+                                                          :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                           "SELECT 4242 AS SECRET")}
+                         :model/Card    {outside-id :id} {:name "Venue count elsewhere" :dataset_query venue-count}
+                         :model/Measure {measure-id :id} {:name       "Category count"
+                                                          :table_id   (mt/id :categories)
+                                                          :definition (lib/aggregate (table-query :categories)
+                                                                                     (lib/count))}]
+            (f {:app-id     app-id
+                :metric-id  metric-id
+                :native-id  native-id
+                :outside-id outside-id
+                :measure-id measure-id
+                :venues-id  venues-id}))))))))
+
+(deftest goal-sources-test
+  (do-with-goal-sources!
+   (fn [{:keys [app-id metric-id native-id outside-id measure-id]}]
+     (let [sources  [{:type "card" :id app-id}
+                     {:type "card" :id metric-id}
+                     {:type "card" :id native-id :columns ["SECRET"]}
+                     {:type "card" :id outside-id}
+                     {:type "measure" :id measure-id}]
+           response (run-goals sources)]
+       (testing "a goal source card outside the app's collection, Library metrics included, fails without running"
+         (doseq [card-id [metric-id native-id outside-id]]
+           (is (= (refused-goal (card-error card-id)) (goal response card-id)))))
+       (testing "the app's card runs"
+         (is (= "completed" (:status (goal response app-id)))))
+       (testing "an app runs no measure, as on POST /api/dataset"
+         (is (= (refused-goal (format "A data app cannot use measures, not the measure %d." measure-id))
+                (get-in response [:measure measure-id]))))
+       (testing "a dev preview runs no goal source card, but runs a measure"
+         (let [response (run-goals sources as-preview)]
+           (doseq [card-id [app-id metric-id native-id outside-id]]
+             (is (= (refused-goal (format "A data app's dev preview cannot run saved cards, not the card %d."
+                                          card-id))
+                    (goal response card-id))))
+           (is (= "completed" (get-in response [:measure measure-id :status])))))
+       (testing "a request that is not a data app's runs a measure"
+         (is (= "completed" (get-in (run-goals sources {:request-options {}}) [:measure measure-id :status]))))
+       (testing "a request that is not a data app's runs every goal source card"
+         (let [response (run-goals sources {:request-options {}})]
+           (is (= [[4242]] (get-in (goal response native-id) [:data :rows])))
+           (is (= "completed" (:status (goal response outside-id))))))
+       (testing "without the data-apps feature a data app's goal sources are not checked"
+         (mt/with-premium-features #{}
+           (is (= "completed" (:status (goal (run-goals sources) native-id))))))))))
+
+(deftest goal-values-must-name-readable-app-test
+  (do-with-goal-sources!
+   (fn [{:keys [app-id]}]
+     (testing "a data app's goal request that names no app, or an app that doesn't exist, is not found"
+       (doseq [options [(as-app nil) (as-app "no-such-app")]]
+         (is (= "Not found." (mt/user-http-request :crowberto :post 404 "dynamic-goal/values" options
+                                                   {:sources [{:type "card" :id app-id}]})))))
+     (testing "an app the user can't read is refused"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :post 403 "dynamic-goal/values" as-data-app
+                                    {:sources [{:type "card" :id app-id}]})))))))
+
+(deftest goal-source-refusal-same-for-missing-and-outside-cards-test
+  (do-with-goal-sources!
+   (fn [{:keys [outside-id]}]
+     (mt/with-temp [:model/Collection {hidden-id :id} {}
+                    :model/Card       {unreadable-id :id} {:collection_id hidden-id
+                                                           :dataset_query (lib/aggregate (data-apps.tu/venues-query)
+                                                                                         (lib/count))}]
+       (mt/with-non-admin-groups-no-collection-perms hidden-id
+         (group-access/add-groups! (data-apps.db/data-app-by-slug "birds") [(:id (perms/all-users-group))])
+         (testing "a missing, an unreadable and an outside card get the same refusal"
+           (let [response (run-goals :rasta
+                                     (for [card-id [999999999 unreadable-id outside-id]] {:type "card" :id card-id})
+                                     as-data-app)]
+             (doseq [card-id [999999999 unreadable-id outside-id]]
+               (is (= (refused-goal (card-error card-id)) (goal response card-id)) card-id)))))))))
+
+(deftest failed-goal-source-check-refuses-every-goal-test
+  (do-with-goal-sources!
+   (fn [{:keys [app-id native-id measure-id]}]
+     (mt/with-dynamic-fn-redefs [data-apps.db/external-card-ids (fn [_collection-id _card-ids]
+                                                                  (throw (ex-info "app DB down" {})))]
+       (let [response (run-goals [{:type "card" :id app-id}
+                                  {:type "card" :id native-id}
+                                  {:type "measure" :id measure-id}])
+             refused  (refused-goal "Could not check whether this goal source may be used.")]
+         (testing "no goal runs, not even one the check would have passed"
+           (is (= refused (goal response app-id)))
+           (is (= refused (goal response native-id)))
+           (is (= refused (get-in response [:measure measure-id])))))))))
+
+(deftest goal-source-refusals-query-count-test
+  (do-with-goal-sources!
+   (fn [{:keys [app-id metric-id native-id outside-id venues-id]}]
+     (let [app        (data-apps.db/data-app-by-slug "birds")
+           call-count (fn [card-ids]
+                        (t2/with-call-count [calls]
+                          (data-apps/goal-source-refusals app (for [card-id card-ids] {:type "card" :id card-id}))
+                          (calls)))]
+       (testing "the app's cards take one app-DB query, however many"
+         (is (= 1 (call-count [app-id])))
+         (is (= 1 (call-count [app-id venues-id]))))
+       (testing "cards outside the app take no more"
+         (is (= 1 (call-count [native-id])))
+         (is (= 1 (call-count [app-id metric-id native-id outside-id 999999999]))))))))
 
 (defn- do-with-rename-action!
   "Call `f` with the ID of a temp implicit action, on no model, that updates a category, in the collection with
@@ -418,12 +571,13 @@
   (mt/with-actions-test-data-and-actions-enabled
     (do-with-app-collection
      (fn [_collection-id]
-       (mt/with-temp [:model/DataApp    app                          {:slug "wasps"}
+       (mt/with-temp [:model/Collection {wasps-id :id}               {:namespace :data-apps}
+                      :model/DataApp    app                          {:slug "wasps" :resource_collection_id wasps-id}
                       :model/Collection {elsewhere-collection-id :id} {:namespace :data-actions}]
          (do-with-rename-action!
           elsewhere-collection-id
           (fn [elsewhere-id]
-            (t2/delete! :model/Collection :id (:resource_collection_id app))
+            (collection/delete-collections! [(:resource_collection_id app)])
             (testing "an app without a collection runs no action"
               (is (= (action-error elsewhere-id)
                      (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" elsewhere-id) (as-app "wasps")
@@ -474,16 +628,24 @@
          (mt/with-premium-features #{:data-apps :library}
            (data-apps.tu/do-with-library!
             (fn [_library]
-              (mt/with-temp [:model/Database db     {:engine :h2 :details {}}
-                             :model/Table    table  {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
-                             :model/Card     metric {:name          "Zebra outside metric"
-                                                     :type          :metric
-                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
-                (testing "a data app finds a table not published to the Library and a metric outside it"
-                  (let [found (set (map (juxt :model :id)
-                                        (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "zebra"))))]
-                    (is (contains? found ["table" (:id table)]))
-                    (is (contains? found ["metric" (:id metric)])))))))))))))
+              (mt/with-temp [:model/Database db {:engine :h2 :details {}}]
+                (mt/with-model-cleanup [:model/Card :model/Table]
+                  (let [[table]  (table/create-tables! [{:db_id        (:id db)
+                                                         :name         "ZEBRA_UNPUBLISHED"
+                                                         :display_name "Zebra unpublished"
+                                                         :active       true}])
+                        [metric] (card/create-cards! [{:name                   "Zebra outside metric"
+                                                       :type                   :metric
+                                                       :creator_id             (mt/user->id :rasta)
+                                                       :database_id            (mt/id)
+                                                       :display                :table
+                                                       :visualization_settings {}
+                                                       :dataset_query          (lib/aggregate (data-apps.tu/venues-query) (lib/count))}])]
+                    (testing "a data app finds a table not published to the Library and a metric outside it"
+                      (let [found (set (map (juxt :model :id)
+                                            (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "zebra"))))]
+                        (is (contains? found ["table" (:id table)]))
+                        (is (contains? found ["metric" (:id metric)])))))))))))))))
 
 (deftest user-key-value-endpoints-are-not-checked-test
   (do-with-app-collection

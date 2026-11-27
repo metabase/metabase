@@ -7,6 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
@@ -29,28 +30,36 @@
 (deftest sync-fields-test
   (mt/with-temp [:model/Database db    {:engine ::toucanery/toucanery}
                  :model/Table    table {:name "transactions", :db_id (u/the-id db)}]
-    ;; do the initial sync
-    (sync-fields/sync-fields-for-table! table)
-    (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))]
-      (is (= toucannery-transactions-expected-fields-hierarchy
-             (actual-fields-hierarchy transactions-table-id))))))
+    (try
+      ;; do the initial sync
+      (sync-fields/sync-fields-for-table! table)
+      (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))]
+        (is (= toucannery-transactions-expected-fields-hierarchy
+               (actual-fields-hierarchy transactions-table-id))))
+      (finally
+        (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+          (database/delete-databases! [(:id db)]))))))
 
 (deftest delete-nested-field-test
   (testing (str "If you delete a nested Field, and re-sync a Table, it should recreate the Field as it was before! It "
                 "should not create any duplicate Fields (#8950)")
     (mt/with-temp [:model/Database db    {:engine ::toucanery/toucanery}
                    :model/Table    table {:name "transactions", :db_id (u/the-id db)}]
-      ;; do the initial sync
-      (sync-fields/sync-fields-for-table! table)
-      (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))]
-        (t2/delete! :model/Field :table_id transactions-table-id, :name "age")
-        ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
-        ;; `toucan.age` Field as well, which was happening before the bugfix in this PR
+      (try
+        ;; do the initial sync
         (sync-fields/sync-fields-for-table! table)
-        ;; Fetch all the Fields in the `transactions` Table (name & parent name) after the sync, format them in a
-        ;; hierarchy for easy comparison
-        (is (= toucannery-transactions-expected-fields-hierarchy
-               (actual-fields-hierarchy transactions-table-id)))))))
+        (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))]
+          (t2/delete! :model/Field :table_id transactions-table-id, :name "age")
+          ;; ok, resync the Table. `toucan.details.age` should be recreated, but only one. We should *not* have a
+          ;; `toucan.age` Field as well, which was happening before the bugfix in this PR
+          (sync-fields/sync-fields-for-table! table)
+          ;; Fetch all the Fields in the `transactions` Table (name & parent name) after the sync, format them in a
+          ;; hierarchy for easy comparison
+          (is (= toucannery-transactions-expected-fields-hierarchy
+                 (actual-fields-hierarchy transactions-table-id))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 ;; TODO: this uses the higher level `sync-metadata/sync-db-metadata!` entry but serves as a test for
 ;; `sync-instances` and perhaps can be moved to use this entry. This is a bit more mecahnical for code org so I
@@ -59,40 +68,7 @@
 (deftest resync-nested-fields-test
   (testing "Make sure nested fields get resynced correctly if their parent field didnt' change"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      ;; do the initial sync
-      (sync-metadata/sync-db-metadata! (:id db))
-      ;; delete our entry for the `transactions.toucan.details.age` field
-      (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (t2/delete! :model/Field :id age-field-id)
-        ;; now sync again.
-        (sync-metadata/sync-db-metadata! (:id db))
-        ;; field should be added back
-        (is (= #{"weight" "age"}
-               (t2/select-fn-set :name :model/Field :table_id transactions-table-id, :parent_id details-field-id, :active true)))))))
-
-(deftest reactivate-field-test
-  (testing "Syncing can reactivate a field"
-    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      ;; do the initial sync
-      (sync-metadata/sync-db-metadata! (:id db))
-      ;; delete our entry for the `transactions.toucan.details.age` field
-      (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (t2/update! :model/Field :id age-field-id {:active false})
-        ;; now sync again.
-        (sync-metadata/sync-db-metadata! (:id db))
-        ;; field should be reactivated
-        (is (t2/select-one-fn :active :model/Field :id age-field-id))))))
-
-(deftest reactivate-nested-field-when-parent-is-reactivated-test
-  (testing "Nested fields get reactivated if the parent field gets reactivated"
-    (mt/test-helpers-set-global-values!
-      (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
+      (try
         ;; do the initial sync
         (sync-metadata/sync-db-metadata! (:id db))
         ;; delete our entry for the `transactions.toucan.details.age` field
@@ -100,95 +76,152 @@
               toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
               details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
               age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-          (t2/update! :model/Field :id details-field-id {:active false})
+          (t2/delete! :model/Field :id age-field-id)
+          ;; now sync again.
+          (sync-metadata/sync-db-metadata! (:id db))
+          ;; field should be added back
+          (is (= #{"weight" "age"}
+                 (t2/select-fn-set :name :model/Field :table_id transactions-table-id, :parent_id details-field-id, :active true))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
+
+(deftest reactivate-field-test
+  (testing "Syncing can reactivate a field"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
+      (try
+        ;; do the initial sync
+        (sync-metadata/sync-db-metadata! (:id db))
+        ;; delete our entry for the `transactions.toucan.details.age` field
+        (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
+              toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
+              details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+              age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+          (t2/update! :model/Field :id age-field-id {:active false})
           ;; now sync again.
           (sync-metadata/sync-db-metadata! (:id db))
           ;; field should be reactivated
-          (is (t2/select-one-fn :active :model/Field :id age-field-id)))))))
+          (is (t2/select-one-fn :active :model/Field :id age-field-id)))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
+
+(deftest reactivate-nested-field-when-parent-is-reactivated-test
+  (testing "Nested fields get reactivated if the parent field gets reactivated"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
+        (try
+          ;; do the initial sync
+          (sync-metadata/sync-db-metadata! (:id db))
+          ;; delete our entry for the `transactions.toucan.details.age` field
+          (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
+                toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
+                details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+                age-field-id          (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+            (t2/update! :model/Field :id details-field-id {:active false})
+            ;; now sync again.
+            (sync-metadata/sync-db-metadata! (:id db))
+            ;; field should be reactivated
+            (is (t2/select-one-fn :active :model/Field :id age-field-id)))
+          (finally
+            (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+              (database/delete-databases! [(:id db)]))))))))
 
 (deftest mark-nested-field-inactive-test
   (testing "Nested fields can be marked inactive"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      ;; do the initial sync
-      (sync-metadata/sync-db-metadata! (:id db))
-      ;; Add an entry for a `transactions.toucan.details.gender` field
-      (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            gender-field-id       (u/the-id (first (t2/insert-returning-instances! :model/Field
-                                                                                   :name          "gender"
-                                                                                   :database_type "VARCHAR"
-                                                                                   :base_type     "type/Text"
-                                                                                   :table_id      transactions-table-id
-                                                                                   :parent_id     details-field-id
-                                                                                   :active        true)))]
-        ;; now sync again.
+      (try
+        ;; do the initial sync
         (sync-metadata/sync-db-metadata! (:id db))
-        ;; field should become inactive
-        (is (false? (t2/select-one-fn :active :model/Field :id gender-field-id)))))))
+        ;; Add an entry for a `transactions.toucan.details.gender` field
+        (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
+              toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
+              details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+              gender-field-id       (u/the-id (first (t2/insert-returning-instances! :model/Field
+                                                                                     :name          "gender"
+                                                                                     :database_type "VARCHAR"
+                                                                                     :base_type     "type/Text"
+                                                                                     :table_id      transactions-table-id
+                                                                                     :parent_id     details-field-id
+                                                                                     :active        true)))]
+          ;; now sync again.
+          (sync-metadata/sync-db-metadata! (:id db))
+          ;; field should become inactive
+          (is (false? (t2/select-one-fn :active :model/Field :id gender-field-id))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
 (deftest mark-nested-field-children-inactive-test
   (testing "When a nested field is marked inactive so are its children"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-      ;; do the initial sync
-      (sync-metadata/sync-db-metadata! (:id db))
-      ;; Add an entry for a `transactions.toucan.details.gender` field
-      (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            food-likes-field-id   (u/the-id (first (t2/insert-returning-instances! :model/Field
-                                                                                   :name          "food-likes"
-                                                                                   :database_type "OBJECT"
-                                                                                   :base_type     "type/Dictionary"
-                                                                                   :table_id      transactions-table-id
-                                                                                   :parent_id     details-field-id
-                                                                                   :active        true)))
-            blueberries-field-id  (first (t2/insert-returning-pks! :model/Field
-                                                                   :name          "blueberries"
-                                                                   :database_type "BOOLEAN"
-                                                                   :base_type     "type/Boolean"
-                                                                   :table_id      transactions-table-id
-                                                                   :parent_id     food-likes-field-id
-                                                                   :active        true))]
-        ;; now sync again.
+      (try
+        ;; do the initial sync
         (sync-metadata/sync-db-metadata! (:id db))
-        ;; field should become inactive
-        (is (false? (t2/select-one-fn :active :model/Field :id blueberries-field-id)))))))
+        ;; Add an entry for a `transactions.toucan.details.gender` field
+        (let [transactions-table-id (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
+              toucan-field-id       (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "toucan"))
+              details-field-id      (u/the-id (t2/select-one-pk :model/Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+              food-likes-field-id   (u/the-id (first (t2/insert-returning-instances! :model/Field
+                                                                                     :name          "food-likes"
+                                                                                     :database_type "OBJECT"
+                                                                                     :base_type     "type/Dictionary"
+                                                                                     :table_id      transactions-table-id
+                                                                                     :parent_id     details-field-id
+                                                                                     :active        true)))
+              blueberries-field-id  (first (t2/insert-returning-pks! :model/Field
+                                                                     :name          "blueberries"
+                                                                     :database_type "BOOLEAN"
+                                                                     :base_type     "type/Boolean"
+                                                                     :table_id      transactions-table-id
+                                                                     :parent_id     food-likes-field-id
+                                                                     :active        true))]
+          ;; now sync again.
+          (sync-metadata/sync-db-metadata! (:id db))
+          ;; field should become inactive
+          (is (false? (t2/select-one-fn :active :model/Field :id blueberries-field-id))))
+        (finally
+          (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+            (database/delete-databases! [(:id db)])))))))
 
-(defn run-cruft-test [patterns freqs]
+(defn run-cruft-test! [patterns freqs]
   (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                      :settings {:auto-cruft-columns patterns}}]
-    (sync-metadata/sync-db-metadata! (:id db))
-    (let [tables (t2/select :model/Table :db_id (u/the-id db))
-          fields (mapcat (fn [{:keys [id]}] (t2/select :model/Field :table_id id)) tables)]
-      (is (= freqs
-             (frequencies (map :visibility_type fields)))))))
+    (try
+      (sync-metadata/sync-db-metadata! (:id db))
+      (let [tables (t2/select :model/Table :db_id (u/the-id db))
+            fields (mapcat (fn [{:keys [id]}] (t2/select :model/Field :table_id id)) tables)]
+        (is (= freqs
+               (frequencies (map :visibility_type fields)))))
+      (finally
+        (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+          (database/delete-databases! [(:id db)]))))))
 
 (deftest auto-cruft-all-fields-test
   (testing "Make sure a db's settings.auto_cruft_fields mark all fields as crufty"
-    (run-cruft-test [".*"]
-                    {:details-only 12})
-    (run-cruft-test (map str (into [] "abcdefghijklmnoqprstuvwxyz"))
-                    {:details-only 12})))
+    (run-cruft-test! [".*"]
+                     {:details-only 12})
+    (run-cruft-test! (map str (into [] "abcdefghijklmnoqprstuvwxyz"))
+                     {:details-only 12})))
 
 (deftest auto-cruft-exact-field-name-test
   (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty for exact table names"
-    (run-cruft-test ["^details$" "^age$"]
-                    {:normal 10 :details-only 2})))
+    (run-cruft-test! ["^details$" "^age$"]
+                     {:normal 10 :details-only 2})))
 
 (deftest auto-cruft-fields-with-multiple-patterns-test
   (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty against multiple patterns"
-    (run-cruft-test ["a" "b" "c"]     {:normal 4 :details-only 8})
-    (run-cruft-test ["c" "a" "t"]     {:normal 3 :details-only 9})
-    (run-cruft-test ["d" "o" "g"]     {:normal 6 :details-only 6})
-    (run-cruft-test ["b" "i" "r" "d"] {:normal 7 :details-only 5})
-    (run-cruft-test ["x" "y" "z"]     {:normal 11 :details-only 1})))
+    (run-cruft-test! ["a" "b" "c"]     {:normal 4 :details-only 8})
+    (run-cruft-test! ["c" "a" "t"]     {:normal 3 :details-only 9})
+    (run-cruft-test! ["d" "o" "g"]     {:normal 6 :details-only 6})
+    (run-cruft-test! ["b" "i" "r" "d"] {:normal 7 :details-only 5})
+    (run-cruft-test! ["x" "y" "z"]     {:normal 11 :details-only 1})))
 
 (deftest auto-cruft-fields-none-are-crufted-with-missing-pattern
-  (run-cruft-test [] {:normal 12}))
+  (run-cruft-test! [] {:normal 12}))
 
 (deftest auto-cruft-fields-none-are-crufted-with-no-hit-pattern
-  (run-cruft-test ["^it was the best$" "^of times it was$" "^the worst of times$"] {:normal 12}))
+  (run-cruft-test! ["^it was the best$" "^of times it was$" "^the worst of times$"] {:normal 12}))
 
 (deftest remove-fields-with-too-long-names-test
   (testing "Fields whose name is too long to store in the app DB are dropped, so they don't abort the whole batch"

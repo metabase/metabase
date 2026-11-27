@@ -329,6 +329,8 @@ categories:
             url: "embedding/config-reference"
           - name: "Appearance"
             url: "embedding/appearance"
+          - name: "Appearance reference"
+            url: "embedding/appearance-reference"
           - name: "Custom visualizations"
             url: "embedding/custom-visualizations"
           - name: "Authentication"
@@ -404,6 +406,8 @@ categories:
         pages:
           - name: "Adding and managing databases"
             url: "databases/connecting"
+          - name: "Database feature support"
+            url: "databases/feature-support"
           - name: "Supported databases"
             pages:
               - name: "Athena"

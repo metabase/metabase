@@ -1,0 +1,936 @@
+(ns ^:synchronized metabase.search.events-test
+  "Pins the wiring of [[metabase.search.events]]: the writes of a batch enqueue re-derivation messages, and a delete
+  captures what it leaves unpurgeable before it runs."
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase.actions.models :as action]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
+   [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as queries.card]
+   [metabase.revisions.models.revision :as revision]
+   [metabase.search.appdb.index :as search.index]
+   [metabase.search.core :as search]
+   [metabase.search.db :as search.db]
+   [metabase.search.engine :as search.engine]
+   [metabase.search.events :as search.events]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;; `with-appdb-search-if-available-without-fallback` reads search tables before any `with-temp` has set up the app
+;; database.
+(use-fixtures :once (fixtures/initialize :db :test-users))
+
+;; Search handoff is deliberately after commit. `with-temp` normally wraps its body in a rollback-only
+;; transaction, so these integration tests need real commits; `with-temp` still performs explicit cleanup.
+(use-fixtures :each
+  (fn [f]
+    (mt/test-helpers-set-global-values!
+      (binding [search.ingestion/*force-sync* true]
+        (f)))))
+
+(defn- indexed-count
+  "How many appdb index rows `search-model` has for the given model ids."
+  [search-model & ids]
+  (t2/count (search.index/active-table) :model search-model :model_id [:in (map str ids)]))
+
+(defn- capture-enqueues!
+  "Run `thunk`, returning the update sets it handed to ingestion, in order, without ingesting them."
+  [thunk]
+  (let [calls (atom [])]
+    (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async! (fn [updates] (swap! calls conj (set updates)))]
+      (thunk))
+    @calls))
+
+(defn- enqueued-search-models
+  "The search models of the documents that the updates in `enqueued`, as [[capture-enqueues!]] returns them, name."
+  [enqueued]
+  (into #{} (comp cat (map first)) enqueued))
+
+(defn- cascading-documents-of
+  "What [[search/cascading-documents]] enumerates for the card with `card-id`."
+  [card-id]
+  (search/cascading-documents [(t2/select-one :model/Card :id card-id)]))
+
+(defn- update-by-hand!
+  "Applies `changes` to the row of `model` with `id` with one plain statement in a transaction, publishing its update
+  event `topic` as a write function does."
+  [model topic id changes]
+  (t2/with-transaction [_conn]
+    (let [previous (t2/select-one model :id id)]
+      (t2/update! model :id id changes)
+      (events/publish-event! topic (events/update-event {id previous} [(assoc changes :id id)])))))
+
+(defn- delete-reviews-by-hand!
+  "Deletes the ModerationReviews with `ids` with one plain statement, publishing their delete event as a write function
+  does."
+  [ids]
+  (t2/with-transaction [_conn]
+    (events/publish-event! :event/moderation-review-delete
+                           (events/delete-event (t2/select :model/ModerationReview :id [:in ids])))
+    (t2/delete! :model/ModerationReview :id [:in ids])))
+
+(defn- delete-cards-by-hand!
+  "Deletes the Cards with `ids` with one plain statement, publishing their delete event as a write function does, so that
+  the rows the database cascades to are left for the search capture."
+  [ids]
+  (t2/with-transaction [_conn]
+    (events/publish-event! :event/card-delete (events/delete-event (t2/select :model/Card :id [:in ids])))
+    (t2/delete! :model/Card :id [:in ids])))
+
+;;; Capture wiring
+
+(defn- search-statement-count!
+  "The statements that the search consumer runs, its ingestion included, for `write`, a function of the ids of `n` new
+  Cards, in one batch."
+  [n write]
+  (events.tu/consumer-statement-count! :model/Card
+                                       (repeatedly n #(mt/with-temp-defaults :model/Card))
+                                       write
+                                       #(binding [search.ingestion/*disable-updates* false] (%))
+                                       #(binding [search.ingestion/*disable-updates* true] (%))))
+
+(deftest batch-of-updates-indexes-with-fixed-statements-test
+  (testing "an update of 2 or 6 Cards in one batch reindexes them with the same number of statements"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [write (fn [ids]
+                    (let [new-name (str (random-uuid))]
+                      (queries.card/update-cards! (mapv (fn [id] {:id id :name new-name}) ids))))]
+        (search-statement-count! 1 write)
+        (is (= (search-statement-count! 2 write) (search-statement-count! 6 write)))))))
+
+(deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
+  (testing "the revisions and moderation reviews a card delete removes don't enqueue re-derivations of their own"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {id :id} {}
+                     :model/Revision         _        {:model       "Card"
+                                                       :model_id    id
+                                                       :user_id     (mt/user->id :crowberto)
+                                                       :object      {}
+                                                       :is_creation true
+                                                       :most_recent true}
+                     :model/ModerationReview _        {:moderated_item_type "card"
+                                                       :moderated_item_id   id
+                                                       :moderator_id        (mt/user->id :crowberto)
+                                                       :status              "verified"
+                                                       :most_recent         true}]
+        (is (= 1 (count (capture-enqueues! #(delete-cards-by-hand! [id])))))))))
+
+(def ^:private card-delete
+  {:operation :delete, :model :model/Card, :previous-object {:id 1}})
+
+(deftest capture-disabled-without-engine-test
+  (testing "delete capture enumerates nothing when no search engine is active"
+    (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [])]
+      (is (nil? (#'search.events/capture-dependents [card-delete]))))))
+
+(deftest capture-disabled-with-updates-test
+  (testing "capture is skipped while search updates are disabled, as for tests against an old schema"
+    (binding [search.ingestion/*disable-updates* true]
+      (is (nil? (#'search.events/capture-dependents [card-delete]))))))
+
+(deftest only-deletes-are-captured-test
+  (testing "only a delete is captured"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (is (nil? (#'search.events/capture-dependents [(assoc card-delete :operation :create)])))
+      (is (nil? (#'search.events/capture-dependents [(assoc card-delete :operation :update)]))))))
+
+(deftest capture-per-statement-test
+  (testing "a delete of several rows enumerates their dependents once, with a number of queries that does not grow with the rows"
+    (letfn [(capture-queries [n]
+              (mt/with-temp [:model/Collection {coll-id :id} {}]
+                (doseq [i (range n)]
+                  (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id coll-id :name (str "c" i))))
+                (let [calls (atom [])
+                      orig  (dynamic-redefs/original-fn #'search/cascading-documents)]
+                  (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                                              search.ingestion/ingest-maybe-async! (constantly nil)
+                                              search/cascading-documents
+                                              (fn [instances]
+                                                (t2/with-call-count [call-count]
+                                                  (u/prog1 (orig instances)
+                                                    (swap! calls conj [(count instances) (call-count)]))))]
+                    (delete-cards-by-hand! (t2/select-pks-vec :model/Card :collection_id coll-id)))
+                  @calls)))]
+      (capture-queries 1)
+      (let [[[one-rows one-queries] :as one] (capture-queries 1)
+            [[three-rows three-queries] :as three] (capture-queries 3)]
+        (is (= 1 (count one) (count three)))
+        (is (= [1 3] [one-rows three-rows]))
+        (is (= one-queries three-queries))))))
+
+(deftest model-index-feeds-index-on-delete-only-test
+  (testing "a ModelIndex feeds the index on delete, and its inserts and updates do not"
+    (is (isa? :model/ModelIndex :search/indexed-deletes))
+    (is (false? (isa? :model/ModelIndex :search/indexed)))
+    (is (true? (#'search.events/feeds-index? :model/ModelIndex :delete)))
+    (is (false? (#'search.events/feeds-index? :model/ModelIndex :create)))
+    (is (false? (#'search.events/feeds-index? :model/ModelIndex :update)))))
+
+;;; Re-derivation on delete
+
+(deftest card-delete-capture-statement-count-test
+  (testing "capture adds the same number of statements to a delete of 2 Cards and of 6, whatever else the delete runs"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [statements (fn [n]
+                         (let [ids (t2/insert-returning-pks! :model/Card (repeatedly n #(mt/with-temp-defaults :model/Card)))]
+                           (t2/with-call-count [call-count]
+                             (capture-enqueues! #(delete-cards-by-hand! ids))
+                             (call-count))))
+            extra      (fn [n]
+                         (- (statements n)
+                            (binding [search.ingestion/*disable-updates* true]
+                              (statements n))))]
+        (extra 1)
+        (is (= (extra 2) (extra 6)))))))
+
+(deftest delete-enqueues-one-bulk-update-test
+  (testing "deleting a card enqueues exactly one re-derivation message, covering every model it feeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {}]
+        (is (= [#{["action" [:= id :this.model_id]]
+                  ["card" [:= id :this.id]]
+                  ["dataset" [:= id :this.id]]
+                  ["indexed-entity" [:= id :model_index.model_id]]
+                  ["metric" [:= id :this.id]]}]
+               (capture-enqueues! #(delete-cards-by-hand! [id]))))))))
+
+(deftest delete-of-a-joined-model-enqueues-the-fed-models-test
+  (testing "deleting a row that only feeds other models' documents enqueues re-derivation for each of them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {card-id :id} {}
+                     :model/ModerationReview {mr-id :id}   {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         true}]
+        (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
+          (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
+                 (capture-enqueues! #(delete-reviews-by-hand! [mr-id])))))))))
+
+;; Updates share the boolean fold with deletes. Without it, a superseded review's selector names its card beside a
+;; false comparison, and ingestion would purge the card.
+(deftest review-status-update-respects-most-recent-test
+  (testing "changing a superseded review's status queues nothing, while changing the current one's queues its card"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card             {card-id :id} {}
+                     :model/ModerationReview {old-id :id}  {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         false}
+                     :model/ModerationReview {new-id :id}  {:moderated_item_type "card"
+                                                            :moderated_item_id   card-id
+                                                            :moderator_id        (mt/user->id :crowberto)
+                                                            :status              "verified"
+                                                            :most_recent         true}]
+        (is (= [] (capture-enqueues! #(update-by-hand! :model/ModerationReview :event/moderation-review-update old-id {:status nil}))))
+        (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
+          (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
+                 (capture-enqueues! #(update-by-hand! :model/ModerationReview :event/moderation-review-update new-id {:status nil})))))))))
+
+(deftest update-of-unindexed-column-reindexes-test
+  (testing "an edit that changes no indexed column still refreshes the indexed last editor and update time"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+              indexed #(t2/select-one [(search.index/active-table) :last_editor_id :model_updated_at]
+                                      :model "dashboard" :model_id (str dash-id))]
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:width "full"})
+          (is (= {:last_editor_id   (mt/user->id :crowberto)
+                  :model_updated_at (t/instant (t2/select-one-fn :updated_at (t2/table-name :model/Dashboard) :id dash-id))}
+                 (update (indexed) :model_updated_at t/instant))))))))
+
+(deftest update-of-unread-joined-column-enqueues-only-readers-test
+  (testing "an update reindexes the documents that read a column it set, not the ones it is joined into"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       _            {:collection_id coll-id}
+                     :model/Dashboard  _            {:collection_id coll-id}]
+        ;; Only the collection's own document reads its description; the card and the dashboard in it read its name,
+        ;; type, location and authority level.
+        (is (= #{"collection"}
+               (enqueued-search-models
+                (capture-enqueues! #(collection/update-collections! [{:id coll-id :description "described"}] nil)))))))))
+
+(deftest self-assigned-updated-at-enqueues-nothing-test
+  (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
+        (is (= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :result_metadata [] :updated_at :updated_at}]))))
+        (is (not= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :name "renamed"}]))))))))
+
+(deftest revision-writes-enqueue-nothing-test
+  (testing "a Revision written or deleted by Toucan publishes no event: the prune of old Revisions costs no read"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (is (= [] (capture-enqueues! #(t2/insert! :model/Revision {:model    "Card"
+                                                                   :model_id card-id
+                                                                   :user_id  (mt/user->id :crowberto)
+                                                                   :object   {}}))))
+        (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))))))
+
+(deftest revision-create-reindexes-its-dashboard-test
+  (testing "a series edit writes no row of a dashboard's document, which the Revision that records it reindexes"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id}   {}
+                     :model/Card {series-id :id} {}]
+        (mt/with-model-cleanup [:model/Dashboard]
+          (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+                put!    (fn [dashcard-id series]
+                          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                                {:dashcards [{:id      dashcard-id
+                                                              :card_id card-id
+                                                              :row     0
+                                                              :col     0
+                                                              :size_x  4
+                                                              :size_y  4
+                                                              :series  series}]}))]
+            (put! -1 [])
+            (let [dashcard-id (t2/select-one-pk :model/DashboardCard :dashboard_id dash-id)]
+              (is (= #{"dashboard"}
+                     (enqueued-search-models (capture-enqueues! #(put! dashcard-id [{:id series-id}]))))))))))))
+
+(deftest revision-create-reindexes-its-entity-by-id-test
+  (testing "the Revision of a dashboard reindexes it by its own id, whichever Revision the event is for"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Revised Dashboard"}]
+        (let [row  (fn [object] {:model "Dashboard" :model_id dash-id :user_id (mt/user->id :crowberto) :object object})
+              older (row {:name "older"})]
+          (t2/insert! :model/Revision [older (row {:name "newer"})])
+          (is (= [#{["dashboard" [:= dash-id :this.id]]}]
+                 (capture-enqueues! #(revision/publish-created! [older]))))
+          (revision/publish-created! [older])
+          (is (= 1 (indexed-count "dashboard" dash-id))
+              "a newer Revision does not make the document of the older one's event unpurgeable")))))
+  (testing "a Revision of an entity that feeds no document reindexes nothing"
+    (is (= [] (capture-enqueues! #(revision/publish-created! [{:model "Segment" :model_id 1 :user_id 1}]))))))
+
+(deftest revision-create-reindexes-only-documents-that-read-it-test
+  (testing "the Revision of a model reindexes the model's own documents, not its indexed values or actions"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card       {card-id :id} {:name "Indexed Model", :type :model}
+                     :model/ModelIndex _             {:model_id   card-id
+                                                      :pk_ref     (mt/$ids $venues.id)
+                                                      :value_ref  (mt/$ids $venues.name)
+                                                      :schedule   "0 0 0 * * ? *"
+                                                      :state      "indexed"
+                                                      :creator_id (mt/user->id :rasta)}]
+        (is (= #{"card" "dataset" "metric"}
+               (enqueued-search-models
+                (capture-enqueues! #(revision/publish-created! [{:model    "Card"
+                                                                 :model_id card-id
+                                                                 :user_id  (mt/user->id :crowberto)}])))))))))
+
+(deftest revision-readers-test
+  (testing "the search models that read a Revision are the ones whose spec joins it"
+    (is (= {"Card"      #{"card" "dataset" "metric"}
+            "Dashboard" #{"dashboard"}}
+           (#'search.events/revision-readers)))))
+
+;;; Purges
+
+(deftest purge-one-on-delete-test
+  (testing "deleting an indexed card purges its index row (appdb engine)"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (queries.card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                       :database_id (mt/id)
+                                                       :display :table
+                                                       :visualization_settings {}
+                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                       :name "Temp Purge Card"}])]
+          (is (= 1 (indexed-count "card" id)))
+          (delete-cards-by-hand! [id])
+          (is (= 0 (indexed-count "card" id))))))))
+
+(deftest purge-bulk-on-delete-test
+  (testing "bulk deletion purges every affected row (cards first, then their now-empty collection)"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (let [[{coll-id :id}]     (collection/create-collections! [{:name "Temp Bulk Collection"}])
+              [{c1 :id} {c2 :id}] (queries.card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                :database_id (mt/id)
+                                                                :display :table
+                                                                :visualization_settings {}
+                                                                :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                :name "Bulk Card 1", :collection_id coll-id} {:creator_id (mt/user->id :rasta)
+                                                                                                              :database_id (mt/id)
+                                                                                                              :display :table
+                                                                                                              :visualization_settings {}
+                                                                                                              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                                                                                              :name "Bulk Card 2", :collection_id coll-id}])]
+          (is (= 2 (indexed-count "card" c1 c2)))
+          (is (= 1 (indexed-count "collection" coll-id)))
+          ;; cards must go first: a collection with contents refuses deletion.
+          (delete-cards-by-hand! (t2/select-pks-vec :model/Card :collection_id coll-id))
+          (collection/delete-collections! [coll-id])
+          (is (= 0 (indexed-count "card" c1 c2)))
+          (is (= 0 (indexed-count "collection" coll-id))))))))
+
+(deftest superseded-review-delete-keeps-the-card-test
+  (testing "deleting a review that is no longer the most recent leaves the card it reviewed in the index"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/ModerationReview :model/Card]
+        (let [[{card-id :id}] (queries.card/create-cards! [(assoc {:creator_id             (mt/user->id :rasta)
+                                                                   :database_id            (mt/id)
+                                                                   :display                :table
+                                                                   :visualization_settings {}
+                                                                   :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")} :name "Reviewed Card")])
+              review-row      {:moderated_item_type "card"
+                               :moderated_item_id   card-id
+                               :moderator_id        (mt/user->id :crowberto)
+                               :status              "verified"}
+              {mr-id :id}     (first (moderation-review/create-moderation-reviews! [review-row]))
+              _               (moderation-review/create-moderation-reviews! [review-row])]
+          (is (= 1 (indexed-count "card" card-id)))
+          (delete-reviews-by-hand! [mr-id])
+          (is (= 1 (indexed-count "card" card-id))))))))
+
+;;; Database cascades
+
+(deftest purge-cascaded-action-on-model-delete-test
+  (testing "deleting a model card purges the index entries for actions the database cascade removed with it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (let [card-row         {:creator_id             (mt/user->id :rasta)
+                                :database_id            (mt/id)
+                                :display                :table
+                                :visualization_settings {}
+                                :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row       {:type          :query
+                                :creator_id    (mt/user->id :rasta)
+                                :database_id   (mt/id)
+                                :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              [{card-id :id}]   (queries.card/create-cards! [(assoc card-row :name "Temp Action Model", :type :model)])
+              [{action-id :id}] (action/create-actions! [(assoc action-row :name "Temp Cascaded Action", :model_id card-id)])]
+          (is (= 1 (indexed-count "action" action-id)))
+          ;; action.model_id carries ON DELETE CASCADE, so this removes the action with no toucan statement.
+          (delete-cards-by-hand! [card-id])
+          (is (false? (t2/exists? :model/Action :id action-id)))
+          (is (= 0 (indexed-count "action" action-id))))))))
+
+(deftest purge-cards-on-database-delete-test
+  (testing "deleting a database purges the cards it deletes in bulk, and the actions that cascade with them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-model-cleanup [:model/Action :model/Card]
+          (let [mp                (lib-be/application-database-metadata-provider db-id)
+                [{card-id :id}]   (queries.card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                :display :table
+                                                                :visualization_settings {}
+                                                                :dataset_query (lib/native-query mp "SELECT 1")
+                                                                :name "Db Delete Model", :type :model, :database_id db-id}])
+                [{action-id :id}] (action/create-actions! [{:name          "Db Delete Action"
+                                                            :model_id      card-id
+                                                            :type          :query
+                                                            :creator_id    (mt/user->id :rasta)
+                                                            :database_id   db-id
+                                                            :dataset_query (lib/native-query mp "SELECT 1")}])]
+            (is (= 1 (indexed-count "dataset" card-id)))
+            (is (= 1 (indexed-count "action" action-id)))
+            (database/delete-databases! [db-id])
+            (is (false? (t2/exists? :model/Card :id card-id)))
+            (is (= 0 (indexed-count "dataset" card-id)))
+            (is (= 0 (indexed-count "action" action-id)))))))))
+
+(deftest database-delete-reconciles-despite-a-failed-purge-test
+  (testing "when purging a deleted database's cards throws, its cascaded documents are still reconciled"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}     {}
+                     :model/Card     {card-id :id}   {:name "Db Failed Purge Model", :type :model, :database_id db-id}
+                     :model/Action   {action-id :id} {:name "Db Failed Purge Action", :model_id card-id, :type :query}]
+        (mt/with-dynamic-fn-redefs [search/delete! (fn [_model _ids] (throw (ex-info "purge failed" {})))]
+          (database/delete-databases! [db-id]))
+        (is (= 0 (indexed-count "action" action-id)))))))
+
+(deftest database-delete-tombstones-later-chunks-despite-an-earlier-failure-test
+  (testing "one tombstone chunk throwing does not cost the chunks after it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+      (with-redefs [queries.card/tombstone-chunk-size 1]
+        (mt/with-temp [:model/Database {db-id :id} {}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [[{fail-card :id} {ok-card :id}] (queries.card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                                                :display :table
+                                                                                :visualization_settings {}
+                                                                                :dataset_query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                                                                                :name "Db Chunk Failure Model", :type :model, :database_id db-id} {:creator_id (mt/user->id :rasta)
+                                                                                                                                                   :display :table
+                                                                                                                                                   :visualization_settings {}
+                                                                                                                                                   :dataset_query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                                                                                                                                                   :name "Db Chunk Survivor Model", :type :model, :database_id db-id}])]
+              (is (= 1 (indexed-count "dataset" fail-card)))
+              (is (= 1 (indexed-count "dataset" ok-card)))
+              (let [real-delete! (mt/original-fn #'search/delete!)]
+                (mt/with-dynamic-fn-redefs [search/delete! (fn [model ids]
+                                                             (if (contains? (set ids) fail-card)
+                                                               (throw (ex-info "purge failed" {}))
+                                                               (real-delete! model ids)))]
+                  (database/delete-databases! [db-id])))
+              (is (= 1 (indexed-count "dataset" fail-card))
+                  "the chunk whose delete! throws is left for the reindex")
+              (is (= 0 (indexed-count "dataset" ok-card))
+                  "a later chunk still gets tombstoned despite an earlier chunk's failure"))))))))
+
+(deftest database-delete-survives-a-failed-cascade-enumeration-test
+  (testing "a search error while enumerating a deleted database's cascades is logged, and the delete still succeeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id}   {}
+                     :model/Card     {card-id :id} {:name "Db Enumeration Failure Card", :database_id db-id}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
+          (database/delete-databases! [db-id])
+          (is (false? (t2/exists? :model/Database :id db-id))))
+        (is (false? (t2/exists? :model/Card :id card-id)))
+        (is (= 0 (indexed-count "card" card-id)))))))
+
+(deftest database-delete-keeps-a-card-that-moved-away-test
+  (testing "a card that moves to another database during the delete survives it, and keeps its search documents"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id} {} :model/Database {other-id :id} {}]
+        (mt/with-model-cleanup [:model/Card]
+          (let [[{card-id :id}] (queries.card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                                              :display :table
+                                                              :visualization_settings {}
+                                                              :dataset_query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                                                              :name "Db Delete Moved Model", :type :model, :database_id db-id}])]
+            (is (= 1 (indexed-count "dataset" card-id)))
+            (let [add-cascading-documents (mt/original-fn #'search/add-cascading-documents)]
+              ;; A raw update, standing in for a concurrent move that lands between the scan and the delete.
+              (mt/with-dynamic-fn-redefs [search/add-cascading-documents
+                                          (fn [cascading instances]
+                                            (t2/query {:update (t2/table-name :model/Card)
+                                                       :set    {:database_id other-id}
+                                                       :where  [:= :id card-id]})
+                                            (add-cascading-documents cascading instances))]
+                (database/delete-databases! [db-id])))
+            (is (t2/exists? :model/Card :id card-id))
+            (is (= 1 (indexed-count "dataset" card-id)))))))))
+
+(deftest add-cascading-documents-stops-at-the-ceiling-test
+  (testing "a batched delete stops enumerating once its merged cascades reach the ceiling"
+    (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] {"action" #{3}})]
+      ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+      (with-redefs [search.ingestion/max-enumerated-documents 2]
+        (testing "below the ceiling, the batch is enumerated and merged"
+          (is (= {"action" #{1 3}} (search/add-cascading-documents {"action" #{1}} [::instance]))))
+        (testing "at the ceiling, the batch is not enumerated"
+          (is (= {"action" #{1 2}} (search/add-cascading-documents {"action" #{1 2}} [::instance]))))))))
+
+(deftest unrelated-cascade-documents-are-not-purged-test
+  (testing "deleting one model card purges its action and leaves another card's action alone"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (let [card-row                       {:creator_id             (mt/user->id :rasta)
+                                              :database_id            (mt/id)
+                                              :display                :table
+                                              :visualization_settings {}
+                                              :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row                     {:type          :query
+                                              :creator_id    (mt/user->id :rasta)
+                                              :database_id   (mt/id)
+                                              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              [{keep-card :id} {drop-card :id}] (queries.card/create-cards! [(assoc card-row :name "Kept Action Model", :type :model)
+                                                                             (assoc card-row :name "Dropped Action Model", :type :model)])
+              [{keep-action :id} {drop-action :id}] (action/create-actions! [(assoc action-row :name "Surviving Action", :model_id keep-card)
+                                                                             (assoc action-row :name "Doomed Action", :model_id drop-card)])]
+          (delete-cards-by-hand! [drop-card])
+          (is (= 0 (indexed-count "action" drop-action)))
+          (is (= 1 (indexed-count "action" keep-action))))))))
+
+(deftest cascading-documents-only-covers-unpurgeable-selectors-test
+  (testing "only search-models ingestion cannot purge on its own are enumerated"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Selector Shape Card", :type :model}
+                     :model/Action {_ :id}       {:name "Shape Probe Action", :model_id card-id, :type :query}]
+        (let [cascading (cascading-documents-of card-id)]
+          (testing "card/dataset/metric resolve from a :this.id selector, so ingestion already handles them"
+            (is (empty? (select-keys cascading ["card" "dataset" "metric"]))))
+          (testing "action is reached through :this.model_id, so its documents are enumerated up front"
+            (is (contains? cascading "action"))))))))
+
+(deftest moved-document-is-not-purged-test
+  (testing "a document that stops matching the selector without being deleted keeps its index entry"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (let [card-row                      {:creator_id             (mt/user->id :rasta)
+                                             :database_id            (mt/id)
+                                             :display                :table
+                                             :visualization_settings {}
+                                             :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row                    {:type          :query
+                                             :creator_id    (mt/user->id :rasta)
+                                             :database_id   (mt/id)
+                                             :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              [{from-card :id} {to-card :id}] (queries.card/create-cards! [(assoc card-row :name "From Model", :type :model)
+                                                                           (assoc card-row :name "To Model", :type :model)])
+              [{action-id :id}]             (action/create-actions! [(assoc action-row :name "Reparented Action", :model_id from-card)])
+              cascading (cascading-documents-of from-card)
+              indexed   #(str (t2/select-one-fn :legacy_input (search.index/active-table)
+                                                :model "action" :model_id (str action-id)))]
+          (is (contains? cascading "action"))
+          (is (str/includes? (indexed) "From Model"))
+          ;; Raw query, not t2/update!: a database-level SET NULL fires no toucan hook, so this has to leave the
+          ;; action outside the captured selector without any re-indexing of its own.
+          (t2/query {:update (t2/table-name :model/Action), :set {:model_id to-card}, :where [:= :id action-id]})
+          (search/reconcile-cascading-documents! cascading)
+          (testing "the document survived the reconcile"
+            (is (= 1 (indexed-count "action" action-id))))
+          (testing "and the relationship that moved was re-derived, not left stale"
+            (is (str/includes? (indexed) "To Model"))
+            (is (not (str/includes? (indexed) "From Model")))))))))
+
+(deftest reconcile-only-queues-its-check-test
+  (testing "reconciling queues one check per search-model, and runs no query on the committing thread"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [checked (atom 0)]
+        (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [_search-model _ids]
+                                                                        (swap! checked inc)
+                                                                        #{})]
+          (is (= [#{(search.ingestion/reconcile "action" #{1})
+                    (search.ingestion/reconcile "indexed-entity" #{"1:1"})}]
+                 (capture-enqueues!
+                  #(search/reconcile-cascading-documents! {"action" #{1}, "indexed-entity" #{"1:1"}})))))
+        (is (zero? @checked))))))
+
+(deftest reconcile-chunks-statements-test
+  (testing "a reconcile checks and re-derives its ids in bounded chunks, so it cannot build an unbounded query"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Chunking Model", :type :model}
+                     :model/Action {_a1 :id}     {:name "Chunk Action 1", :model_id card-id, :type :query}
+                     :model/Action {_a2 :id}     {:name "Chunk Action 2", :model_id card-id, :type :query}
+                     :model/Action {_a3 :id}     {:name "Chunk Action 3", :model_id card-id, :type :query}]
+        (let [cascading        (cascading-documents-of card-id)
+              checks           (atom [])
+              runs             (atom [])
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)
+              ingest-updates!  (mt/original-fn #'search.ingestion/ingest-updates!)]
+          (is (= 3 (count (get cascading "action"))))
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (swap! checks conj (count ids))
+                                                                          (existing-doc-ids search-model ids))
+                                      search.ingestion/ingest-updates!  (fn [messages]
+                                                                          (swap! runs conj messages)
+                                                                          (ingest-updates! messages))]
+            ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+            (with-redefs-fn {#'search.ingestion/reconcile-batch-size 2}
+              #(search/reconcile-cascading-documents! cascading)))
+          (testing "three surviving documents split across two checks and two re-index statements"
+            (is (= {:checks [2 1], :runs [2 1]}
+                   {:checks (sort > @checks)
+                    :runs   (sort > (map (fn [[[_model [_in _id-expr ids]]]] (count ids)) @runs))}))))))))
+
+(deftest reconcile-reindex-failure-keeps-tombstones-test
+  (testing "a reconcile whose re-index throws still removes the documents that stopped resolving"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (let [card-row                         {:creator_id             (mt/user->id :rasta)
+                                                :database_id            (mt/id)
+                                                :display                :table
+                                                :visualization_settings {}
+                                                :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row                       {:type          :query
+                                                :creator_id    (mt/user->id :rasta)
+                                                :database_id   (mt/id)
+                                                :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              [{card-id :id}]                  (queries.card/create-cards! [(assoc card-row :name "Failing Reindex Model", :type :model)])
+              [{alive-id :id} {gone-id :id}]   (action/create-actions! [(assoc action-row :name "Surviving Action", :model_id card-id)
+                                                                        (assoc action-row :name "Deleted Action", :model_id card-id)])
+              cascading                        (cascading-documents-of card-id)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from (t2/table-name :model/Action), :where [:= :id gone-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages]
+                                                                         (throw (ex-info "reindex failed" {})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reindex failed"
+                                  (search/reconcile-cascading-documents! cascading))))
+          (is (= {:alive 1, :gone 0}
+                 {:alive (indexed-count "action" alive-id)
+                  :gone  (indexed-count "action" gone-id)})))))))
+
+(deftest reconcile-check-failure-keeps-earlier-tombstones-test
+  (testing "a survivor check that throws for a later chunk keeps the tombstones of the chunks before it"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Failing Check Model", :type :model}
+                     :model/Action {gone-id :id} {:name "Deleted Action", :model_id card-id, :type :query}]
+        (let [unchecked-id     Long/MAX_VALUE
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from (t2/table-name :model/Action), :where [:= :id gone-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (if (some #{unchecked-id} ids)
+                                                                            (throw (ex-info "check failed" {}))
+                                                                            (existing-doc-ids search-model ids)))]
+            ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+            ;; One id per chunk, and a sorted set so the deleted action's chunk is checked first.
+            (with-redefs-fn {#'search.ingestion/reconcile-batch-size 1}
+              #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"check failed"
+                                     (#'search.ingestion/apply-reconcile!
+                                      {:search-model "action", :ids (sorted-set gone-id unchecked-id)})))))
+          (is (= 0 (indexed-count "action" gone-id))))))))
+
+(deftest cascade-enumeration-ceiling-test
+  (testing "a fan-out past the ceiling is skipped rather than materialized"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Ceiling Model", :type :model}
+                     :model/Action {_a :id}      {:name "Ceiling Action", :model_id card-id, :type :query}]
+        (is (contains? (cascading-documents-of card-id) "action"))
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+        (with-redefs [search.ingestion/max-enumerated-documents 0]
+          (is (nil? (cascading-documents-of card-id))))))))
+
+(deftest cascade-enumeration-asks-for-one-past-the-ceiling-test
+  (testing "the enumeration query asks the database for at most one id past the ceiling"
+    (let [queries (atom [])]
+      (mt/with-dynamic-fn-redefs [mdb/streaming-reducible-query (fn [query] (swap! queries conj query) [])]
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+        (with-redefs [search.ingestion/max-enumerated-documents 2]
+          (search.ingestion/doc-ids "action" [:= 1 :this.model_id])))
+      (is (=? [{:limit 3}] @queries)))))
+
+(deftest cascade-enumeration-counts-documents-not-rows-test
+  (testing "a document whose row a spec join repeats counts once toward the ceiling"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {card-id :id} {:name "Twice Revised Card", :collection_id coll-id}]
+      ;; Raw inserts, since the model's hooks keep a single `most_recent` revision.
+      (t2/insert! (t2/table-name :model/Revision) (repeat 2 {:model       "Card"
+                                                             :model_id    card-id
+                                                             :object      "{}"
+                                                             :user_id     (mt/user->id :rasta)
+                                                             :timestamp   :%now
+                                                             :most_recent true}))
+      (try
+        ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+        (with-redefs [search.ingestion/max-enumerated-documents 1]
+          (is (= #{card-id} (search.ingestion/doc-ids "card" [:= coll-id :this.collection_id]))))
+        (finally
+          (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))))))
+
+(deftest reconcile-leaves-unenumerable-survivors-alone-test
+  (testing "when the surviving documents cannot be enumerated, reconcile purges none of them"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Action :model/Card]
+        (let [card-row         {:creator_id             (mt/user->id :rasta)
+                                :database_id            (mt/id)
+                                :display                :table
+                                :visualization_settings {}
+                                :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              action-row       {:type          :query
+                                :creator_id    (mt/user->id :rasta)
+                                :database_id   (mt/id)
+                                :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+              [{card-id :id}]   (queries.card/create-cards! [(assoc card-row :name "Unenumerable Model", :type :model)])
+              [{action-id :id}] (action/create-actions! [(assoc action-row :name "Live Action", :model_id card-id)])
+              cascading         (cascading-documents-of card-id)]
+          (is (contains? cascading "action"))
+          ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
+          (with-redefs [search.ingestion/max-enumerated-documents 0]
+            (search/reconcile-cascading-documents! cascading))
+          (is (= 1 (indexed-count "action" action-id))))))))
+
+(deftest model-index-delete-purges-indexed-entities-test
+  (testing "deleting a model index purges the indexed-entity documents its cascade removed, by their compound ids"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Indexed Model", :type :model}]
+        (let [mi-id   (t2/insert-returning-pk! :model/ModelIndex {:model_id   card-id
+                                                                  :pk_ref     (mt/$ids $venues.id)
+                                                                  :value_ref  (mt/$ids $venues.name)
+                                                                  :schedule   "0 0 0 * * ? *"
+                                                                  :state      "indexed"
+                                                                  :creator_id (mt/user->id :rasta)})
+              indexed #(indexed-count "indexed-entity" (str mi-id ":1") (str mi-id ":2"))]
+          (t2/insert! :model/ModelIndexValue [{:model_index_id mi-id, :model_pk 1, :name "Red Medicine"}
+                                              {:model_index_id mi-id, :model_pk 2, :name "Stout Burgers"}])
+          ;; ModelIndexValue carries no row-level search hook, so index its documents by hand.
+          (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
+          (is (= 2 (indexed)))
+          ;; model_index_value.model_index_id carries ON DELETE CASCADE, so the values go with no toucan statement.
+          (model-index/delete-model-indexes! [mi-id])
+          (is (zero? (t2/count :model/ModelIndexValue :model_index_id mi-id)))
+          (is (zero? (indexed))))))))
+
+;;; Failure handling
+
+(deftest rollback-discards-handoff-and-leaves-the-row-test
+  (testing "a rolled-back delete discards its post-commit handoff, and the row survives"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {}]
+        (is (empty? (capture-enqueues!
+                     #(is (thrown? clojure.lang.ExceptionInfo
+                                   (t2/with-transaction [_conn]
+                                     (delete-cards-by-hand! [id])
+                                     (throw (ex-info "boom" {}))))))))
+        (is (t2/exists? :model/Card :id id))))))
+
+(deftest failed-reindex-still-reconciles-cascades-test
+  (testing "when the re-derivation of the deleted rows throws, the cascade reconcile still runs"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Failing Reindex Model", :type :model}]
+        (let [mi-id   (t2/insert-returning-pk! :model/ModelIndex {:model_id   card-id
+                                                                  :pk_ref     (mt/$ids $venues.id)
+                                                                  :value_ref  (mt/$ids $venues.name)
+                                                                  :schedule   "0 0 0 * * ? *"
+                                                                  :state      "indexed"
+                                                                  :creator_id (mt/user->id :rasta)})
+              indexed #(indexed-count "indexed-entity" (str mi-id ":1"))]
+          (t2/insert! :model/ModelIndexValue [{:model_index_id mi-id, :model_pk 1, :name "Red Medicine"}])
+          (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
+          (is (= 1 (indexed)))
+          (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [_instances] (throw (ex-info "reindex failed" {})))]
+            (delete-cards-by-hand! [card-id]))
+          (is (= 0 (indexed))))))))
+
+(deftest cascade-enumeration-failure-keeps-the-delete-test
+  (testing "a search error while enumerating cascaded documents is logged, and the delete still succeeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Enumeration Failure Model", :type :model}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
+          (delete-cards-by-hand! [card-id]))
+        (is (false? (t2/exists? :model/Card :id card-id))))))
+  (testing "a database error inside the enumeration query leaves the delete able to run and commit"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {:name "Enumeration SQL Error Model", :type :model}]
+        ;; The bad column fails inside the enumeration's own nested transaction. On PostgreSQL, the delete below can
+        ;; only run if that savepoint rolled back cleanly.
+        (mt/with-dynamic-fn-redefs [search.db/spec-index-doc-ids-reducible
+                                    (fn [& _]
+                                      (mdb/streaming-reducible-query {:select [:no_such_column] :from [(t2/table-name :model/Card)]}))]
+          (delete-cards-by-hand! [card-id]))
+        (is (false? (t2/exists? :model/Card :id card-id)))))))
+
+(defn- outcome-and-interrupt
+  "Call `thunk`, returning its `:result` or `:thrown` exception, and whether it left this thread `:interrupted?`.
+  The status is read, and cleared, before any assertion runs, since reporting an assertion clears it."
+  [thunk]
+  (let [outcome (try
+                  {:result (thunk)}
+                  (catch Throwable e
+                    {:thrown e}))]
+    (assoc outcome :interrupted? (Thread/interrupted))))
+
+(deftest cascade-enumeration-interrupt-is-restored-test
+  (testing "an interrupt while enumerating one search-model's cascades skips it and keeps the thread interrupted"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Interrupted Enumeration Model", :type :model}
+                     :model/Action _             {:name "Unenumerated Action", :model_id card-id, :type :query}]
+        (is (= {:result nil, :interrupted? true}
+               (mt/with-dynamic-fn-redefs [search.ingestion/doc-ids (fn [_search-model _where-clause]
+                                                                      (throw (InterruptedException. "interrupted")))]
+                 (outcome-and-interrupt #(cascading-documents-of card-id)))))))))
+
+(deftest dependents-interrupt-is-restored-test
+  (testing "an interrupt in the capture dependents hook skips the enumeration and keeps the thread interrupted"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (is (= {:result nil, :interrupted? true}
+             (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances]
+                                                                      (throw (InterruptedException. "interrupted")))]
+               (outcome-and-interrupt #(#'search.events/capture-dependents [card-delete]))))))))
+
+(deftest reconcile-interrupt-stops-and-is-restored-test
+  (testing "an interrupt while reconciling stops the remaining search-models and reaches the caller"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [checked (atom [])
+            outcome (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids
+                                                (fn [search-model _ids]
+                                                  (swap! checked conj search-model)
+                                                  (throw (InterruptedException. "interrupted")))]
+                      (outcome-and-interrupt
+                       #(search/reconcile-cascading-documents! {"action" #{1}, "indexed-entity" #{"1:1"}})))]
+        (is (=? {:thrown       (partial instance? InterruptedException)
+                 :interrupted? true}
+                outcome))
+        (is (= 1 (count @checked)))))))
+
+(deftest capture-failure-keeps-delete-test
+  (testing "a search error while enumerating the dependents of a delete is logged, and the delete still succeeds"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {id :id} {:name "Capture Failure Card"}]
+        (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
+          (delete-cards-by-hand! [id]))
+        (is (false? (t2/exists? :model/Card :id id)))))))
+
+(deftest one-search-model-failure-keeps-the-others-test
+  (testing "an enumeration failure for one search-model leaves the others enumerated"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id} {:name "Partial Enumeration Model", :type :model}
+                     :model/Action {_ :id}       {:name "Still Enumerated Action", :model_id card-id, :type :query}]
+        (let [doc-ids (mt/original-fn #'search.ingestion/doc-ids)]
+          (mt/with-dynamic-fn-redefs [search.ingestion/doc-ids (fn [search-model where-clause]
+                                                                 (if (= "indexed-entity" search-model)
+                                                                   (throw (ex-info "enumeration failed" {}))
+                                                                   (doc-ids search-model where-clause)))]
+            (is (contains? (cascading-documents-of card-id) "action")))))))
+  (testing "a reconcile failure for one search-model leaves the others reconciled, and still reaches the caller"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card   {card-id :id}   {:name "Partial Reconcile Model", :type :model}
+                     :model/Action {action-id :id} {:name "Purged Action", :model_id card-id, :type :query}]
+        (let [cascading        (array-map "indexed-entity" #{"0:0"}
+                                          "action"         (get (cascading-documents-of card-id) "action"))
+              existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)]
+          ;; A raw delete, so the action's document is left for the reconcile to purge.
+          (t2/query {:delete-from (t2/table-name :model/Action), :where [:= :id action-id]})
+          (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
+                                                                          (if (= "indexed-entity" search-model)
+                                                                            (throw (ex-info "reconcile failed" {}))
+                                                                            (existing-doc-ids search-model ids)))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reconcile failed"
+                                  (search/reconcile-cascading-documents! cascading))))
+          (is (= 0 (indexed-count "action" action-id))))))))
+
+(deftest batch-enqueues-one-ingestion-test
+  (testing "the rows of one write hand one ingestion call to the index"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Card]
+        (let [calls (capture-enqueues!
+                     #(queries.card/create-cards! (vec (repeatedly 3 (fn [] (assoc (mt/with-temp-defaults :model/Card)
+                                                                                   :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")))))))]
+          (is (= 1 (count calls))))))))
+
+(defn- indexed-editor [search-model id]
+  (t2/select-one-fn :last_editor_id (search.index/active-table) :model search-model :model_id (str id)))
+
+(deftest revert-refreshes-indexed-last-editor-test
+  (search.tu/with-appdb-search-if-available-without-fallback
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [card-id (:id (mt/user-http-request :rasta :post 200 "card"
+                                                 {:name "Reverted card" :display "scalar" :visualization_settings {}
+                                                  :dataset_query (let [mp (mt/metadata-provider)]
+                                                                   (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                       (lib/aggregate (lib/count))))}))
+              dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name "Reverted dashboard"}))]
+          (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited"})
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:description "edited"})
+          (testing "the editor is the one of the last edit"
+            (is (= [(mt/user->id :crowberto) (mt/user->id :crowberto)]
+                   [(indexed-editor "card" card-id) (indexed-editor "dashboard" dash-id)])))
+          (doseq [[entity id] [["card" card-id] ["dashboard" dash-id]]]
+            (let [first-revision (t2/select-one-fn :id :model/Revision :model (str/capitalize entity) :model_id id {:order-by [[:id :asc]]})]
+              (mt/user-http-request :rasta :post 200 "revision/revert" {:entity entity :id id :revision_id first-revision})))
+          (testing "a revert makes its user the indexed editor"
+            (is (= [(mt/user->id :rasta) (mt/user->id :rasta)]
+                   [(indexed-editor "card" card-id) (indexed-editor "dashboard" dash-id)]))))))))
+
+(deftest handle-rows-across-partitions-test
+  (testing "an event with more rows than one batch has every row handed to the index"
+    (let [batches (atom [])]
+      (mt/with-partition-size 2
+        (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [instances] (swap! batches conj (count instances)))]
+          (#'search.events/handle! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)) nil)))
+      (is (= [2 2 1] @batches)))))

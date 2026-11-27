@@ -47,6 +47,75 @@ describe("DashboardSubscriptionsSidebar Premium Features", () => {
       expect(hasAdvancedFilterOptionsHidden(screen)).toBe(true);
     });
 
+    it(`${channel} channel: should not show advanced filtering options for a dashboard without parameters`, async () => {
+      setup({
+        isAdmin: true,
+        [channel]: true,
+        tokenFeatures,
+        enterprisePlugins: ["sharing"],
+        parameters: [],
+      });
+
+      await userEvent.click(await screen.findByText(buttonText));
+
+      expect(await screen.findByText(headerText)).toBeVisible();
+      expect(hasAdvancedFilterOptionsHidden(screen)).toBe(true);
+    });
+
+    it(`${channel} channel: should show a mapped parameter that comes after an unmapped one`, async () => {
+      const unmappedParameter = createMockParameter({
+        id: "1",
+        type: "string/=",
+        slug: "text",
+        name: "Text",
+      });
+      const mappedParameter = createMockParameter({
+        id: "2",
+        type: "string/=",
+        slug: "text_1",
+        name: "Text 1",
+      });
+      const card = createMockCard({ id: 1, name: "Orders", display: "table" });
+
+      setup({
+        isAdmin: true,
+        [channel]: true,
+        tokenFeatures,
+        enterprisePlugins: ["sharing"],
+        parameters: [unmappedParameter, mappedParameter],
+        dashcards: [
+          createMockDashboardCard({
+            id: card.id,
+            card,
+            card_id: card.id,
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: mappedParameter.id,
+                target: [
+                  "dimension",
+                  ["field", "NAME", { "base-type": "type/Text" }],
+                ],
+              },
+            ],
+          }),
+        ],
+      });
+
+      await userEvent.click(await screen.findByText(buttonText));
+
+      const section = await screen.findByTestId(
+        "subscription-parameters-section",
+      );
+      expect(
+        within(section).getByText("Set filter values for when this gets sent"),
+      ).toBeVisible();
+      expect(
+        await within(section).findByLabelText("Text 1"),
+      ).toBeInTheDocument();
+      expect(within(section).queryByLabelText("Text")).not.toBeInTheDocument();
+    });
+
     it(`${channel} channel: should show all mapped parameters in advanced filtering options`, async () => {
       const totalParameter = createMockParameter({
         id: "1",

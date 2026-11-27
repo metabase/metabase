@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
@@ -201,6 +202,15 @@
     :resident-cap cells-to-disk-threshold
     :floor        squeezed-spill-threshold}))
 
+(defn- with-goal-values
+  "`part` with the goal values its chart draws under `:goal-values`, once its result completed. Run under the
+  caller's permissions."
+  [{:keys [card dashcard result] :as part} dashboard-id]
+  (if-let [goal-values (when (= :completed (:status result))
+                         (dynamic-goals/chart-goal-values-or-nil card dashcard :dashboard-id dashboard-id))]
+    (assoc part :goal-values goal-values)
+    part))
+
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
@@ -210,53 +220,63 @@
     executing a card in isolation), a private budget is used so only the per-card spill limit applies.
   - `:attached?` whether this card's results are exported as a file attachment. Attached cards run to the
     attachment row limit; body-only cards get the interactive display limits since only a preview is rendered.
+  - `:dashboard` the Dashboard row, `:id->card` the unarchived Cards of the dashcard and its series by id, and
+    `:dashcard-id->series-card-ids` the series Card ids by dashcard id, as [[execute-dashboard]] reads them once, each
+    read here when omitted.
 
   This function should be executed under pulse's creator permissions."
   ([dashcard parameters]
    (execute-dashboard-subscription-card dashcard parameters nil))
   ([{:keys [card_id dashboard_id] :as dashcard} parameters
-    {:keys [spill-budget attached?]
+    {:keys [spill-budget attached? dashboard id->card dashcard-id->series-card-ids]
      :or   {spill-budget (new-spill-budget)}}]
    (log/with-context {:card_id card_id}
      (try
-       (when-let [card (notification.db/unarchived-card card_id)]
-         (let [dashboard      (notification.db/dashboard dashboard_id)
-               multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+       (when-let [card (if id->card
+                         (get id->card card_id)
+                         (notification.db/unarchived-card card_id))]
+         (let [dashboard      (or dashboard (notification.db/dashboard dashboard_id))
+               multi-cards    (if dashcard-id->series-card-ids
+                                (map (fn [card-id] {:id card-id}) (get dashcard-id->series-card-ids (:id dashcard)))
+                                (dashboard-card/dashcard->multi-cards dashcard))
                result-fn      (fn [card-id]
-                                (let [card (if (= card-id (:id card))
-                                             card
-                                             (notification.db/card card-id))
+                                (let [card (cond
+                                             (= card-id (:id card)) card
+                                             id->card               (get id->card card-id)
+                                             :else                  (notification.db/card card-id))
                                       attached-result? (and attached? (= card-id card_id))]
-                                  {:card     card
-                                   :dashcard dashcard
-                                   ;; TODO should this be dashcard?
-                                   :type     :card
-                                   :result   (-> (qp.dashboard/process-query-for-dashcard
-                                                  :dashboard     dashboard
-                                                  :card          card
-                                                  :dashcard      dashcard
-                                                  :context       :dashboard-subscription
-                                                  :export-format :api
-                                                  :parameters    parameters
-                                                  :constraints   {}
-                                                  :middleware    {:process-viz-settings?             true
-                                                                  :js-int-to-string?                 false
-                                                                  ;; body-only cards only render a preview, so cap
-                                                                  ;; them at the interactive display limits;
-                                                                  ;; attachments need the full result
-                                                                  :add-default-userland-constraints? (not attached-result?)}
-                                                  :make-run      (fn make-run [qp _export-format]
-                                                                   (^:once fn* [query info]
-                                                                     (qp
-                                                                      (qp/userland-query query info)
-                                                                      ;; Pass streaming rff with 2000 row threshold
-                                                                      (notification.temp-storage/notification-rff
-                                                                       {:budget spill-budget}
-                                                                       {:dashboard_id dashboard_id
-                                                                        :card_id card-id
-                                                                        :dashcard_id (u/the-id dashcard)})))))
-                                                 fixup-viz-settings
-                                                 format-qp-result)}))
+                                  (cond-> {:card     card
+                                           :dashcard dashcard
+                                           ;; TODO should this be dashcard?
+                                           :type     :card
+                                           :result   (-> (qp.dashboard/process-query-for-dashcard
+                                                          :dashboard     dashboard
+                                                          :card          card
+                                                          :dashcard      dashcard
+                                                          :context       :dashboard-subscription
+                                                          :export-format :api
+                                                          :parameters    parameters
+                                                          :constraints   {}
+                                                          :middleware    {:process-viz-settings?             true
+                                                                          :js-int-to-string?                 false
+                                                                          ;; body-only cards only render a preview, so cap
+                                                                          ;; them at the interactive display limits;
+                                                                          ;; attachments need the full result
+                                                                          :add-default-userland-constraints? (not attached-result?)}
+                                                          :make-run      (fn make-run [qp _export-format]
+                                                                           (^:once fn* [query info]
+                                                                             (qp
+                                                                              (qp/userland-query query info)
+                                                                              ;; Pass streaming rff with 2000 row threshold
+                                                                              (notification.temp-storage/notification-rff
+                                                                               {:budget spill-budget}
+                                                                               {:dashboard_id dashboard_id
+                                                                                :card_id card-id
+                                                                                :dashcard_id (u/the-id dashcard)})))))
+                                                         fixup-viz-settings
+                                                         format-qp-result)}
+                                    ;; series cards draw no goals
+                                    (= card-id card_id) (with-goal-values dashboard_id))))
                result         (result-fn card_id)
                series-results (mapv (comp result-fn :id) multi-cards)]
            (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -276,7 +296,7 @@
   `opts` are the [[execute-dashboard]] options, shared across all dashcards.
 
   The result will follow the pulse's creator permissions."
-  [dashcard parameters {:keys [spill-budget attached-card-ids link-card-entities]}]
+  [dashcard parameters {:keys [spill-budget attached-card-ids link-card-entities] :as opts}]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
@@ -284,8 +304,9 @@
       (let [parameters (merge-default-values parameters)]
         ;; Streaming to disk is now handled by the query processor rff
         (-> (execute-dashboard-subscription-card dashcard parameters
-                                                 {:spill-budget spill-budget
-                                                  :attached?    (contains? attached-card-ids (:card_id dashcard))})
+                                                 (-> (select-keys opts [:dashboard :id->card :dashcard-id->series-card-ids])
+                                                     (assoc :spill-budget spill-budget
+                                                            :attached?    (contains? attached-card-ids (:card_id dashcard)))))
             (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
@@ -333,6 +354,7 @@
                 [:type                      [:= :card]]
                 [:card                      :map]
                 [:result                    [:maybe :map]]
+                [:goal-values {:optional true} [:maybe :metabase.visualization-settings.dynamic-goals/goal-values]]
                 [:dashcard {:optional true} [:maybe :map]]]]
    [:text      [:map
                 [:text :string]
@@ -342,8 +364,26 @@
                 [:type [:= :tab-title]]]]
    [::mc/default :map]])
 
+(defn- dashcards-context
+  "The shared reads of `dashcards` for [[execute-dashboard-subscription-card]]: their unarchived Cards, including the
+  series Cards, by id, and the series Card ids by dashcard id."
+  [dashcards]
+  (let [with-series (t2/hydrate (filterv :card_id dashcards) :series)
+        card-ids    (into #{}
+                          (mapcat (fn [{:keys [card_id series]}] (cons card_id (map :id series))))
+                          with-series)
+        id->card    (if (seq card-ids)
+                      (into {} (comp (remove :archived) (map (juxt :id identity))) (notification.db/cards card-ids))
+                      {})]
+    {:id->card                      id->card
+     :dashcard-id->series-card-ids  (into {}
+                                          (map (fn [{:keys [id series]}]
+                                                 [id (filterv id->card (map :id series))]))
+                                          with-series)}))
+
 (def ^:private ExecuteDashboardOpts
   [:map {:closed true}
+   [:dashboard         {:optional true} [:maybe :map]]
    [:spill-budget      {:optional true} notification.temp-storage/ResidentBudget]
    [:only-card-ids     {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:attached-card-ids {:optional true} [:maybe [:set ms/PositiveInt]]]])
@@ -366,9 +406,10 @@
   ([dashboard-id :- ::lib.schema.id/dashboard
     user-id      :- ::lib.schema.id/user
     parameters   :- [:maybe ::parameters.schema/parameters]
-    {:keys [spill-budget only-card-ids attached-card-ids]
+    {:keys [dashboard spill-budget only-card-ids attached-card-ids]
      :or   {spill-budget (new-spill-budget)}} :- [:maybe ExecuteDashboardOpts]]
-   (let [opts            {:spill-budget      spill-budget
+   (let [opts            {:dashboard         (or dashboard (notification.db/dashboard dashboard-id))
+                          :spill-budget      spill-budget
                           :attached-card-ids attached-card-ids}
          keep-dashcards  (fn [dashcards]
                            (cond->> dashcards
@@ -379,6 +420,7 @@
                tabs-with-cards    (->> tabs
                                        (map #(update % :cards keep-dashcards))
                                        (filter #(seq (:cards %))))
+               opts               (merge opts (dashcards-context (mapcat :cards tabs-with-cards)))
                should-render-tab? (< 1 (count tabs-with-cards))]
            (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                              (do
@@ -389,35 +431,37 @@
                                 (dashcards->part cards parameters opts)))))))
          (let [dashcards (keep-dashcards (notification.db/dashcards-for-dashboard dashboard-id))]
            (log/debugf "Rendering dashboard with %d cards" (count dashcards))
-           (dashcards->part dashcards parameters opts)))))))
+           (dashcards->part dashcards parameters (merge opts (dashcards-context dashcards)))))))))
 
 (mu/defn execute-card :- [:maybe ::Part]
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?]
-  (let [card   (notification.db/card card-id)
-        result (request/with-current-user creator-id
-                 (-> (qp.card/process-query-for-card card :api
-                                                     ;; TODO rename to :notification?
-                                                     :context     :pulse
-                                                     :constraints {}
-                                                     :middleware  {:skip-results-metadata?            false
-                                                                   :process-viz-settings?             true
-                                                                   :js-int-to-string?                 false
-                                                                   :add-default-userland-constraints? false}
-                                                     :make-run    (fn make-run [qp _export-format]
-                                                                    (^:once fn* [query info]
-                                                                      (qp
-                                                                       (qp/userland-query query info)
-                                                                       ;; Pass streaming rff with 2000 row threshold
-                                                                       ;; a standalone card has no sibling cards, so it
-                                                                       ;; uses its own (unshared) spill budget
-                                                                       (notification.temp-storage/notification-rff
-                                                                        {:budget (new-spill-budget)}
-                                                                        {:card-id card-id})))))
-                     fixup-viz-settings
-                     format-qp-result))]
-    (log/debugf "Result has %d rows" (:row_count result))
-    {:card   card
-     :result result
-     :type   :card}))
+  (let [card (notification.db/card card-id)
+        part (request/with-current-user creator-id
+               (-> {:card   card
+                    :type   :card
+                    :result (-> (qp.card/process-query-for-card
+                                 card :api
+                                 ;; TODO rename to :notification?
+                                 :context     :pulse
+                                 :constraints {}
+                                 :middleware  {:skip-results-metadata?            false
+                                               :process-viz-settings?             true
+                                               :js-int-to-string?                 false
+                                               :add-default-userland-constraints? false}
+                                 :make-run    (fn make-run [qp _export-format]
+                                                (^:once fn* [query info]
+                                                  (qp
+                                                   (qp/userland-query query info)
+                                                   ;; Pass streaming rff with 2000 row threshold
+                                                   ;; a standalone card has no sibling cards, so it
+                                                   ;; uses its own (unshared) spill budget
+                                                   (notification.temp-storage/notification-rff
+                                                    {:budget (new-spill-budget)}
+                                                    {:card-id card-id})))))
+                                fixup-viz-settings
+                                format-qp-result)}
+                   (with-goal-values nil)))]
+    (log/debugf "Result has %d rows" (-> part :result :row_count))
+    part))

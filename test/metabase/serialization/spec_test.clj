@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
@@ -61,13 +62,30 @@
           (testing "declares every serialized key in its schema"
             (is (empty? (remove (schema-keys (:schema spec)) serialized)))))))))
 
+(deftest specs-match-spec-schema-test
+  (testing "each spec is a closed map of the documented keys"
+    (doseq [[model-name _model spec] (model-specs)]
+      (testing model-name
+        (is (nil? (me/humanize (mr/explain ::serialization.spec/spec spec)))))))
+  (testing "spec with mistyped key fails"
+    (is (some? (mr/explain ::serialization.spec/spec {:schema :string :storage-path identity}))))
+  (testing "spec with fn key holding non-fn fails"
+    (is (some? (mr/explain ::serialization.spec/spec {:schema :string :before-load :items})))))
+
+(deftest schema-keys-match-external-keys-test
+  (testing "the schema of each spec declares exactly the keys an import reads from its entities"
+    (doseq [[model-name model spec] (model-specs)]
+      (testing model-name
+        (is (= (serialization.entity/external-keys model)
+               (schema-keys (:schema spec))))))))
+
 (deftest validate-export-test
   (let [spec {:schema [:map {:closed true} [:name :string]]}]
     (mt/with-dynamic-fn-redefs [serialization.spec/spec-of (fn [_] spec)]
       (testing "export matching its spec's schema passes"
         (is (nil? (serialization.entity/validate-export :model/Model {:name "x"}))))
       (testing "export with key its spec's schema does not declare throws"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid export of :model/Model"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Model"
                               (serialization.entity/validate-export :model/Model {:name "x" :id 1})))))
     (mt/with-dynamic-fn-redefs [serialization.spec/spec-of (fn [_] {})]
       (testing "spec without schema throws"
@@ -100,7 +118,7 @@
 
 (def ^:private implicit-columns
   "The columns a spec never declares, since serialization never exports them."
-  #{:id :created_at :updated_at})
+  #{:id :created_at :updated_at :worktree_id})
 
 (defn- boolean-default
   "The boolean value of `default-value`, the database default of a column, or nil when it is none."

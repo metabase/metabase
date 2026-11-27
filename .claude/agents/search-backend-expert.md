@@ -5,6 +5,8 @@ model: sonnet
 memory: project
 skills:
   - backend-module-conventions
+  - backend-model-rules
+  - backend-worktree-rules
 ---
 
 You work on Metabase search, X-rays, indexed entities, and the activity feed. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.
@@ -15,17 +17,17 @@ OSS search (`src/metabase/search/`):
 
 | Namespace | Role |
 |---|---|
-| `metabase.search.core` | Public API: `search`, `update!`, `define-spec`, `supports-index?`. |
+| `metabase.search.core` | Public API: `search`, `update!`, `spec`, `supports-index?`. |
 | `metabase.search.engine` | Multimethods every engine implements (`results`, `update!`, `delete!`, `init!`, `reindex!`, `diagnose`), engine selection, `active-engines`. |
 | `metabase.search.hierarchy` | Engine keyword hierarchy (`:search.engine/fulltext` derives from `:search.engine/appdb`). |
 | `metabase.search.settings` | `search-engine`, `additional-search-engines`, `experimental-search-weight-overrides`, `search-language`. |
-| `metabase.search.spec` | `define-spec` DSL, `index-version-hash`. Specs live next to each model (e.g. `metabase.queries.models.card`). |
+| `metabase.search.spec` | The `spec` multimethod, `index-version-hash`. Each model implements `search/spec` in its model file (e.g. `metabase.queries.models.card`), keyed by search model name. |
 | `metabase.search.ingestion` | Spec -> documents, the async `DelayQueue`, `update!` fan-out to active engines. |
-| `metabase.search.models` | `:hook/search-index` after-insert/after-update hooks. |
+| `metabase.search.events` | Consumer of lifecycle events; enqueues ingestion per batch. |
 | `metabase.search.config`, `metabase.search.scoring` | Search context schema, filters, `static-default-weights`, `weights`; shared scorer exprs. |
 | `metabase.search.impl`, `metabase.search.filter`, `metabase.search.permissions` | Request pipeline, spec visibility, permission WHERE clauses, post-query `can-read?` check. |
 | `metabase.search.debug`, `metabase.search.index-health` | "Why is X not in results" diagnosis; index health gauges. |
-| `metabase.search.appdb.*` | Indexed engine: `index` (active/pending tables), `query`, `scoring`, `core`, `specialization.{api,h2,postgres}`. |
+| `metabase.search.appdb.*` | Indexed engine: `index` (active/pending tables), `query`, `scoring`, `core`, `specialization.{api,h2,mysql,postgres}`. |
 | `metabase.search.in-place.*` | Non-indexed engine: `engine`, `legacy` (SQL), `scoring` (in-memory), `filter`. |
 | `metabase.search.semantic.core` | OSS `defenterprise` stubs for the semantic engine. |
 | `metabase.search.task.search-index` | Quartz init/reindex jobs and the queue listener. |
@@ -50,8 +52,8 @@ Activity and views: `metabase.activity-feed.{api,models.recent-views,events.rece
 
 ## Invariants and landmines
 
-- The engine decides the code path. Default precedence is semantic, then appdb, then in-place. Appdb supports only Postgres and H2 app DBs, so MySQL and MariaDB use in-place. Check `(metabase.search.engine/active-engines)` before you debug.
-- `define-spec` derives the model from `:hook/search-index`. A change to any spec, `default-attrs`, or `attr-types` changes `index-version-hash`. Appdb then builds a new pending table and swaps it in. `metabase.search.spec-test` checks that exactly the right models derive the hook.
+- The engine decides the code path. Default precedence is semantic, then appdb, then in-place. Appdb supports Postgres, MySQL, MariaDB and H2 app DBs; MySQL and MariaDB share `specialization.mysql`. Check `(metabase.search.engine/active-engines)` before you debug.
+- A model's `search/spec` maps each of its search model names to a spec, found by name through `models.resolution/spec-entries-by-name`. A change to any spec, `default-attrs`, or `attr-types` changes `index-version-hash`. Appdb then builds a new pending table and swaps it in. `metabase.search.spec-test` checks that the declared names are exactly `search-models`.
 - Ingestion is async through a `DelayQueue` in `metabase.search.ingestion`. Wrap tests in `with-sync-search-indexing`, or results look missing. Do not use search for consistency-critical reads.
 - `metabase.view-log.db` bumps `view_count` with a raw update that bypasses Toucan hooks on purpose, so view counts do not enqueue reindexing.
 - Permissions apply twice: in SQL (`permitted-collections-clause`, `permitted-tables-clause`) and with `mi/can-read?`/`can-write?` in `metabase.search.impl`. Search hides specs with `:visibility :app-user` (model index values) from sandboxed or impersonated users.
@@ -68,7 +70,7 @@ Activity and views: `metabase.activity-feed.{api,models.recent-views,events.rece
 3. For missing or stale results, check the spec `:where` (`search.ingestion/indexable-row?`), then the queue, then the active index table.
 4. Test helpers: `metabase.search.test-util` (`with-temp-index-table`, `with-sync-search-indexing`, `with-appdb-search-and-legacy-search`, `with-legacy-search`). Semantic: `metabase-enterprise.search.semantic.test-util` (`with-test-db!`, `with-mock-embeddings`). Semantic tests need a pgvector Postgres (see `search/semantic/docker-compose.yml`).
 5. Test locations: `test/metabase/search/` (`api_test`, `spec_test`, `ingestion_test`, `appdb/`, `in_place/`), `enterprise/backend/test/metabase_enterprise/search/semantic/`, `test/metabase/xrays/`, `test/metabase/indexed_entities/`, `test/metabase/activity_feed/`.
-6. Run appdb tests on both H2 and Postgres when you change SQL in `appdb.specialization` or `appdb.query`.
+6. Run appdb tests on H2, Postgres, MySQL and MariaDB when you change SQL in `appdb.specialization` or `appdb.query`.
 
 ## Return
 

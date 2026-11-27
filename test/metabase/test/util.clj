@@ -1,12 +1,10 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [diehard.core :as dh]
@@ -27,9 +25,10 @@
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.permissions-group-membership :as pgm]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -47,6 +46,7 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
@@ -94,15 +94,12 @@
     data))
 
   ([pred data]
-   (walk/prewalk (fn [maybe-map]
-                   (if (map? maybe-map)
-                     (reduce-kv (fn [acc k v]
-                                  (if (pred k)
-                                    (assoc acc k (some? v))
-                                    (assoc acc k v)))
-                                {} maybe-map)
-                     maybe-map))
-                 data)))
+   (match/replace-all data
+     #'map? (reduce-kv (fn [acc k v]
+                         (if (pred k)
+                           (assoc acc k (some? v))
+                           (assoc acc k v)))
+                       {} &match))))
 
 (defn- user-id [username]
   (classloader/require 'metabase.test.data.users)
@@ -132,6 +129,12 @@
              :name (u.random/random-name)
              :visualization_settings {}}))
 
+   :model/CacheConfig
+   (fn [_] {:model    "database"
+            :model_id (data/id)
+            :strategy :nocache
+            :config   {}})
+
    :model/Collection
    (fn [_] (default-created-at-timestamped {:entity_id (u/generate-nano-id)
                                             :name (u.random/random-name)}))
@@ -157,6 +160,10 @@
             {:target_type "document"
              :creator_id  (rasta-id)
              :content     {:type "text", :text (u.random/random-name)}}))
+
+   :model/ConnectionImpersonation
+   (fn [_] {:db_id     (data/id)
+            :attribute "impersonation_role"})
 
    :model/Dashboard
    (fn [_] (default-timestamped
@@ -249,10 +256,11 @@
    :model/Measure
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
-             :definition {}
+             :definition (let [mp (data/metadata-provider)]
+                           (-> (lib/query mp (lib.metadata/table mp (data/id :checkins)))
+                               (lib/aggregate (lib/count))))
              :entity_id (u/generate-nano-id)
-             :name "Mock Measure"
-             :table_id (data/id :checkins)}))
+             :name "Mock Measure"}))
 
    :model/MetabotConversation
    (fn [_] {:id      (str (random-uuid))
@@ -321,9 +329,6 @@
    (fn [_] {:entity_id (u/generate-nano-id)
             :name (u.random/random-name)})
 
-   :model/PermissionsGroupMembership
-   (fn [_] {:__test-only-sigil-allowing-direct-insertion-of-permissions-group-memberships true})
-
    :model/Pulse
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -353,11 +358,12 @@
    :model/Segment
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
-             :definition {}
+             :definition (let [mp (data/metadata-provider)]
+                           (-> (lib/query mp (lib.metadata/table mp (data/id :checkins)))
+                               (lib/filter (lib/= 1 1))))
              :description "Lookin' for a blueberry"
              :entity_id (u/generate-nano-id)
-             :name "Toucans in the rainforest"
-             :table_id (data/id :checkins)}))
+             :name "Toucans in the rainforest"}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
    ;; Tech debt issue: #39329
@@ -432,6 +438,26 @@
        :inputs       []
        :expectations []}))
 
+   :model/SegmentTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Segment Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/TestSuite
+   (fn [_]
+     (default-timestamped
+      {:creator_id (rasta-id)
+       :name       (str "Test Suite " (u/generate-nano-id))}))
+
+   :model/TestSuiteRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
+
    :model/DataTestRun
    (fn [_]
      {:test_type      :transform
@@ -478,29 +504,6 @@
              :output_namespace ""
              :status           :unprovisioned}))})
 
-;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
-;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
-(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
-  [model explicit-attributes f]
-  (binding [pgm/*allow-direct-deletion* true]
-    (next-method model explicit-attributes f)))
-
-;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
-;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
-;; inside another User's `with-temp` scope. Clear the cache whenever a `with-temp` scope exits.
-;; Use a unique method key because [[metabase.test.redefs]] already defines `:around :default`. Methods with the same
-;; key overwrite one another, which would disable either this eviction or the rollback-only transaction wrapper.
-(methodical/add-aux-method-with-unique-key!
- #'t2.with-temp/do-with-temp* :around :default
- (fn [next-method model explicit-attributes f]
-   (next-method model explicit-attributes
-                (fn [temp-object]
-                  (try
-                    (f temp-object)
-                    (finally
-                      (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
- ::evict-personal-collection-cache)
-
 (def ^:private dimension-lock
   "Serialises temporary Dimensions against each other.
 
@@ -517,6 +520,15 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
+  "Inserts a Collection for a temporary Tenant whose attributes name none, because `tenant_collection_id` is not null."
+  [model explicit-attributes f]
+  (if (contains? explicit-attributes :tenant_collection_id)
+    (next-method model explicit-attributes f)
+    (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:type      collection/tenant-specific-root-collection-type
+                                                                    :namespace :tenant-specific}]
+      (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
@@ -632,7 +644,7 @@
 (defn- raw-setting
   "The `setting` row for `setting-k` as it sits in the table, or nil."
   [setting-k]
-  (t2/select-one [:setting :value :value_with_aad] :key setting-k))
+  (t2/select-one [(t2/table-name :model/Setting) :value :value_with_aad] :key setting-k))
 
 (defn- upsert-raw-setting!
   "Write `value` for `setting-k` straight into the table, bypassing the model and so any setter: `value` bare, and
@@ -642,18 +654,18 @@
     (let [row {:value          value
                :value_with_aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad setting-k)})}]
       (if original
-        (t2/update! :setting :key setting-k row)
-        (t2/insert! :setting (assoc row :key setting-k))))
+        (t2/update! (t2/table-name :model/Setting) :key setting-k row)
+        (t2/insert! (t2/table-name :model/Setting) (assoc row :key setting-k))))
     (when original
-      (t2/delete! :setting :key setting-k)))
+      (t2/delete! (t2/table-name :model/Setting) :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
   "Put back the row [[raw-setting]] found, byte for byte, or remove the one written over nothing."
   [original setting-k]
   (if original
-    (t2/update! :setting :key setting-k original)
-    (t2/delete! :setting :key setting-k))
+    (t2/update! (t2/table-name :model/Setting) :key setting-k original)
+    (t2/delete! (t2/table-name :model/Setting) :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value!
@@ -1142,11 +1154,10 @@
             model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
-        (moderation-review/create-review!
-         {:moderated_item_id   (u/the-id model-or-id)
-          :moderated_item_type (name item-type)
-          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status              status})))
+        (moderation-review/create-moderation-reviews! [{:moderated_item_id   (u/the-id model-or-id)
+                                                        :moderated_item_type (name item-type)
+                                                        :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+                                                        :status              status}])))
     (thunk)))
 
 (defmacro with-verified!
@@ -1659,15 +1670,16 @@
   [[directory-binding dir-name] & body]
   `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
-(defn do-with-user-in-groups
-  ([f groups-or-ids]
-   (t2.with-temp/with-temp [:model/User user]
-     (do-with-user-in-groups f user groups-or-ids)))
-  ([f user [group-or-id & more]]
-   (if group-or-id
-     (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
-       (do-with-user-in-groups f user more))
-     (f user))))
+(defn do-with-user-in-groups!
+  [f groups-or-ids]
+  (do-with-model-cleanup
+   [:model/User]
+   (fn []
+     (let [[user] (user/create-users! [{:email      (u.random/random-email)
+                                        :first_name (u.random/random-name)
+                                        :last_name  (u.random/random-name)}])]
+       (perms-group-membership/add-users-to-groups! (for [group groups-or-ids] {:user user :group (u/the-id group)}))
+       (f user)))))
 
 (defmacro with-user-in-groups
   "Create a User (and optionally PermissionsGroups), add user to a set of groups, and execute `body`.
@@ -1687,7 +1699,7 @@
       `(t2.with-temp/with-temp [:model/PermissionsGroup ~group-binding ~group-definition]
          (with-user-in-groups ~more ~@body)))
     (let [[user-binding groups-or-ids-to-put-user-in] bindings]
-      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
+      `(do-with-user-in-groups! (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (defn secret-value-equals?
   "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are

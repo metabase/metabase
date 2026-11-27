@@ -2,16 +2,11 @@
   "Application database queries for the advanced-permissions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id))
 
 (mu/defn group-manager?
   "Whether the User with `user-id` manages the PermissionsGroup with `group-id`."
@@ -23,72 +18,78 @@
   "The subset of `database-ids` the group with `group-id` is blocked from viewing."
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-set :db_id :model/DataPermissions
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
-                    :group_id group-id
-                    :db_id [:in database-ids]
-                    {:select-distinct [:db_id]}))
+  (mdb/select-batched-set #(t2/select-fn-set :db_id :model/DataPermissions
+                                             :perm_type :perms/view-data
+                                             :perm_value :blocked
+                                             :group_id group-id
+                                             :db_id [:in %]
+                                             {:select-distinct [:db_id]})
+                          database-ids))
 
 (mu/defn impersonated-database-ids-for-group
   "The subset of `database-ids` the group with `group-id` accesses through connection impersonation."
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id group-id :db_id [:in database-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id group-id :db_id [:in %])
+                          database-ids))
 
 (mu/defn sandboxed-database-ids-for-group
   "The `:db_id` rows of the Databases among `database-ids` the group with `group-id` has a sandbox on."
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/query {:select [[:t.db_id :db_id]]
-             :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [[(t2/table-name :model/Table) :t]
-                      [:= :s.table_id :t.id]]
-             :where  [:and
-                      [:= :s.group_id group-id]
-                      [:in :t.db_id database-ids]]}))
+  (mdb/select-batched #(t2/query {:select [[:t.db_id :db_id]]
+                                  :from   [[(t2/table-name :model/Sandbox) :s]]
+                                  :join   [[(t2/table-name :model/Table) :t]
+                                           [:= :s.table_id :t.id]]
+                                  :where  [:and
+                                           [:= :s.group_id group-id]
+                                           [:in :t.db_id %]]})
+                      database-ids))
 
 (mu/defn blocked-group-ids
   "The subset of `group-ids` blocked from viewing some Database."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/DataPermissions
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
-                    :group_id [:in group-ids]
-                    {:select-distinct [:group_id]}))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/DataPermissions
+                                             :perm_type :perms/view-data
+                                             :perm_value :blocked
+                                             :group_id [:in %]
+                                             {:select-distinct [:group_id]})
+                          group-ids))
 
 (mu/defn impersonated-group-ids
   "The subset of `group-ids` with a connection impersonation."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/ConnectionImpersonation :group_id [:in %]) group-ids))
 
 (mu/defn sandboxed-group-ids
   "The subset of `group-ids` with a sandbox."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/Sandbox :group_id [:in group-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/Sandbox :group_id [:in %]) group-ids))
 
 (mu/defn blocked-group-ids-for-database
   "The subset of `group-ids` blocked from viewing the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    group-ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/DataPermissions
-                    :db_id database-id
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
-                    :group_id [:in group-ids]
-                    {:select-distinct [:group_id]}))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/DataPermissions
+                                             :db_id database-id
+                                             :perm_type :perms/view-data
+                                             :perm_value :blocked
+                                             :group_id [:in %]
+                                             {:select-distinct [:group_id]})
+                          group-ids))
 
 (mu/defn sandboxed-group-ids-for-database
   "The `:group_id` rows of the groups among `group-ids` with a sandbox on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    group-ids   :- [:sequential ms/PositiveInt]]
-  (t2/query {:select [[:s.group_id :group_id]]
-             :from   [[(t2/table-name :model/Sandbox) :s]]
-             :join   [[(t2/table-name :model/Table) :t]
-                      [:= :t.id :s.table_id]]
-             :where  [:and
-                      [:in :s.group_id group-ids]
-                      [:= :t.db_id database-id]]}))
+  (mdb/select-batched #(t2/query {:select [[:s.group_id :group_id]]
+                                  :from   [[(t2/table-name :model/Sandbox) :s]]
+                                  :join   [[(t2/table-name :model/Table) :t]
+                                           [:= :t.id :s.table_id]]
+                                  :where  [:and
+                                           [:in :s.group_id %]
+                                           [:= :t.db_id database-id]]})
+                      group-ids))
 
 (mu/defn application-permissions
   "The Permissions rows for the root object and every application object."
@@ -96,7 +97,7 @@
   (t2/select :model/Permissions
              {:where [:or
                       [:= :object "/"]
-                      [:like :object (h2x/literal "/application/%")]]}))
+                      [:like :object [:literal "/application/%"]]]}))
 
 (mu/defn user-group-memberships
   "The group ID (as `:id`) and manager flag of the memberships of the User with `user-id`."

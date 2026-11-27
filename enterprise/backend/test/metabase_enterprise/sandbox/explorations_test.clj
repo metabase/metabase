@@ -498,8 +498,8 @@
   [card-id]
   (let [mp (mt/metadata-provider)]
     {:id            card-id
-     :dataset_query (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                           (lib/aggregate (lib/count))))}))
+     :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                        (lib/aggregate (lib/count)))}))
 
 (defn- products-category-sandbox
   "A GTAP def filtering PRODUCTS to rows whose `category` equals the user's `cat` login attribute."
@@ -629,7 +629,7 @@
         (testing user
           (mt/with-test-user user
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing its dataset_query"
-                                  (queries/viewer-can-view-cached-result? snapshot)))))))))
+                                  (first (queries/cached-result-view-answers [snapshot]))))))))))
 
 (deftest impersonation-and-routing-token-edn-round-trip-test
   (testing "a real token survives the stored_result.data_access_token EDN round-trip. Its per-target

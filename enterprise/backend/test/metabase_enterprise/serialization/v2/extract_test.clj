@@ -565,10 +565,22 @@
 (deftest snippet-target-test
   (testing "Snippet target exports the snippets and cards it uses"
     (mt/with-empty-h2-app-db!
-      (mt/with-temp [:model/NativeQuerySnippet {b-eid :entity_id} {:name "B" :content "1 = 1"}
+      (mt/with-temp [:model/NativeQuerySnippet {b-id :id b-eid :entity_id} {:name "B" :content "1 = 1" :template_tags {}}
                      :model/Card               {d-id :id d-eid :entity_id} {:name "D"}
                      :model/NativeQuerySnippet {a-id :id a-eid :entity_id}
-                     {:name "A" :content (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)}]
+                     {:name          "A"
+                      :content       (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)
+                      :template_tags {"snippet: B"         {:id           (str (random-uuid))
+                                                            :name         "snippet: B"
+                                                            :display-name "Snippet: B"
+                                                            :type         :snippet
+                                                            :snippet-name "B"
+                                                            :snippet-id   b-id}
+                                      (format "#%d-d" d-id) {:id           (str (random-uuid))
+                                                             :name         (format "#%d-d" d-id)
+                                                             :display-name (format "#%d D" d-id)
+                                                             :type         :card
+                                                             :card-id      d-id}}}]
         (let [extraction (into [] (extract/extract {:no-settings   true
                                                     :no-data-model true
                                                     :no-transforms true
@@ -588,9 +600,10 @@
                                                              :dataset_query {:database db-id
                                                                              :type     :native
                                                                              :native   {:query "select 1"}}}
-                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id
+                                                             :collection_id coll-id}
                          :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
-                                                              :archived true}]
+                                                              :collection_id coll-id :archived true}]
         (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
           (is (= #{(eid action-id) (eid archived-id)}
                  (ids-by-model "Action" (extract/extract {:targets       [[:model/Collection coll-id]]
@@ -605,13 +618,12 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database    {db-id    :id} {:name "DB"}
                        :model/Collection  {coll-id  :id} {:name "Library" :type "library-data"}
-                       :model/Table       {table-id :id} {:name "T" :db_id db-id
-                                                          :is_published true
-                                                          :collection_id coll-id}
+                       :model/Table       {table-id :id} {:name "T" :db_id db-id}
                        :model/Field       _              {:name "F1" :table_id table-id}
                        :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
-                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
+                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"
+                                                   :is_published true :collection_id coll-id}]
       (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
         (let [entities        (into [] (extract/extract {:targets       [[:model/Collection coll-id]]
                                                          :no-data-model true}))
@@ -629,17 +641,14 @@
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Database   {db-id :id}   {:name "My Database"}
                          :model/Collection {coll-id :id} {:name "Export Collection"}
-                         :model/Table      _             {:name          "Published Table"
-                                                          :db_id         db-id
-                                                          :is_published  true
-                                                          :collection_id coll-id}
+                         :model/Table      {published :id} {:name          "Published Table"
+                                                            :db_id         db-id}
+                         :model/TableUserSettings _ {:table_id published :is_published true :collection_id coll-id}
                          :model/Table      _             {:name          "Unpublished Table"
-                                                          :db_id         db-id
-                                                          :is_published  false}
-                         :model/Table      _             {:name          "Other Table"
-                                                          :db_id         db-id
-                                                          :is_published  true
-                                                          :collection_id nil}]
+                                                          :db_id         db-id}
+                         :model/Table      {other :id}   {:name          "Other Table"
+                                                          :db_id         db-id}
+                         :model/TableUserSettings _ {:table_id other :is_published true}]
         (let [opts        {:targets       [[:model/Collection coll-id]]
                            :no-data-model true
                            :no-settings   true}
@@ -670,9 +679,8 @@
       (ts/with-temp-dpc [:model/Database   {db-id :id}          {:name "My Database"}
                          :model/Collection {coll-id :id}        {:name "Export Collection"}
                          :model/Table      {table-id :id}       {:name          "Published Table"
-                                                                 :db_id         db-id
-                                                                 :is_published  true
-                                                                 :collection_id coll-id}
+                                                                 :db_id         db-id}
+                         :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id coll-id}
                          :model/Field      {field1-id :id}      {:name      "Field One"
                                                                  :table_id  table-id
                                                                  :base_type :type/Integer}
@@ -680,12 +688,10 @@
                                                                  :table_id  table-id
                                                                  :base_type :type/Text}
                          :model/Segment    {segment-id :id}     {:name       "Test Segment"
-                                                                 :table_id   table-id
                                                                  :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"
-                                                                 :db_id         db-id
-                                                                 :is_published  false}
+                                                                 :db_id         db-id}
                          :model/Field      _                    {:name      "Other Field"
                                                                  :table_id  other-table-id
                                                                  :base_type :type/Integer}]
@@ -751,6 +757,92 @@
             (is (not (contains? entity :metabase_version))
                 (str m " should not carry a :metabase_version"))))))))
 
+(deftest dashboard-dynamic-goal-dependencies-test
+  (testing "exporting a dashboard takes the card a dashcard's dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Collection    {other-id :id}                    {:name "Elsewhere"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                                 :collection_id other-id}
+                         :model/Card          {shown-id :id}                    {:name "Shown" :collection_id coll-id}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id
+                                                                                 :visualization_settings
+                                                                                 {:graph.goal_value {:id     goal-id
+                                                                                                     :type   "card"
+                                                                                                     :column "total"}}}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Dashboard dash-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
+(deftest visualizer-dashcard-dynamic-goal-dependencies-test
+  (testing "exporting a dashboard takes the card a visualizer dashcard's nested dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Collection    {other-id :id}                    {:name "Elsewhere"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                                 :collection_id other-id}
+                         :model/Card          {shown-id :id}                    {:name "Shown" :collection_id coll-id}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id
+                                                                                 :visualization_settings
+                                                                                 {:visualization
+                                                                                  {:display  "line"
+                                                                                   :settings {:graph.goal_value
+                                                                                              {:id     goal-id
+                                                                                               :type   "card"
+                                                                                               :column "total"}}}}}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Dashboard dash-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
+(deftest card-dynamic-goal-dependencies-test
+  (testing "exporting a card takes the card its own dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id}                     {:name "Revenue"}
+                         :model/Collection {other-id :id}                    {:name "Goals"}
+                         :model/Card       {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                              :collection_id other-id}
+                         :model/Card       {shown-id :id}                    {:name          "Shown"
+                                                                              :collection_id coll-id
+                                                                              :visualization_settings
+                                                                              {:graph.goal_value {:id     goal-id
+                                                                                                  :type   "card"
+                                                                                                  :column "total"}}}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Card shown-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
+(deftest dashboard-card-level-dynamic-goal-dependencies-test
+  (testing "exporting a dashboard takes the card its card's own dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                     {:name "Goals"}
+                         :model/Collection    {other-id :id}                    {:name "Elsewhere"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name          "Goal Source"
+                                                                                 :collection_id other-id}
+                         :model/Card          {shown-id :id}                    {:name          "Shown"
+                                                                                 :collection_id coll-id
+                                                                                 :visualization_settings
+                                                                                 {:graph.goal_value {:id     goal-id
+                                                                                                     :type   "card"
+                                                                                                     :column "total"}}}
+                         :model/Dashboard     {dash-id :id}                     {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                                 {:dashboard_id dash-id
+                                                                                 :card_id      shown-id}]
+        (is (contains? (ids-by-model "Card" (extract/extract {:targets       [[:model/Dashboard dash-id]]
+                                                              :no-settings   true
+                                                              :no-data-model true
+                                                              :no-transforms true}))
+                       goal-eid))))))
+
 (deftest untargeted-export-collections-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Some Collection"}
@@ -781,8 +873,10 @@
                          {:name     "Active Child Collection"
                           :archived false
                           :location (format "/%d/" parent-id)}
-                         :model/Card       {in-archived-eid :entity_id} {:name          "Card in archived collection"
-                                                                         :collection_id archived-child-id}
+                         :model/Card       {in-archived-eid :entity_id} {:name              "Card in archived collection"
+                                                                         :archived          true
+                                                                         :archived_directly false
+                                                                         :collection_id     archived-child-id}
                          :model/Card       {in-active-eid :entity_id}   {:name          "Card in active collection"
                                                                          :collection_id active-child-id}]
         (let [opts {:targets       [[:model/Collection parent-id]]
@@ -833,6 +927,42 @@
                                                         :no-transforms true}))]
               (is (= #{coll-eid} (ids-by-model "Collection" extraction)))
               (is (= #{card-eid} (ids-by-model "Card" extraction))))))))))
+
+(deftest selection-statement-count-test
+  (mt/with-model-cleanup [:model/Collection]
+    (let [top-level  (fn [n prefix]
+                       (let [colls (t2/insert-returning-instances! :model/Collection
+                                                                   (for [i (range n)] {:name (str prefix " " i) :location "/"}))]
+                         (t2/insert! :model/Collection (for [{:keys [id]} colls] {:name     (str prefix " child " id)
+                                                                                  :location (str "/" id "/")}))
+                         colls))
+          statements (fn [opts-fn n]
+                       (let [opts (opts-fn (top-level n (str "Selection " n)))]
+                         (t2/with-call-count [call-count]
+                           (#'extract/selection opts)
+                           (call-count))))
+          by-id      (fn [colls] {:targets (mapv (fn [{:keys [id]}] [:model/Collection id]) colls)})
+          by-eid     (fn [colls] {:targets (mapv (fn [{:keys [entity_id]}] ["Collection" entity_id]) colls)})
+          untargeted (fn [_colls] {:user-id (mt/user->id :crowberto)})]
+      (doseq [[desc opts-fn] [["an export of every collection" untargeted]
+                              ["an export of n collections targeted by id" by-id]
+                              ["an export of n collections targeted by entity id" by-eid]]]
+        (statements opts-fn 2)
+        (testing (str "selecting " desc " costs as many statements for 10 top-level collections as for 40")
+          (is (= (statements opts-fn 10) (statements opts-fn 40)))))
+      (testing "targets resolve to the collections and their children"
+        (let [colls (top-level 3 "Resolved")]
+          (is (= (into (set (map :id colls))
+                       (t2/select-pks-set :model/Collection :location [:in (map #(str "/" (:id %) "/") colls)]))
+                 (:collection-set (#'extract/selection (by-eid colls)))))))
+      (testing "the first missing target in order is refused"
+        (let [[a b] (top-level 2 "Missing")]
+          (is (= {:status-code 400 :model "Collection" :id Integer/MAX_VALUE}
+                 (select-keys (ex-data (extract-ex [[:model/Collection (:id a)]
+                                                    [:model/Collection Integer/MAX_VALUE]
+                                                    ["Collection" "abcdefghijklmnopqrstu"]
+                                                    [:model/Collection (:id b)]]))
+                              [:status-code :model :id]))))))))
 
 (deftest exploration-content-left-out-test
   (testing "exploration Documents and Cards their Summary document materializes are not exported"

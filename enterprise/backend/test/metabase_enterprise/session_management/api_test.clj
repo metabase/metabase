@@ -7,16 +7,14 @@
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.session.db :as session.db]
+   [metabase.session.models.session :as models.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,10 +25,10 @@
                               (f))))
 
 (defn- ago [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) (- amount) unit))
+  [:date-add [:current-timestamp] (- amount) unit])
 
 (defn- from-now [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) amount unit))
+  [:date-add [:current-timestamp] amount unit])
 
 (defn- insert-session!
   "Insert a `core_session` row directly, bypassing the model hooks so timestamps can be arbitrary (including DB-side)
@@ -641,10 +639,10 @@
   (testing "a revoke bigger than one statement can name is still revoked in full, and counted in full"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))
-            end!        (mt/original-fn #'session/end-sessions-by-ids!)]
+            end!        (mt/original-fn #'models.session/end-sessions!)]
         ;; a real revoke batches at 1000 ids because every id is a bind parameter; two and a half batches of two
         ;; exercises the same code, including the short final batch, without inserting thousands of rows
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions! (fn [ids reason ended-by]
                                                                    (end! ids reason ended-by 2))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 5 (:revoked response))
@@ -658,8 +656,8 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [_matched (insert-session! user-id)
             raced    (atom nil)
-            end!     (mt/original-fn #'session/end-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+            end!     (mt/original-fn #'models.session/end-sessions!)]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions! (fn [ids reason ended-by]
                                                                    (reset! raced (insert-session! user-id))
                                                                    (end! ids reason ended-by))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
@@ -674,10 +672,10 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [kept (insert-session! user-id)
             gone (insert-session! user-id)
-            end! (mt/original-fn #'session/end-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
+            end! (mt/original-fn #'models.session/end-sessions!)]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions! (fn [ids reason ended-by]
                                                                    ;; a logout between the select and the update
-                                                                   (session.db/end-sessions! {:id [gone]} "logout" :self)
+                                                                   (end! [gone] "logout" :self)
                                                                    (end! ids reason ended-by))]
           (mt/with-log-messages-for-level [messages [metabase-enterprise.session-management.db :info]]
             (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
@@ -724,6 +722,27 @@
                   (is (= "User" model))
                   (is (= user-id model_id))
                   (is (= revoked (:count details))))))))))))
+
+(deftest revoke-audit-statement-count-test
+  (mt/with-additional-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/AuditLog :model/User]
+      (let [statements (fn [n]
+                         (let [user-ids    (t2/insert-returning-pks! :model/User
+                                                                     (for [i (range n)]
+                                                                       {:first_name "Test"
+                                                                        :last_name  "User"
+                                                                        :email      (format "revoke-%d-%d@example.com" n i)
+                                                                        :password   "password"}))
+                               session-ids (mapv insert-session! user-ids)]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids session-ids})
+                             (u/prog1 (call-count)
+                               (is (= (set user-ids)
+                                      (t2/select-fn-set :model_id :model/AuditLog
+                                                        :topic "session-revoked" :model_id [:in user-ids])))))))]
+        (statements 2)
+        (testing "POST /api/ee/session-management/revoke costs as many statements for 10 users as for 40"
+          (is (= (statements 10) (statements 40))))))))
 
 (deftest revoke-logs-without-audit-feature-test
   (testing "the revoke is logged even when the audit log is not being written"

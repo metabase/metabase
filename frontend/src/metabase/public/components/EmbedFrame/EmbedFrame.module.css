@@ -23,35 +23,6 @@
   border-bottom-color: var(--mb-color-border-neutral);
 }
 
-/**
-  * role="tooltip" works with both legacy and Mantine popover,
-  * the legacy Popover however, has the role "tooltip", but with data-theme="popover",
-  * so we need to target exactly just tooltips.
-  */
-[role="tooltip"]:is(
-  [data-theme~="tooltip"],
-  :global(.emotion-Tooltip-tooltip)
-) {
-  --mb-color-text-primary: color-mix(
-    in srgb,
-    var(--mb-color-text-primary-inverse) 90%,
-    transparent
-  );
-  --mb-color-text-secondary: color-mix(
-    in srgb,
-    var(--mb-color-text-primary-inverse) 65%,
-    transparent
-  );
-  --mb-color-text-disabled: color-mix(
-    in srgb,
-    var(--mb-color-text-primary-inverse) 45%,
-    transparent
-  );
-  --mb-color-background_page-secondary: var(
-    --mb-color-background_page-tertiary-inverse
-  );
-}
-
 [data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
   .ParameterPanel.IsSticky {
     background-color: color-mix(

@@ -15,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
@@ -368,6 +369,57 @@
                                :source-table (mt/id :venues)
                                :aggregation  [["count" {:lib/uuid string?}]]}]}
                   (-> response :dashcards first :card :dataset_query))))))))
+
+(defn- count-query-on
+  "A query that counts the rows of `table-kw`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count)))))
+
+(defn- fetch-public-dashboard-on-tables!
+  "The response of `GET /api/public/dashboard/:uuid` and its statement count, for a dashboard with one Card on each of
+  `table-kws`, fetched with no user."
+  [table-kws]
+  (mt/with-model-cleanup [:model/Card]
+    (with-temp-public-dashboard [dash]
+      (doseq [table-kw table-kws]
+        (add-card-to-dashboard! (t2/insert-returning-instance! :model/Card
+                                                               {:name                   "Count"
+                                                                :type                   :question
+                                                                :creator_id             (mt/user->id :crowberto)
+                                                                :database_id            (mt/id)
+                                                                :dataset_query          (count-query-on table-kw)
+                                                                :display                "table"
+                                                                :visualization_settings {}})
+                                dash))
+      (let [url      (str "public/dashboard/" (:public_uuid dash))
+            response (atom nil)
+            n        (events.tu/real-statement-count! #(reset! response (client/client :get 200 url)))]
+        {:response @response :statements n}))))
+
+(deftest fetch-dashboard-statement-count-test
+  (testing "GET /api/public/dashboard/:uuid costs the same number of statements for cards on more tables"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (fetch-public-dashboard-on-tables! [:venues :users])
+      (is (= 4 (count (:dashcards (:response (fetch-public-dashboard-on-tables! [:venues :users :checkins :categories]))))))
+      (is (= (:statements (fetch-public-dashboard-on-tables! [:venues]))
+             (:statements (fetch-public-dashboard-on-tables! [:venues :users :checkins :categories])))))))
+
+(deftest fetch-dashboard-blank-queries-on-several-tables-test
+  (testing "GET /api/public/dashboard/:uuid blanks each Card's query to its own source table and keeps the same keys"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [table-kws [:venues :users :checkins]
+            {:keys [response]} (fetch-public-dashboard-on-tables! table-kws)
+            stage-of  #(:source-table (first (get-in % [:card :dataset_query :stages])))
+            dashcards (sort-by stage-of (:dashcards response))]
+        (is (= (sort (map #(mt/id %) table-kws))
+               (map stage-of dashcards)))
+        (doseq [dashcard dashcards]
+          (is (= #{:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query}
+                 (set (keys (:card dashcard)))))
+          (is (=? [["count" {:lib/uuid string?}]]
+                  (:aggregation (first (get-in dashcard [:card :dataset_query :stages]))))))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"
@@ -1141,6 +1193,125 @@
                                                             :target [:dimension (mt/id :venues :id)]
                                                             :value  [10]
                                                             :id     "_VENUE_ID_"}])))))))))
+
+(deftest execute-public-dashcard-omits-goal-values-test
+  (testing "GET /api/public/dashboard/:uuid/dashcard/:id/card/:id leaves dynamic goals to the /goal-values route"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
+        (with-temp-public-dashboard-and-card [dash card dashcard]
+          (t2/update! :model/Card :id (u/the-id card)
+                      {:display                :scalar
+                       :visualization_settings {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                                   :max   nil
+                                                                   :color "red"}]}})
+          (let [response (client/client :get 202 (dashcard-url dash card dashcard))]
+            (is (= [[100]] (mt/rows response)))
+            (is (not (contains? (:data response) :referenced_entities)))))))))
+
+;;; ------------------------------------------ GET /api/public/.../goal-values -------------------------------------------
+
+(defn- goal-ref
+  "A dynamic goal reading column `count` of the `type` entity with `id`."
+  [type id]
+  {:id id :type type :column "count"})
+
+(defn- scalar-goal-settings
+  "Scalar viz settings with one segment per goal in `goals`."
+  [& goals]
+  {:scalar.segments (vec (for [goal goals] {:min goal :max nil :color "red"}))})
+
+(defn- venues-count-measure
+  "A measure definition counting venues."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
+
+(defn- card-goal-values-url [card]
+  (str "public/card/" (:public_uuid card) "/goal-values"))
+
+(defn- dashcard-goal-values-url [dash card dashcard]
+  (str (dashcard-url dash card dashcard) "/goal-values"))
+
+(deftest public-card-goal-values-test
+  (testing "GET /api/public/card/:uuid/goal-values runs the card and measure goals in the card's saved settings"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card    {goal-id :id}    {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Measure {measure-id :id} {:name       "Venue count"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition (venues-count-measure)}]
+        (with-temp-public-card [card {:display                :scalar
+                                      :visualization_settings (scalar-goal-settings (goal-ref "card" goal-id)
+                                                                                    (goal-ref "measure" measure-id))}]
+          (is (=? {:card    {goal-id    {:status "completed" :data {:rows [[1000]]}}}
+                   :measure {measure-id {:status "completed" :data {:rows [[100]]}}}}
+                  (client/client :get 202 (card-goal-values-url card)))))))))
+
+(deftest public-card-goal-values-runs-saved-sources-only-test
+  (testing "GET /api/public/card/:uuid/goal-values ignores a request that names other goal sources"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id}  {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Card {other-id :id} {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (with-temp-public-card [card {:display                :scalar
+                                      :visualization_settings (scalar-goal-settings (goal-ref "card" goal-id))}]
+          (let [response (client/client :get 202 (card-goal-values-url card)
+                                        :sources (json/encode [{:type "card" :id other-id}])
+                                        :card_id other-id)]
+            (is (= #{goal-id} (set (keys (:card response)))))
+            (is (not (contains? response :measure)))))))))
+
+(deftest public-card-goal-values-failed-source-test
+  (testing "GET /api/public/card/:uuid/goal-values gives a failed source the generic error, not the driver's message"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM no_such_table"})}]
+        (with-temp-public-card [card {:display                :scalar
+                                      :visualization_settings (scalar-goal-settings (goal-ref "card" goal-id))}]
+          (let [response (client/client :get 202 (card-goal-values-url card))]
+            (is (=? {:card {goal-id {:status "failed" :error "An error occurred while running the query."}}}
+                    response))
+            (is (not (re-find #"(?i)no_such_table" (pr-str response))))))))))
+
+(deftest public-dashcard-goal-values-test
+  (testing "GET /api/public/dashboard/:uuid/dashcard/:id/card/:id/goal-values"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card    {goal-id :id}    {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Measure {measure-id :id} {:name       "Venue count"
+                                                      :table_id   (mt/id :venues)
+                                                      :definition (venues-count-measure)}]
+        (with-temp-public-dashboard-and-card [dash card dashcard]
+          (testing "runs the card and measure goals in the card's saved settings"
+            (t2/update! :model/Card :id (u/the-id card)
+                        {:display                :scalar
+                         :visualization_settings (scalar-goal-settings (goal-ref "card" goal-id)
+                                                                       (goal-ref "measure" measure-id))})
+            (is (=? {:card    {goal-id    {:status "completed" :data {:rows [[1000]]}}}
+                     :measure {measure-id {:status "completed" :data {:rows [[100]]}}}}
+                    (client/client :get 202 (dashcard-goal-values-url dash card dashcard)))))
+          (testing "runs the goals in the dashcard's own settings"
+            (t2/update! :model/Card :id (u/the-id card) {:visualization_settings {}})
+            (t2/update! :model/DashboardCard :id (u/the-id dashcard)
+                        {:visualization_settings (scalar-goal-settings (goal-ref "card" goal-id))})
+            (let [response (client/client :get 202 (dashcard-goal-values-url dash card dashcard))]
+              (is (=? {:card {goal-id {:status "completed" :data {:rows [[1000]]}}}} response))
+              (is (not (contains? response :measure))))))))))
+
+(deftest public-dashcard-series-card-goal-values-test
+  (testing "GET /api/public/dashboard/:uuid/dashcard/:id/card/:id/goal-values runs no goals for a series card"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {goal-id :id}   {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Card series-card     {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                  :display                :scalar
+                                                  :visualization_settings (scalar-goal-settings (goal-ref "card" goal-id))}]
+        (with-temp-public-dashboard-and-card [dash card dashcard]
+          (t2/update! :model/Card :id (u/the-id card)
+                      {:display                :scalar
+                       :visualization_settings (scalar-goal-settings (goal-ref "card" goal-id))})
+          (mt/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                                       :card_id          (u/the-id series-card)
+                                                       :position         0}]
+            (testing "the series card passes the membership check, as on the chart route"
+              (is (= [[100]] (mt/rows (client/client :get 202 (dashcard-url dash series-card dashcard))))))
+            (is (empty? (client/client :get 202 (dashcard-goal-values-url dash series-card dashcard))))))))))
 
 (deftest execute-public-dashcard-with-default-parameters-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id with parameters with default values"
@@ -2604,7 +2775,7 @@
                      :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
                      :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
                      :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
-                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                     :model/TimelineEvent _on-archived {:timeline_id (:id archived) :archived true}
                      :model/Dashboard dashboard (public-dashboard-properties)
                      :model/Card first-card
                      {:display "line"

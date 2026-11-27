@@ -25,6 +25,7 @@
    [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.transforms.models.transform :as transform]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.util :as transforms.u]
@@ -94,7 +95,7 @@
             db-id (mt/id)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
-            table-name (keyword "test_column_order")
+            table-name (keyword (str "test_column_order_" (subs (str (random-uuid)) 0 8)))
             qualified-table-name (if schema-name
                                    (keyword schema-name (name table-name))
                                    table-name)
@@ -467,8 +468,8 @@
             "target-table must find a Table row with schema=nil — otherwise schemas-less drivers (MySQL) would silently miss their targets")
         (is (= "some_nil_schema_table" (:name found)))))))
 
-(deftest execute-sets-transform-id-on-target-table-test
-  (testing "Executing a query transform sets transform_id on the target table"
+(deftest execute-sets-target-table-id-on-transform-test
+  (testing "Executing a query transform sets target_table_id on the transform"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic}
         (let [target {:type "table" :schema nil :name "test_output_table"}]
@@ -482,7 +483,7 @@
             ;; Mock execute-base! to return success without actually running a query,
             ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
             ;; and sync-target! to skip driver calls but still return the target table
-            ;; so complete-execution! can set transform_id on it. execute-base! is a multimethod,
+            ;; so complete-execution! can set target_table_id from it. execute-base! is a multimethod,
             ;; so it needs with-redefs (with-dynamic-fn-redefs refuses to proxy multimethods);
             ;; the plain fns go through with-dynamic-fn-redefs to keep them thread-local.
             (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
@@ -492,21 +493,23 @@
                  transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
                                                           (run-fn (a/promise-chan) nil))]
                 (transforms.execute/execute! transform {:run-method :manual})
-                (is (= transform-id
-                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
+                (is (= table-id
+                       (t2/select-one-fn :target_table_id :model/Transform :id transform-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
     (mt/with-premium-features #{:transforms-basic}
       (let [target {:type "table" :schema nil :name "hydration_test_table"}]
-        (mt/with-temp [:model/Transform {transform-id :id} {:target target :name "Test Hydration Transform"}
-                       :model/Table table {:transform_id transform-id}]
+        (mt/with-temp [:model/Table table {}
+                       :model/Transform {transform-id :id} {:target          target
+                                                            :name            "Test Hydration Transform"
+                                                            :target_table_id (:id table)}]
           (let [hydrated (t2/hydrate table :transform)]
             (is (some? (:transform hydrated)))
             (is (= transform-id (-> hydrated :transform :id))))))))
-  (testing "hydrating :transform returns nil when transform_id is nil"
+  (testing "hydrating :transform returns nil when no transform targets the table"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Table table {:transform_id nil}]
+      (mt/with-temp [:model/Table table {}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
 
@@ -830,3 +833,99 @@
           (let [table (t2/select-one :model/Table :id (:id @synced-table))]
             (is (nil? (:schema table))
                 "Table schema should remain nil when physical table isn't in default schema")))))))
+
+(defn- matrix-row
+  [i db-id query]
+  {:name   (str "readability matrix " i)
+   :source {:type :query :query query}
+   :target {:type "table" :name (str "readability_matrix_" i) :database db-id}})
+
+(defn- per-query-permissions
+  "The delays of [[transforms.u/prefetch-source-models]] for `transforms`, each answered by the check of its own query."
+  [transforms]
+  (into {}
+        (map (fn [transform]
+               (let [query (get-in transform [:source :query])]
+                 [(#'transforms.u/source-query-key query)
+                  (delay (#'transforms.u/source-query-permissions-ok? query))])))
+        transforms))
+
+(deftest source-readability-of-list-equals-answer-of-each-query-test
+  (testing "a list of transforms gets the readability and permissions that checking each source query on its own gives"
+    (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
+      (mt/with-temp [:model/Database           {b-id :id}       {:engine :h2}
+                     :model/Collection         collection       {}
+                     :model/Card               {card-id :id}    {:collection_id (:id collection)
+                                                                 :dataset_query (lib/query (mt/metadata-provider)
+                                                                                           (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}
+                     :model/NativeQuerySnippet {snippet-id :id} {:name "readability matrix snippet" :content "1"}]
+        (mt/with-non-admin-groups-no-collection-perms collection
+          (mt/with-user-in-groups [native-group {:name "readability native"}
+                                   native-user  [native-group]]
+            (mt/with-user-in-groups [builder-group {:name "readability builder"}
+                                     builder-user  [builder-group]]
+              (mt/with-user-in-groups [b-group {:name "readability database b"}
+                                       b-user  [b-group]]
+                (perms/grant-collection-read-permissions! native-group collection)
+                (mt/with-model-cleanup [:model/Transform]
+                  (mt/with-no-data-perms-for-all-users!
+                    (mt/with-db-perms-for-group! native-group (mt/id) {:perms/view-data      :unrestricted
+                                                                       :perms/create-queries :query-builder-and-native
+                                                                       :perms/transforms     :yes}
+                      (mt/with-db-perms-for-group! builder-group (mt/id) {:perms/view-data      :unrestricted
+                                                                          :perms/create-queries :query-builder}
+                        (mt/with-db-perms-for-group! b-group b-id {:perms/view-data      :unrestricted
+                                                                   :perms/create-queries :query-builder-and-native
+                                                                   :perms/transforms     :yes}
+                          (let [mp-a     (lib-be/application-database-metadata-provider (mt/id))
+                                mp-b     (lib-be/application-database-metadata-provider b-id)
+                                tag      (fn [tag-name tag-type extra]
+                                           {tag-name (merge {:id tag-name :name tag-name :display-name tag-name :type tag-type} extra)})
+                                native   (fn [mp sql tags]
+                                           (cond-> (lib/native-query mp sql)
+                                             tags (lib/with-template-tags tags)))
+                                queries  [[(mt/id) (native mp-a "SELECT 1 AS a" nil)]
+                                          [(mt/id) (native mp-a "SELECT 2 AS a" nil)]
+                                          [(mt/id) (native mp-a "SELECT {{x}} AS a" (tag "x" :text {}))]
+                                          [(mt/id) (native mp-a "SELECT {{snippet: readability matrix snippet}} AS a"
+                                                           (tag "snippet: readability matrix snippet" :snippet
+                                                                {:snippet-name "readability matrix snippet" :snippet-id snippet-id}))]
+                                          [(mt/id) (native mp-a (str "SELECT * FROM {{#" card-id "}} AS c")
+                                                           (tag (str "#" card-id) :card {:card-id card-id}))]
+                                          [(mt/id) (lib/query mp-a (lib.metadata/table mp-a (mt/id :venues)))]
+                                          [b-id (native mp-b "SELECT 1 AS a" nil)]
+                                          [b-id (native mp-b "SELECT 2 AS a" nil)]]
+                                ids      (mt/with-current-user (mt/user->id :crowberto)
+                                           (mapv :id (transform/create-transforms!
+                                                      (vec (map-indexed (fn [i [db-id query]] (matrix-row i db-id query)) queries)))))
+                                expected (fn [transforms]
+                                           (let [cache (assoc (transforms.u/prefetch-source-models transforms)
+                                                              :source-query-permissions (per-query-permissions transforms))]
+                                             {:source_readable (mapv #(transforms.u/source-tables-readable? (transforms.u/->definition %)) transforms)
+                                              :permissions     (mapv #(select-keys % [:can_read :can_write])
+                                                                     (transform/assoc-permissions transforms cache [:can_read :can_write]))}))
+                                actual   (fn [transforms]
+                                           {:source_readable (mapv :source_readable (transforms.u/add-source-readable transforms))
+                                            :permissions     (mapv #(select-keys % [:can_read :can_write])
+                                                                   (t2/hydrate transforms :can_read :can_write))})]
+                            (doseq [[label user-id] [["a superuser" (mt/user->id :crowberto)]
+                                                     ["an analyst with native access to the first database" (:id native-user)]
+                                                     ["an analyst with query builder access to the first database" (:id builder-user)]
+                                                     ["an analyst with native access to the second database" (:id b-user)]]]
+                              (mt/with-data-analyst-role! user-id
+                                (mt/with-current-user user-id
+                                  (let [transforms (t2/select :model/Transform :id [:in ids] {:order-by [:id]})]
+                                    (testing label
+                                      (is (= (expected transforms) (actual transforms))))))))
+                            (testing "the matrix tells readable and unreadable sources apart"
+                              (mt/with-data-analyst-role! (:id native-user)
+                                (mt/with-current-user (:id native-user)
+                                  (let [transforms (t2/select :model/Transform :id [:in ids] {:order-by [:id]})]
+                                    (is (= [true true true true true true false false]
+                                           (:source_readable (actual transforms))))))))
+                            (testing "the matrix tells native and query builder access apart, a source that cannot be preprocessed for lack of a value counting as readable"
+                              (mt/with-data-analyst-role! (:id builder-user)
+                                (mt/with-current-user (:id builder-user)
+                                  (let [transforms (t2/select :model/Transform :id [:in ids] {:order-by [:id]})]
+                                    (is (= [false false true false false true false false]
+                                           (:source_readable (actual transforms))))))))))))))))))))))
