@@ -312,12 +312,12 @@
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
+  ;; registered before migrations run, so a halt during them releases their locks
+  (mdb/start-app-db!)
   ;; Cal 2024-04-03:
   ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
-  ;; registered before migrations run, so a halt during them releases their locks
-  (mdb/start-app-db!)
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (mdb/encrypt-plaintext-columns!)
   ;; fetch the premium token status now, so that everything below sees this instance's features
