@@ -1514,6 +1514,10 @@ describe("DashCard", () => {
 
         await screen.findByTestId("chartsettings-sidebar");
         expect(await screen.findAllByText("Goal 250")).toHaveLength(2);
+        await user.hover(screen.getByLabelText("Change value source"));
+        expect(
+          await screen.findByText("Goal source → goal"),
+        ).toBeInTheDocument();
         const goalSourceCalls = fetchMock.callHistory.calls(
           "path:/api/dynamic-goal/values",
         );
