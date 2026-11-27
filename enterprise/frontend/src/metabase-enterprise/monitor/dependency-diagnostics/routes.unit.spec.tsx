@@ -159,7 +159,7 @@ describe("dependency diagnostics routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getDependencyDiagnosticsRoutes());
 
-    expect(loaders).toHaveLength(5);
+    expect(loaders).toHaveLength(10);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
