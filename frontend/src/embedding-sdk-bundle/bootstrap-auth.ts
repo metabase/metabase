@@ -101,8 +101,9 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
 }
 
 function startJwtAuth(authConfig: any) {
-  // Bail out: API key auth or SAML — these can't done in parallel
+  // Bail out: guest embeds, API key auth or SAML — these can't done in parallel
   if (
+    authConfig.isGuest ||
     ("apiKey" in authConfig && authConfig.apiKey) ||
     authConfig.preferredAuthMethod === "saml"
   ) {
