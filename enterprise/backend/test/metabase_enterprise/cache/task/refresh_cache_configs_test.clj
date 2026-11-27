@@ -357,6 +357,63 @@
                                                           :parameterized true})]
             (is (= [] (@#'task.cache/duration-queries-to-rerun-for [question-cache-config-1] false)))))))))
 
+(deftest duration-base-queries-ignore-cache-refresh-executions-test
+  (let [query            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
+        query-cache-hash (qp.util/query-hash query)]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                   :model/Card {card-id :id} {:name          "Cached card"
+                                              :dataset_query query}
+                   :model/DashboardCard {} {:dashboard_id dashboard-id
+                                            :card_id      card-id}
+                   :model/Query {} {:query_hash             query-cache-hash
+                                    :average_execution_time 1
+                                    :query                  query}
+                   :model/QueryCache {} {:query_hash query-cache-hash
+                                         :updated_at (t/minus (t/offset-date-time) (t/days 1))
+                                         :results    (.getBytes "cache contents" "UTF-8")}
+                   :model/QueryExecution {} (merge (query-execution-defaults query)
+                                                   {:card_id      card-id
+                                                    :dashboard_id dashboard-id
+                                                    :context      :cache-refresh})]
+      (testing "Cache refreshes are not uses of a query, so they do not make it rerun again"
+        (is (= []
+               (@#'task.cache/duration-queries-to-rerun-for
+                [{:model "question" :model_id card-id :config {:duration 1 :unit "hours"}}]
+                false)))
+        (is (= []
+               (@#'task.cache/duration-queries-to-rerun-for
+                [{:model "dashboard" :model_id dashboard-id :config {:duration 1 :unit "hours"}}]
+                false)))))))
+
+(deftest duration-dashboard-queries-skip-cards-removed-from-dashboard-test
+  (let [query            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
+        query-cache-hash (qp.util/query-hash query)]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
+                   :model/Card {card-id :id} {:name          "Cached card"
+                                              :dataset_query query}
+                   :model/Card {series-card-id :id} {:name          "Series card"
+                                                     :dataset_query query}
+                   :model/Query {} {:query_hash             query-cache-hash
+                                    :average_execution_time 1
+                                    :query                  query}
+                   :model/QueryCache {} {:query_hash query-cache-hash
+                                         :updated_at (t/minus (t/offset-date-time) (t/days 1))
+                                         :results    (.getBytes "cache contents" "UTF-8")}
+                   :model/QueryExecution {} (merge (query-execution-defaults query)
+                                                   {:card_id card-id :dashboard_id dashboard-id})
+                   :model/QueryExecution {} (merge (query-execution-defaults query)
+                                                   {:card_id series-card-id :dashboard_id dashboard-id})]
+      (let [cache-configs [{:model "dashboard" :model_id dashboard-id :config {:duration 1 :unit "hours"}}]
+            rerun-card-ids #(set (map :card-id (@#'task.cache/duration-queries-to-rerun-for cache-configs false)))]
+        (testing "Cards no longer on dashboard are not rerun for its cache config"
+          (is (= #{} (rerun-card-ids))))
+        (testing "Cards on dashboard, directly or as series, are rerun"
+          (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                 :card_id      card-id}
+                         :model/DashboardCardSeries {} {:dashboardcard_id dashcard-id
+                                                        :card_id          series-card-id}]
+            (is (= #{card-id series-card-id} (rerun-card-ids)))))))))
+
 (deftest duration-parameterized-queries-to-rerun-edge-cases-test
   (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
         query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}

@@ -4093,6 +4093,8 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
