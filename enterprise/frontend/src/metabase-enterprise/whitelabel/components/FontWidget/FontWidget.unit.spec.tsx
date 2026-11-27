@@ -4,10 +4,12 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -17,6 +19,7 @@ const setup = async (
   initialFont = "Lato",
   overrides?: Partial<EnterpriseSettings>,
   setByEnvVar = false,
+  { withGlobalStyles = false }: { withGlobalStyles?: boolean } = {},
 ) => {
   const settings = createMockSettings({
     "available-fonts": ["Lato", "Lora", "Comic Sans"],
@@ -40,14 +43,22 @@ const setup = async (
   ]);
   setupUpdateSettingEndpoint();
 
-  renderWithProviders(<FontWidget />, {
-    storeInitialState: { settings: createMockSettingsState(settings) },
-  });
+  renderWithProviders(
+    <>
+      {/* app.tsx mounts GlobalStyles at the root, next to the routes */}
+      {withGlobalStyles && <GlobalStyles />}
+      <FontWidget />
+    </>,
+    {
+      storeInitialState: { settings: createMockSettingsState(settings) },
+    },
+  );
   await screen.findByText("Font");
-  return waitFor(async () => {
+  await waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(2);
   });
+  return settings;
 };
 
 describe("FontWidget", () => {
@@ -113,6 +124,44 @@ describe("FontWidget", () => {
     expect(body2).toEqual({
       value: null,
     });
+  });
+
+  it("should apply each of several font changes in a row to the app (metabase#45486)", async () => {
+    const settings = await setup(
+      "Lato",
+      { "available-fonts": ["Lato", "Lora", "Merriweather", "Montserrat"] },
+      false,
+      { withGlobalStyles: true },
+    );
+    // The PUT handler stores the value that the next properties fetch returns
+    setupStatefulSettingsEndpoints(settings);
+
+    const fontsWithExpectedFontFamily = [
+      ["Lora", '"Lora", serif'],
+      ["Merriweather", '"Merriweather", "Lora", serif'],
+      ["Montserrat", '"Montserrat", sans-serif'],
+      ["Lato", '"Lato", Arial, sans-serif'],
+    ];
+    let currentFont = "Lato";
+
+    for (const [newFont, fontFamily] of fontsWithExpectedFontFamily) {
+      await clickSelect(currentFont, newFont);
+      await waitFor(() => expect(getAppFontFamily()).toBe(fontFamily));
+      expect(await screen.findByRole("textbox", { name: "Font" })).toHaveValue(
+        newFont,
+      );
+      currentFont = newFont;
+    }
+
+    const puts = await findRequests("PUT");
+    expect(
+      puts.map(({ url, body }) => [url.split("/api/setting/")[1], body]),
+    ).toEqual(
+      fontsWithExpectedFontFamily.flatMap(([font]) => [
+        ["application-font", { value: font }],
+        ["application-font-files", { value: null }],
+      ]),
+    );
   });
 
   describe("font files", () => {
@@ -281,4 +330,11 @@ async function expectPuts(cnt: number) {
 async function getLastPutBody() {
   const puts = await findRequests("PUT");
   return puts[puts.length - 1].body;
+}
+
+/** The font family that the body uses, through `var(--mb-default-font-family)` */
+function getAppFontFamily() {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-default-font-family")
+    .trim();
 }
