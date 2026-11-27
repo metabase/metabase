@@ -178,6 +178,17 @@ describe("toPluginSettings", () => {
     expect(column(col)).toEqual({ prefix: "$", column: col });
   });
 
+  it("keeps column a function when a stored plugin setting is named column", () => {
+    const settings = {
+      column: () => ({ prefix: "$" }),
+      [`${PREFIX}column`]: 1,
+    };
+
+    const pluginSettings = toPluginSettings(settings, PREFIX);
+
+    expect(Reflect.get(pluginSettings, "column")).toBeInstanceOf(Function);
+  });
+
   it("hands the caller's own column back and drops host caches from the result", () => {
     const settings = {
       column: (col: unknown) => ({
@@ -247,5 +258,11 @@ describe("toHostSettings", () => {
       [`${PREFIX}threshold`]: 1,
       [`${PREFIX}gauge.segments`]: [],
     });
+  });
+
+  it("drops reserved setting ids", () => {
+    expect(
+      toHostSettings({ threshold: 1, column: 1, column_settings: {} }, PREFIX),
+    ).toEqual({ [`${PREFIX}threshold`]: 1 });
   });
 });

@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import type { CustomVisualizationProps } from "custom-viz";
+import type {
+  CustomVisualizationProps,
+  ReservedVisualizationSettingId,
+} from "custom-viz";
 
 import { isCustomVizSettingKey } from "metabase/viz-core";
 import type { Series, VisualizationSettings } from "metabase-types/api";
@@ -9,6 +12,13 @@ type PluginProps = CustomVisualizationProps<Record<string, unknown>>;
 export type PluginSeries = PluginProps["series"];
 
 export type PluginSettings = PluginProps["settings"];
+
+export const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
+  Object.keys({
+    column: true,
+    column_settings: true,
+  } satisfies Record<ReservedVisualizationSettingId, true>),
+);
 
 // Keyed by a host object, then by the plugin's prefix.
 // Every plugin gets its own copy, so one plugin's mutations can't reach another's.
@@ -87,7 +97,8 @@ export function toPluginSettings(
   const hostEntries = entries.filter(([key]) => !isCustomVizSettingKey(key));
   const pluginEntries = entries
     .filter(([key]) => key.startsWith(prefix))
-    .map(([key, value]) => [key.slice(prefix.length), value]);
+    .map(([key, value]) => [key.slice(prefix.length), value])
+    .filter(([settingId]) => !RESERVED_SETTING_IDS.has(settingId));
 
   const merged = Object.fromEntries([...hostEntries, ...pluginEntries]);
 
@@ -134,6 +145,8 @@ export function toHostSettings(
   prefix: string,
 ): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(settings).map(([key, value]) => [`${prefix}${key}`, value]),
+    Object.entries(settings)
+      .filter(([settingId]) => !RESERVED_SETTING_IDS.has(settingId))
+      .map(([settingId, value]) => [`${prefix}${settingId}`, value]),
   );
 }

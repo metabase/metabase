@@ -2,7 +2,6 @@ import type {
   CreateDefineSetting,
   CustomVisualization,
   CustomVisualizationMount,
-  ReservedVisualizationSettingId,
   Widgets,
 } from "custom-viz";
 import { t } from "ttag";
@@ -16,15 +15,12 @@ import type { CustomVizPluginRuntime, Series } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { copyPluginValue } from "./copy-plugin-value";
-import { toPluginSeries, toPluginSettings } from "./plugin-view";
+import {
+  RESERVED_SETTING_IDS,
+  toPluginSeries,
+  toPluginSettings,
+} from "./plugin-view";
 import { wrapPluginWidget } from "./widget-mount";
-
-const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
-  Object.keys({
-    column: true,
-    column_settings: true,
-  } satisfies Record<ReservedVisualizationSettingId, true>),
-);
 
 type PluginSettingDefinitions = CustomVisualization<
   Record<string, unknown>
