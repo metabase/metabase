@@ -829,6 +829,44 @@
           (is (= (:count small) (:count large)))
           (is (= [10 40] [(:updated small) (:updated large)])))))))
 
+(deftest rederive-shares-metadata-reads-test
+  (testing "re-deriving 10 cards of one table through inference reads its metadata as often as re-deriving 40"
+    (with-dependencies-feature
+      (let [run! (fn [n]
+                   (let [ids (t2/insert-returning-pks!
+                              :model/Card
+                              (for [_ (range n)]
+                                (merge (mt/with-temp-defaults :model/Card) {:dataset_query (table-query :orders)})))]
+                     (try
+                       (run-jobs!)
+                       (apply reprocess! ids)
+                       (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
+                                          #(mt/with-dynamic-fn-redefs [queries.card/update-cards! (constantly nil)]
+                                             (events.tu/real-statement-count! rederive!)))
+                       (finally
+                         (t2/delete! :model/Card :id [:in ids])))))]
+        (run! 2)
+        (is (= (run! 10) (run! 40)))))))
+
+(deftest unreadable-card-fails-alone-in-batch-test
+  (testing "a card the job can't read counts one failure, and the rest of its batch is re-derived"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {bad-id :id}  {:dataset_query (table-query :venues)}
+                     :model/Card {good-id :id} {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! bad-id good-id)
+        (let [cards (mt/original-fn #'dependencies.db/cards)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/cards (fn [ids]
+                                                              (when (some #{bad-id} ids)
+                                                                (throw (ex-info "Unreadable row" {})))
+                                                              (cards ids))]
+            (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed")) rederive!)))
+        (is (= "Changed" (:display_name (column good-id "NAME"))))
+        (is (not (pending? good-id)))
+        (is (not= "Changed" (:display_name (column bad-id "NAME"))))
+        (is (=? {:fail_count 1}
+                (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id bad-id)))))))
+
 (deftest store-locks-cards-before-marking-dependents-test
   (testing "storing re-derived cards locks their rows before it marks their dependents stale, as a save of a card does"
     (with-dependencies-feature
