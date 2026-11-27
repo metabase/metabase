@@ -135,6 +135,8 @@ describe("scenarios > public > dashboard", () => {
       // new dashboards should default to 'fixed' width
       H.assertDashboardFixedWidth();
 
+      // visitPublicDashboard signs out, and changing the width needs an admin
+      cy.signInAsAdmin();
       cy.request("PUT", `/api/dashboard/${id}`, { width: "full" });
       H.visitPublicDashboard(id, { params: {}, hash: { theme: "dark" } });
 
