@@ -541,6 +541,68 @@ describe("table.striped", () => {
   });
 });
 
+describe("currency column settings", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("formats a column keyed by its legacy field ref with the currency code", () => {
+    const totalColumn = createMockNumericColumn({
+      id: ORDERS.TOTAL,
+      name: "TOTAL",
+      display_name: "Total",
+      field_ref: ["field", ORDERS.TOTAL, null],
+    });
+    const subtotalColumn = createMockNumericColumn({
+      id: ORDERS.SUBTOTAL,
+      name: "SUBTOTAL",
+      display_name: "Subtotal",
+      field_ref: ["field", ORDERS.SUBTOTAL, null],
+    });
+    const series = [
+      createMockSingleSeries(
+        {
+          display: "table",
+          visualization_settings: {
+            column_settings: {
+              [`["ref",["field",${ORDERS.TOTAL},null]]`]: {
+                currency: "USD",
+                currency_in_header: false,
+                currency_style: "code",
+                number_style: "currency",
+              },
+            },
+          },
+        },
+        {
+          data: {
+            cols: [subtotalColumn, totalColumn],
+            rows: [
+              [37.65, 39.72],
+              [110.93, 117.03],
+            ],
+          },
+        },
+      ),
+    ];
+
+    renderWithProviders(
+      <Visualization rawSeries={series} width={600} height={400} />,
+    );
+
+    const cellValues = screen
+      .getAllByRole("gridcell")
+      .map((cell) => cell.textContent)
+      .filter((text) => text !== "");
+    expect(cellValues).toEqual([
+      "37.65",
+      "USD\u00a039.72",
+      "110.93",
+      "USD\u00a0117.03",
+    ]);
+  });
+});
+
 describe("text_wrapping", () => {
   describe("line breaks in cells (#6178, #64697)", () => {
     beforeAll(() => {
