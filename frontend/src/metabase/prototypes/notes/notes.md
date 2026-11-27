@@ -39,18 +39,15 @@ flowchart LR
   O --> M
 ```
 
-Made-up numbers:
+Live counts from the Sample Database:
 
-|                            | Reviews | Orders | Per 100 orders |
-| -------------------------- | ------: | -----: | -------------: |
-| No filter                  |      80 |  1,000 |        **8.0** |
-| Pill: review Rating ≤ 2    |      20 |  1,000 |        **2.0** |
-| Metric: product Rating ≤ 2 |      30 |    150 |       **20.0** |
+<div data-query="rating-cases"></div>
 
 <div class="callout">
 <strong>Same name, different question.</strong>
-2.0 is bad reviews per order. 20.0 is the review rate of badly rated products.
-Both columns are called Rating, so name matching must not pair them.
+The pill row is bad reviews per order. The metric row is the review rate of
+badly rated products. Both columns are called Rating, so name matching must
+not pair them.
 </div>
 
 ### What we decided

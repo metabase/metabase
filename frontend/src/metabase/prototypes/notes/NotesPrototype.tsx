@@ -1,10 +1,12 @@
 import { Marked } from "marked";
 import { render as renderDiagram } from "pele";
-import { type MouseEvent, useEffect } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Box } from "metabase/ui";
 
 import S from "./Notes.module.css";
+import { NOTES_QUERIES } from "./NotesQueries";
 import notes from "./notes.md";
 
 // Markdown with raw HTML mixed in: marked passes HTML blocks and inline tags
@@ -59,19 +61,35 @@ function handleAnchorClick(event: MouseEvent<HTMLDivElement>) {
 
 /** Design notes behind the prototypes, written in notes.md. */
 export function NotesPrototype() {
+  const notesRef = useRef<HTMLDivElement>(null);
+  const [querySlots, setQuerySlots] = useState<Element[]>([]);
+
   useEffect(() => {
+    if (notesRef.current) {
+      setQuerySlots(
+        Array.from(notesRef.current.querySelectorAll("[data-query]")),
+      );
+    }
     if (window.location.hash) {
       scrollToHash(window.location.hash, "auto");
     }
   }, []);
 
   return (
-    <Box
-      className={S.notes}
-      maw="52rem"
-      onClick={handleAnchorClick}
-      // Our own file, not user input.
-      dangerouslySetInnerHTML={{ __html: NOTES_HTML }}
-    />
+    <>
+      <Box
+        ref={notesRef}
+        className={S.notes}
+        maw="52rem"
+        onClick={handleAnchorClick}
+        // Our own file, not user input.
+        dangerouslySetInnerHTML={{ __html: NOTES_HTML }}
+      />
+      {/* The HTML string never changes, so React leaves these nodes alone. */}
+      {querySlots.map((slot) => {
+        const QueryBlock = NOTES_QUERIES[slot.getAttribute("data-query") ?? ""];
+        return QueryBlock ? createPortal(<QueryBlock />, slot) : null;
+      })}
+    </>
   );
 }
