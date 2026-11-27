@@ -2001,3 +2001,33 @@
               "teardown ended the holder's session, so its commit fails")
           (finally
             (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(deftest ci-probe-56883-datetimeoffset-keeps-per-value-dst-offset-test
+  (mt/test-driver :sqlserver
+    (qp.test-util/with-report-timezone-id! "Europe/Paris"
+      (let [mp    (mt/metadata-provider)
+            sql   (str "select cast('2025-01-01 12:00:00+01:00' as datetimeoffset(0)) as sample_datetime "
+                       "union all select cast('2025-04-01 12:00:00+02:00' as datetimeoffset(0)) "
+                       "union all select cast('2025-02-01 11:00:00Z' as datetimeoffset(0))")
+            query (lib/native-query mp sql)
+            rows  (mt/rows (qp/process-query query))
+            parts (set (map (fn [[v]]
+                              (let [s (str v)]
+                                (rest (re-find #"T(\d\d):\d\d.*?([+-]\d\d:\d\d|Z)$" s))))
+                            rows))]
+        (is (= #{["12" "+01:00"] ["12" "+02:00"]}
+               (set (map vec parts)))
+            (str "rows were " (pr-str (mapv first rows))))))))
+
+(deftest ci-probe-63990-nested-grouped-source-has-no-top-or-order-by-test
+  (mt/test-driver :sqlserver
+    (let [mp    (mt/metadata-provider)
+          base  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          grouped (-> base
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))
+          query (lib/append-stage grouped)
+          sql   (:query (qp.compile/compile query))
+          cte   (first (str/split sql #"(?i)\)\s*SELECT" 2))]
+      (is (not (re-find #"(?i)\bTOP\s*\(" cte)) (str "TOP in source stage: " sql))
+      (is (not (re-find #"(?i)\bORDER BY\b" cte)) (str "ORDER BY in source stage: " sql)))))
