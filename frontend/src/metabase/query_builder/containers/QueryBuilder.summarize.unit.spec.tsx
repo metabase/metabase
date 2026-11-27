@@ -13,6 +13,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  BinningMetadata,
   Card,
   Dataset,
   DatasetColumn,
@@ -79,6 +80,35 @@ const TEMPORAL_UNITS: Record<string, DatetimeUnit> = {
   Week: "week",
 };
 
+/** The binning metadata the backend sends with each binned breakout column. */
+const BINNING_INFO: Record<string, BinningMetadata> = {
+  "Total: 10 bins": {
+    binning_strategy: "num-bins",
+    num_bins: 10,
+    bin_width: 20,
+    min_value: -60,
+    max_value: 160,
+  },
+  "Total: 50 bins": {
+    binning_strategy: "num-bins",
+    num_bins: 50,
+    bin_width: 5,
+    min_value: -50,
+    max_value: 160,
+  },
+  "Total: 100 bins": {
+    binning_strategy: "num-bins",
+    num_bins: 100,
+    bin_width: 2,
+    min_value: -46,
+    max_value: 160,
+  },
+  "Latitude: 20°": { binning_strategy: "bin-width", bin_width: 20 },
+  "Latitude: 10°": { binning_strategy: "bin-width", bin_width: 10 },
+  "Latitude: 1°": { binning_strategy: "bin-width", bin_width: 1 },
+  "Latitude: 0.1°": { binning_strategy: "bin-width", bin_width: 0.1 },
+};
+
 function createDataset(cols: DatasetColumn[], rows: RowValue[][]): Dataset {
   return createMockDataset({
     data: createMockDatasetData({ cols, rows }),
@@ -93,12 +123,14 @@ function createBreakoutColumn(
   displayName: string,
 ): DatasetColumn {
   const unit = TEMPORAL_UNITS[displayName.split(": ")[1]];
+  const binningInfo = BINNING_INFO[displayName];
   return {
     ...column,
     name: index === 0 ? column.name : `${column.name}_${index + 1}`,
     display_name: displayName,
     source: "breakout",
     ...(unit && { unit }),
+    ...(binningInfo && { binning_info: binningInfo }),
   };
 }
 
@@ -209,6 +241,10 @@ function getHeaderNames() {
     .map((cell) => cell.textContent?.trim());
 }
 
+function getRowCells() {
+  return screen.getAllByRole("gridcell").map((cell) => cell.textContent);
+}
+
 async function findHeaderNames(names: string[]) {
   await waitFor(() => expect(getHeaderNames()).toEqual(names));
 }
@@ -254,6 +290,7 @@ type BreakoutsCase = {
   initialBreakout2: unknown;
   finalDisplayNames: string[];
   finalRow: RowValue[];
+  finalCells: string[];
 };
 
 const BREAKOUTS_CASES: BreakoutsCase[] = [
@@ -276,6 +313,7 @@ const BREAKOUTS_CASES: BreakoutsCase[] = [
     breakout2: temporalBreakout(ORDERS.CREATED_AT, "week"),
     finalDisplayNames: ["Created At: Quarter", "Created At: Week"],
     finalRow: ["2025-04-01T00:00:00Z", "2025-04-27T00:00:00Z", 1],
+    finalCells: ["Q2 2025", "April 27, 2025 – May 3, 2025", "1"],
   },
   {
     title: "num-bins",
@@ -313,6 +351,7 @@ const BREAKOUTS_CASES: BreakoutsCase[] = [
     }),
     finalDisplayNames: ["Total: 100 bins", "Total: 10 bins"],
     finalRow: [-46, -60, 1],
+    finalCells: ["-46  –  -44", "-60  –  -40", "1"],
   },
   {
     title: "bin-width",
@@ -350,6 +389,7 @@ const BREAKOUTS_CASES: BreakoutsCase[] = [
     }),
     finalDisplayNames: ["Latitude: 1°", "Latitude: 0.1°"],
     finalRow: [25, 25.7, 1],
+    finalCells: ["25° N  –  26° N", "25.7° N  –  25.8° N", "1"],
   },
 ];
 
@@ -425,6 +465,7 @@ describe("QueryBuilder > summarize > multiple breakouts of one column", () => {
       );
       expect(getChipLabels("columns")).toEqual(testCase.finalDisplayNames);
       await findHeaderNames([...testCase.finalDisplayNames, "Count"]);
+      expect(getRowCells()).toEqual(testCase.finalCells);
     },
   );
 
