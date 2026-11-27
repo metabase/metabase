@@ -35,6 +35,7 @@ const GROUPS = [
     name: "Data Analysts",
     magic_group_type: "data-analyst",
   }),
+  createMockGroup({ id: 7, name: "readonly", magic_group_type: null }),
 ];
 
 const setup = async ({
@@ -232,19 +233,22 @@ const setup = async ({
   }
   setupGenerateRandomTokenEndpoint(GENERATED_TOKEN);
 
+  // a deleted group leaves the list, so the refetch after a deletion no longer offers it
+  let groups = GROUPS;
   fetchMock.get("path:/api/permissions/group", async () => {
     await groupsGate;
-    return GROUPS;
+    return groups;
   });
   fetchMock.delete("express:/api/permissions/group/:id", async ({ url }) => {
     await cascadeGate;
-    return {
-      status:
-        deleteGroupStatuses?.[Number(url.split("/").pop())] ??
-        cascadeStatus ??
-        204,
-    };
+    const groupId = Number(url.split("/").pop());
+    const status = deleteGroupStatuses?.[groupId] ?? cascadeStatus ?? 204;
+    if (status < 300) {
+      groups = groups.filter(({ id }) => id !== groupId);
+    }
+    return { status };
   });
+  fetchMock.put("express:/api/permissions/membership/:id/clear", 204);
 
   const { store } = renderWithProviders(<SettingsJWTForm />, {
     withUndos: true,
@@ -282,11 +286,15 @@ const expandUserAttributeSection = async () => {
   );
 };
 
-const addMapping = async (name: string, groupName: string) => {
+const addMapping = async (name: string, ...groupNames: string[]) => {
   await clickWhenEnabled(screen.getByRole("button", { name: "New mapping" }));
   await userEvent.type(screen.getByPlaceholderText("Enter JWT group..."), name);
   await userEvent.click(screen.getByPlaceholderText("Pick Metabase group..."));
-  await userEvent.click(await screen.findByRole("option", { name: groupName }));
+  for (const groupName of groupNames) {
+    await userEvent.click(
+      await screen.findByRole("option", { name: groupName }),
+    );
+  }
   await userEvent.click(screen.getByRole("button", { name: "Add mapping" }));
 };
 
@@ -595,6 +603,44 @@ describe("SettingsJWTForm", () => {
 
     expect(url).toMatch(/\/api\/setting$/);
     expect(body).toHaveProperty("jwt-attribute-tenant", "Cat");
+  });
+
+  it("regenerates the signing key and saves the new one with the other settings", async () => {
+    await setup({ jwtEnabled: true, configured: true });
+    const keyInput = screen.getByLabelText(
+      /String used by the JWT signing key/,
+    );
+    expect(keyInput).toHaveValue("**********7b");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Regenerate key" }),
+    );
+    const confirmation = within(await screen.findByRole("dialog"));
+    expect(
+      confirmation.getByText("Delete key and generate a new one?"),
+    ).toBeInTheDocument();
+    expect(
+      confirmation.getByText(
+        "This will cause existing tokens to stop working until the identity provider is updated with a new key.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      confirmation.getByRole("button", { name: "Delete key" }),
+    );
+    expect(await screen.findByText("Store your new key")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Success" }),
+    ).toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body).toMatchObject({
+      "jwt-identity-provider-uri": "http://example.com",
+      "jwt-shared-secret": GENERATED_TOKEN,
+      "jwt-enabled": true,
+    });
   });
 
   describe("user provisioning", () => {
@@ -1572,6 +1618,172 @@ describe("SettingsJWTForm", () => {
       expect(body["jwt-identity-provider-uri"]).toBe("http://example.com/sso");
       expect(body).not.toHaveProperty("jwt-group-sync");
       expect(body).not.toHaveProperty("jwt-group-mappings");
+    });
+
+    it("deletes or clears the groups of mappings, turns off after the last one, and deletes the mappings when switching to automatic", async () => {
+      await setup({ jwtEnabled: true, configured: true, groupSync: false });
+      const mappingWrites = async () =>
+        (await findRequests("PUT"))
+          .filter(({ url }) => new URL(url).pathname === "/api/setting")
+          .map(({ body }) => body);
+
+      expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
+      await userEvent.click(screen.getByRole("radio", { name: "Manual" }));
+      await addMapping("cn=People1", "Administrators", "foo", "bar");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People1")).toHaveTextContent(
+          "Administrators, foo, bar",
+        ),
+      );
+      await addMapping("cn=People2", "Administrators", "foo", "flamingos");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People2")).toHaveTextContent(
+          "Administrators, foo, flamingos",
+        ),
+      );
+      await addMapping("cn=People3", "flamingos", "readonly");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People3")).toHaveTextContent(
+          "flamingos, readonly",
+        ),
+      );
+
+      await deleteMappingWithGroups(
+        "cn=People2",
+        "Remove mapping and delete groups",
+      );
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      const deletes = await findRequests("DELETE");
+      expect(deletes.map(({ url }) => new URL(url).pathname)).toEqual([
+        "/api/permissions/group/3",
+        "/api/permissions/group/5",
+      ]);
+      await waitFor(() =>
+        expect(findMappingRow("cn=People1")).toHaveTextContent(
+          "Administrators, bar",
+        ),
+      );
+      expect(findMappingRow("cn=People3")).toHaveTextContent("readonly");
+      expect(findMappingRow("cn=People3")).not.toHaveTextContent("flamingos");
+
+      await clickWhenEnabled(
+        screen.getByRole("button", { name: "New mapping" }),
+      );
+      await userEvent.click(
+        screen.getByPlaceholderText("Pick Metabase group..."),
+      );
+      // the list refetches after the deletion, so the deleted groups leave it once that lands
+      await waitFor(() => {
+        const listbox = screen.getByRole("listbox");
+        expect(
+          within(listbox).queryByRole("option", { name: "foo" }),
+        ).not.toBeInTheDocument();
+        expect(
+          within(listbox).queryByRole("option", { name: "flamingos" }),
+        ).not.toBeInTheDocument();
+      });
+      expect(
+        within(screen.getByRole("listbox")).getByRole("option", {
+          name: "readonly",
+        }),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      for (const name of ["cn=People3", "cn=People1"]) {
+        await clickWhenEnabled(
+          within(findMappingRow(name)!).getByRole("button", {
+            name: "Delete mapping",
+          }),
+        );
+        const dialog = within(await screen.findByRole("dialog"));
+        expect(
+          dialog.getByText("Remove this group mapping?"),
+        ).toBeInTheDocument();
+        await userEvent.click(
+          dialog.getByRole("radio", { name: /remove all members/i }),
+        );
+        await userEvent.click(
+          dialog.getByRole("button", { name: "Remove mapping and members" }),
+        );
+        await waitFor(() =>
+          expect(
+            screen
+              .queryAllByTestId("group-mapping-row")
+              .some((row) => within(row).queryByText(name) != null),
+          ).toBe(false),
+        );
+      }
+      await waitFor(() =>
+        expect(screen.getByRole("radio", { name: "Off" })).toBeChecked(),
+      );
+      const clears = (await findRequests("PUT")).filter(({ url }) =>
+        url.includes("/clear"),
+      );
+      expect(clears.map(({ url }) => new URL(url).pathname)).toEqual([
+        "/api/permissions/membership/7/clear",
+        "/api/permissions/membership/4/clear",
+      ]);
+      expect(await mappingWrites()).toEqual([
+        {
+          "jwt-group-sync": true,
+          "jwt-group-mappings": { "cn=People1": [2, 3, 4] },
+        },
+        {
+          "jwt-group-sync": true,
+          "jwt-group-mappings": {
+            "cn=People1": [2, 3, 4],
+            "cn=People2": [2, 3, 5],
+          },
+        },
+        {
+          "jwt-group-sync": true,
+          "jwt-group-mappings": {
+            "cn=People1": [2, 3, 4],
+            "cn=People2": [2, 3, 5],
+            "cn=People3": [5, 7],
+          },
+        },
+        {
+          "jwt-group-mappings": {
+            "cn=People1": [2, 3, 4],
+            "cn=People3": [5, 7],
+          },
+        },
+        { "jwt-group-mappings": { "cn=People1": [2, 4], "cn=People3": [7] } },
+        { "jwt-group-mappings": { "cn=People1": [2, 4] } },
+        { "jwt-group-mappings": {}, "jwt-group-sync": false },
+      ]);
+
+      await userEvent.click(screen.getByRole("radio", { name: "Manual" }));
+      await addMapping("cn=People4", "readonly");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People4")).toHaveTextContent("readonly"),
+      );
+      await clickWhenEnabled(screen.getByRole("radio", { name: "Automatic" }));
+      const switchDialog = within(await screen.findByRole("dialog"));
+      expect(
+        switchDialog.getByText("Switch to automatic group mapping?"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        switchDialog.getByRole("button", {
+          name: "Delete mappings and switch",
+        }),
+      );
+      await waitFor(() =>
+        expect(screen.getByRole("radio", { name: "Automatic" })).toBeChecked(),
+      );
+      expect((await mappingWrites()).at(-1)).toEqual({
+        "jwt-group-sync": true,
+        "jwt-group-mappings": {},
+      });
+
+      await clickWhenEnabled(screen.getByRole("radio", { name: "Manual" }));
+      expect(
+        screen.getByText(
+          "Add at least one mapping to use manual group mapping",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
     });
   });
 });
