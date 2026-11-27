@@ -141,9 +141,23 @@
 (mu/defn- rederived-card-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]
   "The re-derived result metadata of the Card `card`, or nil when it needs none."
   [card :- [:maybe (ms/InstanceOf :model/Card)]]
-  (lib-be/with-metadata-provider-cache
-    (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
-      (rederived-result-metadata card))))
+  (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
+    (rederived-result-metadata card)))
+
+(mu/defn- cards-with-states
+  "The `:state` and `:card` of each of the Cards `card-ids`, as Card id and map pairs."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (let [ids    (vec card-ids)
+        states (dependencies.db/card-states ids false)
+        cards  (dependencies.db/cards ids)]
+    (map (fn [id] [id {:state (get states id) :card (get cards id)}]) ids)))
+
+(mu/defn- record-failure! :- :nil
+  "Count a failure to re-derive the result metadata of the Card `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (when (models.result-metadata-status/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
+  nil)
 
 (mu/defn- handle-failure! :- :nil
   "Count the failure `e` to re-derive the result metadata of the Card `card-id`, rethrowing an Error."
@@ -151,10 +165,16 @@
    e       :- (ms/InstanceOfClass Throwable)]
   (dependencies.db/throw-unless-app-db-reachable! e)
   (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
-  (when (models.result-metadata-status/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
-    (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
+  (record-failure! card-id)
   (when-not (instance? Exception e)
     (throw e)))
+
+(mu/defn- handle-unreadable! :- :nil
+  "Count the failure `e` to read the Card `card-id`."
+  [card-id :- ::lib.schema.id/card
+   e       :- (ms/InstanceOfClass Exception)]
+  (log/warnf "Failed to read card %s: %s" card-id (ex-message e))
+  (record-failure! card-id))
 
 (mu/defn update-result-metadata! :- nat-int?
   "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus
@@ -169,23 +189,20 @@
     (when (seq deleted-ids)
       (models.result-metadata-status/delete-result-metadata-statuses! deleted-ids))
     (when (seq statuses)
-      (let [card-ids (mapv :entity_id statuses)
-            stale    (into {} (map (juxt :entity_id :stale)) statuses)
-            states   (dependencies.db/card-states card-ids false)
-            cards    (dependencies.db/cards card-ids)
-            derived  (into {}
-                           (keep (fn [card-id]
-                                   (try
-                                     [card-id (rederived-card-metadata (get cards card-id))]
-                                     (catch Throwable e
-                                       (handle-failure! card-id e)
-                                       nil))))
-                           card-ids)
-            updates  (into {}
-                           (keep (fn [[card-id metadata]]
-                                   (when-let [state (and metadata (get states card-id))]
-                                     [card-id {:state state :metadata metadata}])))
-                           derived)
+      (let [stale    (into {} (map (juxt :entity_id :stale)) statuses)
+            ;; a card's query keeps the metadata provider it was read with, so the read shares the batch's cache too
+            derived  (lib-be/with-metadata-provider-cache
+                       (into {}
+                             (keep (fn [[card-id {:keys [state card]}]]
+                                     (try
+                                       [card-id {:state state :metadata (rederived-card-metadata card)}]
+                                       (catch Throwable e
+                                         (handle-failure! card-id e)
+                                         nil))))
+                             (dependencies.db/readable-entities cards-with-states
+                                                                (set (map :entity_id statuses))
+                                                                handle-unreadable!)))
+            updates  (into {} (filter (comp (every-pred :state :metadata) val)) derived)
             stored   (if (seq updates)
                        (try
                          (store-result-metadata! updates)
