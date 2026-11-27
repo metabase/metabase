@@ -1807,6 +1807,37 @@
             (serdes.load/load-metabase! ingestion)
             (is (true? (t2/select-one-fn :is_stub :model/Database :name "absent-db")))))))))
 
+(deftest import-card-on-missing-database-remaps-viz-settings-fields-test
+  (mt/with-empty-h2-app-db!
+    (ts/create! :model/User :first_name "Test" :last_name "User" :email "user@example.com")
+    (let [eid       "0123456789abcdef_0123"
+          field-ref ["bad-db" nil "CUSTOMERS" "STATE"]]
+      (serdes.load/load-metabase!
+       (ts/ingestion-in-memory
+        [{:serdes/meta   [{:model "Card" :id eid}]
+          :created_at    (t/instant)
+          :creator_id    "user@example.com"
+          :dataset_query {:lib/type :mbql/query :database "bad-db"
+                          :stages [{:lib/type :mbql.stage/mbql :source-table ["bad-db" nil "CUSTOMERS"]}]}
+          :display       :table
+          :entity_id     eid
+          :type          :question
+          :card_schema   24
+          :name          "Some card"
+          :visualization_settings
+          {:table.columns   [{:name "STATE" :fieldRef ["field" field-ref nil] :enabled true}]
+           :column_settings {(json/encode ["ref" ["field" field-ref nil]]) {:column_title "State"}}}}]))
+      (let [stub-db  (t2/select-one :model/Database :name "bad-db")
+            table    (t2/select-one :model/Table :db_id (:id stub-db) :name "CUSTOMERS")
+            field-id (t2/select-one-fn :id :model/Field :table_id (:id table) :name "STATE")
+            settings (t2/select-one-fn :visualization_settings :model/Card :entity_id eid)]
+        (testing "column order refers to the stub database field"
+          (is (=? [{:name "STATE" :fieldRef [:field field-id nil]}]
+                  (:table.columns settings))))
+        (testing "column settings key refers to the stub database field"
+          (is (= {(json/encode ["ref" ["field" field-id nil]]) {:column_title "State"}}
+                 (:column_settings settings))))))))
+
 (deftest card-with-snippet-test
   (let [db1s      (atom nil)
         table1s   (atom nil)
