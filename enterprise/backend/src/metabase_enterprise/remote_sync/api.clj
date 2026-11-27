@@ -264,6 +264,11 @@
     (catch Exception e
       (throw (ex-info (tasks/error-message e) {:status-code 400} e)))))
 
+(defn- pull-source
+  "The repository URL, branch and type of the remote sync settings, which decide what a read-only instance pulls."
+  []
+  (mapv setting/get [:remote-sync-url :remote-sync-branch :remote-sync-type]))
+
 (api.macros/defendpoint :put "/settings" :- ::remote-sync.schema/settings-update-response
   "Update the remote sync settings, and which collections are synced."
   [_route-params
@@ -278,29 +283,30 @@
        [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
   (api/check-400 (nil? (remote-sync.task/current-task)) (tru "A sync is already running. Try again when it finishes."))
-  (try
-    (remote-sync.settings/save! (dissoc settings :collections))
-    (remote-sync.settings/set-synced-collections! collections)
-    (catch clojure.lang.ExceptionInfo e
-      (throw (ex-info (ex-message e)
-                      (if-let [dependencies (:unsynced-dependencies (ex-data e))]
-                        {:status-code           400
-                         :error-code            "unsynced-dependencies"
-                         :unsynced_dependencies (unsynced-dependencies dependencies)
-                         :response/keys         #{:unsynced_dependencies}}
-                        (merge {:status-code 400} (ex-data e)))
-                      e))))
-  (events/publish-event! :event/remote-sync-settings-update
-                         {:details {:remote-sync-type (:remote-sync-type settings)}
-                          :user-id api/*current-user-id*})
-  (if (remote-sync/read-only?)
-    (let [branch (setting/get :remote-sync-branch)
-          task   (tasks/start! {:type "import" :branch branch :user-id api/*current-user-id*}
-                               (fn [report]
-                                 (sync/pull! (remote-sync.settings/repository) branch (tasks/base-version)
-                                             {:force? true :report report})))]
-      (cond-> {:success true} task (assoc :task_id (:id task))))
-    {:success true}))
+  (let [source (pull-source)]
+    (try
+      (remote-sync.settings/save! (dissoc settings :collections))
+      (remote-sync.settings/set-synced-collections! collections)
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e)
+                        (if-let [dependencies (:unsynced-dependencies (ex-data e))]
+                          {:status-code           400
+                           :error-code            "unsynced-dependencies"
+                           :unsynced_dependencies (unsynced-dependencies dependencies)
+                           :response/keys         #{:unsynced_dependencies}}
+                          (merge {:status-code 400} (ex-data e)))
+                        e))))
+    (events/publish-event! :event/remote-sync-settings-update
+                           {:details {:remote-sync-type (:remote-sync-type settings)}
+                            :user-id api/*current-user-id*})
+    (if (and (remote-sync/read-only?) (or (nil? (tasks/base-version)) (not= source (pull-source))))
+      (let [branch (setting/get :remote-sync-branch)
+            task   (tasks/start! {:type "import" :branch branch :user-id api/*current-user-id*}
+                                 (fn [report]
+                                   (sync/pull! (remote-sync.settings/repository) branch (tasks/base-version)
+                                               {:force? true :report report})))]
+        (cond-> {:success true} task (assoc :task_id (:id task))))
+      {:success true})))
 
 (api.macros/defendpoint :get "/branches" :- ::remote-sync.schema/branches-response
   "The branches of the repository."
