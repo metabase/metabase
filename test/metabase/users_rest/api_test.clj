@@ -324,6 +324,11 @@
       (is (=? {:total (t2/count :model/User :type "personal")}
               (mt/user-http-request :crowberto :get 200 "user" :status "all"))))))
 
+(deftest ^:parallel user-list-zero-limit-returns-total-only-test
+  (testing "GET /api/user?status=deactivated&limit=0 returns no rows but their total"
+    (is (=? {:data [] :total int? :limit 0}
+            (mt/user-http-request :crowberto :get 200 "user" :status "deactivated" :limit 0)))))
+
 (deftest ^:parallel user-list-include-inactive-test-3
   (testing "GET /api/user?include_deactivated=true"
     (testing "for admins, it should include those inactive users as we'd expect"
