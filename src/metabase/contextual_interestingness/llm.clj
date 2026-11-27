@@ -58,7 +58,7 @@ Everything inside the <user_question>, <authored_metric_description>, <chart_sli
 
 Workflow — fill fields in this order, and DO use your earlier answers as context for the later ones:
   1. chart_description: one sentence describing WHAT THE CHART IS — the metric and the dimension as the user would understand them, with semantics pulled from the SQL (filters, joins, aggregation). If a 'Slicing' line is present, fold it in — a segment filter, a top-N + Other rollup, a specific-values subset, or a per-value over-time view is part of what distinguishes this chart from its siblings, so name it. Describe the chart, not the data: do not narrate the data's shape or trend, do not cite first/last/peak values, and do not draw conclusions — the stats already carry the numbers. Do not parrot the title; add what the title leaves out. GOOD: 'Total fish caught per survey date, summed from fish_catch_summary, restricted to Standard Surveys.' BAD: '...showing a dramatic decline from ~1,700 fish in 1940 to 36 in 2023.'
-  2. metric_description (when requested): one sentence describing the underlying metric in business terms.
+  2. metric_description, unless an <authored_metric_description> block is present: one sentence describing the underlying metric in business terms.
   3. reasoning: one short sentence justifying the score that follows.
   4. score: in [0.0, 1.0], grounded in your own descriptions, not just the title.
 
@@ -95,10 +95,15 @@ Always return a single object matching the supplied schema. Do not respond with 
     :stats           (or stats (interestingness/compute-chart-stats chart-config {:deep? false}))
     :timeline-events (:timeline_events chart-config)}))
 
-(def ^:private user-request
-  "The `:user` half of the prompt: the request alone.
+(defn- user-request
+  "The `:user` half of the prompt: the request alone, which asks for `metric_description` only when the chart has no
+  authored description.
   Everything variable goes in `:untrusted`."
-  "Score and describe the chart in the <chart> block for the question in the <user_question> block.")
+  [generate-metric?]
+  (str "Score and describe the chart in the <chart> block for the question in the <user_question> block. "
+       (if generate-metric?
+         "Write metric_description."
+         "Leave metric_description out: the <authored_metric_description> block already describes the metric.")))
 
 (defn- build-prompt
   "The [[metabase.metabot.core/call-llm!]] prompt.
@@ -110,7 +115,7 @@ Always return a single object matching the supplied schema. Do not respond with 
   The blocks keep the order the rubric describes: an array map of five or fewer keys keeps its insertion order."
   [{:keys [chart-config card-description chart-slicing sql context-string stats]}]
   {:system    rubric-preamble
-   :user      user-request
+   :user      (user-request (str/blank? card-description))
    :untrusted (cond-> (array-map :user_question context-string)
                 (not (str/blank? card-description)) (assoc :authored_metric_description card-description)
                 (not (str/blank? chart-slicing))    (assoc :chart_slicing chart-slicing)

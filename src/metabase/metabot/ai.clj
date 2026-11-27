@@ -344,7 +344,7 @@
 
 ;;; ------------------------------------------------- Response -------------------------------------------------------
 
-(defn- keyword->name
+(defn- keyword?->name
   [v]
   (cond-> v (keyword? v) u/qualified-name))
 
@@ -362,8 +362,8 @@
                      (map? node)
                      (cond-> node
                        (sequential? (:required node)) (update :required #(mapv name %))
-                       (keyword? (:const node))       (update :const keyword->name)
-                       (sequential? (:enum node))     (update :enum (partial mapv keyword->name)))
+                       (keyword? (:const node))       (update :const keyword?->name)
+                       (sequential? (:enum node))     (update :enum (partial mapv keyword?->name)))
 
                      :else
                      node))

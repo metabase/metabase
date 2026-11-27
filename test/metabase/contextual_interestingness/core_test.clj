@@ -366,6 +366,14 @@
       (is (str/includes? rubric "<compiled_sql>")
           "the rubric should name the delimiters it is talking about"))))
 
+(deftest user-request-asks-for-metric-description-test
+  (testing "the request asks for a metric description only when the chart has no authored one"
+    (let [request #(:user (#'contextual-interestingness.llm/build-prompt
+                           (merge {:chart-config chart-config, :context-string "Why?"} %)))]
+      (is (str/includes? (request {}) "Write metric_description."))
+      (is (str/includes? (request {:card-description "Sum of completed order totals"})
+                         "Leave metric_description out")))))
+
 (deftest untrusted-content-is-fenced-test
   (testing "each untrusted input is its own block, in the order the rubric describes"
     (let [prompt (#'contextual-interestingness.llm/build-prompt
