@@ -210,9 +210,9 @@
   []
   (when (channel.settings/slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
-    (let [users (future (vec (users-list)))
-          private-channels? #(contains? (oauth-scopes) "groups:read")
-          conversations (future (vec (conversations-list :private-channels (private-channels?))))]
+    (let [scopes        (oauth-scopes)
+          users         (future (if (contains? scopes "users:read") (vec (users-list)) []))
+          conversations (future (vec (conversations-list :private-channels (contains? scopes "groups:read"))))]
       (channel.settings/slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (channel.settings/slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 

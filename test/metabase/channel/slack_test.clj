@@ -2,6 +2,7 @@
   (:require
    [clj-http.fake :as http-fake]
    [clojure.set :as s]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.impl.slack :as channel.impl.slack]
@@ -392,3 +393,25 @@
 
       ""            "public_channel"
       "groups:read" "public_channel,private_channel")))
+
+(deftest refresh-channels-and-usernames!-users-read-scope-test
+  (doseq [[scopes expected-types] [["channels:read,groups:read,chat:write" #{"channel"}]
+                                   ["channels:read,groups:read,chat:write,users:read" #{"channel" "user"}]]]
+    (testing (str "with scopes " scopes)
+      (mt/with-temporary-setting-values [slack-app-token "test"]
+        (http-fake/with-fake-routes
+          {auth-endpoint
+           (constantly
+            {:status  200
+             :body    (json/encode {:ok true})
+             :headers {"x-oauth-scopes" scopes}})
+           conversations-endpoint
+           (comp mock-200-response mock-conversations-response-body)
+           users-endpoint
+           (if (str/includes? scopes "users:read")
+             (comp mock-200-response mock-users-response-body)
+             (constantly (mock-200-response {:ok false, :error "missing_scope", :needed "users:read"})))}
+          (slack/clear-channel-cache!)
+          (slack/refresh-channels-and-usernames!)
+          (is (= expected-types
+                 (into #{} (map :type) (:channels (channel.settings/slack-cached-channels-and-usernames))))))))))
