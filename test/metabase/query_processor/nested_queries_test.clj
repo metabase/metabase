@@ -1918,6 +1918,85 @@
                     (mt/formatted-rows [int]
                                        (qp/process-query (lib/aggregate nested (lib/distinct source-col)))))))))))))
 
+;;; The drills on a native question's column header run these aggregations, sorts, filters and expressions on top
+;;; of the saved native card.
+
+(defn- orders-quantity-source
+  "A query that selects ORDERS.ID and ORDERS.QUANTITY, as a native question would."
+  [mp]
+  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+      (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))
+                        (lib.metadata/field mp (mt/id :orders :quantity))])))
+
+(deftest ^:parallel sum-and-avg-over-native-card-column-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+                                     (descendants driver/hierarchy :sql))
+    (testing "sum and avg over a native card's column"
+      (mt/dataset test-data
+        (do-with-native-source-card
+         (orders-quantity-source (mt/metadata-provider))
+         (fn [nested [_id quantity-col]]
+           (doseq [[aggregation-name aggregate expected] [["sum" lib/sum [[69540.0]]]
+                                                          ["avg" lib/avg [[3.71]]]]]
+             (testing aggregation-name
+               (is (= expected
+                      (mt/formatted-rows [2.0]
+                                         (qp/process-query (lib/aggregate nested (aggregate quantity-col))))))))))))))
+
+(deftest ^:parallel order-by-desc-over-native-card-column-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+                                     (descendants driver/hierarchy :sql))
+    (testing "a descending sort on a native card's column puts the largest value first"
+      (mt/dataset test-data
+        (let [mp           (mt/metadata-provider)
+              quantity     (lib.metadata/field mp (mt/id :orders :quantity))
+              max-quantity (ffirst (mt/formatted-rows [int]
+                                                      (qp/process-query
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                           (lib/aggregate (lib/max quantity))))))]
+          (do-with-native-source-card
+           (orders-quantity-source mp)
+           (fn [nested [_id quantity-col]]
+             (let [rows (mt/formatted-rows [int int]
+                                           (qp/process-query (-> nested
+                                                                 (lib/order-by quantity-col :desc)
+                                                                 (lib/limit 3))))]
+               (is (= 3 (count rows)))
+               (is (= max-quantity (second (first rows))))
+               (is (apply >= (map second rows)))))))))))
+
+(deftest ^:parallel between-filter-over-native-card-column-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+                                     (descendants driver/hierarchy :sql))
+    (testing "a between filter on a native card's column"
+      (mt/dataset test-data
+        (do-with-native-source-card
+         (orders-quantity-source (mt/metadata-provider))
+         (fn [nested [_id quantity-col]]
+           (is (= [[11906]]
+                  (mt/formatted-rows [int]
+                                     (qp/process-query (-> nested
+                                                           (lib/filter (lib/between quantity-col 2 5))
+                                                           (lib/aggregate (lib/count)))))))))))))
+
+(deftest ^:parallel concat-expression-over-native-card-columns-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :expressions)
+                                     (descendants driver/hierarchy :sql))
+    (testing "a concat expression on a native card's columns"
+      (mt/dataset test-data
+        (let [mp (mt/metadata-provider)]
+          (do-with-native-source-card
+           (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+               (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
+                                 (lib.metadata/field mp (mt/id :people :email))]))
+           (fn [nested [id-col email-col]]
+             (is (= ["borer-hudson@yahoo.com 1" "williamson-domenica@yahoo.com 2"]
+                    (map last (mt/rows (qp/process-query
+                                        (-> nested
+                                            (lib/expression "Combined" (lib/concat email-col " " id-col))
+                                            (lib/order-by id-col :asc)
+                                            (lib/limit 2))))))))))))))
+
 ;;; Two same-column breakouts exposed by a saved source card must both be referenceable downstream.
 (deftest ^:parallel same-column-breakouts-from-source-card-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
