@@ -923,6 +923,7 @@ describe("SettingsLdapForm", () => {
         "Remove mapping and delete groups",
       );
       expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
       const deletes = await findRequests("DELETE");
       expect(deletes.map(({ url }) => new URL(url).pathname)).toEqual([
         "/api/permissions/group/3",
@@ -974,6 +975,7 @@ describe("SettingsLdapForm", () => {
           ),
         ).toHaveLength(2),
       );
+      await act(() => fetchMock.callHistory.flush(true));
 
       const puts = await findRequests("PUT");
       expect(

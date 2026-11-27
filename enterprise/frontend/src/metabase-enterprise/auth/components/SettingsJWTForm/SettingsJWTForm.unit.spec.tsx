@@ -1661,6 +1661,7 @@ describe("SettingsJWTForm", () => {
         "Remove mapping and delete groups",
       );
       expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
       const deletes = await findRequests("DELETE");
       expect(deletes.map(({ url }) => new URL(url).pathname)).toEqual([
         "/api/permissions/group/3",
@@ -1724,6 +1725,7 @@ describe("SettingsJWTForm", () => {
       await waitFor(() =>
         expect(screen.getByRole("radio", { name: "Off" })).toBeChecked(),
       );
+      await act(() => fetchMock.callHistory.flush(true));
       const clears = (await findRequests("PUT")).filter(({ url }) =>
         url.includes("/clear"),
       );
