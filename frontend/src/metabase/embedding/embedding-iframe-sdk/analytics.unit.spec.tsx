@@ -2,7 +2,10 @@
 import "metabase/embedding/embedding-iframe-sdk/embed";
 import type { MetabaseEmbedElement } from "metabase/embedding/embedding-iframe-sdk/embed";
 
-import { createEmbeddedAnalyticsJsUsage } from "./analytics";
+import {
+  createEmbeddedAnalyticsJsUsage,
+  debouncedReportAnalytics,
+} from "./analytics";
 import type { SdkIframeEmbedBaseSettings } from "./types/embed";
 
 const defineMetabaseConfig = (config: SdkIframeEmbedBaseSettings) => {
@@ -1067,6 +1070,40 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           { name: "data_app", properties: [] },
         ]);
       });
+    });
+  });
+
+  describe("debouncedReportAnalytics", () => {
+    const waitForDebounce = () =>
+      new Promise((resolve) => setTimeout(resolve, 1500));
+
+    it("should report for later embeds when every earlier embed is removed before report runs", async () => {
+      const errors: unknown[] = [];
+      const onError = (event: ErrorEvent) => {
+        event.preventDefault();
+        errors.push(event.error);
+      };
+      window.addEventListener("error", onError);
+      const activeEmbeds = new Set<MetabaseEmbedElement>([
+        createEmbeddedAnalyticsJsElement("metabase-dashboard"),
+      ]);
+
+      debouncedReportAnalytics(activeEmbeds);
+      activeEmbeds.clear();
+      await waitForDebounce();
+
+      const laterEmbed = createEmbeddedAnalyticsJsElement("metabase-dashboard");
+      const addEventListener = jest.spyOn(laterEmbed, "addEventListener");
+      activeEmbeds.add(laterEmbed);
+      debouncedReportAnalytics(activeEmbeds);
+      await waitForDebounce();
+      window.removeEventListener("error", onError);
+
+      expect(errors).toEqual([]);
+      expect(addEventListener).toHaveBeenCalledWith(
+        "ready",
+        expect.any(Function),
+      );
     });
   });
 
