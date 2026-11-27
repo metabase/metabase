@@ -658,10 +658,10 @@
 
 (defmethod change-log/spec :model/Table [_model]
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
-           :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
-           :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :transform_target]
-   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
+           :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :deactivated_at
+           :archived_at :is_writable :data_authority :data_source :data_layer :owner_email :owner_user_id
+           :transform_target]
+   :skip  [:estimated_row_count :initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (defmethod serialization/spec :model/Table [_]
   {:schema              ::warehouse-schema.schema/external-table
