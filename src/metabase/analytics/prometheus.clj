@@ -1071,7 +1071,9 @@
   ;; cleared even when the stop fails, so a later [[setup!]] can start a new system
   (try
     ;; each meter is stopped on its own, so one that fails to stop stops neither the other nor the server
-    (doseq [stop-meter [@jvm-hiccup-thread @jvm-alloc-rate-thread]
+    ;; Its stopper is taken out first, so a later start, which calls any stopper left over, cannot call a failing one.
+    (doseq [meter [jvm-hiccup-thread jvm-alloc-rate-thread]
+            :let  [[stop-meter] (reset-vals! meter nil)]
             :when stop-meter]
       (try
         (stop-meter)

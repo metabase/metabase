@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [iapetos.core :as iapetos]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
@@ -19,8 +20,7 @@
   (:import
    (com.mchange.v2.c3p0 DataSources)
    (io.prometheus.client Collector GaugeMetricFamily)
-   (java.lang.management ManagementFactory)
-   (org.eclipse.jetty.server Server)))
+   (java.lang.management ManagementFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -379,16 +379,22 @@
           alloc         @#'prometheus/jvm-alloc-rate-thread
           meters-before [@hiccup @alloc]
           alloc-stopped (atom false)
-          sys           (#'prometheus/make-prometheus-system 0 "stop-test-registry")]
+          ;; no web server and no real meters, so the test leaves nothing running
+          sys           (#'prometheus/->PrometheusSystem (iapetos/collector-registry "stop-test-registry") nil)]
       (try
         (reset! hiccup #(throw (ex-info "hiccup meter failed" {})))
         (reset! alloc #(reset! alloc-stopped true))
-        (with-redefs [prometheus/system sys]
-          (#'prometheus/stop-system! sys)
-          (is (= {:alloc-stopped? true, :server-stopped? true, :system nil}
-                 {:alloc-stopped?  @alloc-stopped
-                  :server-stopped? (.isStopped ^Server (:web-server sys))
-                  :system          @#'prometheus/system})))
+        (mt/with-log-messages-for-level [messages [metabase.analytics.prometheus :info]]
+          (with-redefs [prometheus/system sys]
+            (#'prometheus/stop-system! sys)
+            (is (= {:alloc-stopped? true
+                    :meters         [nil nil]
+                    :server-stopped true
+                    :system         nil}
+                   {:alloc-stopped? @alloc-stopped
+                    :meters         [@hiccup @alloc]
+                    :server-stopped (boolean (some #{"Prometheus web-server shut down"} (map :message (messages))))
+                    :system         @#'prometheus/system}))))
         (finally
           (let [[hiccup-before alloc-before] meters-before]
             (reset! hiccup hiccup-before)
