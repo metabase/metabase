@@ -1982,18 +1982,19 @@
 (deftest ^:parallel concat-expression-over-native-card-columns-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :expressions)
                                      (descendants driver/hierarchy :sql))
-    (testing "a concat expression on a native card's columns"
+    (testing "a concat expression on a native card's text columns"
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
           (do-with-native-source-card
            (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
-                                 (lib.metadata/field mp (mt/id :people :email))]))
-           (fn [nested [id-col email-col]]
-             (is (= ["borer-hudson@yahoo.com 1" "williamson-domenica@yahoo.com 2"]
+                                 (lib.metadata/field mp (mt/id :people :email))
+                                 (lib.metadata/field mp (mt/id :people :name))]))
+           (fn [nested [id-col email-col name-col]]
+             (is (= ["borer-hudson@yahoo.com Hudson Borer" "williamson-domenica@yahoo.com Domenica Williamson"]
                     (map last (mt/rows (qp/process-query
                                         (-> nested
-                                            (lib/expression "Combined" (lib/concat email-col " " id-col))
+                                            (lib/expression "Combined" (lib/concat email-col " " name-col))
                                             (lib/order-by id-col :asc)
                                             (lib/limit 2))))))))))))))
 
