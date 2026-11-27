@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
+  setupTableSearchEndpoint,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -10,11 +10,10 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import type { Database, SearchResult } from "metabase-types/api";
+import type { Database, Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSchema,
-  createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
 
@@ -144,14 +143,14 @@ const MOCK_DATABASES = [
 function setup({
   path = {},
   databases = MOCK_DATABASES,
-  searchResults = [],
+  searchTables = [],
 }: {
   path?: TreePath;
   databases?: Database[];
-  searchResults?: SearchResult[];
+  searchTables?: Table[];
 } = {}) {
   setupDatabasesEndpoints(databases);
-  setupSearchEndpoints(searchResults);
+  setupTableSearchEndpoint(searchTables);
 
   const onChange = jest.fn();
 
@@ -343,24 +342,24 @@ describe("TablePicker", () => {
   });
 
   describe("Search view", () => {
-    const DATABASE = "DATABASE";
+    const DATABASE = createMockDatabase({ id: nextId(), name: "DATABASE" });
     const SCHEMA = "SCHEMA";
-    const FOO_RESULT = createMockSearchResult({
+    const FOO_RESULT = createMockTable({
       id: nextId(),
-      model: "table",
-      name: "Foo",
-      table_name: "FOO",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
+      db_id: DATABASE.id,
+      db: DATABASE,
+      schema: SCHEMA,
+      name: "FOO",
+      display_name: "Foo",
       initial_sync_status: "complete",
     });
-    const BAR_RESULT = createMockSearchResult({
+    const BAR_RESULT = createMockTable({
       id: nextId(),
-      model: "table",
-      name: "Bar",
-      table_name: "BAR",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
+      db_id: DATABASE.id,
+      db: DATABASE,
+      schema: SCHEMA,
+      name: "BAR",
+      display_name: "Bar",
       initial_sync_status: "complete",
     });
 
@@ -368,7 +367,7 @@ describe("TablePicker", () => {
 
     it("should filter the tree based on the search input", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "foo");
@@ -381,9 +380,32 @@ describe("TablePicker", () => {
 
       await clickItem(FOO_RESULT);
       expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
+        databaseId: FOO_RESULT.db_id,
+        schemaName: FOO_RESULT.schema,
         tableId: FOO_RESULT.id,
+      });
+    });
+
+    it("should find hidden tables", async () => {
+      const hiddenTable = createMockTable({
+        id: nextId(),
+        db_id: DATABASE_WITH_SINGLE_SCHEMA.id,
+        db: DATABASE_WITH_SINGLE_SCHEMA,
+        schema: SINGLE_SCHEMA.name,
+        name: "HIDDEN",
+        display_name: "Hidden",
+        visibility_type: "hidden",
+        initial_sync_status: "complete",
+      });
+      const { onChange } = setup({ searchTables: [hiddenTable] });
+
+      await userEvent.type(searchInput(), "hid");
+
+      await clickItem(hiddenTable);
+      expect(onChange).toHaveBeenCalledWith({
+        databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
+        schemaName: SINGLE_SCHEMA.name,
+        tableId: hiddenTable.id,
       });
     });
 
@@ -397,7 +419,7 @@ describe("TablePicker", () => {
 
     it("should be possible to use the keyboard to select items in the search results", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "foo");
@@ -412,15 +434,15 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "{Enter}");
 
       expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
+        databaseId: FOO_RESULT.db_id,
+        schemaName: FOO_RESULT.schema,
         tableId: FOO_RESULT.id,
       });
     });
 
     it("should not crash when pressing Enter with no item selected (metabase#63350)", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "search");

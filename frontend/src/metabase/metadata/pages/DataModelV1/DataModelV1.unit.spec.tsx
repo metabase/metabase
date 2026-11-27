@@ -6,8 +6,8 @@ import {
   setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
   setupFieldsValuesEndpoints,
-  setupSearchEndpoints,
   setupTableEndpoints,
+  setupTableSearchEndpoint,
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
@@ -20,7 +20,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { getNextId } from "__support__/utils";
 import { Link } from "metabase/common/components/Link";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -36,7 +35,6 @@ import {
   createMockField,
   createMockFieldDimension,
   createMockFieldValues,
-  createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -292,15 +290,9 @@ describe("DataModelV1", () => {
 
     it("should allow to search for a table", async () => {
       await setup();
-      setupSearchEndpoints([
-        createMockSearchResult({
-          id: getNextId(),
-          model: "table",
-          name: ORDERS_TABLE.display_name,
-          table_name: ORDERS_TABLE.display_name,
-          table_schema: "public",
-          database_name: SAMPLE_DB.name,
-        }),
+      setupTableSearchEndpoint([
+        { ...ORDERS_TABLE, db: SAMPLE_DB },
+        { ...PRODUCTS_TABLE, db: SAMPLE_DB },
       ]);
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);

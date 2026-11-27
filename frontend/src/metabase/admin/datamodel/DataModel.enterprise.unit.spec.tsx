@@ -6,6 +6,7 @@ import {
   setupCardDataset,
   setupDatabasesEndpoints,
   setupDependencyGraphEndpoint,
+  setupTableSearchEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -26,17 +27,10 @@ import { getRoutes } from "metabase/admin/routes";
 import { Outlet, toRouteObjects } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type {
-  Database,
-  SearchResult,
-  Table,
-  TableId,
-} from "metabase-types/api";
+import type { Database, Table, TableId } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
-  createMockSearchResult,
-  createMockSearchResults,
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
@@ -156,20 +150,18 @@ interface SetupOpts {
   databases?: Database[];
   initialRoute?: string;
   editableTable?: Table;
-  searchResults?: { term: string; results: SearchResult[] };
+  searchTables?: Table[];
 }
 
 function setup({
   databases = [SAMPLE_DB],
   initialRoute = BASE_PATH,
   editableTable,
-  searchResults,
+  searchTables = [],
 }: SetupOpts = {}) {
   // Registered first so that they answer before the static table routes.
   const updates = editableTable ? setupEditableTable(editableTable) : [];
-  if (searchResults) {
-    setupTableSearch(searchResults);
-  }
+  setupTableSearchEndpoint(searchTables);
 
   setupDatabasesEndpoints(databases);
   setupCardDataset();
@@ -240,21 +232,6 @@ function applyTableUpdate(table: Table, body: unknown): Table {
     next.description = body.description;
   }
   return next;
-}
-
-function setupTableSearch({
-  term,
-  results,
-}: {
-  term: string;
-  results: SearchResult[];
-}) {
-  fetchMock.get("path:/api/search", (call) => {
-    const params = new URL(call.url).searchParams;
-    const isTableSearch =
-      params.get("q") === term && params.getAll("models").includes("table");
-    return createMockSearchResults({ items: isTableSearch ? results : [] });
-  });
 }
 
 describe("DataModelV1 in the admin routes (enterprise)", () => {
@@ -377,13 +354,10 @@ describe("DataModelV1 in the admin routes (enterprise)", () => {
     it("should allow searching for tables", async () => {
       const { getPathname } = setup({
         databases: [SAMPLE_DB, MYSQL_DB],
-        searchResults: {
-          term: "rEvIeWs",
-          results: [
-            createSearchResult(REVIEWS_TABLE, SAMPLE_DB),
-            createSearchResult(MYSQL_REVIEWS_TABLE, MYSQL_DB),
-          ],
-        },
+        searchTables: [
+          { ...REVIEWS_TABLE, db: SAMPLE_DB },
+          { ...MYSQL_REVIEWS_TABLE, db: MYSQL_DB },
+        ],
       });
 
       await findTreeItems("database");
@@ -716,19 +690,6 @@ describe("DataModelV1 in the admin routes (enterprise)", () => {
     });
   });
 });
-
-function createSearchResult(table: Table, database: Database): SearchResult {
-  return createMockSearchResult({
-    id: table.id,
-    model: "table",
-    name: table.display_name,
-    table_name: table.name,
-    table_schema: table.schema,
-    database_id: database.id,
-    database_name: database.name,
-    initial_sync_status: "complete",
-  });
-}
 
 /**
  * Opens another table and comes back, so the table section mounts again from
