@@ -1,8 +1,8 @@
 (ns metabase.server.middleware.worktree
-  "Runs a request in a remote sync worktree: in the main app without a user, so that a health check or a public link
-  reads no worktree row, across every worktree while none but the default one exists, else in the worktree its
+  "Runs a request in a remote sync worktree: in the default worktree without a user, so that a health check or a public
+  link reads no worktree row, across every worktree while none but the default one exists, else in the worktree its
   `X-Metabase-Worktree-Id` header names, which only superusers can send, else in the one a superuser checked out, else
-  in the main app."
+  in the default worktree."
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]

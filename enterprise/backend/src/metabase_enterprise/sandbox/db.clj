@@ -201,7 +201,7 @@
        :from   [(t2/table-name :model/Sandbox)]})))
 
 (mu/defn default-worktree-cards-exist? :- :boolean
-  "Whether every one of `card-ids` names a Card of the default worktree, the main app."
+  "Whether every one of `card-ids` names a Card of the default worktree."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (let [card-ids (distinct card-ids)]
     (= (count card-ids)

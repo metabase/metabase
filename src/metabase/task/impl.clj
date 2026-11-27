@@ -434,7 +434,7 @@
    :persist-data? {:annotation 'org.quartz.PersistJobDataAfterExecution, :when true}})
 
 (def ^:private job-option-keys
-  (into #{:saved-class} (keys job-option-annotations)))
+  (into #{:saved-class :worktree-scope} (keys job-option-annotations)))
 
 (defn- job-definition-error [macro-name type-name message data]
   (ex-info (format "Invalid (task/%s %s ...): %s" macro-name type-name message)
@@ -555,17 +555,18 @@
     (job-type-form type-name definition more)))
 
 (defn job-worktree-scope
-  "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`."
+  "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`, or of the default
+  worktree without one."
   [^JobExecutionContext job-context]
-  (mdb/worktree-id->scope (.get (.getMergedJobDataMap job-context) worktree-id-key)))
+  (mdb/worktree-id->scope (some-> job-context .getMergedJobDataMap (.get worktree-id-key))))
 
 (defn- job-body-form
-  "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and the
-  remote sync worktree that scheduled its trigger."
-  [type-name job-context body]
+  "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and its
+  `worktree-scope`, or the remote sync worktree that scheduled its trigger."
+  [type-name job-context worktree-scope body]
   `(log/with-context {:quartz-job-type (quote ~type-name)}
      (tracing/with-span :tasks (str "task." (quote ~type-name)) {:task/name (str (quote ~type-name))}
-       (mdb/with-worktree-scope (job-worktree-scope ~job-context)
+       (mdb/with-worktree-scope ~(or worktree-scope `(job-worktree-scope ~job-context))
          ~@body))))
 
 (defmacro defjob
@@ -590,11 +591,13 @@
     `org.quartz.DisallowConcurrentExecution` does.
   - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as
     `org.quartz.PersistJobDataAfterExecution` does.
+  - `:worktree-scope`: the remote sync worktree scope the job runs in, such as `{:type :all}` for a cleanup of rows of
+    every worktree; without it, the job runs in the worktree whose thread scheduled its trigger.
 
   For a job that implements more than `org.quartz.Job`, see [[defjob-type]]."
   {:arglists '([type-name docstring? options args & body])}
   [type-name & args]
-  (let [{[job-args & body] :more, :as definition} (parse-job-definition "defjob" type-name args)]
+  (let [{[job-args & body] :more, :keys [options], :as definition} (parse-job-definition "defjob" type-name args)]
     (when-not (and (vector? job-args) (= 1 (count job-args)))
       (throw (job-definition-error "defjob" type-name
                                    "its argument vector takes one binding, for the `JobExecutionContext`."
@@ -603,7 +606,7 @@
                    definition
                    `[org.quartz.Job
                      (~'execute [~'_this ~@job-args]
-                                ~(job-body-form type-name (first job-args) body))])))
+                                ~(job-body-form type-name (first job-args) (:worktree-scope options) body))])))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

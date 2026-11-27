@@ -577,9 +577,20 @@
         (when (get group-id->tenant? group_id)
           (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))))
 
+(defn- check-main-app-collections
+  "Throws a 400 unless every one of `rows` satisfies these rules:
+
+  - the Collection it grants access to is of the default worktree, since every worktree shares the Permissions"
+  [rows]
+  (when-let [collection-ids (seq (keep (comp :collection_id maybe-break-out-permission-data) rows))]
+    (when-not (permissions.db/default-worktree-collections-exist? collection-ids)
+      (throw (ex-info (tru "Permissions can only be granted on a Collection of the default worktree.")
+                      {:status-code 400})))))
+
 (defn- create-permissions-batch!
   "Check and insert `rows`, one batch of a call, returning the number inserted."
   [rows]
+  (check-main-app-collections rows)
   (check-tenant-group-grants rows)
   (run! assert-not-admin-group rows)
   (permissions.db/insert-permissions! rows))

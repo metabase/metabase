@@ -993,7 +993,7 @@
   (when config/ee-available?
     (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
       (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Display values can only be changed in the main app"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Display values can only be changed in the default worktree"
                               (mt/with-temp [:model/FieldValues _ {:field_id              (mt/id :venues :price)
                                                                    :type                  :full
                                                                    :values                [1 2]

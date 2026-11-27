@@ -35,6 +35,7 @@
   content: logs of content activity, polymorphic references to content such as revisions, view logs, recent views and
   comments, and per-worktree caches."
   #{;; They point at content polymorphically, by model and id or entity id, without a foreign key.
+    :model/AuditLog
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/ChangeLog
@@ -43,6 +44,7 @@
     :model/ModerationReview
     :model/RecentViews
     :model/Revision
+    :model/ViewLog
     ;; They are dependency and analysis records keyed by entity ids.
     :model/AnalysisFinding
     :model/AnalysisFindingError
@@ -64,17 +66,14 @@
     :model/NotificationSubscription
     ;; They are runs and logs of each worktree.
     :model/DataTestRun
-    :model/RemoteSyncTask})
+    :model/QueryExecution
+    :model/RemoteSyncTask
+    :model/TaskHistory
+    :model/TaskRun})
 
 (def ^:private unscoped-tables
   "The models of other tables, without `worktree_id` or the hook; leave instance-wide data unscoped."
-  #{;; They are logs of the main app only.
-    :model/AuditLog
-    :model/QueryExecution
-    :model/TaskHistory
-    :model/TaskRun
-    :model/ViewLog
-    ;; Instance-wide data: warehouse metadata, users, groups, sessions, settings, Metabot, tenants, transform jobs and
+  #{;; Instance-wide data: warehouse metadata, users, groups, sessions, settings, Metabot, tenants, transform jobs and
     ;; the like.
     :model/AgentApiCallLog
     :model/AiUsageLog

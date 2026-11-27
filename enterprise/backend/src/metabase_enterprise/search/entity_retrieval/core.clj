@@ -257,8 +257,8 @@
                :rebuilt? rebuilt? :documents documents :entities entities :ran_ms ran-ms})))
 
 (defn- run-loop
-  "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call
-  `(work scheduled-timer)` in the main app, whose content the shared index holds, then promote the queued follow-up.
+  "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call `(work
+  scheduled-timer)` in the default worktree, whose content the shared index holds, then promote the queued follow-up.
   Returns `work`'s value (the full path's result map; nil for the targeted path)."
   [cur nxt predecessor work]
   (future

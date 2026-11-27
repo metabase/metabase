@@ -1086,5 +1086,5 @@
   (when config/ee-available?
     (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
       (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Users can only be added in the main app"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Users can only be added in the default worktree"
                               (mt/with-temp [:model/User _ {}])))))))

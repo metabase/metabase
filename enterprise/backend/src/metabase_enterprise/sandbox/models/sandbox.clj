@@ -310,16 +310,16 @@
 (defn- check-sandbox-cards
   "Throws a 400 unless every Sandbox of `rows` satisfies these rules:
 
-  - its Card is of the main app, since every worktree shares the Sandboxes"
+  - its Card is of the default worktree, since every worktree shares the Sandboxes"
   [rows]
   (when-let [card-ids (seq (keep :card_id rows))]
     (when-not (sandbox.db/default-worktree-cards-exist? card-ids)
-      (throw (ex-info (tru "A sandbox can only use a Card of the main app.") {:status-code 400})))))
+      (throw (ex-info (tru "A sandbox can only use a Card of the default worktree.") {:status-code 400})))))
 
 (defn- check-new-sandboxes
   "Throws a 400 unless every row of `rows` satisfies these rules, with the refusal of the first row that breaks one:
 
-  - its Card is of the main app
+  - its Card is of the default worktree
   - its Card's columns match its Table"
   [rows]
   (check-sandbox-cards rows)
@@ -357,7 +357,7 @@
   "Throws a 400 unless every row of `updates` whose Sandbox `id->stored` holds satisfies these rules, with the refusal
   of the first row that breaks one, in this order for each:
 
-  - a new Card is of the main app
+  - a new Card is of the default worktree
   - a new Card's columns match the Table of the Sandbox
   - the Sandbox keeps its Table and its group"
   [updates id->stored]

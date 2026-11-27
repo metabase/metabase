@@ -1,7 +1,7 @@
 ## Fixes of the remote sync worktree schema: what is in a Collection is deleted with it, so that deleting a worktree,
 ## which cascades to both, works on H2 and MySQL; sandboxes and collection permissions are shared across worktrees,
-## like data permissions; the audit, task, query and view logs are of the main app only; the single-column worktree_id
-## indexes of the log tables go; and the Postgres planner gets statistics for worktree_id.
+## like data permissions; the single-column worktree_id indexes of the log tables, which outlive their worktree, go; and
+## the Postgres planner gets statistics for worktree_id.
 
 databaseChangeLog:
   - changeSet:
@@ -550,101 +550,6 @@ databaseChangeLog:
               - column:
                   name: worktree_id
 
-  - changeSet:
-      id: ualg5co
-      author: ranquild
-      comment: Drop the worktree_id column of audit_log, a log of the main app only
-      changes:
-        - dropColumn:
-            tableName: audit_log
-            columnName: worktree_id
-      rollback:
-        - addColumn:
-            tableName: audit_log
-            columns:
-              - column:
-                  name: worktree_id
-                  type: INTEGER
-                  defaultValueNumeric: 1
-                  remarks: The remote sync worktree of the row, 1 being the main app
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: utkh5co
-      author: ranquild
-      comment: Drop the worktree_id column of task_history, a log of the main app only
-      changes:
-        - dropColumn:
-            tableName: task_history
-            columnName: worktree_id
-      rollback:
-        - addColumn:
-            tableName: task_history
-            columns:
-              - column:
-                  name: worktree_id
-                  type: INTEGER
-                  defaultValueNumeric: 1
-                  remarks: The remote sync worktree of the row, 1 being the main app
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: utkr5co
-      author: ranquild
-      comment: Drop the worktree_id column of task_run, a log of the main app only
-      changes:
-        - dropColumn:
-            tableName: task_run
-            columnName: worktree_id
-      rollback:
-        - addColumn:
-            tableName: task_run
-            columns:
-              - column:
-                  name: worktree_id
-                  type: INTEGER
-                  defaultValueNumeric: 1
-                  remarks: The remote sync worktree of the row, 1 being the main app
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: uqex5co
-      author: ranquild
-      comment: Drop the worktree_id column of query_execution, a log of the main app only
-      changes:
-        - dropColumn:
-            tableName: query_execution
-            columnName: worktree_id
-      rollback:
-        - addColumn:
-            tableName: query_execution
-            columns:
-              - column:
-                  name: worktree_id
-                  type: INTEGER
-                  defaultValueNumeric: 1
-                  remarks: The remote sync worktree of the row, 1 being the main app
-                  constraints:
-                    nullable: false
-  - changeSet:
-      id: uvlg5co
-      author: ranquild
-      comment: Drop the worktree_id column of view_log, a log of the main app only
-      changes:
-        - dropColumn:
-            tableName: view_log
-            columnName: worktree_id
-      rollback:
-        - addColumn:
-            tableName: view_log
-            columns:
-              - column:
-                  name: worktree_id
-                  type: INTEGER
-                  defaultValueNumeric: 1
-                  remarks: The remote sync worktree of the row, 1 being the main app
-                  constraints:
-                    nullable: false
   - changeSet:
       id: wixct0
       author: ranquild

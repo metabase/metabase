@@ -154,11 +154,11 @@
                      :status-code 400}))))
 
 (defn- check-display-values-not-in-worktree
-  "Throws a 400 when display values are `written?` in a remote sync worktree other than the main app, since every
-  worktree shares the FieldValues."
+  "Throws a 400 when display values are `written?` in a remote sync worktree other than the default worktree, since
+  every worktree shares the FieldValues."
   [written?]
   (when (and written? (mdb/worktree-id))
-    (throw (ex-info (tru "Display values can only be changed in the main app, not in a worktree.") {:status-code 400}))))
+    (throw (ex-info (tru "Display values can only be changed in the default worktree.") {:status-code 400}))))
 
 (t2/define-before-insert :model/FieldValues
   [field-values]

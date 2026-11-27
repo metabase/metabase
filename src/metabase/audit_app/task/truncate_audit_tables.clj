@@ -81,8 +81,9 @@
    (audit-models-to-truncate)))
 
 (task/defjob TruncateAuditTables
-  "Triggers the removal of `query_execution` rows older than the configured threshold."
-  {:saved-class "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"}
+  "Triggers the removal of the audit rows of every remote sync worktree older than the configured threshold."
+  {:saved-class    "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"
+   :worktree-scope {:type :all}}
   [_]
   (truncate-audit-tables!))
 

@@ -118,8 +118,8 @@
     (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
 
 (defn- create-tenant-collections!
-  "Create a new Collection in the main app, where Tenants live, for each of the Tenant `rows` and return the rows with
-  it."
+  "Create a new Collection in the default worktree, where Tenants live, for each of the Tenant `rows` and return the
+  rows with it."
   [rows]
   (let [collections (app-db/with-worktree-scope {:type :main}
                       (collection/create-collections!

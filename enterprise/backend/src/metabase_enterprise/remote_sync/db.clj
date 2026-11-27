@@ -15,7 +15,7 @@
 
 (defenterprise non-default-worktree-exists?
   "Whether any worktree other than the default one exists, with the `:remote-sync` feature or without it, so that a
-  lost feature keeps every request in the main app."
+  lost feature keeps every request in the default worktree."
   :feature :none
   []
   (t2/exists? :model/RemoteSyncWorktree :is_default false))

@@ -36,12 +36,12 @@
   *scope*)
 
 (defn worktree-id
-  "The id of the worktree other than the main app this thread works in, or nil."
+  "The id of the worktree other than the default worktree this thread works in, or nil."
   []
   (:worktree-id *scope*))
 
 (defn worktree-id->scope
-  "The [[::scope]] of the worktree with `worktree-id`, or of the main app when it is nil."
+  "The [[::scope]] of the worktree with `worktree-id`, or of the default worktree when it is nil."
   [worktree-id]
   (if worktree-id {:type :worktree :worktree-id worktree-id} {:type :main}))
 

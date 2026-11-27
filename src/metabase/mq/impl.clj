@@ -62,8 +62,8 @@
                             (/ (double (- (System/nanoTime) start)) 1e6))))))
 
 (defn tag-worktree
-  "`messages` tagged with the worktree scope this thread works in, unless it is the main app's, so that [[deliver!]]
-  runs their listener in it."
+  "`messages` tagged with the worktree scope this thread works in, unless it is the default worktree's, so that
+  [[deliver!]] runs their listener in it."
   [messages]
   (let [scope (mdb/worktree-scope)]
     (if (= {:type :main} scope)

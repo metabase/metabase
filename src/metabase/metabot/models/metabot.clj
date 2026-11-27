@@ -47,11 +47,11 @@
 (defn- check-metabot-collections
   "Throws a 400 unless every Metabot change of `rows` satisfies these rules:
 
-  - its Collection is of the main app, since every worktree shares the Metabots"
+  - its Collection is of the default worktree, since every worktree shares the Metabots"
   [rows]
   (when-let [collection-ids (seq (keep :collection_id rows))]
     (when-not (metabot.db/default-worktree-collections-exist? collection-ids)
-      (throw (ex-info (tru "A Metabot can only use a Collection of the main app.") {:status-code 400})))))
+      (throw (ex-info (tru "A Metabot can only use a Collection of the default worktree.") {:status-code 400})))))
 
 (mu/defn update-metabots! :- :nil
   "Apply the changes in each of `rows`, the id of a Metabot and the columns to change, in one transaction."

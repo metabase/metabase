@@ -74,5 +74,5 @@
                    :model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
       (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
         (mt/with-temp [:model/Collection {collection-id :id} {}]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Metabot can only use a Collection of the main app"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only use a Collection of the default worktree"
                                 (metabot/update-metabots! [{:id metabot-id :collection_id collection-id}]))))))))

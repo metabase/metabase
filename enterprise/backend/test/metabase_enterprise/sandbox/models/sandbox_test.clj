@@ -1044,7 +1044,7 @@
                    :model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
       (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
         (mt/with-temp [:model/Card {card-id :id} {}]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A sandbox can only use a Card of the main app"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A sandbox can only use a Card of the default worktree"
                                 (sandboxes/create-sandboxes! [{:group_id group-id
                                                                :table_id (mt/id :venues)
                                                                :card_id  card-id}]))))))))

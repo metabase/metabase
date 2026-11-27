@@ -61,8 +61,8 @@
     (hydrate! (events/event-schema topic))))
 
 (defn- notifications-for-topic
-  "Returns the notifications of the main app, which holds the system-event ones, for a given topic if it is supported
-  and has notifications."
+  "Returns the notifications of the default worktree, which holds the system-event ones, for a given topic if it is
+  supported and has notifications."
   [topic]
   (when (supported-topics topic)
     (mdb/with-worktree-scope {:type :main}
@@ -83,8 +83,8 @@
     [event]))
 
 (defn- send-notifications!
-  "Send the main app's `notifications` for the `event` of `topic`, hydrated in the worktree it happened in, with a task
-  history row of their own."
+  "Send the default worktree's `notifications` for the `event` of `topic`, hydrated in the worktree it happened in, with
+  a task history row of their own."
   [topic event notifications]
   (task-history/with-task-history {:task         "notification-trigger"
                                    :task_details {:trigger_type     :notification-subscription/system-event

@@ -1,8 +1,10 @@
 (ns metabase.permissions.models.permissions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
@@ -309,3 +311,13 @@
           (let [delete! (fn [created] (perms/create-permissions! created) (perms/delete-permissions-for-objects! (mapv :object created)))]
             (counted delete! 1)
             (is (= (counted delete! 2) (counted delete! 6)))))))))
+
+(deftest create-permissions!-refuses-worktree-collection-test
+  (when config/ee-available?
+    (mt/with-temp [:model/PermissionsGroup   {group-id :id}    {}
+                   :model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only be granted on a Collection of the default worktree"
+                                (perms/create-permissions! [{:group_id group-id
+                                                             :object   (format "/collection/%d/" collection-id)}]))))))))

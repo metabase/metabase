@@ -2690,9 +2690,10 @@
 (defn- copy-collection-permissions!
   "Grants each target Collection of `source+targets`, the pairs `[source target-id]`, the permissions of its source, a
   Collection, an id or the root, to every group with read permissions for the source, and write permissions for
-  every group with write permissions for it, and records a new revision of the permission graph."
+  every group with write permissions for it, and records a new revision of the permission graph, but in a remote sync
+  worktree, whose Collections have no Permissions, since those every worktree shares are of the default worktree."
   [source+targets]
-  (when (seq source+targets)
+  (when (and (seq source+targets) (not (mdb/worktree-id)))
     (let [groups (collections.db/group-ids-by-permission-object
                   (vec (into #{} (mapcat (fn [[source _]] [(perms/collection-read-path source)
                                                            (perms/collection-readwrite-path source)]))

@@ -43,11 +43,11 @@
 (defn- check-prompt-cards
   "Throws a 400 unless every MetabotPrompt of `rows` satisfies these rules:
 
-  - its Card is of the main app, since every worktree shares the prompts"
+  - its Card is of the default worktree, since every worktree shares the prompts"
   [rows]
   (when-let [card-ids (seq (keep :card_id rows))]
     (when-not (metabot.db/default-worktree-cards-exist? card-ids)
-      (throw (ex-info (tru "A suggested prompt can only use a Card of the main app.") {:status-code 400})))))
+      (throw (ex-info (tru "A suggested prompt can only use a Card of the default worktree.") {:status-code 400})))))
 
 (defn- add-prompt-models
   "The MetabotPrompt `rows`, each with the type of its Card as its model, after [[check-prompt-cards]]."
