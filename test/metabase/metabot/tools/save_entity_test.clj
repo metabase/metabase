@@ -9,6 +9,8 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.core :as agent.core]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
@@ -23,6 +25,7 @@
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
    [metabase.util.json :as json]
+   [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -33,14 +36,34 @@
              (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
 
 (defn- chart-memory
-  "A memory atom holding one generated chart `c-1` over a real query."
-  []
-  (let [query (venues-query)]
-    (atom {:state   {:queries {"q-1" query}
-                     :charts  {"c-1" {:chart_id "c-1"
-                                      :query_id "q-1"
-                                      :queries  [query]
-                                      :visualization_settings {:chart_type :bar}}}}
+  "A memory atom holding one generated chart `c-1` over `query`, by default a real query of the venues table."
+  ([]
+   (chart-memory (venues-query)))
+  ([query]
+   (atom {:state   {:queries {"q-1" query}
+                    :charts  {"c-1" {:chart_id "c-1"
+                                     :query_id "q-1"
+                                     :queries  [query]
+                                     :visualization_settings {:chart_type :bar}}}}
+          :context {}})))
+
+(defn- persisted
+  "`memory` with its state as a later turn of the conversation reads it back: JSON-encoded without
+  [[lib/prepare-for-serialization]], as [[metabase.metabot.models.metabot-message]] stores it, then decoded and
+  normalized."
+  [memory]
+  (doto memory
+    (swap! update :state #(-> % json/encode json/decode+kw metabot.schema/normalize-state))))
+
+(defn- seeded-chart-memory
+  "A memory atom holding the chart `c-1` that [[agent.core/seed-charts]] seeds from a viewing context item whose
+  query and chart config hold `query`."
+  [query]
+  (let [item {:id            "c-1"
+              :type          "adhoc"
+              :query         query
+              :chart_configs [{:query query, :display_type "bar"}]}]
+    (atom {:state   (agent.core/seed-charts {} {:user_is_viewing [item]})
            :context {}})))
 
 (defn- rehydrated-chart-memory
@@ -115,6 +138,90 @@
                          :destination {:target_type "collection" :collection_id (:id coll)}}))]
           (testing "saves a generated query after its enum values were stringified between turns"
             (is (integer? (get-in result [:structured-output :card-id])))))))))
+
+(def ^:private venue-count-sql "SELECT COUNT(*) FROM VENUES")
+
+(deftest save-native-chart-test
+  (let [query  (lib/native-query (mt/metadata-provider) venue-count-sql)
+        legacy {:database (mt/id), :type :native, :native {:query venue-count-sql}}]
+    (testing "a later turn reads a query back with string enum values and no metadata provider"
+      (is (=? {:lib/type "mbql/query", :lib/metadata nil, :stages [{:lib/type "mbql.stage/native"}]}
+              (get-in @(persisted (chart-memory query)) [:state :charts "c-1" :queries 0])))
+      (is (= {:database (mt/id), :type "native", :native {:query venue-count-sql}}
+             (get-in @(persisted (chart-memory legacy)) [:state :charts "c-1" :queries 0]))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "SQL charts"}]
+          ;; A conversation stored before Metabot kept its queries in MBQL 5 holds a SQL chart's query as legacy MBQL.
+          (doseq [[description memory] [["an MBQL 5 query, as `create_sql_query` builds it" (chart-memory query)]
+                                        ["that query as a later turn reads it back" (persisted (chart-memory query))]
+                                        ["a legacy query" (chart-memory legacy)]
+                                        ["a legacy query as a later turn reads it back"
+                                         (persisted (chart-memory legacy))]]]
+            (testing description
+              (binding [shared/*memory-atom* memory]
+                (testing "is checked and saved as MBQL 5"
+                  (is (=? {:lib/type :mbql/query
+                           :database (mt/id)
+                           :stages   [{:lib/type :mbql.stage/native, :native venue-count-sql}]}
+                          (:dataset_query (save-entity/savable-chart "c-1")))))
+                (let [result  (call-save-entity (assoc chart-args :destination {:target_type   "collection"
+                                                                                :collection_id coll-id}))
+                      card-id (get-in result [:structured-output :card-id])
+                      saved   (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                  (testing "becomes a question that runs the same SQL"
+                    (is (lib/native-only-query? saved))
+                    (is (= venue-count-sql (lib/raw-native-query saved)))))))))))))
+
+(deftest unsavable-query-test
+  (let [native (lib/native-query (mt/metadata-provider) "SELECT 1")]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [personal-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
+                before      (t2/count :model/Card :collection_id personal-id)]
+            ;; Rasta can't run any query, so these refusals also show that the query is judged before its
+            ;; permissions. Schemas are not enforced in production, so each refusal must hold without them.
+            ;; The viewing context sends an empty query, or a draft with no `:database` before the user picks one.
+            (doseq [[description memory] [["an empty query" (seeded-chart-memory {})]
+                                          ["a draft with no `:database`"
+                                           (seeded-chart-memory (dissoc native :database :lib/metadata))]
+                                          ["a query with `:stages` but no `:lib/type`"
+                                           (chart-memory (dissoc native :lib/type :lib/metadata))]]
+                    enforce?               [true false]]
+              (testing (str description (when-not enforce? ", with schemas not enforced"))
+                (binding [mu.fn/*enforce* enforce?]
+                  (is (=? {:class :recoverable
+                           :code  ::save-entity/invalid-query
+                           :text  #(str/starts-with? % (str "This chart's query is empty or malformed,"
+                                                            " so it can't be saved."))}
+                          (failure memory (assoc chart-args :destination {:target_type "collection"})))))))
+            (testing "no question is saved"
+              (is (= before (t2/count :model/Card :collection_id personal-id))))))))))
+
+(deftest save-native-chart-permissions-test
+  ;; SQL whose variable has no value cannot be preprocessed, so the permissions of its tables cannot be worked out.
+  (let [sql   "SELECT * FROM VENUES WHERE NAME = {{name}}"
+        query (lib/native-query (mt/metadata-provider) sql)
+        args  (assoc chart-args :destination {:target_type "collection"})]
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-current-user (mt/user->id :rasta)
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (doseq [enforce? [true false]]
+            (binding [mu.fn/*enforce* enforce?]
+              (testing (str "a user who can't write SQL can't save a SQL chart"
+                            (when-not enforce? ", with schemas not enforced"))
+                (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+                (doseq [memory [(chart-memory query) (persisted (chart-memory query))]]
+                  (is (=? {:class :unrecoverable, :code ::save-entity/no-query-permission}
+                          (failure memory args)))))
+              (testing "a user who can write SQL can"
+                (perms/set-database-permission! (perms-group/all-users) (mt/id)
+                                                :perms/create-queries :query-builder-and-native)
+                (binding [shared/*memory-atom* (chart-memory query)]
+                  (let [card-id (get-in (call-save-entity args) [:structured-output :card-id])]
+                    (is (= sql (lib/raw-native-query (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))))))))
 
 (deftest save-stamps-card-origin-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -209,11 +316,12 @@
                      :model/Metabot    open-metabot     {:name "open", :use_verified_content false}]
         (mt/with-current-user (mt/user->id :crowberto)
           (let [destination {:target_type "collection" :collection_id coll}
-                ;; A chart seeded from the viewing context holds the user's query as legacy MBQL.
+                ;; The viewing context decodes the user's query to MBQL 5, but a chart seeded in a conversation stored
+                ;; before Metabot kept its queries in MBQL 5 holds legacy MBQL.
+                legacy      {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}
                 seeded      (atom {:state   {:queries {}
                                              :charts  {"c-1" {:chart_id     "c-1"
-                                                              ;; existing usage -- do not use going forward
-                                                              :queries      [#_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (venues-query))]
+                                                              :queries      [legacy]
                                                               :chart_config {:display_type "bar"}}}}
                                    :context {}})
                 as-metabot  (fn [metabot thunk]
@@ -239,10 +347,16 @@
                                (call-save-entity (assoc chart-args :destination destination))))
                 (is (= 1 (t2/count :model/Card :collection_id coll)))))
             (testing "with curation off, a chart that reads an uncurated table is saved"
-              (as-metabot open-metabot
-                          #(binding [shared/*memory-atom* seeded]
-                             (call-save-entity (assoc chart-args :destination destination))))
-              (is (= 2 (t2/count :model/Card :collection_id coll))))))))))
+              (let [result (as-metabot open-metabot
+                                       #(binding [shared/*memory-atom* seeded]
+                                          (call-save-entity (assoc chart-args :destination destination))))]
+                (is (= 2 (t2/count :model/Card :collection_id coll)))
+                (testing "with its legacy query in MBQL 5"
+                  (is (=? {:lib/type :mbql/query
+                           :database (mt/id)
+                           :stages   [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]}
+                          (t2/select-one-fn :dataset_query :model/Card
+                                            :id (get-in result [:structured-output :card-id])))))))))))))
 
 (def ^:private document-ast
   {:type "doc"

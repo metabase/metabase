@@ -12,7 +12,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
-   [metabase.metabot.agent.links :as links]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
@@ -22,9 +25,12 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -157,9 +163,16 @@
                           " then retry with its chart ID.")}]})
 
 (defn- check-query-permissions!
-  "Require permission to run `dataset-query`.
+  "Require permission to run `dataset-query`, an MBQL 5 query.
   A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
+  ;; SQL whose variable has no value cannot be preprocessed, and the check below then asks for no more than
+  ;; query-builder access. So SQL needs its own check.
+  (when (and (lib/any-native-stage? dataset-query)
+             (not (sql.common/native-query-access? (:database dataset-query))))
+    (tools/unrecoverable!
+     ::no-query-permission
+     {:user-message (tru "You can''t save this chart because you don''t have permission to run its query.")}))
   (try
     (query-perms/check-run-permissions-for-queries [dataset-query])
     (catch clojure.lang.ExceptionInfo e
@@ -183,10 +196,26 @@
   (or (first (:queries chart))
       (get (shared/current-queries-state) (:query_id chart))))
 
+(mu/defn- chart-dataset-query :- ::lib.schema/query
+  "The MBQL 5 query to check and save for a chart that holds `query`.
+  Throws [[invalid-query!]] when `query` is empty or does not normalize."
+  [query :- ::lib.util/query-like]
+  ;; Conversation state holds a query as a tool built it, as JSON returned it, or, in a conversation older than
+  ;; Metabot's MBQL 5 queries, as legacy MBQL.
+  (let [normalized (try
+                     (lib-be/normalize-query nil query {:strict? true})
+                     (catch Exception e
+                       (log/warn e "Failed to normalize a chart's query to save it")
+                       nil))]
+    ;; An empty query needs no permissions, so it must not reach the permission check.
+    (when (empty? normalized)
+      (invalid-query! {:message "This chart's query is empty or malformed, so it can't be saved."}))
+    normalized))
+
 (defn- resolve-chart
   "Look up the generated chart from agent memory and return the pieces needed to
-  build a card: a legacy `dataset_query` and a `display` keyword. Mirrors the
-  lookup in `edit_chart` / `links/resolve-chart-link`."
+  build a card: an MBQL 5 `dataset_query` and a `display` keyword. Mirrors the
+  lookup in `edit_chart` and in the chart links of [[metabase.metabot.agent.links]]."
   [chart-id]
   (let [charts (shared/current-charts-state)
         chart  (get charts chart-id)
@@ -200,7 +229,7 @@
     ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
     ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
     ;; and keep the raw config under `:chart_config` instead
-    {:dataset_query #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql query)
+    {:dataset_query (chart-dataset-query query)
      :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
@@ -213,9 +242,10 @@
     (curation/check-curated-query! (str "chart " chart-id) dataset-query)))
 
 (defn savable-chart
-  "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card.
-  Throws when the chart is unknown or the user can't run its query, and, when this Metabot uses only curated
-  content, when the query reads anything uncurated."
+  "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card, with its query in
+  MBQL 5.
+  Throws when the chart is unknown, when its query is empty or malformed, when the user can't run it, and, when this
+  Metabot uses only curated content, when the query reads anything uncurated."
   [chart-id]
   (let [{:keys [dataset_query] :as chart} (resolve-chart chart-id)]
     (check-query-permissions! dataset_query)
