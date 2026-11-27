@@ -208,10 +208,6 @@ class Question {
     });
   }
 
-  setArchived(archived: boolean) {
-    return this.setCard({ ...this.card(), archived });
-  }
-
   // locking the display prevents auto-selection
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);
