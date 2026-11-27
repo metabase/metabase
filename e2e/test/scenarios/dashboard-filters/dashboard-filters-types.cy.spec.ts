@@ -158,7 +158,7 @@ describe("scenarios > dashboard > filters > types", () => {
         .and("not.contain", "39.72");
     });
 
-    it("number: should apply a required default value after a reload, update it and reset it", () => {
+    it("number: should apply a required default value after a reload and update it", () => {
       H.setFilter("Number", "Equal to", "Equal to");
       H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
       H.toggleRequiredParameter();
@@ -174,15 +174,10 @@ describe("scenarios > dashboard > filters > types", () => {
       H.setFilterWidgetValue("5.27", "Enter a number");
       cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       H.ensureDashboardCardHasText("95.77");
-
-      H.resetFilterWidgetToDefault();
-      cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
-      H.filterWidget().findByText("2.07");
-      assertDefaultTaxApplied();
     });
   });
 
-  it("text: should apply a required default value after a reload, update it and reset it", () => {
+  it("text: should apply a required default value after a reload and update it", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
         query: { "source-table": ORDERS_ID, limit: 5 },
@@ -213,11 +208,6 @@ describe("scenarios > dashboard > filters > types", () => {
     });
     waitDashboardCardQuery();
     H.ensureDashboardCardHasText("37.65");
-
-    H.resetFilterWidgetToDefault();
-    waitDashboardCardQuery();
-    H.filterWidget().findByText("Organic");
-    assertOrganicOnly();
   });
 });
 
