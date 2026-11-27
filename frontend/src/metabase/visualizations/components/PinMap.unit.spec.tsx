@@ -2,15 +2,19 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/utils/settings";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
+import { getComputedSettingsForSeries } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
+  Card,
   DatasetData,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockColumn,
   createMockDatasetData,
   createMockSingleSeries,
@@ -24,6 +28,8 @@ const createData = (cols: string[], rows: RowValue[][]) =>
     cols: cols.map((name) => createMockColumn({ name })),
     rows,
   });
+
+registerVisualizations();
 
 describe("getPoints", () => {
   it("should filter out rows with null values in either the lat, long, or metric column", () => {
@@ -234,6 +240,7 @@ describe("PinMap", () => {
   const setup = ({
     isDashboard = false,
     token,
+    card,
     data = createData(
       ["lat", "lng"],
       [
@@ -250,6 +257,7 @@ describe("PinMap", () => {
   }: {
     isDashboard?: boolean;
     token?: string;
+    card?: Partial<Card>;
     data?: DatasetData;
     settings?: VisualizationSettings;
   } = {}) => {
@@ -257,7 +265,7 @@ describe("PinMap", () => {
 
     const series = [
       createMockSingleSeries(
-        {
+        card ?? {
           dataset_query: Lib.toJsQuery(
             Lib.createTestQuery(SAMPLE_PROVIDER, {
               stages: [{ source: { type: "table", id: ORDERS_ID } }],
@@ -396,5 +404,68 @@ describe("PinMap", () => {
     );
 
     expect(screen.queryByText("Draw box to filter")).not.toBeInTheDocument();
+  });
+
+  describe("saved native question", () => {
+    const NATIVE_DATA = createMockDatasetData({
+      cols: [
+        createMockColumn({
+          name: "LATITUDE",
+          base_type: "type/Float",
+          semantic_type: "type/Latitude",
+        }),
+        createMockColumn({
+          name: "LONGITUDE",
+          base_type: "type/Float",
+          semantic_type: "type/Longitude",
+        }),
+      ],
+      rows: [
+        [40.71, -74.01],
+        [34.05, -118.24],
+      ],
+    });
+
+    const setupNativeMap = (mapType: "pin" | "grid") => {
+      const card = createMockCard({
+        id: 1,
+        display: "map",
+        dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+          query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
+        }),
+        visualization_settings: {
+          "map.type": mapType,
+          "map.latitude_column": "LATITUDE",
+          "map.longitude_column": "LONGITUDE",
+        },
+      });
+      const settings = getComputedSettingsForSeries([
+        createMockSingleSeries(card, { data: NATIVE_DATA }),
+      ]);
+      return setup({ card, data: NATIVE_DATA, settings });
+    };
+
+    it("should allow a box filter on a pin map", async () => {
+      setupNativeMap("pin");
+
+      expect(
+        await screen.findByRole("button", { name: "Draw box to filter" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Set as default view" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not allow a box filter on a grid map", async () => {
+      setupNativeMap("grid");
+
+      expect(await screen.findByText("OpenStreetMap")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Set as default view" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Draw box to filter" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
