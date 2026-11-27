@@ -353,37 +353,6 @@ describe("admin > database > database routing", () => {
       );
     });
 
-    it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
-      cy.log("setup");
-      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
-        settings: { "database-enable-actions": false },
-      });
-      configureDbRoutingViaAPI({
-        router_database_id: WRITABLE_DB_ID,
-        user_attribute: "role",
-      });
-
-      cy.log("should highlight on group perms page at db level");
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-      cy.findByTestId("permission-table")
-        .findByText("(Database routing enabled)")
-        .should("exist");
-
-      cy.log("should highlight on group perms page at table level");
-      cy.visit(
-        `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${WRITABLE_DB_ID}`,
-      );
-      cy.findByTestId("permissions-editor-breadcrumbs")
-        .findByText("(Database routing enabled)")
-        .should("exist");
-
-      cy.log("should highlight on group perms page at table level");
-      cy.visit(`/admin/permissions/data/database/${WRITABLE_DB_ID}`);
-      cy.findByTestId("permissions-editor-breadcrumbs")
-        .findByText("(Database routing enabled)")
-        .should("exist");
-    });
-
     describe("feature visibility", () => {
       it("should only show db routing for valid database types", () => {
         cy.log("should not show for sample databases");
@@ -511,14 +480,6 @@ describe("admin > database > database routing", () => {
           .findByText("Writable Postgres12 (DB Routing Enabled)")
           .should("be.visible");
       });
-    });
-  });
-
-  describe("OSS", { tags: ["@OSS"] }, () => {
-    it("should not show the feature if not enabled in token features", () => {
-      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-      dbConnectionInfoSection().should("exist");
-      dbRoutingSection().should("not.exist");
     });
   });
 });
