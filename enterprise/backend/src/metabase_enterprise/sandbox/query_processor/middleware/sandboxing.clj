@@ -262,7 +262,7 @@
 
   We probably should have had this error from day 1 but now there are sandboxes in the wild that do this so I guess we
   just have to work around them going forward."
-  [metadata-providerable sandbox-query original-table-id]
+  [metadata-providerable sandbox-query {original-table-id :table_id, sandbox-id :id, card-id :card_id}]
   (let [sandbox-cols       (lib/returned-columns sandbox-query)
         table-cols         (lib.metadata/fields metadata-providerable original-table-id)
         ;; `dissoc nil` guards against the rare case of a table-col without `:id` shadowing the name lookup for
@@ -284,21 +284,25 @@
                                        (and table-id
                                             (not= table-id original-table-id))
                                        (do
-                                         (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
-                                                          " query included column %s from Table %d. This is unsupported and may not"
-                                                          " work in the future.")
-                                                     original-table-id
-                                                     (:id sandbox-col)
-                                                     table-id)
+                                         (log/warnf (str "Sandbox %s (Card %s) of Table %d returns column %s from Table %d."
+                                                         " Sandboxes can only include columns from the original Table, so the"
+                                                         " column is left out.")
+                                                    sandbox-id
+                                                    card-id
+                                                    original-table-id
+                                                    (pr-str (:name sandbox-col))
+                                                    table-id)
                                          true)
 
                                        :let [matching-table-col (find-table-col sandbox-col)]
                                        (not matching-table-col)
                                        (do
-                                         (log/errorf (str "Sandboxes can only include columns from the original Table,"
-                                                          " but query included column %s. This is unsupported and may not work in"
-                                                          " the future.")
-                                                     (:id sandbox-col))
+                                         (log/warnf (str "Sandbox %s (Card %s) of Table %d returns column %s, which is not a"
+                                                         " visible column of that Table, so the column is left out.")
+                                                    sandbox-id
+                                                    card-id
+                                                    original-table-id
+                                                    (pr-str (:name sandbox-col)))
                                          true)
 
                                        :else
@@ -310,7 +314,7 @@
     (if (= fixed-cols sandbox-cols)
       sandbox-query
       (do
-        (log/warn "Adding additional stage to query to work around bad sandbox with extra columns")
+        (log/debug "Adding additional stage to query to work around bad sandbox with extra columns")
         (-> sandbox-query
             lib/append-stage
             (lib/with-fields (map lib/update-keys-for-col-from-previous-stage fixed-cols)))))))
@@ -370,7 +374,7 @@
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
   (let [sandbox-query      (sandbox->query query sandbox)
-        sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
+        sandbox-query      (project-only-columns-from-original-table query sandbox-query sandbox)
         new-source-stages  (mapv (fn [stage]
                                    (-> stage
                                        (assoc :query-permissions/sandboxed-table source-table)

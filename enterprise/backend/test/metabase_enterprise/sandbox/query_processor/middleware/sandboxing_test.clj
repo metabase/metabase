@@ -2072,9 +2072,33 @@
         (is (contains? (set (map :name (lib/returned-columns sandbox-query)))
                        "tier_and_details.u1.id")))
       (testing "nested customers fields are preserved; the joined orders.total column is still filtered out"
-        (let [result (#'sandboxing/project-only-columns-from-original-table mp sandbox-query 100)]
+        (let [result (#'sandboxing/project-only-columns-from-original-table mp sandbox-query {:table_id 100})]
           (is (= #{1001 1002 1100 1200 1201 1202}
                  (set (map :id (lib/returned-columns result))))))))))
+
+(deftest project-only-columns-from-original-table-logs-dropped-column-names-test
+  (testing "Dropping native sandbox columns logs column name and sandbox (#85688)"
+    (let [mp            (lib.tu/mock-metadata-provider
+                         {:database {:id 1 :name "db" :engine :h2}
+                          :tables   [{:id 100 :name "customers" :db-id 1}]
+                          :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
+                                      :semantic-type :type/PK}]})
+          sandbox-query (lib/update-query-stage (lib/native-query mp "SELECT * FROM customers")
+                                                0 assoc :lib/stage-metadata
+                                                (lib/->normalized-stage-metadata
+                                                 [{:name "id" :display_name "ID" :base_type :type/Integer}
+                                                  {:name "secret_col" :display_name "Secret" :base_type :type/Text}]))
+          sandbox       {:id 7, :card_id 8, :table_id 100}]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :warn]]
+        (let [result (#'sandboxing/project-only-columns-from-original-table mp sandbox-query sandbox)]
+          (is (= ["id"] (map :name (lib/returned-columns result)))))
+        (is (some (fn [{:keys [message]}]
+                    (and (str/includes? message "secret_col")
+                         (str/includes? message "Sandbox 7")
+                         (str/includes? message "Card 8")
+                         (str/includes? message "Table 100")))
+                  (messages))
+            (pr-str (messages)))))))
 
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
