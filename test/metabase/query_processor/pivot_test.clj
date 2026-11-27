@@ -1803,3 +1803,21 @@
           (let [first-detail (first (filter #(zero? (nth % 2)) rows))]
             (is (string? (first first-detail))
                 (str "first detail row: " (pr-str first-detail)))))))))
+
+(deftest pivot-query-without-last-stage-breakouts-has-no-pivot-grouping-column-test
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+    (testing "pivot query whose last stage only filters aggregated previous stage does not return pivot-grouping (#79651)"
+      (let [mp        (mt/metadata-provider)
+            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib.metadata/field mp (mt/id :orders :user_id)))
+                          (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
+                          lib/append-stage)
+            count-col (m/find-first #(= (:name %) "count") (lib/filterable-columns query))
+            query     (lib/filter query (lib/> count-col 0))]
+        (doseq [native? [false true]]
+          (testing (str "use-native-pivot-tables = " native?)
+            (mt/with-temporary-setting-values [use-native-pivot-tables native?]
+              (let [result (qp.pivot/run-pivot-query (qp.core/userland-query (assoc query :pivot-rows [] :pivot-cols [])))]
+                (is (= :completed (:status result)))
+                (is (not (some #{"pivot-grouping"} (map :name (mt/cols result)))))))))))))
