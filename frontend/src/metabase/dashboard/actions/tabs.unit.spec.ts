@@ -42,7 +42,10 @@ import {
   getTabs,
 } from "../selectors";
 
-import { addLinkDashCardToDashboard } from "./cards-typed";
+import {
+  addLinkDashCardToDashboard,
+  removeCardFromDashboard,
+} from "./cards-typed";
 import { setDashboardAttributes } from "./core";
 import { getIdFromSlug, moveTab, resetTempTabId, tabsReducer } from "./tabs";
 import { deleteTab, duplicateTab, moveDashCardToTab } from "./tabs-thunks";
@@ -481,6 +484,31 @@ describe("deleteTab", () => {
 
     expect(getTabs(store.getState()).map(({ id }) => id)).toEqual([1, 2]);
     expect(getDashboard(store.getState())?.parameters).toEqual(PARAMETERS);
+  });
+
+  it("should keep dashcards removed before tab deletion removed after undo", async () => {
+    const { store } = setupTabsWithCardFilters();
+
+    await store.dispatch(
+      removeCardFromDashboard({ dashcardId: 2, cardId: ORDERS_CARD.id }),
+    );
+    deleteTab(2)(store.dispatch, store.getState);
+    await waitFor(() =>
+      expect(
+        store
+          .getState()
+          .undo.some(({ message }) => message === 'Deleted "Tab 2"'),
+      ).toBe(true),
+    );
+    const tab2Undo = store
+      .getState()
+      .undo.find(({ message }) => message === 'Deleted "Tab 2"');
+    store.dispatch(performUndo(checkNotNull(tab2Undo).id));
+
+    expect(getTabs(store.getState()).map(({ id }) => id)).toEqual([1, 2]);
+    expect(getDashcards(store.getState())[2]).toMatchObject({
+      isRemoved: true,
+    });
   });
 });
 
