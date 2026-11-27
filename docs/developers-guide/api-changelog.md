@@ -10,7 +10,8 @@ summary: Breaking changes to the Metabase API, listed by release.
 - `PUT /api/table/:id`, `PUT /api/table`, and `POST /api/data-studio/table/edit` no longer accept `authoritative` for
   `data_authority`, and return `400 Bad Request` for it. A migration changes the existing `authoritative` tables:
   uploaded tables become `ingested`, and other tables become `unconfigured`. Responses no longer contain
-  `authoritative`. Uploads are created as `ingested`.
+  `authoritative`. Uploads are created as `ingested`. Table results from `GET /api/search` no longer contain
+  `data_authority`.
 
 - `GET /api/card/:id` no longer accepts the query parameter `legacy-mbql`. The endpoint ignores it, and always
   returns the Card's `dataset_query` as MBQL 5. Before, `?legacy-mbql=true` returned the query as MBQL 4 (legacy
