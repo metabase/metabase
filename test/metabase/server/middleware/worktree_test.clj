@@ -28,7 +28,7 @@
     (is (= {:type :all} (run-middleware (mt/user->id :crowberto) true nil)))
     (is (= {:type :all} (run-middleware (mt/user->id :rasta) false nil))))
   (testing "request without user runs in default worktree"
-    (is (= {:type :main} (run-middleware nil false nil)))))
+    (is (= mdb/default-worktree-scope (run-middleware nil false nil)))))
 
 (deftest request-scope-with-worktree-test
   (when config/ee-available?
@@ -38,14 +38,14 @@
         (let [admin-id (mt/user->id :crowberto)
               user-id  (mt/user->id :rasta)]
           (testing "request without user runs in default worktree"
-            (is (= {:type :main} (run-middleware nil false nil))))
+            (is (= mdb/default-worktree-scope (run-middleware nil false nil))))
           (testing "header sent by admin names worktree request runs in"
             (is (= {:type :worktree :worktree-id worktree-id}
                    (run-middleware admin-id true (str worktree-id))))
             (is (= {:type :worktree :worktree-id other-worktree-id}
                    (run-middleware admin-id true (str other-worktree-id)))))
           (testing "header 0 names default worktree"
-            (is (= {:type :main} (run-middleware admin-id true "0"))))
+            (is (= mdb/default-worktree-scope (run-middleware admin-id true "0"))))
           (testing "header sent without user is unauthenticated"
             (is (= 401 (run-middleware nil false (str worktree-id))))
             (is (= 401 (run-middleware nil false "0"))))
@@ -56,12 +56,12 @@
             (is (= 400 (run-middleware admin-id true (str (+ other-worktree-id 1000)))))
             (is (= 400 (run-middleware admin-id true (str mdb/default-worktree-id)))))
           (testing "admin without checkout and without header works in default worktree"
-            (is (= {:type :main} (run-middleware admin-id true nil))))
+            (is (= mdb/default-worktree-scope (run-middleware admin-id true nil))))
           (mt/with-temp [:model/RemoteSyncWorktreeUser _ {:user_id admin-id :worktree_id worktree-id}
                          :model/RemoteSyncWorktreeUser _ {:user_id user-id :worktree_id worktree-id}]
             (testing "admin works in worktree they checked out"
               (is (= {:type :worktree :worktree-id worktree-id} (run-middleware admin-id true nil))))
             (testing "header overrides admin's checkout"
-              (is (= {:type :main} (run-middleware admin-id true "0"))))
+              (is (= mdb/default-worktree-scope (run-middleware admin-id true "0"))))
             (testing "non-admin works in default worktree whatever they checked out"
-              (is (= {:type :main} (run-middleware user-id false nil))))))))))
+              (is (= mdb/default-worktree-scope (run-middleware user-id false nil))))))))))

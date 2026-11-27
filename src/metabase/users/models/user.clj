@@ -152,16 +152,9 @@
     (:email user) (update :email u/lower-case-en)
     (:locale user) (update :locale i18n/normalized-locale-string)))
 
-(defn- check-not-in-worktree
-  "Throws a 400 in a remote sync worktree other than the default worktree, where users, which every worktree shares, are
-  not added."
-  []
-  (when (app-db/worktree-id)
-    (throw (ex-info (tru "Users can only be added in the default worktree.") {:status-code 400}))))
-
 (t2/define-before-insert :model/User
   [user]
-  (check-not-in-worktree)
+  (app-db/check-default-worktree (tru "Users can only be added in the default worktree."))
   (check-superuser-has-no-tenant user)
   (-> (merge insert-default-values user)
       assoc-acknowledged-version

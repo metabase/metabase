@@ -2693,7 +2693,7 @@
   every group with write permissions for it, and records a new revision of the permission graph, but in a remote sync
   worktree, whose Collections have no Permissions, since those every worktree shares are of the default worktree."
   [source+targets]
-  (when (and (seq source+targets) (not (mdb/worktree-id)))
+  (when (and (seq source+targets) (not (mdb/non-default-worktree?)))
     (let [groups (collections.db/group-ids-by-permission-object
                   (vec (into #{} (mapcat (fn [[source _]] [(perms/collection-read-path source)
                                                            (perms/collection-readwrite-path source)]))

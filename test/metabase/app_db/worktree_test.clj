@@ -297,7 +297,7 @@
                 (testing "worktree reads its own rows and not default worktree's"
                   (is (= #{worktree-row-id} (visible-ids worktree-scope model ids))))
                 (testing "default worktree reads its own rows and not worktree's"
-                  (is (= #{main-id} (visible-ids {:type :main} model ids))))
+                  (is (= #{main-id} (visible-ids mdb/default-worktree-scope model ids))))
                 (testing "other worktree reads neither"
                   (is (= #{} (visible-ids other-worktree-scope model ids))))
                 (testing "scope of every worktree reads both"
@@ -315,5 +315,5 @@
             (testing "entity id names worktree copy in worktree"
               (is (= card-id (t2/select-one-pk :model/Card :entity_id entity-id))))
             (testing "entity id names default worktree row in default worktree"
-              (is (= main-card-id (mdb/with-worktree-scope {:type :main}
+              (is (= main-card-id (mdb/with-worktree-scope mdb/default-worktree-scope
                                     (t2/select-one-pk :model/Card :entity_id entity-id)))))))))))

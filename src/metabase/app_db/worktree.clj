@@ -18,17 +18,24 @@
   1)
 
 (mr/def ::scope
-  "The remote sync worktree a thread works in: the main app, the default worktree, another worktree, or every worktree
-  when none but the default one exists."
+  "The remote sync worktrees a thread works in: one worktree, the default one or another, or every worktree."
   [:multi {:dispatch :type}
-   [:main     [:map {:closed true} [:type [:= :main]]]]
    [:worktree [:map {:closed true} [:type [:= :worktree]] [:worktree-id pos-int?]]]
    [:all      [:map {:closed true} [:type [:= :all]]]]])
 
+(defn worktree-id->scope
+  "The [[::scope]] of the worktree with `worktree-id`."
+  [worktree-id]
+  {:type :worktree :worktree-id worktree-id})
+
+(def default-worktree-scope
+  "The [[::scope]] of the default worktree."
+  (worktree-id->scope default-worktree-id))
+
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *scope*
-  "The remote sync worktree this thread works in, a [[::scope]]."
-  {:type :main})
+  "The remote sync worktrees this thread works in, a [[::scope]]."
+  default-worktree-scope)
 
 (defn worktree-scope
   "The [[::scope]] this thread works in."
@@ -36,14 +43,21 @@
   *scope*)
 
 (defn worktree-id
-  "The id of the worktree other than the default worktree this thread works in, or nil."
+  "The id of the worktree this thread works in, or nil when it works in every worktree."
   []
   (:worktree-id *scope*))
 
-(defn worktree-id->scope
-  "The [[::scope]] of the worktree with `worktree-id`, or of the default worktree when it is nil."
-  [worktree-id]
-  (if worktree-id {:type :worktree :worktree-id worktree-id} {:type :main}))
+(defn non-default-worktree?
+  "Whether this thread works in one worktree other than the default one."
+  []
+  (some-> (worktree-id) (not= default-worktree-id)))
+
+(defn check-default-worktree
+  "Throws a 400 with `message` when this thread works in one worktree other than the default one, for a write of rows
+  that every worktree shares."
+  [message]
+  (when (non-default-worktree?)
+    (throw (ex-info message {:status-code 400}))))
 
 (mu/defn do-with-worktree-scope
   "Impl for [[with-worktree-scope]]."
@@ -53,7 +67,7 @@
     (thunk)))
 
 (defmacro with-worktree-scope
-  "Runs `body` in `scope`, a [[::scope]]: `{:type :main}`, `{:type :worktree :worktree-id id}` or `{:type :all}`."
+  "Runs `body` in `scope`, a [[::scope]]: `{:type :worktree :worktree-id id}` or `{:type :all}`."
   {:style/indent 1}
   [scope & body]
   `(do-with-worktree-scope ~scope (^:once fn* [] ~@body)))
@@ -84,7 +98,7 @@
   (into {} (map (fn [table] [table {:column :worktree_id :value worktree-id}])) tables))
 
 (mu/defn- main-options :- ::funnysql.schema/sandbox.options
-  "The options that keep a query to the rows of the main app, which reads the stored Table and Field rows."
+  "The options that keep a query to the rows of the default worktree, which reads the stored Table and Field rows."
   []
   {:row-filters (row-filters (vec @worktree-tables) default-worktree-id)})
 
@@ -99,7 +113,9 @@
   "`query` kept to the rows of the worktree this thread works in, or as it is across every worktree, which outside
   production still goes through the sandbox with no options so every query keeps to its restrictions."
   [query :- ::funnysql.schema/query]
-  (case (if @worktree-tables (:type *scope*) :all)
-    :all      (if config/is-prod? query (funnysql/sandbox-query (mdb.connection/db-type) query {}))
-    :main     (funnysql/sandbox-query (mdb.connection/db-type) query (main-options))
-    :worktree (funnysql/sandbox-query (mdb.connection/db-type) query (worktree-options (:worktree-id *scope*)))))
+  (let [worktree-id (when @worktree-tables (worktree-id))]
+    (cond
+      (nil? worktree-id)                  (if config/is-prod? query (funnysql/sandbox-query (mdb.connection/db-type) query {}))
+      (= default-worktree-id worktree-id) (funnysql/sandbox-query (mdb.connection/db-type) query (main-options))
+      :else                               (funnysql/sandbox-query (mdb.connection/db-type) query
+                                                                  (worktree-options worktree-id)))))

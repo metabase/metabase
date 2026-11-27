@@ -7,6 +7,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -79,7 +80,37 @@
    :id
    {:default []}))
 
+;;; ------------------------------------------------------ Reads -------------------------------------------------------
+
+(defenterprise non-default-worktrees
+  "Every worktree but the default one, with the `:remote-sync` feature or without it, so that a lost feature keeps every
+  request in the default worktree."
+  :feature :none
+  []
+  (remote-sync.db/worktrees))
+
+(defenterprise non-default-worktree
+  "The worktree other than the default one with `worktree-id`, or nil, which no request can choose without the
+  `:remote-sync` feature."
+  :feature :remote-sync
+  [worktree-id]
+  (remote-sync.db/non-default-worktree worktree-id))
+
+(defenterprise user-non-default-worktree-id
+  "The id of the worktree other than the default one the user with `user-id` checked out, or nil, which no request works
+  in without the `:remote-sync` feature."
+  :feature :remote-sync
+  [user-id]
+  (remote-sync.db/checkout-worktree-id user-id))
+
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
+(defenterprise delete-checkouts!
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree, with the `:remote-sync`
+  feature or without it."
+  :feature :none
+  [user-ids]
+  (remote-sync.db/delete-checkouts! user-ids))
 
 (mu/defn create-remote-sync-worktree! :- ::remote-sync.schema/worktree
   "Inserts `worktree` and returns it, after creating in it the built-in rows that the main app's migrations create and

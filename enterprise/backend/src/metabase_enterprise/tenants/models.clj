@@ -127,19 +127,14 @@
                         :namespace :tenant-specific}))]
     (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections)))
 
-(defn- check-not-in-worktree
-  "Throws a 400 in a remote sync worktree other than the default one, since every worktree shares the Tenants."
-  []
-  (when (app-db/worktree-id)
-    (throw (ex-info (tru "Tenants can only be created in the default worktree.") {:status-code 400}))))
-
 (mu/defn create-tenants! :- [:sequential ::tenants.schema/tenant]
   "Insert the Tenant `rows`, each with a new Collection of its own, in one transaction and return them in order,
   publishing their create event; the name or slug of an existing Tenant is a 400."
   [rows :- [:sequential ::tenants.schema/tenant.create]]
   (app-db/create-batched! :model/Tenant rows
                           {:before-create (fn [rows]
-                                            (check-not-in-worktree)
+                                            (app-db/check-default-worktree
+                                             (tru "Tenants can only be created in the default worktree."))
                                             (check-new-tenants-free rows)
                                             (create-tenant-collections! rows))
                            :after-create  #(events/publish-event! :event/tenant-create (events/create-event %))}))

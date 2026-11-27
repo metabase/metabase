@@ -335,8 +335,7 @@
   worktree other than the default one is refused, since the index holds the default worktree's entities."
   :feature :library-retrieval
   []
-  (when (mdb/worktree-id)
-    (throw (ex-info (tru "The library index can only be reconciled in the default worktree.") {:status-code 400})))
+  (mdb/check-default-worktree (tru "The library index can only be reconciled in the default worktree."))
   (when (available?)
     (reconcile-full-coalesced!)))
 
@@ -348,7 +347,7 @@
   worktree other than the default one marks nothing, since the index holds the default worktree's entities."
   :feature :library-retrieval
   [entity-type entity-local-id]
-  (when (and (available?) (not (mdb/worktree-id)))
+  (when (and (available?) (not (mdb/non-default-worktree?)))
     (try
       (locking run-lock
         (swap! dirty-entities conj [entity-type entity-local-id])

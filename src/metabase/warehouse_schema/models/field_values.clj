@@ -153,23 +153,18 @@
                      :hash_key    (:hash_key changes)
                      :status-code 400}))))
 
-(defn- check-display-values-not-in-worktree
-  "Throws a 400 when display values are `written?` in a remote sync worktree other than the default worktree, since
-  every worktree shares the FieldValues."
-  [written?]
-  (when (and written? (mdb/worktree-id))
-    (throw (ex-info (tru "Display values can only be changed in the default worktree.") {:status-code 400}))))
-
 (t2/define-before-insert :model/FieldValues
   [field-values]
-  (check-display-values-not-in-worktree (seq (:human_readable_values field-values)))
+  (when (seq (:human_readable_values field-values))
+    (mdb/check-default-worktree (tru "Display values can only be changed in the default worktree.")))
   (u/prog1 (update field-values :type #(keyword (or % :full)))
     (assert-valid-type-hash-combo <>)))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
   (let [changes (t2/changes field-values)]
-    (check-display-values-not-in-worktree (contains? changes :human_readable_values))
+    (when (contains? changes :human_readable_values)
+      (mdb/check-default-worktree (tru "Display values can only be changed in the default worktree.")))
     (u/prog1 (update field-values :type #(keyword (or % :full)))
       (assert-no-identity-changes (:id field-values) changes)
       (when (some #(contains? changes %) [:values :human_readable_values])

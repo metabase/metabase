@@ -181,10 +181,10 @@
   "Insert the stub `rows` of `model`, Users, Databases, Tables or Fields an import does not find, in the main app,
   which these belong to whatever worktree the import runs in (see [[metabase.serialization.writes/insert-matched!]])."
   ([model rows]
-   (mdb/with-worktree-scope {:type :main}
+   (mdb/with-worktree-scope mdb/default-worktree-scope
      (serialization.writes/insert-matched! model rows)))
   ([model rows key-fn insert-fn]
-   (mdb/with-worktree-scope {:type :main}
+   (mdb/with-worktree-scope mdb/default-worktree-scope
      (serialization.writes/insert-matched! model rows key-fn insert-fn))))
 
 (defn- insert-missing!

@@ -613,7 +613,7 @@
     (testing "trigger added in default worktree runs its job in default worktree"
       (task/delete-trigger! scope-trigger-key)
       (task/add-trigger! (immediate-scope-trigger))
-      (is (= {:type :main} (next-scope-job-scope))))
+      (is (= mdb/default-worktree-scope (next-scope-job-scope))))
     (testing "task scheduled in worktree runs its job in it"
       (task/delete-task! scope-job-key scope-trigger-key)
       (mdb/with-worktree-scope {:type :worktree :worktree-id 42}

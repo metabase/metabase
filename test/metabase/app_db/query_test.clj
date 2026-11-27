@@ -311,6 +311,6 @@
             (testing "streaming reducible query reads rows of worktree only"
               (is (= #{card-id} (ids-of (mdb.db/streaming-reducible-query query)))))
             (testing "query in default worktree reads its rows only"
-              (mdb/with-worktree-scope {:type :main}
+              (mdb/with-worktree-scope mdb/default-worktree-scope
                 (is (= #{main-card-id} (ids-of (mdb.db/query query))))
                 (is (= #{main-card-id} (ids-of (mdb.db/streaming-reducible-query query))))))))))))

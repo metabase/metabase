@@ -425,7 +425,7 @@
 (deftest insert-sets-worktree-id-from-scope-test
   (do-with-test-worktree!
    (fn [worktree-id]
-     (doseq [[scope expected] [[{:type :main} mdb/default-worktree-id]
+     (doseq [[scope expected] [[mdb/default-worktree-scope mdb/default-worktree-id]
                                [{:type :worktree :worktree-id worktree-id} worktree-id]
                                [{:type :all} mdb/default-worktree-id]]]
        (testing (str "insert in scope " (pr-str scope))
@@ -439,7 +439,7 @@
 (deftest update-refuses-worktree-id-change-test
   (do-with-test-worktree!
    (fn [worktree-id]
-     (let [timeline-id (create-timeline! {:type :main} "Worktree hook update timeline")]
+     (let [timeline-id (create-timeline! mdb/default-worktree-scope "Worktree hook update timeline")]
        (try
          (testing "update changing worktree_id throws"
            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"sandbox column :worktree_id"

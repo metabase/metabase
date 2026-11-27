@@ -66,7 +66,7 @@
   [[deliver!]] runs their listener in it."
   [messages]
   (let [scope (mdb/worktree-scope)]
-    (if (= {:type :main} scope)
+    (if (= mdb/default-worktree-scope scope)
       messages
       (mapv (fn [message] {::scope scope ::message message}) messages))))
 
@@ -74,7 +74,7 @@
   "Invokes `listener` once with the `messages` of each worktree scope they were published in, in that scope, for every
   scope even when one throws. Returns nil on success, or the first `Throwable` a listener threw."
   [channel listener messages]
-  (->> (group-by #(get % ::scope {:type :main}) messages)
+  (->> (group-by #(get % ::scope mdb/default-worktree-scope) messages)
        (mapv (fn [[scope tagged]]
                (mdb/with-worktree-scope scope
                  (run-listener! channel listener (mapv #(get % ::message %) tagged)))))

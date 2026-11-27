@@ -494,7 +494,7 @@
           (testing "created worktree has built-in rows"
             (mdb/with-worktree-scope {:type :worktree :worktree-id (:id worktree)}
               (is (t2/exists? :model/Collection :entity_id "trashtrashtrashtrasht"))
-              (is (= (mdb/with-worktree-scope {:type :main}
+              (is (= (mdb/with-worktree-scope mdb/default-worktree-scope
                        (t2/select-fn-set :entity_id :model/TransformTag :built_in_type [:not= nil]))
                      (t2/select-fn-set :entity_id :model/TransformTag :built_in_type [:not= nil]))))))))))
 

@@ -228,9 +228,11 @@
   "worktree-id")
 
 (defn- in-worktree
-  "`trigger`, its job data naming the remote sync worktree this thread works in, or `previous`'s, when there is one."
+  "`trigger`, its job data naming the remote sync worktree other than the default one this thread works in, or
+  `previous`'s, when there is one."
   ^Trigger [^Trigger trigger ^Trigger previous]
-  (when-let [worktree-id (or (mdb/worktree-id) (some-> previous .getJobDataMap (.get worktree-id-key)))]
+  (when-let [worktree-id (or (when (mdb/non-default-worktree?) (mdb/worktree-id))
+                             (some-> previous .getJobDataMap (.get worktree-id-key)))]
     (.put (.getJobDataMap trigger) ^String worktree-id-key ^Object worktree-id))
   trigger)
 
@@ -562,13 +564,13 @@
   "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`, or of the default
   worktree without one."
   [^JobExecutionContext job-context]
-  (mdb/worktree-id->scope (some-> job-context .getMergedJobDataMap (.get worktree-id-key))))
+  (mdb/worktree-id->scope (or (some-> job-context .getMergedJobDataMap (.get worktree-id-key)) mdb/default-worktree-id)))
 
 (defn run-in-each-worktree
   "Calls `thunk` once in each remote sync worktree, the default one first."
   [thunk]
-  (doseq [worktree-id (remote-sync/worktree-ids)]
-    (mdb/with-worktree-scope (mdb/worktree-id->scope (when-not (= mdb/default-worktree-id worktree-id) worktree-id))
+  (doseq [worktree-id (into [mdb/default-worktree-id] (map :id) (remote-sync/non-default-worktrees))]
+    (mdb/with-worktree-scope (mdb/worktree-id->scope worktree-id)
       (thunk))))
 
 (defn- job-body-form

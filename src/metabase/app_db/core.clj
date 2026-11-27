@@ -59,10 +59,13 @@
  [mdb.env
   db-file]
  [mdb.worktree
+  check-default-worktree
   default-worktree-id
+  default-worktree-scope
   do-with-worktree-scope
   with-worktree-scope
   worktree-id
+  non-default-worktree?
   worktree-id->scope
   worktree-scope]
  [mdb.jdbc-protocols
