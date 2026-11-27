@@ -3,6 +3,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard";
@@ -71,22 +73,60 @@ export function PreviewContent({
         </SdkBreadcrumbsProvider>
       </Box>
       {openItem != null && (
-        <Stack h="100vh" gap={0}>
-          <Box px="lg" pt="md">
-            <Button
-              variant="subtle"
-              leftSection={<Icon name="chevronleft" />}
-              onClick={() => setOpenItem(null)}
-            >
-              {t`Back to collections`}
-            </Button>
-          </Box>
-          <Box flex={1} mih={0}>
-            <PreviewItem item={openItem} />
-          </Box>
-        </Stack>
+        <OpenItem item={openItem} onBack={() => setOpenItem(null)} />
       )}
     </>
+  );
+}
+
+const DRILL_THROUGH_QUESTION_PROPS = { isSaveEnabled: false };
+
+/** Hidden once a dashboard card is drilled: the dashboard then shows the SDK's own Back to {dashboard} button. */
+function BackBar({ onBack }: { onBack: () => void }) {
+  const navigation = useSdkInternalNavigationOptional();
+
+  if (navigation?.canGoBack) {
+    return null;
+  }
+
+  return (
+    <Stack align="flex-start" p="lg">
+      <Button
+        variant="transparent"
+        size="compact-md"
+        leftSection={<Icon name="chevronleft" />}
+        onClick={onBack}
+      >
+        {t`Back to collections`}
+      </Button>
+    </Stack>
+  );
+}
+
+/** The open dashboard or question, under a Back to collections button that matches the SDK's own back button. */
+function OpenItem({ item, onBack }: { item: string; onBack: () => void }) {
+  const content = (
+    <Stack h="100vh" gap={0}>
+      <BackBar onBack={onBack} />
+      <Box flex={1} mih={0}>
+        <PreviewItem item={item} />
+      </Box>
+    </Stack>
+  );
+
+  if (parseItem(item)?.type !== "dashboard") {
+    return content;
+  }
+
+  // The dashboard reuses this provider as its own, so BackBar can tell when a card is drilled.
+  return (
+    <SdkInternalNavigationProvider
+      style={{ height: "100vh" }}
+      dashboardProps={{ withDownloads: true }}
+      drillThroughQuestionProps={DRILL_THROUGH_QUESTION_PROPS}
+    >
+      {content}
+    </SdkInternalNavigationProvider>
   );
 }
 
@@ -138,7 +178,7 @@ function PreviewItem({ item }: { item: string }) {
         dashboardId={id}
         withDownloads
         style={{ height: "100%" }}
-        drillThroughQuestionProps={{ isSaveEnabled: false }}
+        drillThroughQuestionProps={DRILL_THROUGH_QUESTION_PROPS}
       />
     ))
     .with({ type: "question" }, ({ id }) => (
