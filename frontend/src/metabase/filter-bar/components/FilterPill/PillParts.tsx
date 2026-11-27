@@ -4,7 +4,8 @@ import type { FilterParts } from "../../types";
 import { OperatorPart } from "../OperatorPart/OperatorPart";
 import { PillPart } from "../PillPart/PillPart";
 import { PillRange } from "../PillRange/PillRange";
-import { PillValues } from "../PillValues/PillValues";
+
+import { PillValues } from "./PillValues";
 
 type PillPartsProps = {
   parts: FilterParts;

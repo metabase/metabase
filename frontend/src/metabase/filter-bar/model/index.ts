@@ -17,6 +17,7 @@ export {
 } from "./types";
 export {
   closeToken,
+  CONNECTOR_TEXT,
   connectorToken,
   isEmptyTree,
   isSameStages,

@@ -11,9 +11,9 @@ import {
 } from "../../types";
 import { PillFrame } from "../PillFrame/PillFrame";
 import { PillPart } from "../PillPart/PillPart";
-import { PillParts } from "../PillParts/PillParts";
 
 import S from "./FilterPill.module.css";
+import { PillParts } from "./PillParts";
 
 type FilterPillProps = {
   content: PillContent;

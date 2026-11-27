@@ -74,6 +74,11 @@ export const isSameStages = <F>(
 
 export const hasOr = <F>(tokens: readonly Token<F>[]) => tokens.some(isOrToken);
 
+export const CONNECTOR_TEXT: Record<ConnectorToken["type"], string> = {
+  and: "and",
+  or: "or",
+};
+
 export const PAREN_TEXT: Record<ParenToken["type"], string> = {
   open: "(",
   close: ")",

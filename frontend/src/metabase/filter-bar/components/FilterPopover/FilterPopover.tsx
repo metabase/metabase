@@ -1,7 +1,8 @@
 import type { ReactNode, Ref } from "react";
 import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
-import { Popover } from "metabase/ui";
+import { Flex, Icon, Kbd, Popover, Text } from "metabase/ui";
 
 import {
   type DraftState,
@@ -10,11 +11,10 @@ import {
   getStageAt,
   readDraft,
 } from "../../editor";
-import type { ConnectorToken } from "../../model";
+import { CONNECTOR_TEXT, type ConnectorToken, PAREN_TEXT } from "../../model";
 import type { FilterBarAdapter } from "../../types";
 import { AnchorTarget, type GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 import type { DraftPick, DraftSuggestion } from "../FilterBar/draft-suggestion";
-import { LogicOperatorsHint } from "../LogicOperatorsHint/LogicOperatorsHint";
 import {
   type ListKeys,
   SuggestionList,
@@ -23,6 +23,11 @@ import type { SuggestionGroup } from "../SuggestionList/utils";
 
 import { findExactColumn, getColumnSuggestions } from "./columns";
 import { findExactOperator, getOperatorSuggestions } from "./operators";
+
+const LOGIC_OPERATORS = [
+  ...Object.values(CONNECTOR_TEXT),
+  ...Object.values(PAREN_TEXT),
+];
 
 type DraftListView<F> = {
   step: DraftStep;
@@ -35,9 +40,11 @@ const NEW_DRAFT: Pick<DraftState, "step" | "column"> = {
   column: null,
 };
 
-const getTypedConnector = (query: string): ConnectorToken["type"] | null =>
+const getTypedConnector = (query: string) =>
   match(query.trim().toLowerCase())
-    .with("and", "or", (type) => type)
+    .returnType<ConnectorToken["type"] | null>()
+    .with(CONNECTOR_TEXT.and, () => "and")
+    .with(CONNECTOR_TEXT.or, () => "or")
     .otherwise(() => null);
 
 const getDraftListView = <F,>(
@@ -122,7 +129,37 @@ export const FilterPopover = <F,>({
                 query={suggestion.query}
                 exact={listView.exact}
                 keys={listKeys}
-                footer={listView.step === "column" && <LogicOperatorsHint />}
+                footer={
+                  listView.step === "column" && (
+                    <Flex
+                      align="center"
+                      justify="space-between"
+                      py="sm"
+                      px="xl"
+                    >
+                      <Flex align="center" gap="sm" c="text-secondary">
+                        <Icon name="info" size={12} />
+                        <Text fz="sm" lh={1.15} c="inherit">
+                          {t`Logic operators available`}
+                        </Text>
+                      </Flex>
+                      <Flex align="center" gap="3px">
+                        {LOGIC_OPERATORS.map((operator, index) => (
+                          <Flex key={operator} align="flex-end">
+                            <Kbd fz="sm" c="text-primary" tt="uppercase">
+                              {operator}
+                            </Kbd>
+                            {index < LOGIC_OPERATORS.length - 1 && (
+                              <Text fz="sm" lh={1.15} c="text-secondary">
+                                ,
+                              </Text>
+                            )}
+                          </Flex>
+                        ))}
+                      </Flex>
+                    </Flex>
+                  )
+                }
                 onPick={suggestion.pick}
               />
             )}
