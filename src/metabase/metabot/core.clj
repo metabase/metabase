@@ -55,7 +55,6 @@
 (p/import-vars
  [metabase.metabot.ai
   call-llm!
-  new-boundary
   render-untrusted])
 
 (p/import-fn metabase.metabot.ai/available? ai-feature-available?)

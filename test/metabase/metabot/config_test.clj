@@ -85,3 +85,22 @@
               profile-id (metabot.config/resolve-dynamic-profile-id nil metabot-id)]
           (is (= metabot.config/internal-metabot-id metabot-id))
           (is (= "internal" profile-id)))))))
+
+(deftest request-audience-test
+  (testing "a request is embedded when it comes from an iframe or sends any client header"
+    (doseq [[headers audience] [[{}                                          :internal]
+                                [{"x-metabase-embedded" "true"}              :embedded]
+                                [{"x-metabase-embedded" "false"}             :internal]
+                                [{"x-metabase-client" "embedding-sdk-react"} :embedded]
+                                [{"x-metabase-client" "embedding-simple"}    :embedded]
+                                [{"x-metabase-client" "data-app"}            :embedded]
+                                [{"x-metabase-client" "mcp-apps"}            :embedded]
+                                [{"x-metabase-client" " "}                   :internal]]]
+      (testing (pr-str headers)
+        (is (= audience (metabot.config/request-audience {:headers headers})))))))
+
+(deftest metabot-audience-test
+  (testing "the embedded Metabot serves embeds, and any other Metabot the app"
+    (is (= :embedded (metabot.config/metabot-audience {:entity_id metabot.config/embedded-metabot-id})))
+    (is (= :internal (metabot.config/metabot-audience {:entity_id metabot.config/internal-metabot-id})))
+    (is (= :internal (metabot.config/metabot-audience {:entity_id "custommetabotxxxxxxxx"})))))
