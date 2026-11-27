@@ -19,9 +19,9 @@
   font-size: 13px;
 }
 
-/* A join is a note on the tables, not a thing in the flow: outline only. */
+/* A join is a note on the tables, not a thing in the flow: their colour, dashed. */
 .diagram :global(.join) rect {
-  fill: none;
+  fill: var(--mb-color-background_surface-brand-subtle);
   stroke: var(--mb-color-border-neutral-strong);
   stroke-dasharray: 4 3;
 }
