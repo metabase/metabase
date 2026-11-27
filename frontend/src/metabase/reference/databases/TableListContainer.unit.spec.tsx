@@ -38,6 +38,20 @@ describe("TableListContainer", () => {
     expect(screen.getByText("People")).toBeInTheDocument();
   });
 
+  it("requests database metadata without fields", async () => {
+    setup();
+    await screen.findByText("Orders");
+
+    const metadataCalls = fetchMock.callHistory.calls(
+      `path:/api/database/${DATABASE.id}/metadata`,
+    );
+
+    expect(metadataCalls).toHaveLength(1);
+    expect(new URL(metadataCalls[0].url).searchParams.get("skip_fields")).toBe(
+      "true",
+    );
+  });
+
   it("resolves the database from the route param, not from a prop", async () => {
     setup();
 
