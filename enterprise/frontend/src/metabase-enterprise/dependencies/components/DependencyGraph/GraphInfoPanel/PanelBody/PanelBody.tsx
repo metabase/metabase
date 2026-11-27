@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
+import { Markdown } from "metabase/common/components/Markdown";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
@@ -62,7 +63,11 @@ function DescriptionSection({ node }: SectionProps) {
       c={description ? "text-primary" : "text-secondary"}
       lh="h4"
     >
-      {description.length > 0 ? description : t`No description`}
+      {description.length > 0 ? (
+        <Markdown disallowHeading>{description}</Markdown>
+      ) : (
+        t`No description`
+      )}
     </Box>
   );
 }

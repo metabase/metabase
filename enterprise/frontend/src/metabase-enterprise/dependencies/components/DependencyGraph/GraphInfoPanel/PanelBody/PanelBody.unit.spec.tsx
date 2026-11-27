@@ -201,4 +201,15 @@ describe("PanelBody", () => {
     setup({ node: createMockCardDependencyNode() });
     expect(screen.queryByText("Parameters")).not.toBeInTheDocument();
   });
+
+  it("should render description as markdown", () => {
+    setup({
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          description: "Some **bold** words",
+        }),
+      }),
+    });
+    expect(screen.getByText("bold").tagName).toBe("STRONG");
+  });
 });
