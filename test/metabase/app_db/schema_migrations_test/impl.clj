@@ -191,9 +191,9 @@
   ;; is off on both paths because the snapshot is dumped without it, so whether a test gets it cannot depend on where
   ;; its start falls.
   (binding [custom-migrations/*create-sample-content* false]
-    (when (snapshot/usable-for-start? conn driver start-id)
-      (log/debugf "Loading app db snapshot %s before running migrations up to %s..." snapshot/snapshot-version start-id)
-      (snapshot/load-snapshot! conn driver))
+    (when-let [version (snapshot/version-for-start conn driver start-id)]
+      (log/debugf "Loading app db snapshot %s before running migrations up to %s..." version start-id)
+      (snapshot/load-version! conn driver version))
     (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false, :skip-ran? true})))
 

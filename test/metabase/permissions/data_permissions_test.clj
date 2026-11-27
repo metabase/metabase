@@ -1,4 +1,4 @@
-(ns ^:mb/app-db-migrations-test metabase.permissions.data-permissions-test
+(ns ^:mb/app-db-migrations-test ^:mb/mysql8-migration-group metabase.permissions.data-permissions-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

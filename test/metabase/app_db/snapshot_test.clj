@@ -27,6 +27,7 @@
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -355,6 +356,28 @@
                                   ;; snapshot predates runs wherever it sits
                                   (impl/run-migrations-in-range! conn ["v00.00-000" nil] {:skip-ran? true})))
             :fingerprint (fingerprint conn driver)})))
+
+(deftest historical-mysql-snapshot-test
+  (mt/test-drivers #{:mysql}
+    (encryption-test/with-secret-key nil
+      (doseq [[version first-test previous] [["v56" "v57.2025-08-23T16:00:00" nil]
+                                             ["v64" "v64.7qmx3p" "v56"]]]
+        (impl/with-temp-empty-app-db [conn :mysql]
+          (when (= :mysql (snapshot/flavor conn :mysql))
+            (let [through (snapshot/through-changeset-id version)]
+              (is (= version (snapshot/version-for-start conn :mysql first-test)))
+              (is (= previous (snapshot/version-for-start conn :mysql through)))
+              (when (drift-test-enabled? :mysql)
+                (binding [custom-migrations/*create-sample-content* false]
+                  (let [migrate! (fn [conn skip-ran?]
+                                   (impl/run-migrations-in-range! conn ["v00.00-000" through]
+                                                                  {:skip-ran? skip-ran?, :track-versions? false})
+                                   (fingerprint conn :mysql))
+                        scratch  (migrate! conn false)]
+                    (impl/with-temp-empty-app-db [restored :mysql]
+                      (snapshot/load-version! restored :mysql version)
+                      (is (some (comp #{through} first) (recorded-changesets restored)))
+                      (is (= scratch (migrate! restored true))))))))))))))
 
 (defn- migrate-from-scratch!
   "Migrate the empty DB behind `conn` through the whole changelog. Returns `{:ms _, :fingerprint _}`."

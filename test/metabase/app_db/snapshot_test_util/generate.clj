@@ -2,7 +2,8 @@
   "Writes the checked-in snapshots that [[metabase.app-db.snapshot-test-util/load-snapshot!]] reads.
 
   To regenerate, start a REPL with the `:dev` and `:test` aliases and Docker running, and call [[generate!]] once for
-  each of [[metabase.app-db.snapshot-test-util/flavors]].
+  each of [[metabase.app-db.snapshot-test-util/flavors]]. For the earlier MySQL migration-test checkpoints, call
+  `(generate! :mysql \"v56\")` or `(generate! :mysql \"v64\")`.
   Regenerate after editing a changeset or custom migration the snapshot already records, after changing the dumpers,
   or when moving the boundary.
   A changeset that lands before the boundary after the snapshot was cut needs no regeneration: it runs after the
@@ -130,11 +131,11 @@
   Every flavor but `:h2` runs against a server this starts itself, from the image
   [[metabase.app-db.snapshot-test-util.server]] pins for it.
   All it needs is a working `docker`, with no `MB_<DB>_TEST_*` settings and no server already running."
-  [flavor]
-  (let [version snapshot/snapshot-version]
-    (if (= flavor :h2)
-      (migrate-and-dump! flavor version nil)
-      (server/do-with-server! flavor #(migrate-and-dump! flavor version %)))))
+  ([flavor] (dump-snapshot! flavor snapshot/snapshot-version))
+  ([flavor version]
+   (if (= flavor :h2)
+     (migrate-and-dump! flavor version nil)
+     (server/do-with-server! flavor #(migrate-and-dump! flavor version %)))))
 
 (defn generate!
   "Regenerate the checked-in snapshot for `flavor` and return the file written.
@@ -143,11 +144,11 @@
   There is a file per flavor, so regenerating the MariaDB one means passing `:mariadb`, not the `:mysql` it is reached
   as.
   See [[dump-snapshot!]] for what this needs."
-  [flavor]
-  (let [{:keys [flavor content]} (dump-snapshot! flavor)
-        file                     (io/file "test_resources"
-                                          (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
-    (io/make-parents file)
-    (spit file content)
-    (log/info (u/format-color 'green "Wrote %s" (str file)))
-    file))
+  ([flavor] (generate! flavor snapshot/snapshot-version))
+  ([flavor version]
+   (let [{:keys [content]} (dump-snapshot! flavor version)
+         file              (io/file "test_resources" (snapshot/resource-path version flavor "sql"))]
+     (io/make-parents file)
+     (spit file content)
+     (log/info (u/format-color 'green "Wrote %s" (str file)))
+     file)))
