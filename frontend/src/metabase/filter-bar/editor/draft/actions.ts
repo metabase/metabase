@@ -202,7 +202,7 @@ export const createDraftActions = <F>({
     const draft = findDraftStartingAt(editor.state.doc, range.from);
     const parts = draft ? readDraft(draft) : null;
     if (!draft || !parts || !parts.edited) {
-      insertDraft(editor, range, columnDraftContent(columnPart));
+      insertDraft(editor, range, columnDraftContent(columnPart), targetStage);
       return;
     }
     const previous = getOperatorPart(draft)?.operator;

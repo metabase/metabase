@@ -198,7 +198,12 @@ describe("draft", () => {
 
     it("matches the operator step once the draft has a column", () => {
       const { editor, type } = createTestEditor([A]);
-      insertDraft(editor, { from: 2, to: 2 }, columnDraftContent(COLUMN_PART));
+      insertDraft(
+        editor,
+        { from: 2, to: 2 },
+        columnDraftContent(COLUMN_PART),
+        0,
+      );
       type("is");
       expect(findPartStep(editor.state.selection.$from)).toMatchObject({
         range: { from: 2, to: 9 },
@@ -208,7 +213,12 @@ describe("draft", () => {
 
     it("does not match once the draft has an operator", () => {
       const { editor, getCaretDraft } = createTestEditor([A]);
-      insertDraft(editor, { from: 2, to: 2 }, columnDraftContent(COLUMN_PART));
+      insertDraft(
+        editor,
+        { from: 2, to: 2 },
+        columnDraftContent(COLUMN_PART),
+        0,
+      );
       placeDraftInput(
         editor,
         getCaretDraft(),
@@ -232,21 +242,36 @@ describe("draft", () => {
   describe("column part", () => {
     it("replaces the draft text with the column, the caret after it", () => {
       const { editor, findDraft } = createWithDraft([A], 1, "st");
-      insertDraft(editor, { from: 2, to: 8 }, columnDraftContent(COLUMN_PART));
+      insertDraft(
+        editor,
+        { from: 2, to: 8 },
+        columnDraftContent(COLUMN_PART),
+        0,
+      );
       expect(findDraft()).toEqual({ pos: 2, text: "" });
       expect(editor.state.selection.from).toBe(5);
     });
 
     it("keeps and / or as text after the column", () => {
       const { editor, type, findDraft } = createTestEditor([A]);
-      insertDraft(editor, { from: 2, to: 2 }, columnDraftContent(COLUMN_PART));
+      insertDraft(
+        editor,
+        { from: 2, to: 2 },
+        columnDraftContent(COLUMN_PART),
+        0,
+      );
       type("or ");
       expect(findDraft()?.text).toBe("or ");
     });
 
     it("removes the column on Backspace right after it", () => {
       const { editor, press, findDraft } = createTestEditor([A]);
-      insertDraft(editor, { from: 2, to: 2 }, columnDraftContent(COLUMN_PART));
+      insertDraft(
+        editor,
+        { from: 2, to: 2 },
+        columnDraftContent(COLUMN_PART),
+        0,
+      );
       press("Backspace");
       expect(findDraft()).toBeNull();
     });

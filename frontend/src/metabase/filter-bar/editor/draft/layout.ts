@@ -4,6 +4,7 @@ import { TextSelection } from "@tiptap/pm/state";
 import { match } from "ts-pattern";
 
 import type { PillToken } from "../../model";
+import { insertAtStage } from "../document";
 import {
   columnContent,
   operatorContent,
@@ -142,15 +143,17 @@ export const insertDraft = (
   editor: Editor,
   range: Range,
   json: JSONContent,
+  targetStage: number,
 ) => {
   const { state } = editor;
   const node = state.schema.nodeFromJSON(json);
   if (!isDraftNode(node)) {
     return false;
   }
-  const transaction = state.tr.replaceRangeWith(range.from, range.to, node);
-  const inputs = getInputs({ node, pos: range.from });
-  const caret = inputs.at(-1)?.to ?? range.from + 1;
+  const transaction = state.tr;
+  const pos = insertAtStage(transaction, range, node, targetStage);
+  const inputs = getInputs({ node, pos });
+  const caret = inputs.at(-1)?.to ?? pos + 1;
   editor.view.dispatch(
     transaction.setSelection(TextSelection.create(transaction.doc, caret)),
   );

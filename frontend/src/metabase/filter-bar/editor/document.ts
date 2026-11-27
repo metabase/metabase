@@ -5,7 +5,7 @@ import {
   findChildren,
 } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
+import { TextSelection, type Transaction } from "@tiptap/pm/state";
 import type { NodeViewProps } from "@tiptap/react";
 import { P, match } from "ts-pattern";
 
@@ -100,26 +100,38 @@ const findStageEnd = (doc: PmNode, stage: number) => {
     : { pos: doc.content.size - 1, missingThens: stage - thens.length };
 };
 
-export const placePill = <F>(
-  editor: Editor,
-  range: { from: number; to: number },
-  token: PillToken<F>,
+export const insertAtStage = (
+  transaction: Transaction,
+  range: Range,
+  node: PmNode,
   targetStage: number,
 ) => {
-  const { state } = editor;
-  const pill = pillContent(token);
-  const transaction = state.tr.delete(range.from, range.to);
+  transaction.delete(range.from, range.to);
   const isCaretStage = getStageAt(transaction.doc, range.from) === targetStage;
   const target = isCaretStage
     ? { pos: range.from, missingThens: 0 }
     : findStageEnd(transaction.doc, targetStage);
-  const thens = Array.from({ length: target.missingThens }, thenContent);
-  const nodes = [...thens, pill].map((json) => state.schema.nodeFromJSON(json));
-  transaction.insert(target.pos, nodes);
-  const size = nodes.reduce((total, node) => total + node.nodeSize, 0);
+  const { schema } = transaction.doc.type;
+  const thens = Array.from({ length: target.missingThens }, () =>
+    schema.nodeFromJSON(thenContent()),
+  );
+  transaction.insert(target.pos, [...thens, node]);
+  return target.pos + thens.reduce((size, then) => size + then.nodeSize, 0);
+};
+
+export const placePill = <F>(
+  editor: Editor,
+  range: Range,
+  token: PillToken<F>,
+  targetStage: number,
+) => {
+  const { state } = editor;
+  const pill = state.schema.nodeFromJSON(pillContent(token));
+  const transaction = state.tr;
+  const pos = insertAtStage(transaction, range, pill, targetStage);
   editor.view.dispatch(
     transaction.setSelection(
-      TextSelection.create(transaction.doc, target.pos + size),
+      TextSelection.create(transaction.doc, pos + pill.nodeSize),
     ),
   );
   return true;

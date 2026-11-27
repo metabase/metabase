@@ -548,6 +548,21 @@ describe("FilterBar", () => {
       ]);
     });
 
+    it("moves the draft after then once a Summaries column is picked", async () => {
+      await setup({ value: [leaf(mockSegment("Active users"))] });
+      act(() => {
+        getTiptapEditor()?.commands.focus("end");
+      });
+      await typeText("count");
+      await userEvent.keyboard("{Enter}");
+
+      const then = within(getEditor()).getByText("then");
+      const draft = within(getEditor()).getByText("Count");
+      expect(then.compareDocumentPosition(draft)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+
     it.each(["{ArrowUp}", "{ArrowUp}{ArrowDown}{ArrowUp}"])(
       "wraps around the operators with %s",
       async (keys) => {

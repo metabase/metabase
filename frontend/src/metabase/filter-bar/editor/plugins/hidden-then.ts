@@ -2,7 +2,6 @@ import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
-import { getEditedPill } from "../nodes/nodes";
 import { isDraftNode, isPillNode, isThenNode } from "../nodes/types";
 
 const createHiddenThenDecorations = ({ doc }: EditorState) => {
@@ -16,8 +15,7 @@ const createHiddenThenDecorations = ({ doc }: EditorState) => {
         pillsBefore: pillCount,
       });
     }
-    const isEditedPill = isDraftNode(node) && getEditedPill(node) !== null;
-    if (isPillNode(node) || isEditedPill) {
+    if (isPillNode(node) || isDraftNode(node)) {
       pillCount += 1;
     }
   });
@@ -34,8 +32,9 @@ const createHiddenThenDecorations = ({ doc }: EditorState) => {
 };
 
 /**
- * Every stage starts with a `then` node, even an empty one, so the caret can
- * get into it: before the `then` is the previous stage, after it is its own.
+ * Every stage but the first starts with a `then` node, even an empty one, so
+ * the caret can get into it: before the `then` is the previous stage, after it
+ * is its own.
  *
  * The word "then" is only drawn when there are filters on both sides of it;
  * otherwise the node is there but takes no width.

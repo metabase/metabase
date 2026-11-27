@@ -4,6 +4,7 @@ import { Plugin, type Transaction } from "@tiptap/pm/state";
 
 import { PAREN_TEXT } from "../../../model";
 import { insertBoolOp } from "../../commands";
+import { getStageAt } from "../../document";
 import { getEditedPill, pillContent } from "../../nodes/nodes";
 import { draftContent, insertDraft } from "../layout";
 import {
@@ -56,7 +57,12 @@ const createTyping = (editor: Editor) =>
         if (text.trim() === "") {
           return true;
         }
-        return insertDraft(editor, { from, to }, draftContent(text));
+        return insertDraft(
+          editor,
+          { from, to },
+          draftContent(text),
+          getStageAt(editor.state.doc, from),
+        );
       },
     },
   });
