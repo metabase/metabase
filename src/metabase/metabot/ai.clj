@@ -519,8 +519,10 @@
           (throw e))))))
 
 (defn call-llm!
-  "Call the model of the one-call feature `feature-id` and return its answer, checked against the feature's schema,
-  with keyword keys at every level.
+  "The LLM facade: call the model of the one-call feature `feature-id` and return its answer, checked against the
+  feature's schema, with keyword keys at every level.
+  Every one-call LLM feature calls the model through this function, which code outside Metabot reaches as
+  `metabase.metabot.core/call-llm!`.
 
   The options `opts` are a closed map, see [[::options]]:
 
