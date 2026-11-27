@@ -724,14 +724,25 @@ describe("Scalar value font size (#85061)", () => {
     name: "count",
     base_type: "type/Text",
   });
+  const DATE_TIME_COLUMN = createMockColumn({
+    name: "last_updated",
+    base_type: "type/DateTime",
+    effective_type: "type/DateTime",
+  });
 
   interface SetupOpts {
     column: DatasetColumn;
     value: RowValue;
     suffix?: string;
+    timeEnabled?: "minutes";
   }
 
-  const getValueFontSize = ({ column, value, suffix }: SetupOpts) => {
+  const getValueFontSize = ({
+    column,
+    value,
+    suffix,
+    timeEnabled,
+  }: SetupOpts) => {
     const rawSeries = [
       createMockSingleSeries(
         { display: "scalar" },
@@ -743,7 +754,10 @@ describe("Scalar value font size (#85061)", () => {
         {...mockedProps}
         series={rawSeries}
         rawSeries={rawSeries}
-        settings={{ ...settings, column: () => ({ suffix }) }}
+        settings={{
+          ...settings,
+          column: () => ({ suffix, time_enabled: timeEnabled }),
+        }}
         visualizationIsClickable={() => false}
         width={230}
         height={150}
@@ -769,6 +783,16 @@ describe("Scalar value font size (#85061)", () => {
       getValueFontSize({
         column: TEXT_COLUMN,
         value: `12,345${LONG_SUFFIX}`,
+      }),
+    ).not.toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
+  });
+
+  it("shrinks font size for date-time value that does not fit card (#86266)", () => {
+    expect(
+      getValueFontSize({
+        column: DATE_TIME_COLUMN,
+        value: "2029-04-19T14:07:00",
+        timeEnabled: "minutes",
       }),
     ).not.toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
   });
