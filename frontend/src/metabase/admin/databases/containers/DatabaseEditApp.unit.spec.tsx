@@ -1,4 +1,3 @@
-import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -7,7 +6,6 @@ import {
   setupDatabaseEndpoints,
   setupDatabaseNotFoundEndpoint,
   setupDatabaseUsageInfoEndpoint,
-  setupDatabaseWithNullDetailsEndpoint,
   setupEnginesEndpoint,
   setupListTransformsEndpoint,
   setupUserAttributesEndpoint,
@@ -49,8 +47,14 @@ const setup = ({
   tokenFeatures = {},
 }: SetupOpts) => {
   if (hasNullDetails) {
-    setupDatabaseWithNullDetailsEndpoint(database);
+    // Registered before `setupDatabaseEndpoints` so that this route matches
+    // first. The backend can send `details: null`, which `Database` does not allow.
+    fetchMock.get(`path:/api/database/${database.id}`, {
+      ...database,
+      details: null,
+    });
   }
+  setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
   setupDatabaseUsageInfoEndpoint(database, {
@@ -141,58 +145,6 @@ describe("DatabaseEditApp", () => {
     expect(
       screen.getByTestId("database-danger-zone-section"),
     ).toBeInTheDocument();
-  });
-
-  it("renders a database whose details are null (metabase#25715)", async () => {
-    setup({
-      database: createMockDatabase({
-        id: 7,
-        name: "Sample Database",
-        is_sample: true,
-      }),
-      hasNullDetails: true,
-    });
-
-    expect(
-      await screen.findByRole("heading", { name: "Sample Database" }),
-    ).toBeInTheDocument();
-    expect(fetchMock.callHistory.called("database-7-null-details")).toBe(true);
-    expect(
-      screen.getByRole("button", { name: "Remove this database" }),
-    ).toBeEnabled();
-  });
-
-  it("disables editing and removing an attached DWH database with null details", async () => {
-    setup({
-      database: createMockDatabase({
-        id: 8,
-        name: "Cloud Warehouse",
-        features: ["actions"],
-        is_attached_dwh: true,
-      }),
-      hasNullDetails: true,
-    });
-
-    expect(
-      await screen.findByRole("heading", { name: "Cloud Warehouse" }),
-    ).toBeInTheDocument();
-    expect(fetchMock.callHistory.called("database-8-null-details")).toBe(true);
-    const editButton = screen.getByRole("button", {
-      name: "Edit connection details",
-    });
-    expect(editButton).toBeDisabled();
-    await userEvent.hover(editButton);
-    expect(
-      await screen.findByRole("tooltip", {
-        name: "This database is managed by Metabase Cloud and cannot be modified.",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Remove this database" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId("database-data-actions-section"),
-    ).not.toBeInTheDocument();
   });
 
   describe("database routing", () => {

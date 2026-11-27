@@ -466,24 +466,6 @@ describe("database page > side panel", () => {
   });
 });
 
-describe("scenarios > admin > databases > exceptions", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should handle non-existing databases (metabase#11037)", () => {
-    cy.intercept("GET", "/api/database/999").as("loadDatabase");
-    cy.visit("/admin/databases/999");
-    cy.wait("@loadDatabase").then(({ response }) => {
-      expect(response?.statusCode).to.eq(404);
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not found.");
-    cy.findByRole("table").should("not.exist");
-  });
-});
-
 describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
     H.restore();

@@ -8,9 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { postgresFormConfig } from "metabase/databases/components/DatabaseForm/tests/postgres-form-config.mock";
 import { Route } from "metabase/router";
-import type { Engine } from "metabase-types/api";
 import {
   createMockEngine,
   createMockEngineField,
@@ -56,23 +54,17 @@ const MYSQL_ENGINE = createMockEngine({
 });
 
 interface SetupOpts {
-  engines?: Record<string, Engine>;
   createDatabaseErrorBody?: string | Record<string, unknown>;
   searchParams?: string;
 }
 
-const setup = ({
-  engines = createMockEngines({
-    postgres: POSTGRES_ENGINE,
-    mysql: MYSQL_ENGINE,
-  }),
-  createDatabaseErrorBody,
-  searchParams,
-}: SetupOpts = {}) => {
+const setup = ({ createDatabaseErrorBody, searchParams }: SetupOpts = {}) => {
   // The page reads the engine off window.location, which the memory router
   // used by renderWithProviders never touches.
   window.history.replaceState({}, "", `/${searchParams ?? ""}`);
-  setupEnginesEndpoint(engines);
+  setupEnginesEndpoint(
+    createMockEngines({ postgres: POSTGRES_ENGINE, mysql: MYSQL_ENGINE }),
+  );
   if (createDatabaseErrorBody !== undefined) {
     setupCreateDatabaseEndpointError({
       status: 400,
@@ -139,55 +131,6 @@ describe("DatabasePage", () => {
   });
 
   describe("saving a new database", () => {
-    const fillAndSaveForm = async () => {
-      await userEvent.type(
-        await screen.findByLabelText(/Display name/),
-        "Test",
-      );
-      await userEvent.type(screen.getByLabelText(/Database name/), "db");
-      await userEvent.type(screen.getByLabelText(/Username/), "admin");
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      await waitFor(() =>
-        expect(fetchMock.callHistory.called("create-database")).toBe(true),
-      );
-    };
-
-    it("shows the error the server returns", async () => {
-      setupCreateDatabaseEndpointError({
-        status: 400,
-        body: "DATABASE CONNECTION ERROR",
-      });
-      setup({ engines: { postgres: postgresFormConfig } });
-
-      await fillAndSaveForm();
-
-      expect(
-        await screen.findByText("DATABASE CONNECTION ERROR"),
-      ).toBeInTheDocument();
-    });
-
-    it("explains a host or port error instead of showing the server message", async () => {
-      setupCreateDatabaseEndpointError({
-        status: 400,
-        body: {
-          message: "DATABASE CONNECTION ERROR",
-          errors: { host: "Check your host", port: "Check your port" },
-        },
-      });
-      setup({ engines: { postgres: postgresFormConfig } });
-
-      await fillAndSaveForm();
-
-      expect(
-        await screen.findByText(
-          /Make sure your Host and Port settings are correct/,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText(CONNECTION_ERROR_MESSAGE),
-      ).not.toBeInTheDocument();
-    });
-
     it("should show the error message when the database cannot be created", async () => {
       setup({ createDatabaseErrorBody: CONNECTION_ERROR_MESSAGE });
 

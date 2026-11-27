@@ -219,6 +219,21 @@ describe("DatabaseConnectionInfoSection", () => {
         screen.queryByText(/Re-scan field values/i),
       ).not.toBeInTheDocument();
     });
+
+    it("should explain why the connection details cannot be edited", async () => {
+      setup({ database: createMockDatabase({ is_attached_dwh: true }) });
+      const editButton = await screen.findByRole("button", {
+        name: /Edit connection details/i,
+      });
+      expect(editButton).toBeDisabled();
+
+      await userEvent.hover(editButton, {
+        pointerEventsCheck: PointerEventsCheckLevel.Never,
+      });
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "This database is managed by Metabase Cloud and cannot be modified.",
+      );
+    });
   });
 
   describe("Stub databases", () => {
