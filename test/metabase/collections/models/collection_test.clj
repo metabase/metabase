@@ -2103,6 +2103,21 @@
                                               collection/library-data-collection-type
                                               collection/library-metrics-collection-type]])))
 
+(deftest create-library-gives-same-entity-ids-on-every-instance-test
+  (mt/with-empty-h2-app-db!
+    (let [library-types [collection/library-collection-type
+                         collection/library-data-collection-type
+                         collection/library-metrics-collection-type]
+          create!       (fn []
+                          (collection/create-library-collection!)
+                          (t2/select-fn-set :entity_id :model/Collection :type [:in library-types]))
+          first-ids     (create!)]
+      (t2/delete! :model/Collection :type [:in library-types])
+      (is (= 3 (count first-ids)))
+      (is (contains? first-ids collection/library-entity-id))
+      (is (= first-ids (create!)))
+      (t2/delete! :model/Collection :type [:in library-types]))))
+
 (deftest is-library-collection?
   (mt/with-temp [:model/Collection {library-id :id} {:name "Test Library" :type collection/library-collection-type}
                  :model/Collection {models-id :id} {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
