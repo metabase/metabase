@@ -174,3 +174,20 @@ describe("subsetting", () => {
     expect(rest.length).toBeGreaterThan(latin.length / 2);
   });
 });
+
+describe("default family coverage", () => {
+  const CENTRAL_EUROPEAN_LETTERS = "āēūšģķļžčņąćęłńśźżĀĒŪŠĢĶĻŽČŅĄĆĘŁŃŚŹŻ";
+  const ABSENT_LETTERS = "\ue000\ue001\ue002";
+
+  it.each(["regular", "700", "900"])(
+    "draws central european letters in %s default face (metabase#63381)",
+    async (weight) => {
+      const source = fs.readFileSync(
+        path.join(FONTS_DIR, DEFAULT_FAMILY, `lato-v16-latin-${weight}.woff2`),
+      );
+      const drawn = await subsetFace(source, CENTRAL_EUROPEAN_LETTERS);
+      const absent = await subsetFace(source, ABSENT_LETTERS);
+      expect(drawn.length).toBeGreaterThan(absent.length);
+    },
+  );
+});
