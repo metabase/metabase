@@ -76,9 +76,7 @@
     :metadata/table
     [:and
      [:= :active true]
-     [:or
-      [:= :visibility_type nil]
-      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]
+     [:not= :data_layer "hidden"]]
 
     :metadata/column
     (let [excluded-visibility-types (cond-> ["retired"]

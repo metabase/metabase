@@ -89,7 +89,7 @@
     false-clause ; No tables should appear in archive searches
     [:and
      [:= (search.config/column-with-model-alias model :active) true]
-     [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
+     [:not= (search.config/column-with-model-alias model :data_layer) "hidden"]]))
 
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel

@@ -90,7 +90,7 @@
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
           (group-access/add-groups! app [(:id group)])
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
-            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type :hidden}
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type :hidden :data_layer :hidden}
               ;; exclude inactive tables, but keep active visible and hidden tables.
               ;; permissions editor also follow this filtering.
               (is (=? [{:group_id (:id group)

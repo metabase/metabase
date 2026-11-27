@@ -732,7 +732,7 @@
                                                  :else nil]]}
     :where        [:and
                    :this.active
-                   [:= :this.visibility_type nil]
+                   [:not= :this.data_layer "hidden"]
                    [:= :db.router_database_id nil]
                    [:not= :this.db_id [:inline audit/audit-db-id]]]
     :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]

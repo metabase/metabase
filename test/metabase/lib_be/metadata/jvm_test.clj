@@ -232,7 +232,7 @@
 (deftest ^:synchronized tables-not-present-test
   (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
     (doseq [visibility-type table/visibility-types]
-      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type}
+      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type :data_layer :hidden}
         (let [mp (mt/metadata-provider)]
           (testing visibility-type
             (is (not-any? (fn [{:keys [display-name] :as metadata}]

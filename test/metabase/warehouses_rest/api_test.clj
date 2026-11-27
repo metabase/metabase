@@ -1062,7 +1062,7 @@
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
-                                     :data_layer          "hidden"
+                                     :data_layer          "internal"
                                      :fields              [(merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
@@ -1166,7 +1166,7 @@
 
 (deftest fetch-database-metadata-include-hidden-test
   ;; NOTE: test for the exclude_uneditable parameter lives in metabase-enterprise.advanced-permissions.common-test
-  (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden"}
+  (mt/with-temp-vals-in-db :model/Table (mt/id :categories) {:visibility_type "hidden" :data_layer :hidden}
     (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
       (let [metadata           (fn [user & params]
                                  (apply mt/user-http-request user :get 200 (format "database/%d/metadata" (mt/id)) params))

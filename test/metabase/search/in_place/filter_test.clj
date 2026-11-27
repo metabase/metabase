@@ -161,7 +161,7 @@
                     base-search-query "card" default-search-ctx))))
     (is (= [:and
             [:= :table.active true]
-            [:= :table.visibility_type nil]
+            [:not= :table.data_layer "hidden"]
             [:not [:= :table.db_id audit/audit-db-id]]]
            (:where (search.filter/build-filters
                     base-search-query "table"  default-search-ctx))))))

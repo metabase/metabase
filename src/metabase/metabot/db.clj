@@ -465,7 +465,7 @@
                                   :db_id database-id
                                   :name [:in %]
                                   :active true
-                                  :visibility_type nil)
+                                  :data_layer [:not= :hidden])
                       table-names))
 
 (mu/defn active-table-with-columns
@@ -511,11 +511,11 @@
   (mdb/select-batched #(t2/select [:model/Table :id :name :schema :db_id] :id [:in %]) table-ids))
 
 (mu/defn table-curation-rows
-  "The ID, Database ID, active flag, visibility type, data layer, data authority, and published flag (nil when not set)
+  "The ID, Database ID, active flag, data layer, data authority, and published flag (nil when not set)
   of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (mdb/select-batched
-   #(t2/select [:model/Table :t.id :t.db_id :t.active :t.visibility_type :t.data_layer :t.data_authority :s.is_published]
+   #(t2/select [:model/Table :t.id :t.db_id :t.active :t.data_layer :t.data_authority :s.is_published]
                {:from      [[(t2/table-name :model/Table) :t]]
                 :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
                 :where     [:in :t.id %]})
@@ -530,7 +530,7 @@
                                   :db_id database-id
                                   :id [:in %]
                                   :active true
-                                  :visibility_type nil)
+                                  :data_layer [:not= :hidden])
                       table-ids))
 
 (defn- current-user-visible-table-clause
@@ -552,7 +552,7 @@
                                     :db_id database-id
                                     :id [:in %]
                                     :active true
-                                    :visibility_type nil
+                                    :data_layer [:not= :hidden]
                                     visible-clause)
                         table-ids)))
 
@@ -569,7 +569,7 @@
                         (t2/reducible-select [:model/Table :id :name :schema :description]
                                              :db_id database-id
                                              :active true
-                                             :visibility_type nil
+                                             :data_layer [:not= :hidden]
                                              clause))
         clause        (current-user-visible-table-clause)]
     (if (> (count excluded-table-ids) mdb/select-partition-size)
@@ -592,7 +592,7 @@
   (t2/select [:model/Table :id :db_id :name :schema :description]
              :db_id database-id
              :active true
-             :visibility_type nil
+             :data_layer [:not= :hidden]
              (assoc (current-user-visible-table-clause)
                     :order-by [[:view_count :desc]]
                     :limit    limit)))
@@ -604,7 +604,7 @@
   (t2/select [:model/Table :id :name :schema]
              :db_id database-id
              :active true
-             :visibility_type nil
+             :data_layer [:not= :hidden]
              {:limit limit}))
 
 (mu/defn active-tables-for-database

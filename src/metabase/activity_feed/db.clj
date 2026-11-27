@@ -43,7 +43,7 @@
   (mdb/select-batched #(t2/select [:model/Table
                                    :id :name :db_id :active
                                    :display_name [(u/qualified-key (t2/table-name :model/Database) :initial_sync_status) :initial-sync-status]
-                                   [:visibility_type :visibility_type]
+                                   :data_layer
                                    [(u/qualified-key (t2/table-name :model/Database) :name) :database-name]]
                                   {:where     [:in (u/qualified-key (t2/table-name :model/Table) :id) %]
                                    :left-join [(t2/table-name :model/Database) [:= (u/qualified-key (t2/table-name :model/Database) :id) (u/qualified-key (t2/table-name :model/Table) :db_id)]]})

@@ -8,7 +8,7 @@
 (defn render
   "The recent view item of the loaded `table`, or nil when it must not be shown."
   [table {:keys [model_id timestamp]}]
-  (when (and (not= "hidden" (:visibility_type table))
+  (when (and (not= :hidden (some-> (:data_layer table) keyword))
              (:database-name table)
              (:active table)
              (mi/can-read? table))

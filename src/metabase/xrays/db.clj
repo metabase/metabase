@@ -41,7 +41,7 @@
              :db_id           database-id
              :schema          schema
              :id              [:not= table-id]
-             :visibility_type nil
+             :data_layer [:not= :hidden]
              :active          true))
 
 (mu/defn candidate-tables-with-field-stats
@@ -71,7 +71,7 @@
                             [:!= :ts.count :ts.count_pks_and_fks]]]
               :where (cond-> [:and
                               [:= :db_id database-id]
-                              [:= :visibility_type nil]
+                              [:not= :data_layer "hidden"]
                               [:= :active true]]
                        schema (conj [:= :schema schema]))}))
 
