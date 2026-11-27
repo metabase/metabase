@@ -39,6 +39,59 @@ describe("use-sdk-iframe-embed-event-bus", () => {
     expect(result.current.embedSettings).toEqual(message.data);
   });
 
+  it("drops a data app navigation request when newer settings change the path", () => {
+    jest.mocked(listenForEajsMessages).mockReturnValue(jest.fn());
+    const store = { dispatch: jest.fn() };
+    const { result } = renderHook(() => useSdkIframeEmbedEventBus({ store }));
+
+    const options = jest.mocked(listenForEajsMessages).mock.calls.at(-1)?.[0];
+    if (options?.messageSource !== "embed.js") {
+      throw new Error("Expected a listener for host messages");
+    }
+
+    const settings = (path: string) => ({
+      type: "metabase.embed.setSettings" as const,
+      data: {
+        componentName: "metabase-data-app" as const,
+        instanceUrl: "https://metabase.example.com",
+        path,
+      },
+    });
+
+    const navigation = {
+      type: "metabase.embed.navigateToDataAppPath" as const,
+      data: { path: "sales/a" },
+    };
+
+    const send = (message: ReturnType<typeof settings> | typeof navigation) =>
+      options.handler(
+        message,
+        new MessageEvent("message", { origin: "https://host.example.com" }),
+      );
+
+    act(() => {
+      send(settings("sales/a"));
+      send(navigation);
+    });
+    expect(result.current.dataAppPathNavigationRequest).toEqual({
+      path: "sales/a",
+    });
+
+    // settings with the same path, such as a locale change, keep the request
+    act(() => send(settings("sales/a")));
+    expect(result.current.dataAppPathNavigationRequest).toEqual({
+      path: "sales/a",
+    });
+
+    // the web component sets the same path again, then changes it
+    act(() => {
+      send(navigation);
+      send(settings("sales/c"));
+    });
+    expect(result.current.dataAppPathNavigationRequest).toBeNull();
+    expect(result.current.embedSettings).toMatchObject({ path: "sales/c" });
+  });
+
   describe("isMetabaseInstance", () => {
     it("returns true for same host with different protocols", () => {
       expect(

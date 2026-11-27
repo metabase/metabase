@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { match } from "ts-pattern";
 
 import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
@@ -40,12 +40,22 @@ export function useSdkIframeEmbedEventBus({
   const [dataAppPathNavigationRequest, setDataAppPathNavigationRequest] =
     useState<SdkIframeEmbedNavigateToDataAppPathMessage["data"] | null>(null);
 
+  const settingsPathRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     const removeMessageListener = listenForEajsMessages({
       messageSource: "embed.js",
       handler: (message, event) =>
         match(message)
           .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
+            const settingsPath = "path" in data ? data.path : undefined;
+
+            // Settings with a new data app path replace an earlier navigation request.
+            if (settingsPath !== settingsPathRef.current) {
+              settingsPathRef.current = settingsPath;
+              setDataAppPathNavigationRequest(null);
+            }
+
             setEmbedSettings(data);
             setParentOrigin(event.origin);
             onSettingsChanged?.(data);
