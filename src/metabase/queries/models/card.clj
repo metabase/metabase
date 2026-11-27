@@ -3006,17 +3006,16 @@
 (defmethod serialization/spec :model/Card [_]
   {:schema              ::queries.schema/external-card
    :copy                [:archived :archived_directly :collection_position :description :display
-                         :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
-                         :card_schema]
+                         :embedding_params :enable_embedding :embedding_type :entity_id :type :name :card_schema]
    :skip                [:metabase_version :cache_invalidated_at :view_count :last_used_at :initially_published_at
                          :dataset_query_metrics_v2_migration_backup :cache_ttl :legacy_query :query_type :table_id
-                         :source_card_id :metabot_conversation_id :metabot_chart_id :public_uuid_prefix]
+                         :source_card_id :metabot_conversation_id :metabot_chart_id :public_uuid :public_uuid_prefix
+                         :made_public_by_id]
    :transform           {:database_id            queries.serialization/database-id-transform
                          :collection_id          (serialization/fk-transform :model/Collection)
                          :dashboard_id           (serialization/fk-transform :model/Dashboard)
                          :document_id            (serialization/fk-transform :model/Document)
                          :creator_id             serialization/user-transform
-                         :made_public_by_id      serialization/user-transform
                          :dataset_query          serialization/mbql-transform
                          :parameters             serialization/parameters-transform
                          :parameter_mappings     serialization/parameter-mappings-transform

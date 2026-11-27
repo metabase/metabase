@@ -885,11 +885,11 @@
   {:schema              ::dashboards.schema/external-dashboard
    :copy                [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                          :description :embedding_params :enable_embedding :embedding_type :entity_id :name
-                         :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip                [:initially_published_at :view_count :last_viewed_at :cache_ttl :public_uuid_prefix]
+                         :points_of_interest :position :show_in_getting_started :width]
+   :skip                [:initially_published_at :view_count :last_viewed_at :cache_ttl :public_uuid :public_uuid_prefix
+                         :made_public_by_id]
    :transform           {:collection_id     (serialization/fk-transform :model/Collection)
                          :creator_id        serialization/user-transform
-                         :made_public_by_id serialization/user-transform
                          :parameters        serialization/parameters-transform}
    :children            {:tabs      :model/DashboardTab
                          :dashcards :model/DashboardCard}

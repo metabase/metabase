@@ -244,8 +244,8 @@
    [:merge
     [:select-keys ::dashboard [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
-                               :points_of_interest :position :public_uuid :show_in_getting_started :width
-                               :collection_id :creator_id :made_public_by_id :parameters]]
+                               :points_of_interest :position :show_in_getting_started :width
+                               :collection_id :creator_id :parameters]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:tabs {:optional true} [:maybe [:sequential [:ref ::external-dashboard-tab]]]]

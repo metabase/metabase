@@ -418,9 +418,9 @@
   [:schema {:registry lib-be.schema/external-registry}
    [:merge
     [:select-keys ::card [:archived :archived_directly :collection_position :description :display
-                          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
+                          :embedding_params :enable_embedding :embedding_type :entity_id :type :name
                           :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
                           :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
-                          :dashboard_id :made_public_by_id :document_id]]
+                          :dashboard_id :document_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
