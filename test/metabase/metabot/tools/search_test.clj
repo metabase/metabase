@@ -452,7 +452,10 @@
 (deftest ^:parallel keyword-queries-are-capped-test
   (testing "a search takes at most ten keyword queries, since each runs as its own search"
     (is (mr/validate @#'search/keyword-queries-schema (repeat 10 "orders")))
-    (is (not (mr/validate @#'search/keyword-queries-schema (repeat 11 "orders"))))))
+    (is (not (mr/validate @#'search/keyword-queries-schema (repeat 11 "orders")))))
+  (testing "a caller that skips the tool schema, such as the Agent API, is refused too"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10 keyword queries"
+                          (search/search {:term-queries (map #(str "query " %) (range 11))})))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"

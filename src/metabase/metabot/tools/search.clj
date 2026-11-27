@@ -333,6 +333,10 @@
             (= profile-id "nlq"))
     (:collection_id metabot)))
 
+(def ^:private max-keyword-queries
+  "Cap on keyword queries per search. Each runs as its own search of the full ranked pool, concurrently."
+  10)
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
   Abstracted from the API endpoint logic.
@@ -347,7 +351,8 @@
   Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
-  `:total` metadata, and the queries whose search failed as `:failed-queries`."
+  `:total` metadata, and the queries whose search failed as `:failed-queries`.
+  Throws a 400 when `term-queries` holds more than ten distinct queries."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot profile-id weights
            created-by archived collection-id offset filters-only? partial-results?]}]
@@ -365,6 +370,10 @@
               :collection-id        collection-id
               :offset               offset
               :filters-only?        filters-only?})
+  ;; The tool schema caps the list too; this also covers callers that skip it, such as the Agent API.
+  (when (> (count (distinct term-queries)) max-keyword-queries)
+    (throw (ex-info (format "Pass at most %d keyword queries." max-keyword-queries)
+                    {:status-code 400, :keyword-queries (count term-queries)})))
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -752,10 +761,6 @@
 (def ^:private semantic-queries-schema
   [:sequential {:error/message "must be an array of strings"}
    [:string {:description semantic-query-desc}]])
-
-(def ^:private max-keyword-queries
-  "Cap on keyword queries per search. Each runs as its own search of the full ranked pool, concurrently."
-  10)
 
 (def ^:private keyword-queries-schema
   [:sequential {:max           max-keyword-queries
