@@ -34,6 +34,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [metabase.warehouse-schema.transforms :as warehouse-schema.transforms]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.xrays.spec :as xrays]
@@ -809,16 +810,16 @@
    :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
-                         :owner_email]
+                         :owner_email :table_role :grain :grain_description :period_granularity :mutability
+                         :load_strategy :scd_type]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
-                         :is_defective_duplicate :unique_table_helper
-                         ;; structural metadata
-                         :table_role :grain :grain_description :period_granularity :mutability :load_strategy
-                         :scd_type :history_definition :eav_definition]
-   :transform           {:archived_at    serialization/date-transform
-                         :deactivated_at serialization/date-transform
-                         :db_id          serialization/database-transform
-                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)}
+                         :is_defective_duplicate :unique_table_helper]
+   :transform           {:archived_at        serialization/date-transform
+                         :deactivated_at     serialization/date-transform
+                         :db_id              serialization/database-transform
+                         :owner_user_id      (assoc serialization/user-transform :import import-owner-ids)
+                         :history_definition warehouse-schema.serialization/definition-transform
+                         :eav_definition     warehouse-schema.serialization/definition-transform}
    :defaults            {:is_upload               false
                          :show_in_getting_started false}
    :storage-paths       storage-paths

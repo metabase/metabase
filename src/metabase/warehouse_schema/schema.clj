@@ -441,7 +441,8 @@
                            :database_required :database_type :description :display_name :effective_type
                            :has_field_values :json_unfolding :name :nfc_path
                            :points_of_interest :position :preview_display :semantic_type :settings
-                           :visibility_type :table_id :fk_target_field_id :parent_id]]
+                           :visibility_type :table_id :fk_target_field_id :parent_id :is_grain
+                           :attribute_scd_type :facets]]
     [:map {:closed true}
      [:dimensions {:optional true} [:maybe [:sequential [:ref ::external-dimension]]]]
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
@@ -454,7 +455,8 @@
                                          :has_field_values :effective_type :coercion_strategy :caveats
                                          :points_of_interest :json_unfolding :settings :data_sensitivity
                                          :custom_position :description_set :semantic_type_set
-                                         :fk_target_field_id_set :fk_target_field_id :field_id]]
+                                         :fk_target_field_id_set :fk_target_field_id :field_id :is_grain
+                                         :attribute_scd_type :facets :attribute_scd_type_set]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
@@ -474,7 +476,12 @@
                                          :caveats :points_of_interest :show_in_getting_started :data_authority
                                          :data_source :owner_email :is_published :description_set
                                          :visibility_type_set :data_layer_set :data_source_set :collection_id
-                                         :owner_user_id :data_layer :table_id]]
+                                         :owner_user_id :data_layer :table_id :table_role :grain
+                                         :grain_description :period_granularity :mutability :load_strategy
+                                         :scd_type :history_definition :eav_definition :history_definition_set
+                                         :eav_definition_set :period_granularity_set :table_role_set :grain_set
+                                         :grain_description_set :mutability_set :load_strategy_set
+                                         :scd_type_set]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
@@ -486,7 +493,8 @@
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :data_layer :db_id
-                           :owner_user_id]]
+                           :owner_user_id :table_role :grain :grain_description :period_granularity
+                           :mutability :load_strategy :scd_type :history_definition :eav_definition]]
     [:map {:closed true}
      [:serdes/meta    {:optional true} ::models.schema/external-meta]
      [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]

@@ -29,12 +29,18 @@
   [:schema :name :display_name :description :entity_type :visibility_type :data_layer :data_source :data_authority
    :field_order :caveats :points_of_interest :show_in_getting_started :owner_email :database_require_filter])
 
+(def ^:private structural-metadata-reason
+  "Why an entry does not carry the structural metadata of a Table or Field."
+  "structural metadata is not sent: the definitions of a Table name its Fields by id")
+
 (def left-out-table-columns
   "The Table columns serialization copies that an entry does not carry, and why."
-  {:active       "only active Tables are sent"
-   :is_upload    "an upload belongs to the instance that made it"
-   :is_published "publishing belongs to each instance"
-   :is_writable  "it depends on the login, so each instance reads its own"})
+  (merge {:active       "only active Tables are sent"
+          :is_upload    "an upload belongs to the instance that made it"
+          :is_published "publishing belongs to each instance"
+          :is_writable  "it depends on the login, so each instance reads its own"}
+         (zipmap [:table_role :grain :grain_description :period_granularity :mutability :load_strategy :scd_type]
+                 (repeat structural-metadata-reason))))
 
 (def sent-data-sources
   "The values of a Table's `data_source` that are sent: the ones that say what the data is. `metabase-transform` and
@@ -64,8 +70,9 @@
 
 (def left-out-field-columns
   "The Field columns serialization copies that an entry does not carry as they are, and why."
-  {:active "only active Fields are sent"
-   :name   "sent as the last name of `:path`"})
+  (merge {:active "only active Fields are sent"
+          :name   "sent as the last name of `:path`"}
+         (zipmap [:is_grain :attribute_scd_type :facets] (repeat structural-metadata-reason))))
 
 (mr/def ::schema-filter
   "Which schemas of a Database to send, in the form of a Database's own schema filters."
