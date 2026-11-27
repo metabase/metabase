@@ -243,10 +243,18 @@
 
 ;;; ---------------------------------------------------- Writes -----------------------------------------------------
 
+(defn- check-instance-config-in-default-worktree
+  "Throws a 400 when the cache configuration of the root or of a Database, which every remote sync worktree shares, is
+  saved in a worktree other than the default one."
+  [model]
+  (when (and (#{"root" "database"} (name model)) (mdb/worktree-id))
+    (throw (ex-info (tru "Root and database caching can only be changed in the default worktree.") {:status-code 400}))))
+
 (defn save-cache-config!
   "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id; a
   concurrent first save of the same target makes one of them retry as an update."
   [{:keys [model model_id] :as config}]
+  (check-instance-config-in-default-worktree model)
   (let [save! (fn []
                 (t2/with-transaction [_conn]
                   (let [data    (config->row config)

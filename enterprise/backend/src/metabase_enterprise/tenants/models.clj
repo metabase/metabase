@@ -118,16 +118,20 @@
     (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
 
 (defn- create-tenant-collections!
-  "Create a new Collection in the default worktree, where Tenants live, for each of the Tenant `rows` and return the
-  rows with it."
+  "Create a new Collection for each of the Tenant `rows` and return the rows with it."
   [rows]
-  (let [collections (app-db/with-worktree-scope {:type :main}
-                      (collection/create-collections!
-                       (for [{tenant-name :name} rows]
-                         {:type      collection/tenant-specific-root-collection-type
-                          :name      (format "Tenant Collection: %s" tenant-name)
-                          :namespace :tenant-specific})))]
+  (let [collections (collection/create-collections!
+                     (for [{tenant-name :name} rows]
+                       {:type      collection/tenant-specific-root-collection-type
+                        :name      (format "Tenant Collection: %s" tenant-name)
+                        :namespace :tenant-specific}))]
     (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections)))
+
+(defn- check-not-in-worktree
+  "Throws a 400 in a remote sync worktree other than the default one, since every worktree shares the Tenants."
+  []
+  (when (app-db/worktree-id)
+    (throw (ex-info (tru "Tenants can only be created in the default worktree.") {:status-code 400}))))
 
 (mu/defn create-tenants! :- [:sequential ::tenants.schema/tenant]
   "Insert the Tenant `rows`, each with a new Collection of its own, in one transaction and return them in order,
@@ -135,6 +139,7 @@
   [rows :- [:sequential ::tenants.schema/tenant.create]]
   (app-db/create-batched! :model/Tenant rows
                           {:before-create (fn [rows]
+                                            (check-not-in-worktree)
                                             (check-new-tenants-free rows)
                                             (create-tenant-collections! rows))
                            :after-create  #(events/publish-event! :event/tenant-create (events/create-event %))}))

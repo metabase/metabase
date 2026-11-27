@@ -25,6 +25,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -1010,11 +1011,22 @@
                   handlers created)))
     instances))
 
+(defn- check-system-events-in-default-worktree
+  "Throws a 400 unless every Notification of `rows` satisfies these rules:
+
+  - it is not a system-event one in a remote sync worktree other than the default one, which holds those for every
+    worktree"
+  [rows]
+  (when (and (mdb/worktree-id) (some #(= :notification/system-event (keyword (:payload_type %))) rows))
+    (throw (ex-info (tru "System event notifications can only be created in the default worktree.")
+                    {:status-code 400}))))
+
 (mu/defn create-notifications! :- [:sequential (ms/InstanceOf :model/Notification)]
   "Insert the Notifications of `rows`, each with the `:subscriptions` and `:handlers` (with their recipients and
   templates) it has, in batches with one insert for each kind of row across a batch, in one transaction, publishing one
   create event for all, and return them in order."
   [rows :- [:sequential ::notification-with-parts.create]]
+  (check-system-events-in-default-worktree rows)
   (doseq [{:keys [handlers]} rows]
     (validate-email-handlers! handlers)
     (check-template-maps handlers))

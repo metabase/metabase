@@ -20,6 +20,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -257,22 +258,21 @@
                :rebuilt? rebuilt? :documents documents :entities entities :ran_ms ran-ms})))
 
 (defn- run-loop
-  "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call `(work
-  scheduled-timer)` in the default worktree, whose content the shared index holds, then promote the queued follow-up.
-  Returns `work`'s value (the full path's result map; nil for the targeted path)."
+  "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call
+  `(work scheduled-timer)`, then promote the queued follow-up. Returns `work`'s value (the full path's
+  result map; nil for the targeted path)."
   [cur nxt predecessor work]
   (future
-    (mdb/with-worktree-scope {:type :main}
-      (let [scheduled (u/start-timer)]
-        (when predecessor
-          ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
-          (try @predecessor (catch Throwable _ nil)))
-        (try
-          (work scheduled)
-          (finally
-            (locking run-lock
-              (reset! cur @nxt)
-              (reset! nxt nil))))))))
+    (let [scheduled (u/start-timer)]
+      (when predecessor
+        ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
+        (try @predecessor (catch Throwable _ nil)))
+      (try
+        (work scheduled)
+        (finally
+          (locking run-lock
+            (reset! cur @nxt)
+            (reset! nxt nil)))))))
 
 (defn- schedule!
   "Schedule (or join) a run of `work` on the `cur`/`nxt` two-slot schedule, returning its future. Must be
@@ -331,9 +331,12 @@
   "Force a full reconcile of the `library_entity_index` against the appdb, blocking until a run covering
   this call finishes. Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _
   :ran_ms _}}, or nil when entity retrieval isn't available (no pgvector store configured).
-  See [[reconcile-full-coalesced!]] for the coalescing semantics it shares with the periodic backstop."
+  See [[reconcile-full-coalesced!]] for the coalescing semantics it shares with the periodic backstop. A remote sync
+  worktree other than the default one is refused, since the index holds the default worktree's entities."
   :feature :library-retrieval
   []
+  (when (mdb/worktree-id)
+    (throw (ex-info (tru "The library index can only be reconciled in the default worktree.") {:status-code 400})))
   (when (available?)
     (reconcile-full-coalesced!)))
 
@@ -341,10 +344,11 @@
   "Mark one library entity dirty and ensure the targeted write path reconciles its index slice soon.
   Fire-and-forget: never blocks, throws, or does embedding/pgvector work on the calling (appdb-write)
   thread — the reconcile runs later on a future. Covers `osi_ai_context` edits; membership / name /
-  description changes to the underlying entity are caught by the periodic full reconcile."
+  description changes to the underlying entity are caught by the periodic full reconcile. A write in a remote sync
+  worktree other than the default one marks nothing, since the index holds the default worktree's entities."
   :feature :library-retrieval
   [entity-type entity-local-id]
-  (when (available?)
+  (when (and (available?) (not (mdb/worktree-id)))
     (try
       (locking run-lock
         (swap! dirty-entities conj [entity-type entity-local-id])
