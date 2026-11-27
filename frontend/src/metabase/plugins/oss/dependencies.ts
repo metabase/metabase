@@ -1,7 +1,7 @@
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import { NotFoundPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
@@ -14,7 +14,9 @@ export type DependencyGraphPageContextType = {
 
 type DependenciesPlugin = {
   isEnabled: boolean;
-  getDataStudioDependencyRoutes: () => ReactNode;
+  // Optional, not a no-op default: an OSS build has no plugin to fill this, and
+  // the mount reads the absence to put its upsell page in its place.
+  getDataStudioDependencyRoutes?: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
@@ -25,8 +27,7 @@ type DependenciesPlugin = {
 
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
-  getDataStudioDependencyRoutes: () => null,
-  DependencyGraphPage: PluginPlaceholder,
+  DependencyGraphPage: NotFoundPlaceholder,
   DependencyGraphPageContext: createContext({}),
   useGetDependenciesCount: () => ({
     dependenciesCount: 0,

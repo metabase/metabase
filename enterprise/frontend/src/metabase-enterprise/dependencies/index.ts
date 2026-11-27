@@ -11,10 +11,11 @@ import { getDataStudioDependencyRoutes } from "./routes";
  * Initialize dependencies plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
+    getDataStudioDependencyRoutes;
+
   if (hasPremiumFeature("dependencies")) {
     PLUGIN_DEPENDENCIES.isEnabled = true;
-    PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
-      getDataStudioDependencyRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = LazyDependencyGraphPage;
     PLUGIN_DEPENDENCIES.useGetDependenciesCount = useGetDependenciesCount;
 

@@ -1,4 +1,15 @@
-import { Route, redirect } from "metabase/router";
+import {
+  dependencyDiagnosticsSectionLayout,
+  dependencyDiagnosticsUpsellPage,
+} from "metabase/monitor/routes";
+import {
+  notFoundRoute,
+  outletRoute,
+  redirectRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
+import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 /**
  * The two diagnostics pages sit behind one barrel, so a single `import()`
@@ -17,12 +28,22 @@ const unreferencedPage = () =>
     Component: UnreferencedDependencyDiagnosticsPage,
   }));
 
+const gated = (enabled: PluginRoute) =>
+  featureGatedRoute("dependencies", enabled, dependencyDiagnosticsUpsellPage);
+
 export function getDependencyDiagnosticsRoutes() {
   return (
-    <>
-      <Route index element={redirect("broken")} />
-      <Route path="broken" lazy={brokenPage} />
-      <Route path="unreferenced" lazy={unreferencedPage} />
-    </>
+    <Route
+      lazy={featureGatedRoute(
+        "dependencies",
+        dependencyDiagnosticsSectionLayout,
+        outletRoute,
+      )}
+    >
+      <Route index lazy={gated(redirectRoute("broken"))} />
+      <Route path="broken" lazy={gated(brokenPage)} />
+      <Route path="unreferenced" lazy={gated(unreferencedPage)} />
+      <Route path="*" lazy={gated(notFoundRoute)} />
+    </Route>
   );
 }

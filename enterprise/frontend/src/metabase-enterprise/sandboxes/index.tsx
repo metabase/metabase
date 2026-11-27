@@ -19,8 +19,10 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
+import { PluginPlaceholderModal } from "metabase/plugins/components/PluginPlaceholder";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
 import type {
   GroupId,
   PermissionEntityId,
@@ -86,15 +88,20 @@ const getEditSegmentedAccessPostAction = (
  * Initialize sandboxes plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  const GatedSandboxingModal = featureGatedComponent(
+    "sandboxes",
+    EditSandboxingModal,
+    PluginPlaceholderModal,
+  );
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
+    modalRoute(":tableId/segmented", GatedSandboxingModal),
+  );
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
+    modalRoute("segmented/group/:groupId", GatedSandboxingModal),
+  );
+
   if (hasPremiumFeature("sandboxes")) {
     PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
-
-    PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
-      modalRoute(":tableId/segmented", EditSandboxingModal),
-    );
-    PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
-      modalRoute("segmented/group/:groupId", EditSandboxingModal),
-    );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
       get label() {

@@ -1,5 +1,13 @@
-import { Route, redirect, registerPagePrefetch } from "metabase/router";
+import { apiKeyUsageUpsellPage } from "metabase/monitor/routes";
+import {
+  notFoundRoute,
+  outletRoute,
+  redirectRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
+import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 /**
  * The API key usage pages sit behind one barrel, so a single `import()` reaches all three and
@@ -28,14 +36,24 @@ const apiKeyUsageEventsPage = () =>
  */
 registerPagePrefetch(Urls.monitorApiKeyUsage(), apiKeyUsageSectionLayout);
 
+const gated = (enabled: PluginRoute) =>
+  featureGatedRoute("audit_app", enabled, apiKeyUsageUpsellPage);
+
 export function getApiKeyUsageRoutes() {
   return (
     <>
-      <Route index element={redirect("usage")} />
-      <Route lazy={apiKeyUsageSectionLayout}>
-        <Route path="usage" lazy={apiKeyUsagePage} />
-        <Route path="events" lazy={apiKeyUsageEventsPage} />
+      <Route index lazy={gated(redirectRoute("usage"))} />
+      <Route
+        lazy={featureGatedRoute(
+          "audit_app",
+          apiKeyUsageSectionLayout,
+          outletRoute,
+        )}
+      >
+        <Route path="usage" lazy={gated(apiKeyUsagePage)} />
+        <Route path="events" lazy={gated(apiKeyUsageEventsPage)} />
       </Route>
+      <Route path="*" lazy={gated(notFoundRoute)} />
     </>
   );
 }

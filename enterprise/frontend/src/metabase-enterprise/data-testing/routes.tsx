@@ -1,4 +1,6 @@
+import type { PluginRoute } from "metabase/plugins/types";
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 const testListPage = () =>
   import(
@@ -21,12 +23,18 @@ const testRunsPage = () =>
     Component: TransformTestRunsPage,
   }));
 
+const gated = (enabled: PluginRoute) =>
+  featureGatedRoute("transforms-testing", enabled);
+
 export function getTransformTestRoutes() {
   return (
     <>
-      <Route path=":transformId/tests" lazy={testListPage} />
-      <Route path=":transformId/tests/:testId" lazy={testOverviewPage} />
-      <Route path=":transformId/tests/:testId/runs" lazy={testRunsPage} />
+      <Route path=":transformId/tests" lazy={gated(testListPage)} />
+      <Route path=":transformId/tests/:testId" lazy={gated(testOverviewPage)} />
+      <Route
+        path=":transformId/tests/:testId/runs"
+        lazy={gated(testRunsPage)}
+      />
     </>
   );
 }

@@ -6,7 +6,7 @@ describe("writable connection routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getWritableConnectionInfoRoutes());
 
-    expect(loaders).toHaveLength(1);
+    expect(loaders).toHaveLength(2);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

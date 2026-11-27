@@ -15,7 +15,10 @@ import {
   buildCollectionTree,
   getCollectionIcon,
 } from "metabase/common/collections/utils";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  type ModalComponentProps,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/current-user";
 import {
@@ -23,6 +26,10 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import {
+  PluginPlaceholderModal,
+  outletRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -30,6 +37,10 @@ import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import {
+  featureGatedComponent,
+  featureGatedRoute,
+} from "metabase-enterprise/settings/feature-gated-route";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
@@ -121,7 +132,96 @@ const tenantUsersPersonalCollectionList = () =>
     Component: TenantUsersPersonalCollectionList,
   }));
 
+/**
+ * A loader of its own rather than the admin routes' copy: importing that module
+ * from a plugin pulls the whole admin route tree into every bundle that loads
+ * the plugins, the embedding SDK among them.
+ */
+const tenantsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/upsells/UpsellTenants"
+  ).then(({ UpsellTenants }) => ({ Component: UpsellTenants }));
+
 export function initializePlugin() {
+  PLUGIN_TENANTS.userStrategyRoute = modalRoute(
+    "user-strategy",
+    featureGatedComponent<ModalComponentProps>(
+      "tenants",
+      EditUserStrategyModal,
+      PluginPlaceholderModal,
+    ),
+  );
+
+  PLUGIN_TENANTS.tenantsRoutes = (
+    <Route lazy={featureGatedRoute("tenants", outletRoute, tenantsUpsellPage)}>
+      <Route index element={<TenantsListingApp />} />
+      <Route path="" element={<TenantsListingApp />}>
+        {modalRoute("new", NewTenantModal)}
+        {modalRoute("user-strategy", EditUserStrategyModal)}
+      </Route>
+      <Route path="groups">
+        <Route index lazy={externalGroupsListing} />
+        <Route path=":groupId" lazy={externalGroupDetail} />
+      </Route>
+      <Route path="people" lazy={externalPeopleListing}>
+        {modalRoute("new", (props) => (
+          <NewUserModal {...props} external />
+        ))}
+        <Route path=":userId">
+          <Route index element={redirect("..")} />
+          {modalRoute("edit", (props) => (
+            <EditUserModal {...props} external />
+          ))}
+          {modalRoute("deactivate", UserActivationModal)}
+          {modalRoute("reactivate", UserActivationModal)}
+          {modalRoute("success", UserSuccessModal)}
+          {modalRoute("reset", UserPasswordResetModal)}
+          {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
+            <Fragment key={index}>{getRoutes()}</Fragment>
+          ))}
+        </Route>
+      </Route>
+      <Route path=":tenantId" element={<TenantsListingApp />}>
+        {modalRoute("edit", EditTenantModal)}
+        {modalRoute(
+          "deactivate",
+          // @ts-expect-error - params prop can't be inferred
+          TenantActivationModal,
+        )}
+        {modalRoute(
+          "reactivate",
+          // @ts-expect-error - params prop can't be inferred
+          TenantActivationModal,
+        )}
+      </Route>
+    </Route>
+  );
+
+  const GatedTenantCollectionPermissionsPage = featureGatedComponent(
+    "tenants",
+    TenantCollectionPermissionsPage,
+  );
+  const GatedTenantSpecificCollectionPermissionsPage = featureGatedComponent(
+    "tenants",
+    TenantSpecificCollectionPermissionsPage,
+  );
+  PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes = () => (
+    <>
+      <Route
+        path="tenant-collections"
+        element={<GatedTenantCollectionPermissionsPage />}
+      >
+        <Route path=":collectionId" />
+      </Route>
+      <Route
+        path="tenant-specific-collections"
+        element={<GatedTenantSpecificCollectionPermissionsPage />}
+      >
+        <Route path=":collectionId" />
+      </Route>
+    </>
+  );
+
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
@@ -145,76 +245,9 @@ export function initializePlugin() {
       value: "tenant-specific-collections",
     });
 
-    PLUGIN_ADMIN_PERMISSIONS_TABS.getRoutes = () => (
-      <>
-        <Route
-          path="tenant-collections"
-          element={<TenantCollectionPermissionsPage />}
-        >
-          <Route path=":collectionId" />
-        </Route>
-        <Route
-          path="tenant-specific-collections"
-          element={<TenantSpecificCollectionPermissionsPage />}
-        >
-          <Route path=":collectionId" />
-        </Route>
-      </>
-    );
-
     PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
     PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
     PLUGIN_TENANTS.TenantsSummaryOnboardingStep = TenantsSummaryOnboardingStep;
-
-    PLUGIN_TENANTS.userStrategyRoute = modalRoute(
-      "user-strategy",
-      EditUserStrategyModal,
-    );
-
-    PLUGIN_TENANTS.tenantsRoutes = (
-      <>
-        <Route index element={<TenantsListingApp />} />
-        <Route path="" element={<TenantsListingApp />}>
-          {modalRoute("new", NewTenantModal)}
-          {modalRoute("user-strategy", EditUserStrategyModal)}
-        </Route>
-        <Route path="groups">
-          <Route index lazy={externalGroupsListing} />
-          <Route path=":groupId" lazy={externalGroupDetail} />
-        </Route>
-        <Route path="people" lazy={externalPeopleListing}>
-          {modalRoute("new", (props) => (
-            <NewUserModal {...props} external />
-          ))}
-          <Route path=":userId">
-            <Route index element={redirect("..")} />
-            {modalRoute("edit", (props) => (
-              <EditUserModal {...props} external />
-            ))}
-            {modalRoute("deactivate", UserActivationModal)}
-            {modalRoute("reactivate", UserActivationModal)}
-            {modalRoute("success", UserSuccessModal)}
-            {modalRoute("reset", UserPasswordResetModal)}
-            {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
-              <Fragment key={index}>{getRoutes()}</Fragment>
-            ))}
-          </Route>
-        </Route>
-        <Route path=":tenantId" element={<TenantsListingApp />}>
-          {modalRoute("edit", EditTenantModal)}
-          {modalRoute(
-            "deactivate",
-            // @ts-expect-error - params prop can't be inferred
-            TenantActivationModal,
-          )}
-          {modalRoute(
-            "reactivate",
-            // @ts-expect-error - params prop can't be inferred
-            TenantActivationModal,
-          )}
-        </Route>
-      </>
-    );
 
     PLUGIN_TENANTS.EditUserStrategySettingsButton =
       EditUserStrategySettingsButton;

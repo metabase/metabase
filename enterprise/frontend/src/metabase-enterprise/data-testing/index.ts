@@ -4,8 +4,9 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { getTransformTestRoutes } from "./routes";
 
 export function initializePlugin() {
+  PLUGIN_DATA_TESTING.getTransformTestRoutes = getTransformTestRoutes;
+
   if (hasPremiumFeature("transforms-testing")) {
     PLUGIN_DATA_TESTING.isEnabled = true;
-    PLUGIN_DATA_TESTING.getTransformTestRoutes = getTransformTestRoutes;
   }
 }

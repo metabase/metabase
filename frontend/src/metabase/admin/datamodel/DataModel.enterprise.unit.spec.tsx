@@ -202,7 +202,7 @@ function setup({
 
   // The admin route tree as the app mounts it, with pass-through guards.
   const { router } = renderRoutes(
-    (store) => toRouteObjects(getRoutes(store, Outlet, Outlet)),
+    () => toRouteObjects(getRoutes(Outlet, Outlet)),
     { initialRoute, storeInitialState: state, withUndos: true },
   );
 

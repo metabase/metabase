@@ -1,4 +1,5 @@
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 const writableConnectionInfoPage = () =>
   import(
@@ -9,6 +10,12 @@ const writableConnectionInfoPage = () =>
 
 export function getWritableConnectionInfoRoutes() {
   return (
-    <Route path=":databaseId/write-data" lazy={writableConnectionInfoPage} />
+    <Route
+      path=":databaseId/write-data"
+      lazy={featureGatedRoute(
+        "writable_connection",
+        writableConnectionInfoPage,
+      )}
+    />
   );
 }

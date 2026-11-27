@@ -16,6 +16,11 @@ const resets: (() => void)[] = [];
  * rather than capturing them at module scope. Reset preserves the slot's own
  * identity, but replaces its properties or array contents; nested references
  * are not preserved.
+ *
+ * A route factory field whose mount needs a visible fallback is optional with
+ * no default, and the mount reads it as `(PLUGIN_X.getRoutes ?? fallback)()`.
+ * A no-op default such as `() => null` fits only a field whose absence needs
+ * nothing in its place.
  */
 export function definePluginSlot<T extends object>(getDefaults: () => T): T {
   const slot = getDefaults();

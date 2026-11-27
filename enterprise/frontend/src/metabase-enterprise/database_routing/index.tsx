@@ -1,8 +1,11 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { PluginPlaceholderModal } from "metabase/plugins/components/PluginPlaceholder";
 import { Route } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedComponent } from "metabase-enterprise/settings/feature-gated-route";
 
 import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 import { DestinationDatabaseConnectionModal } from "./DestinationDatabaseConnectionModal";
@@ -10,10 +13,49 @@ import { DestinationDatabasesModal } from "./DestinationDatabasesModal";
 import { RemoveDestinationDatabaseModal } from "./RemoveDestinationDatabaseModal";
 import { useRedirectDestinationDatabase } from "./hooks";
 
+const GatedDestinationDatabasesModal = featureGatedComponent(
+  "database_routing",
+  DestinationDatabasesModal,
+  PluginPlaceholderModal,
+);
+
+const GatedDestinationDatabaseConnectionModal = featureGatedComponent(
+  "database_routing",
+  DestinationDatabaseConnectionModal,
+  PluginPlaceholderModal,
+);
+
+const GatedRemoveDestinationDatabaseModal = featureGatedComponent(
+  "database_routing",
+  RemoveDestinationDatabaseModal,
+  PluginPlaceholderModal,
+);
+
 /**
  * Initialize database_routing plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: ComponentType) => (
+    <Route path="destination-databases">
+      <Route index element={<GatedDestinationDatabasesModal />} />
+      <Route element={<IsAdmin />}>
+        <Route
+          path="create"
+          element={<GatedDestinationDatabaseConnectionModal />}
+        />
+      </Route>
+      <Route path=":destinationDatabaseId">
+        <Route index element={<GatedDestinationDatabaseConnectionModal />} />
+        <Route element={<IsAdmin />}>
+          <Route
+            path="remove"
+            element={<GatedRemoveDestinationDatabaseModal />}
+          />
+        </Route>
+      </Route>
+    </Route>
+  );
+
   if (hasPremiumFeature("database_routing")) {
     PLUGIN_DB_ROUTING.DatabaseRoutingSection = DatabaseRoutingSection;
 
@@ -35,23 +77,5 @@ export function initializePlugin() {
 
     PLUGIN_DB_ROUTING.useRedirectDestinationDatabase =
       useRedirectDestinationDatabase;
-
-    PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes = (IsAdmin: any) => (
-      <Route path="destination-databases">
-        <Route index element={<DestinationDatabasesModal />} />
-        <Route element={<IsAdmin />}>
-          <Route
-            path="create"
-            element={<DestinationDatabaseConnectionModal />}
-          />
-        </Route>
-        <Route path=":destinationDatabaseId">
-          <Route index element={<DestinationDatabaseConnectionModal />} />
-          <Route element={<IsAdmin />}>
-            <Route path="remove" element={<RemoveDestinationDatabaseModal />} />
-          </Route>
-        </Route>
-      </Route>
-    );
   }
 }

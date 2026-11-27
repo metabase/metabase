@@ -71,11 +71,9 @@ export function getMetricRoutes() {
       <Route path=":cardId/overview" lazy={metricOverviewPage} />
       <Route path=":cardId/query" lazy={metricQueryPage} />
       <Route path=":cardId/dimensions" lazy={metricDimensionsPage} />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":cardId/dependencies" lazy={metricDependenciesPage}>
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
-        </Route>
-      )}
+      <Route path=":cardId/dependencies" lazy={metricDependenciesPage}>
+        <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+      </Route>
       <Route path=":cardId/history" lazy={metricHistoryPage} />
     </Route>
   );

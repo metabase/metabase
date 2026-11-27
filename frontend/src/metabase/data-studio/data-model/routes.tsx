@@ -102,14 +102,12 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
         path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/revisions"
         lazy={segmentRevisionHistoryPage}
       />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
-          lazy={segmentDependenciesPage}
-        >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
-        </Route>
-      )}
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
+        lazy={segmentDependenciesPage}
+      >
+        <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+      </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
         element={<IsAdmin />}
@@ -124,14 +122,12 @@ export function getDataStudioMetadataRoutes(IsAdmin: ComponentType) {
         path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions"
         lazy={measureRevisionHistoryPage}
       />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route
-          path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
-          lazy={measureDependenciesPage}
-        >
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
-        </Route>
-      )}
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
+        lazy={measureDependenciesPage}
+      >
+        <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+      </Route>
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId"
         element={redirect(

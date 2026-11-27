@@ -462,7 +462,7 @@ function setup({
   }
 
   const { router } = renderRoutes(
-    (store) => toRouteObjects(getRoutes(store, Outlet, Outlet)),
+    () => toRouteObjects(getRoutes(Outlet, Outlet)),
     {
       initialRoute,
       storeInitialState: {

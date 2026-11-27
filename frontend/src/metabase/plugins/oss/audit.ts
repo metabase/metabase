@@ -35,8 +35,9 @@ type AuditPlugin = {
   InsightsMenuItem: ComponentType<InsightsMenuItemProps>;
   AnalyticsExportStatus: ComponentType;
   CollectionExportAnalytics: ComponentType;
-  isAiAuditingEnabled: boolean;
-  getAiAuditingRoutes: () => ReactNode;
+  // Optional, not a no-op default: an OSS build has no plugin to fill it, and
+  // the mount reads the absence to put the not-found routes in its place.
+  getAiAuditingRoutes?: () => ReactNode;
 };
 
 const getDefaultPluginAudit = (): AuditPlugin => ({
@@ -46,8 +47,6 @@ const getDefaultPluginAudit = (): AuditPlugin => ({
   InsightsMenuItem: PluginPlaceholder,
   AnalyticsExportStatus: PluginPlaceholder,
   CollectionExportAnalytics: PluginPlaceholder,
-  isAiAuditingEnabled: false,
-  getAiAuditingRoutes: () => null,
 });
 
 export const PLUGIN_AUDIT = definePluginSlot(getDefaultPluginAudit);

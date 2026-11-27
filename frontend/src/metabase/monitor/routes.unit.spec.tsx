@@ -241,7 +241,6 @@ const setup = ({
 };
 
 const enableAiAuditingRoutes = () => {
-  PLUGIN_AUDIT.isAiAuditingEnabled = true;
   PLUGIN_AUDIT.getAiAuditingRoutes = () => (
     <Route
       path="usage"
@@ -260,11 +259,11 @@ describe("monitor routes", () => {
   // Route factories name their page in an `import()`, so nothing type-checks the
   // path or the export. Resolving every lazy loader is the cheap guard against a
   // typo that would otherwise surface as a blank page. Runs against default (OSS)
-  // plugin state, so both diagnostics sections are on their upsell branch.
+  // plugin state, so every section is on its fallback routes.
   it("resolves every lazy page", async () => {
     const loaders = lazyLoaders(getMonitorRoutes());
 
-    expect(loaders).toHaveLength(19);
+    expect(loaders).toHaveLength(21);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
@@ -310,7 +309,10 @@ describe("monitor routes", () => {
       it("renders the diagnostics section and child routes instead of the upsell", async () => {
         setupEnterpriseOnlyPlugin("monitor_dependency_diagnostics");
 
-        setup({ initialRoute: "/monitor/dependency-diagnostics/broken" });
+        setup({
+          initialRoute: "/monitor/dependency-diagnostics/broken",
+          tokenFeatures: { dependencies: true },
+        });
 
         expect(
           await screen.findByTestId("diagnostics-section"),
@@ -322,7 +324,10 @@ describe("monitor routes", () => {
       it("redirects the diagnostics index to the broken route", async () => {
         setupEnterpriseOnlyPlugin("monitor_dependency_diagnostics");
 
-        setup({ initialRoute: "/monitor/dependency-diagnostics" });
+        setup({
+          initialRoute: "/monitor/dependency-diagnostics",
+          tokenFeatures: { dependencies: true },
+        });
 
         expect(await screen.findByText("Broken page")).toBeInTheDocument();
       });
@@ -332,7 +337,10 @@ describe("monitor routes", () => {
       it("renders the content diagnostics section and child routes instead of the upsell", async () => {
         setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
 
-        setup({ initialRoute: "/monitor/content-diagnostics/stale" });
+        setup({
+          initialRoute: "/monitor/content-diagnostics/stale",
+          tokenFeatures: { content_diagnostics: true },
+        });
 
         expect(
           await screen.findByTestId("content-diagnostics-section"),
@@ -346,7 +354,10 @@ describe("monitor routes", () => {
       it("redirects the content diagnostics index to the stale route", async () => {
         setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
 
-        setup({ initialRoute: "/monitor/content-diagnostics" });
+        setup({
+          initialRoute: "/monitor/content-diagnostics",
+          tokenFeatures: { content_diagnostics: true },
+        });
 
         expect(
           await screen.findByText("Stale content page"),
@@ -384,7 +395,10 @@ describe("monitor routes", () => {
       it("shows the sessions instead of the upsell with the feature", async () => {
         setupSessionManagement({ hasFeature: true });
 
-        setup({ initialRoute: Urls.monitorSessions() });
+        setup({
+          initialRoute: Urls.monitorSessions(),
+          tokenFeatures: { "session-management": true },
+        });
 
         expect(
           await screen.findByTestId("session-row-a-session"),

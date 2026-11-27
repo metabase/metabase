@@ -2,10 +2,13 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { createMockSettingsState } from "__support__/state";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
-import { createMockSettings } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { getAiControlsRoutes } from "./routes";
 
@@ -23,8 +26,11 @@ function setup({ initialRoute }: SetupOpts) {
       withRouter: true,
       initialRoute,
       storeInitialState: {
-        settings: createMockSettingsState({
+        // The routes pick their page by the feature when they resolve, and
+        // read it from the settings rather than the store.
+        settings: mockSettings({
           "llm-metabot-configured?": true,
+          "token-features": createMockTokenFeatures({ ai_controls: true }),
         }),
       },
     },

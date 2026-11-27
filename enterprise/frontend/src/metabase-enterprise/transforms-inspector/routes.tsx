@@ -1,4 +1,5 @@
 import { Route } from "metabase/router";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 /**
  * These pages register no prefetch, unlike the other pages that were split.
@@ -24,23 +25,17 @@ const transformInspectorUpsellPage = () =>
     Component: TransformInspectorUpsellPage,
   }));
 
-export function getInspectorUpsellRoutes() {
-  return (
-    <>
-      <Route path=":transformId/inspect" lazy={transformInspectorUpsellPage} />
-      <Route
-        path=":transformId/inspect/:lensId"
-        lazy={transformInspectorUpsellPage}
-      />
-    </>
-  );
-}
+const inspectPage = featureGatedRoute(
+  "transforms-python",
+  transformInspectPage,
+  transformInspectorUpsellPage,
+);
 
 export function getInspectorRoutes() {
   return (
     <>
-      <Route path=":transformId/inspect" lazy={transformInspectPage} />
-      <Route path=":transformId/inspect/:lensId" lazy={transformInspectPage} />
+      <Route path=":transformId/inspect" lazy={inspectPage} />
+      <Route path=":transformId/inspect/:lensId" lazy={inspectPage} />
     </>
   );
 }
