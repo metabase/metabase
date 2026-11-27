@@ -52,7 +52,6 @@ export const DataModel = {
   TableSection: {
     get: getTableSection,
     clickFieldsTab,
-    clickDetailsTab,
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getQueryBuilderLink: getTableQueryBuilderLink,
@@ -67,9 +66,7 @@ export const DataModel = {
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
     getSortableField: getTableSectionSortableField,
     getSortableFields: getTableSectionSortableFields,
-    getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
-    getCloseButton: getTableSectionCloseButton,
   },
   FieldSection: {
     get: getFieldSection,
@@ -403,16 +400,8 @@ function clickFieldsTab() {
   cy.findByRole("tab", { name: /Fields/ }).click();
 }
 
-function clickDetailsTab() {
-  cy.findByRole("tab", { name: /Details/ }).click();
-}
-
 function getTableSection() {
   return cy.findByTestId("table-section");
-}
-
-function getTableSectionHeader() {
-  return cy.findByTestId("table-section-header");
 }
 
 function getTableNameInput() {
@@ -465,10 +454,6 @@ function getTableSectionSortableFields() {
   return getTableSection().findAllByRole("listitem");
 }
 
-function getTableSectionVisibilityTypeInput() {
-  return getTableSection().findByRole("textbox", { name: "Visibility layer" });
-}
-
 function getTableSectionFieldNameInput(name: string) {
   return getTableSectionField(name).findByPlaceholderText(
     "Give this field a name",
@@ -489,10 +474,6 @@ function clickTableSectionField(name: string) {
     .findByRole("img")
     .scrollIntoView()
     .click();
-}
-
-function getTableSectionCloseButton() {
-  return getTableSectionHeader().findByRole("link", { name: /close/ });
 }
 
 /** field section helpers */
