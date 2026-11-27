@@ -27,20 +27,23 @@ export const useHostSync = <F>({
   const [initialTokens] = useState(() => treesToTokens(value, adapter));
   const [initialContent] = useState(() => tokensToContent(initialTokens));
   const syncedTokensRef = useRef(initialTokens);
+  const adapterRef = useLatest(adapter);
   const onChangeRef = useLatest(onChange);
   const onReplaceRef = useLatest(onReplace);
 
   const emit = useCallback(
     (editor: Editor) => {
-      const tokens = readTokens<F>(editor);
-      const result = tokensToTrees(tokens);
-      const hasFiltersChanged = !isSameStages(syncedTokensRef.current, tokens);
-      if (result.type === "ok" && hasFiltersChanged) {
+      const result = tokensToTrees(readTokens<F>(editor));
+      if (result.type !== "ok") {
+        return;
+      }
+      const tokens = treesToTokens(result.stages, adapterRef.current);
+      if (!isSameStages(syncedTokensRef.current, tokens)) {
         syncedTokensRef.current = tokens;
         onChangeRef.current(result.stages);
       }
     },
-    [onChangeRef],
+    [adapterRef, onChangeRef],
   );
 
   const receive = useCallback(

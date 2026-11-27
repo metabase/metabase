@@ -291,6 +291,50 @@ describe("FilterBar", () => {
       expect(getPillTexts()).toEqual(["IDis1"]);
       expect(onChange).not.toHaveBeenCalled();
     });
+
+    it("keeps the typed parentheses when the host sends back equal stages", async () => {
+      const { onChange, sendValue } = await setup({
+        value: [leaf(mockSegment("Active users"))],
+      });
+      act(() => {
+        getTiptapEditor()?.commands.focus("end");
+      });
+      await typeText("and");
+      await userEvent.keyboard("{Enter}");
+      await typeText("(");
+      await typeText("status");
+      await userEvent.keyboard("{Enter}");
+      await typeText("is empty");
+      await userEvent.keyboard("{Enter}");
+
+      await sendValue([
+        and(
+          leaf(mockSegment("Active users")),
+          leaf(mockFilter("status", "is-empty")),
+        ),
+      ]);
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(within(getEditor()).getByText("(")).toBeInTheDocument();
+    });
+
+    it("keeps an unfinished connector when the host sends back equal stages", async () => {
+      const { onChange, sendValue } = await setup({
+        value: [leaf(mockSegment("Active users"))],
+      });
+      act(() => {
+        getTiptapEditor()?.commands.focus("end");
+      });
+      await typeText("or");
+      await userEvent.keyboard("{Enter}");
+      await typeText("status");
+      await userEvent.keyboard("{Enter}");
+
+      await sendValue([leaf(mockSegment("Active users"))]);
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(within(getEditor()).getByText("or")).toBeInTheDocument();
+    });
   });
 
   describe("editing", () => {
