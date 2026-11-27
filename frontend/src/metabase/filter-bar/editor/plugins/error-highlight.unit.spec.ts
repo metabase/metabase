@@ -6,6 +6,7 @@ import { pillContent } from "../nodes/nodes";
 import { createTestEditorWith } from "../test-editor";
 
 import {
+  clearErrors,
   createErrorHighlight,
   hasErrorDecoration,
   highlightErrors,
@@ -31,10 +32,10 @@ const getErrorPositions = (editor: TestEditor) =>
     .map(({ from }) => from);
 
 describe("error highlight", () => {
-  it("clears the highlight and returns no error when it is not shown", () => {
+  it("clears the highlight", () => {
     const { editor } = setup([A, AND]);
-    highlightErrors(editor, true);
-    expect(highlightErrors(editor, false)).toBeNull();
+    highlightErrors(editor);
+    clearErrors(editor);
     expect(getErrorPositions(editor)).toEqual([]);
   });
 
@@ -44,13 +45,13 @@ describe("error highlight", () => {
     { stages: [[A], [OPEN, CLOSE]], stage: 1, positions: [3, 4] },
   ])("highlights $positions in $stages", ({ stages, stage, positions }) => {
     const { editor } = setup(...stages);
-    expect(highlightErrors(editor, true)).toMatchObject({ stage });
+    expect(highlightErrors(editor)).toMatchObject({ stage });
     expect(getErrorPositions(editor)).toEqual(positions);
   });
 
   it("moves the highlight with the document edits", () => {
     const { editor } = setup([A, AND]);
-    highlightErrors(editor, true);
+    highlightErrors(editor);
     editor.commands.insertContentAt(1, pillContent(B, 0));
     expect(getErrorPositions(editor)).toEqual([3]);
   });
@@ -59,7 +60,7 @@ describe("error highlight", () => {
     const { editor } = setup([A, AND]);
     expect(getDecorations(editor)).not.toHaveLength(0);
     expect(hasErrorDecoration(getDecorations(editor))).toBe(false);
-    highlightErrors(editor, true);
+    highlightErrors(editor);
     expect(hasErrorDecoration(getDecorations(editor))).toBe(true);
   });
 });

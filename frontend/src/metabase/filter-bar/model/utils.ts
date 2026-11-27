@@ -40,8 +40,6 @@ export const emptyTree = <F>(): FilterTree<F> => ({
 export const isEmptyTree = <F>(tree: FilterTree<F>): boolean =>
   !isLeafTree(tree) && tree.children.every(isEmptyTree);
 
-// A new separator for each gap: tokens are React keys. `index` is the part after
-// the separator.
 export const join = <T>(
   parts: readonly (readonly T[])[],
   createSeparator: (index: number) => T,

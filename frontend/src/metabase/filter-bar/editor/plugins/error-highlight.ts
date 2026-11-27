@@ -6,7 +6,7 @@ import { type ParseError, parseTokens } from "../../model";
 import { documentToTokens, documentToTokensWithPositions } from "../document";
 
 const ERROR_KEY = new PluginKey<DecorationSet>("filterBarErrors");
-const ERROR_SPEC = { isError: true };
+const ERROR_SPEC = Symbol("filter-bar-error");
 
 const isPositions = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((item) => typeof item === "number");
@@ -49,17 +49,17 @@ const highlightNodesAt = (editor: Editor, positions: number[]) => {
 export const hasErrorDecoration = (decorations: readonly Decoration[]) =>
   decorations.some((decoration) => decoration.spec === ERROR_SPEC);
 
-export const highlightErrors = (
-  editor: Editor,
-  isShown: boolean,
-): ParseError | null => {
+export const clearErrors = (editor: Editor) => highlightNodesAt(editor, []);
+
+export const highlightErrors = (editor: Editor): ParseError | null => {
   const result = parseTokens(documentToTokens(editor.state.doc));
   const items = documentToTokensWithPositions(editor.state.doc);
-  const error = isShown && result.type === "error" ? result : null;
-  const positions = (error?.indexes ?? []).flatMap((index) => {
-    const item = error ? items[error.stage]?.[index] : undefined;
-    return item ? [item.pos] : [];
-  });
+  const error = result.type === "error" ? result : null;
+  const positions =
+    error?.indexes.flatMap((index) => {
+      const item = items[error.stage]?.[index];
+      return item ? [item.pos] : [];
+    }) ?? [];
   highlightNodesAt(editor, positions);
   return error;
 };

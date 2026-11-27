@@ -5,6 +5,7 @@ import { useLatest } from "react-use";
 
 import {
   type FilterEditorRequest,
+  clearErrors,
   getPillRectAt,
   highlightErrors,
   normalizeDocument,
@@ -62,7 +63,12 @@ export const useFilterBarEditor = <F>({
   const onChangeRef = useLatest(onChange);
 
   const showError = useCallback((editor: Editor) => {
-    setError(highlightErrors(editor, isValidatingRef.current));
+    if (isValidatingRef.current) {
+      setError(highlightErrors(editor));
+    } else {
+      clearErrors(editor);
+      setError(null);
+    }
   }, []);
 
   const emit = (editor: Editor) => {

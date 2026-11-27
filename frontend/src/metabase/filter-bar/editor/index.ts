@@ -43,6 +43,7 @@ export { createCaret } from "./plugins/caret";
 export {
   createErrorHighlight,
   hasErrorDecoration,
+  clearErrors,
   highlightErrors,
 } from "./plugins/error-highlight";
 export { createHiddenThen } from "./plugins/hidden-then";

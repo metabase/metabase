@@ -183,7 +183,7 @@ describe("FilterBar", () => {
         value: [leaf(mockFilter("state", "=", "CA", "NY", "TX", "WA", "OR"))],
       });
 
-      expect(getPillTexts()).toEqual(["StateisCA, NY, TX, ...+2"]);
+      expect(getPillTexts()).toEqual(["StateisCA, NY, TX, …+2"]);
     });
 
     it("shows no values for an operator without values", async () => {

@@ -29,10 +29,11 @@ export const insertConnector = (
       .setTextSelection(from)
       .run();
   }
+  const connector = state.schema.nodeFromJSON(connectorContent(type));
   return chain()
     .deleteRange({ from, to })
-    .insertContentAt(from, connectorContent(type))
-    .setTextSelection(from + 1)
+    .insertContentAt(from, connector)
+    .setTextSelection(from + connector.nodeSize)
     .run();
 };
 

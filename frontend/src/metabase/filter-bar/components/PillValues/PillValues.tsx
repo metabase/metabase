@@ -23,7 +23,8 @@ export const PillValues = ({ parts, formatValues }: PillValuesProps) => {
         tooltip={formatValues(parts)}
         alwaysShowTooltip={hiddenCount > 0}
       >
-        {hiddenCount > 0 ? `${shownText}, ...` : shownText}
+        {shownText}
+        {hiddenCount > 0 ? ", …" : null}
       </PillPart>
       {hiddenCount > 0 && (
         <span className={S.moreValues}>{`+${hiddenCount}`}</span>

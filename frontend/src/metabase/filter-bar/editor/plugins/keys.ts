@@ -19,13 +19,15 @@ const getNodeNextToCaret = (editor: Editor, isBackward: boolean) => {
 };
 
 const jumpOverThen = (editor: Editor, isBackward: boolean) =>
-  isThenNode(getNodeNextToCaret(editor, isBackward)) &&
   moveCaretPast(editor, editor.state.selection.from, isBackward);
 
-const removeNodeNextToCaret = (editor: Editor, isBackward: boolean) => {
+const deleteNextToCaret = (editor: Editor, isBackward: boolean) => {
   const node = getNodeNextToCaret(editor, isBackward);
   if (!node) {
     return false;
+  }
+  if (isThenNode(node)) {
+    return jumpOverThen(editor, isBackward);
   }
   const { doc, selection } = editor.state;
   const from = isBackward ? selection.from - node.nodeSize : selection.from;
@@ -45,7 +47,7 @@ const toggleConnector = (editor: Editor) => {
   const isConnector =
     selection instanceof NodeSelection && isConnectorNode(selection.node);
   if (!isConnector) {
-    return false;
+    return;
   }
   const type = isAndNode(selection.node) ? "or" : "and";
   const { schema } = editor.state;
@@ -58,7 +60,6 @@ const toggleConnector = (editor: Editor) => {
       NodeSelection.create(transaction.doc, selection.from),
     ),
   );
-  return true;
 };
 
 export const createFilterBarKeys = () =>
@@ -66,10 +67,8 @@ export const createFilterBarKeys = () =>
     name: "filterBarKeys",
     priority: 1000,
     addKeyboardShortcuts: () => ({
-      Backspace: ({ editor }) =>
-        jumpOverThen(editor, true) || removeNodeNextToCaret(editor, true),
-      Delete: ({ editor }) =>
-        jumpOverThen(editor, false) || removeNodeNextToCaret(editor, false),
+      Backspace: ({ editor }) => deleteNextToCaret(editor, true),
+      Delete: ({ editor }) => deleteNextToCaret(editor, false),
       Enter: ({ editor }) => {
         toggleConnector(editor);
         return true;
