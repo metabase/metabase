@@ -10,12 +10,14 @@ import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
 import type { IconName } from "metabase-types/api/icon";
 
+import type { IconComponent } from "../../icons/Icon/StaticIcon";
+
 export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
 export * from "./SelectItem";
 
 export type SelectOption<Value = string | null> = ComboboxItem & {
   value: Value;
-  icon?: IconName;
+  icon?: IconName | IconComponent;
 } & Record<string, any>;
 
 export type SelectData<Value extends string | null> =

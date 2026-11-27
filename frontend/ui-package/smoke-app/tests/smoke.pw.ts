@@ -250,6 +250,16 @@ test("renders an individually imported SVG icon", async ({ page }) => {
   const icon = page.getByRole("img", { name: "Packed table icon" });
   await expect(icon.locator("path").first()).toBeVisible();
   await expect(icon).toHaveAttribute("width", "18");
+  await expect(
+    page.getByTestId("entity-with-icon").locator("svg path").first(),
+  ).toBeVisible();
+  await page.getByTestId("select").click();
+  await expect(
+    page.getByRole("option", { name: "One" }).locator("svg path").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("option", { name: /Two/ }).locator("svg path").first(),
+  ).toBeVisible();
 });
 
 test("a portalled Select can be used inside a custom modal layer", async ({

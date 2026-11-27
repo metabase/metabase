@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Ellipsified,
+  EntityNameCell,
   Group,
   Icon,
   MetabaseUIProvider,
@@ -124,11 +125,21 @@ export const App = () => {
           </Ellipsified>
         </Box>
 
-        <Select
+        <Select<string>
           label="Select"
-          data={["One", "Two", "Three"]}
+          data={[
+            { label: "One", value: "One", icon: TableIcon },
+            { label: "Two", value: "Two", icon: "table" },
+            { label: "Three", value: "Three" },
+          ]}
           data-testid="select"
           w={200}
+        />
+
+        <EntityNameCell
+          name="Table"
+          icon={TableIcon}
+          data-testid="entity-with-icon"
         />
 
         <Tooltip label="Tooltip label" opened position="right">
