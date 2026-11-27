@@ -1,16 +1,22 @@
 (ns metabase-enterprise.dependencies.task.analysis-finding-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [environ.core :as env]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.util :as task.util]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.task.core :as task]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures])
   (:import
    (org.quartz JobDetail)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:synchronized batch-size-zero-disables-job-test
   (testing "a batch size that isn't positive keeps the job from being scheduled by writes or at startup"
@@ -50,3 +56,13 @@
         (mt/with-premium-features #{:dependencies}
           (events/publish-event! :event/premium-token-update {})
           (is (contains? (scheduled-job-names @scheduled) job-key)))))))
+
+(deftest ^:synchronized analyzing-entities-logs-nothing-above-debug-test
+  (testing "a batch that analyzes entities leaves no info-level log line, so an idle instance does not fill its logs"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card _ {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}]
+          (mt/with-log-messages-for-level [messages [metabase-enterprise.dependencies :info]]
+            (deps.test/synchronously-run-dependency-job!)
+            (is (some? (deps.test/run-analysis-finding-job!)))
+            (is (empty? (messages)))))))))
