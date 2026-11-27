@@ -22,6 +22,12 @@
   scrollbar-gutter: stable;
 }
 
+/* The scroll container takes keyboard focus (WCAG 2.4.7); a mouse click shows no ring. */
+.tableGrid:focus-visible {
+  outline: 2px solid var(--mb-color-input-focus);
+  outline-offset: -2px;
+}
+
 .pinnedColumnsSection {
   flex-shrink: 0;
   position: sticky;
