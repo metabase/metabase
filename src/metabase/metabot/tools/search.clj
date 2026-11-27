@@ -333,8 +333,9 @@
             (= profile-id "nlq"))
     (:collection_id metabot)))
 
-(def ^:private max-keyword-queries
-  "Cap on keyword queries per search. Each runs as its own search of the full ranked pool, concurrently."
+(def ^:private max-queries-per-list
+  "Cap on keyword queries, and on semantic queries, per search. Each runs as its own search of the full ranked pool,
+  concurrently."
   10)
 
 (defn search
@@ -352,7 +353,7 @@
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
   `:total` metadata, and the queries whose search failed as `:failed-queries`.
-  Throws a 400 when `term-queries` holds more than [[max-keyword-queries]] distinct queries."
+  Throws a 400 when `term-queries` or `semantic-queries` holds more than [[max-queries-per-list]] distinct queries."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot profile-id weights
            created-by archived collection-id offset filters-only? partial-results?]}]
@@ -373,12 +374,14 @@
   ;; A repeated query would add its ranking to the fusion twice, so each list is searched without repeats.
   (let [terms           (vec (distinct term-queries))
         phrases         (vec (distinct semantic-queries))
-        ;; The tool schema caps the list too; this also covers callers that skip it, such as the Agent API.
-        _               (when (> (count terms) max-keyword-queries)
-                          (throw (ex-info (format (str "Pass at most %d keyword queries. "
-                                                       "Combine related keywords or drop some.")
-                                                  max-keyword-queries)
-                                          {:status-code 400, :keyword-queries (count terms)})))
+        ;; The tool schema caps the lists too; this also covers callers that skip it, such as the Agent API.
+        _               (when (some #(> (count %) max-queries-per-list) [terms phrases])
+                          (throw (ex-info (format (str "Pass at most %d keyword queries and %d semantic queries. "
+                                                       "Combine related queries or drop some.")
+                                                  max-queries-per-list max-queries-per-list)
+                                          {:status-code      400
+                                           :keyword-queries  (count terms)
+                                           :semantic-queries (count phrases)})))
         search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -763,12 +766,13 @@
                     :results (mapv search-result->item results)})]}))
 
 (def ^:private semantic-queries-schema
-  [:sequential {:error/message "must be an array of strings"}
+  [:sequential {:max           max-queries-per-list
+                :error/message (str "must be an array of at most " max-queries-per-list " strings")}
    [:string {:description semantic-query-desc}]])
 
 (def ^:private keyword-queries-schema
-  [:sequential {:max           max-keyword-queries
-                :error/message (str "must be an array of at most " max-keyword-queries " strings")}
+  [:sequential {:max           max-queries-per-list
+                :error/message (str "must be an array of at most " max-queries-per-list " strings")}
    [:string {:description keyword-query-desc}]])
 
 (defn- entity-types-schema

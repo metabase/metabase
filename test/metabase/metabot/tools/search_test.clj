@@ -450,13 +450,17 @@
              (is (= #{"orders" "monthly sales"} (set @searched)))
              (is (= 2 (count @searched))))))))))
 
-(deftest ^:parallel keyword-queries-are-capped-test
-  (testing "a search takes at most ten keyword queries, since each runs as its own search"
-    (is (mr/validate @#'search/keyword-queries-schema (repeat 10 "orders")))
-    (is (not (mr/validate @#'search/keyword-queries-schema (repeat 11 "orders")))))
+(deftest ^:parallel queries-are-capped-test
+  (testing "a search takes at most ten keyword and ten semantic queries, since each runs as its own search"
+    (doseq [schema [@#'search/keyword-queries-schema @#'search/semantic-queries-schema]]
+      (is (mr/validate schema (repeat 10 "orders")))
+      (is (not (mr/validate schema (repeat 11 "orders"))))))
   (testing "a caller that skips the tool schema, such as the Agent API, is refused too"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10 keyword queries"
-                          (search/search {:term-queries (map #(str "query " %) (range 11))})))))
+    (let [eleven (map #(str "query " %) (range 11))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10 keyword queries"
+                            (search/search {:term-queries eleven})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10 keyword queries and 10 semantic queries"
+                            (search/search {:semantic-queries eleven}))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
@@ -823,7 +827,7 @@
             [[:keyword_queries  "metabot byok"
               "Invalid tool arguments: `keyword_queries` must be an array of at most 10 strings; received a string."]
              [:semantic_queries "monthly revenue"
-              "Invalid tool arguments: `semantic_queries` must be an array of strings; received a string."]
+              "Invalid tool arguments: `semantic_queries` must be an array of at most 10 strings; received a string."]
              [:entity_types     "table"
               "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
       (testing (str "a scalar " field)
