@@ -18,9 +18,7 @@ export const getUserCanWriteSegments = (
   state: State,
   isTablePublished: boolean,
 ) => {
-  const isAdmin = getUserIsAdmin(state);
-
-  if (!isAdmin) {
+  if (!getUserIsAdmin(state) && !getUserIsEntitledAnalyst(state)) {
     return false;
   }
 
@@ -34,9 +32,7 @@ export const getUserCanWriteMeasures = (
   state: State,
   isTablePublished: boolean,
 ) => {
-  const isAdmin = getUserIsAdmin(state);
-
-  if (!isAdmin) {
+  if (!getUserIsAdmin(state) && !getUserIsEntitledAnalyst(state)) {
     return false;
   }
 
