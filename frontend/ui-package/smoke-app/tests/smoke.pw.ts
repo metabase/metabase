@@ -245,6 +245,13 @@ for (const scheme of SCHEMES) {
   });
 }
 
+test("renders an individually imported SVG icon", async ({ page }) => {
+  await page.goto("/");
+  const icon = page.getByRole("img", { name: "Packed table icon" });
+  await expect(icon.locator("path").first()).toBeVisible();
+  await expect(icon).toHaveAttribute("width", "18");
+});
+
 test("a portalled Select can be used inside a custom modal layer", async ({
   page,
 }) => {

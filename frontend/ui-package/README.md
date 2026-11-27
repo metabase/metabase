@@ -27,6 +27,8 @@ createRoot(document.getElementById("root")!).render(
 
 Do not also import `@mantine/core/styles.css` or `@mantine/dates/styles.css`.
 
+For one icon without the full icon registry, import the SVG component directly, for example `import TableIcon from "@metabase/ui/icons/table"`. These are raw SVG components. Pass standard SVG sizing and accessibility props instead of the legacy `Icon` component's `size`, `name` or `tooltip` props. `Icon` remains available for name-based lookup.
+
 The provider sets up the theme, the color variables, the font variable and what overlays (modals, tooltips, popovers) need. Wrap your app in it once.
 
 | Prop          | Type                               | Default                     |

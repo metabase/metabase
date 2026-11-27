@@ -2,6 +2,7 @@
 import { createHash } from "crypto";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -171,6 +172,34 @@ function assertBaselineMatchesPatch(baseline: string) {
   }
 }
 
+function writeIconExports(dist: string) {
+  const iconSource = "src/metabase/ui/components/icons/Icon/icons";
+  const iconExports = resolve(dist, "icons");
+  mkdirSync(iconExports, { recursive: true });
+
+  for (const file of readdirSync(resolve(repoRoot, "frontend", iconSource))) {
+    if (!file.endsWith(".svg")) {
+      continue;
+    }
+    const name = basename(file, ".svg");
+    const module = `${iconSource}/${name}.js`;
+    if (!existsSync(resolve(dist, module))) {
+      continue;
+    }
+    writeFileSync(
+      resolve(iconExports, `${name}.js`),
+      `export { default } from "../${module}";\n`,
+    );
+    writeFileSync(
+      resolve(iconExports, `${name}.d.ts`),
+      `import type { ForwardRefExoticComponent, SVGProps } from "react";
+declare const Icon: ForwardRefExoticComponent<SVGProps<SVGSVGElement>>;
+export default Icon;
+`,
+    );
+  }
+}
+
 function stylesAndFonts(): Plugin {
   const dist = resolve(packageDir, "dist");
   let failed = false;
@@ -188,6 +217,7 @@ function stylesAndFonts(): Plugin {
       if (failed || !write) {
         return;
       }
+      writeIconExports(dist);
       const cssFiles = readdirSync(dist).filter((f) => f.endsWith(".css"));
       if (cssFiles.length !== 1) {
         throw new Error(`Expected one CSS file, got: ${cssFiles.join(", ")}`);

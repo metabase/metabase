@@ -15,6 +15,7 @@ import {
   color,
   useColorScheme,
 } from "@metabase/ui";
+import TableIcon from "@metabase/ui/icons/table";
 import { useState } from "react";
 
 const initialColorScheme =
@@ -90,6 +91,12 @@ export const App = () => {
             Open modal
           </Button>
           <Icon name="table" size={24} data-testid="icon-table" />
+          <TableIcon
+            width={18}
+            height={18}
+            role="img"
+            aria-label="Packed table icon"
+          />
         </Group>
 
         {params.has("theme-controls") && (
