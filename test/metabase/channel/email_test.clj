@@ -607,3 +607,44 @@
       (is (= {:errors {:email-smtp-username-override "Wrong username or password"
                        :email-smtp-password-override "Wrong username or password"}}
              (#'email/humanize-error-messages mb-to-smtp-override-settings {::email/error exception}))))))
+
+(defn- sent-jmessage!
+  [message]
+  (let [sent (atom nil)]
+    (dynamic-redefs/with-dynamic-fn-redefs [postal/send-message (fn [_ email-details]
+                                                                  (reset! sent email-details))]
+      (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                         email-smtp-port 587]
+        (email/send-message-or-throw! {:subject      "Inline image"
+                                       :recipients   ["test@test.com"]
+                                       :message-type :attachments
+                                       :message      message})))
+    (doto (message/make-jmessage @sent)
+      (.saveChanges))))
+
+(defn- content-base-type
+  [^javax.mail.Part part]
+  (.getBaseType (MimeType. (.getContentType part))))
+
+(deftest send-message-with-inline-image-is-multipart-related-test
+  (let [image-file (temp-csv "inline-image" "not really a png")
+        html       {:type    "text/html; charset=utf-8"
+                    :content "<img src=\"cid:chart\">"}
+        image      {:type         :inline
+                    :content-id   "chart"
+                    :content-type "image/png"
+                    :content      image-file}]
+    (testing "inline images are sent in multipart/related body with HTML part"
+      (is (= "multipart/related"
+             (content-base-type (sent-jmessage! [html image])))))
+    (testing "file attachments are sent next to multipart/related body"
+      (let [csv-file (temp-csv "result" "a,b")
+            jmessage (sent-jmessage! [html image {:type         :attachment
+                                                  :content-type "text/csv"
+                                                  :file-name    "result.csv"
+                                                  :content      csv-file}])
+            multipart ^javax.mail.Multipart (.getContent jmessage)]
+        (is (= "multipart/mixed" (content-base-type jmessage)))
+        (is (= ["multipart/related" "text/csv"]
+               (mapv #(content-base-type (.getBodyPart multipart (int %)))
+                     (range (.getCount multipart)))))))))

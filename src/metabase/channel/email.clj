@@ -82,6 +82,17 @@
       trust (assoc :ssl.trust trust)
       debug-enabled? (assoc :debug true))))
 
+(defn- nest-related-parts
+  "Puts the body parts other than file attachments into a `multipart/related` part so mail clients show inline images."
+  [body]
+  (if (sequential? body)
+    (let [{attachments true, related false} (group-by #(= :attachment (:type %)) body)
+          related                           (into [:related] related)]
+      (if (seq attachments)
+        (into [related] attachments)
+        related))
+    body))
+
 ;; ## PUBLIC INTERFACE
 
 (defn send-email!
@@ -91,7 +102,7 @@
   Throttling is applied once per logical message in [[send-message-or-throw!]], not here, so that a message split
   into multiple recipient batches is throttled as a unit rather than per batch."
   [smtp-credentials email-details]
-  (postal/send-message (add-mail-args smtp-credentials) email-details))
+  (postal/send-message (add-mail-args smtp-credentials) (update email-details :body nest-related-parts)))
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge
