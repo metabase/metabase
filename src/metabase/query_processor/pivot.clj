@@ -482,8 +482,15 @@
         remapped-cols            (lib/returned-columns remapped-query)
         num-remapped-cols        (count remapped-cols)
         num-unremapped-breakouts (count (lib/breakouts query))
-        num-remapped-breakouts   (count (filter :lib/breakout? remapped-cols))]
+        num-remapped-breakouts   (count (filter :lib/breakout? remapped-cols))
+        internal-remap-indexes   (if (get-in query [:middleware :disable-remaps?])
+                                   []
+                                   (into [] (keep-indexed (fn [i col]
+                                                            (when (seq (get-in col [:lib/internal-remap :values]))
+                                                              i)))
+                                         remapped-cols))]
     (assoc query
+           :qp.pivot/internal-remap-indexes   internal-remap-indexes
            :qp.pivot/num-remapped-cols        num-remapped-cols
            :qp.pivot/num-unremapped-breakouts num-unremapped-breakouts
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts

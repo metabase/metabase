@@ -1803,3 +1803,27 @@
           (let [first-detail (first (filter #(zero? (nth % 2)) rows))]
             (is (string? (first first-detail))
                 (str "first detail row: " (pr-str first-detail)))))))))
+
+(deftest ^:parallel pivot-with-internal-remapped-breakout-end-to-end-test
+  (testing "Pivot queries with internal remapped breakout columns return the human-readable values (#88162)"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp      (lib.tu/remap-metadata-provider (mt/metadata-provider)
+                                                    (mt/id :reviews :rating)
+                                                    ["Label 1" "Label 2" "Label 3" "Label 4" "Label 5"])
+            reviews (lib.metadata/table mp (mt/id :reviews))
+            query   (-> (lib/query mp reviews)
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :reviews :created_at)) :year))
+                        (lib/breakout (lib.metadata/field mp (mt/id :reviews :rating)))
+                        (merge {:pivot-rows [0] :pivot-cols [1]}))
+            result  (qp.pivot/run-pivot-query query)
+            rows    (mt/rows result)
+            labels  (fn [grouping] (into #{} (comp (filter #(= grouping (nth % 2))) (map last)) rows))]
+        (is (=? {:status :completed} result))
+        (is (every? #(= (str "Label " (second %)) (last %))
+                    (filter #(zero? (nth % 2)) rows))
+            (pr-str rows))
+        (testing "subqueries without rating breakout leave its label empty"
+          (is (= #{nil} (labels 2) (labels 3))))
+        (testing "subqueries with rating breakout but without year breakout keep its label"
+          (is (= #{"Label 1" "Label 2" "Label 3" "Label 4" "Label 5"} (labels 1))))))))

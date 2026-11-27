@@ -70,6 +70,7 @@
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [{num-remapped-cols      :qp.pivot/num-remapped-cols
     num-remapped-breakouts :qp.pivot/num-remapped-breakouts
+    internal-remap-indexes :qp.pivot/internal-remap-indexes
     :as                    _subquery} :- ::lib.schema/query
    subquery-breakout-combination :- ::pivot.common/breakout-combination]
   ;; all pivot queries consist of *breakout columns* + *other columns*. Breakout columns are always first, and the only
@@ -88,10 +89,17 @@
          (let [canonical-other-columns-offset num-remapped-breakouts
                subquery-other-columns-offset  (count subquery-breakout-combination)
                num-other-columns              (- num-remapped-cols num-remapped-breakouts)]
-           (into {}
-                 (map (fn [i]
-                        [(+ canonical-other-columns-offset i) (+ subquery-other-columns-offset i)]))
-                 (range num-other-columns))))]
+           (merge
+            (into {}
+                  (map (fn [i]
+                         [(+ canonical-other-columns-offset i) (+ subquery-other-columns-offset i)]))
+                  (range num-other-columns))
+            (let [canonical-position (zipmap internal-remap-indexes (range))]
+              (into {}
+                    (map-indexed (fn [i canonical-index]
+                                   [(+ num-remapped-cols (canonical-position canonical-index))
+                                    (+ subquery-other-columns-offset num-other-columns i)]))
+                    (filter canonical-position subquery-breakout-combination))))))]
     ;; e.g.
     ;;
     ;;    ;; column 1 in the subquery results corresponds to 2 in the canonical results, 3 corresponds to 0
@@ -107,7 +115,7 @@
     ;; * canonical column 2 corresponds to subquery column 1
     (mapv (fn [i]
             (get canonical-index->subquery-index i))
-          (range num-remapped-cols))))
+          (range (+ num-remapped-cols (count internal-remap-indexes))))))
 
 (mu/defn- full-breakout-combination :- ::pivot.common/breakout-combination
   "Returns the breakout combination corresponding to `breakout-combination` belonging to the base query (the one without
