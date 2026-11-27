@@ -24,7 +24,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: frontend_all e2e_all custom_viz_all ci_scripts
+      filters: frontend_all ui_package e2e_all custom_viz_all ci_scripts
 
   fe-lint:
     needs: gate
@@ -57,7 +57,9 @@ jobs:
 
   fe-type-check:
     needs: gate
-    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    if: >-
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_all')
+      || contains(fromJSON(needs.gate.outputs.matched), 'ui_package') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -75,6 +77,7 @@ jobs:
           bun run frontend/ui-package/scripts/check-css-imports.ts
           bun run build-ui-package
           cd frontend/ui-package
+          bun run check:package-versions
           bun run type-check
           bun run check:dist
 
