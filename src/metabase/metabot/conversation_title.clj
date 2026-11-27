@@ -122,7 +122,8 @@
                                    :response        {:schema     title-schema
                                                      :max-tokens title-max-tokens}
                                    :conversation-id conversation-id
-                                   ;; the job's own timeout, so the provider request gives up when the job does
+                                   ;; the job's own timeout, so the provider request gives up soon after the job
+                                   ;; does; it starts after the job's title lookup, which the job's cancel counts
                                    :timeout-ms      title-timeout-ms}))
     (catch clojure.lang.ExceptionInfo e
       ;; titles respect the usage limit too, like metabot.self/call-llm, without a warning for each one
