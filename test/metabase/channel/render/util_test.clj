@@ -17,11 +17,11 @@
         (is (= "Visualizer Title"
                (render-util/dashcard-title card {:visualization_settings {:card.title    "Dashboard Title"
                                                                           :visualization {:settings {:card.title "Visualizer Title"}}}}))))
-      (testing "a blank override is ignored (falls through)"
-        (is (= "Dashboard Title"
+      (testing "a blank override hides the title (#82069)"
+        (is (= ""
                (render-util/dashcard-title card {:visualization_settings {:card.title    "Dashboard Title"
                                                                           :visualization {:settings {:card.title ""}}}})))
-        (is (= "Card Name"
+        (is (= ""
                (render-util/dashcard-title card {:visualization_settings {:card.title ""}}))))
       (testing "with no override, falls back to the card's own name"
         (is (= "Card Name" (render-util/dashcard-title card {:visualization_settings {}})))

@@ -516,6 +516,20 @@
         (is (match/match-one rendered [:a _ "OrdersFoo"] true))
         (is (not (match/match-one rendered [:a _ "Orders"] true)))))))
 
+(deftest dashcard-cleared-title-renders-no-title-test
+  (testing "dashcard whose card.title was cleared renders without title in emails (#82069)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card card {:name "Orders" :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                         (lib/limit 1))}
+                     :model/Dashboard dashboard {}
+                     :model/DashboardCard dc {:dashboard_id (:id dashboard) :card_id (:id card)
+                                              :visualization_settings {:card.title ""}}]
+        (let [rendered (:content (channel.render/render-pulse-card :inline "UTC" card dc
+                                                                   (qp/process-query (:dataset_query card))
+                                                                   {:channel.render/include-title? true}))]
+          (is (some? rendered))
+          (is (not (match/match-one rendered [:a _ "Orders"] true))))))))
+
 (deftest render-card-with-abbreviated-dates-test
   (testing "Static-viz should render without error when date formatting is abbreviated (metabase#27020)"
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "MMMM D, YYYY"}}]
