@@ -1362,8 +1362,7 @@
                      lib.schema
                      lib.source-swap
                      lib.types}
-   :api  #{metabase.lib.analysis
-           metabase.lib.core
+   :api  #{metabase.lib.core
            metabase.lib.equality
            metabase.lib.expression
            metabase.lib.field.util
@@ -1397,6 +1396,14 @@
            serialization
            util}
    :model-imports #{:model/Card}}
+
+  lib.analysis
+  {:team "Querying"
+   :api #{metabase.lib.analysis}
+   :uses #{lib
+           lib.metadata
+           lib.schema
+           util}}
 
   lib.be
   {:team "Querying"
