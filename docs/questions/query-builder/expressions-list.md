@@ -674,11 +674,11 @@ Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
 > ⚠️ `regexExtract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexExtract` is only available for the Druid-JDBC driver.
 
-Extracts matching substrings according to a regular expression.
+Extracts the first substring that matches a regular expression.
 
 Syntax: `regexExtract(text, regular_expression)`
 
-Example: `regexExtract([Address], "[0-9]+")`
+Example: `regexExtract([Address], "[0-9]+")`. If the `Address` were `"123 Main St"`, the expression would return `"123"`.
 
 Databases that don't support `regexExtract`: SQL Server, SQLite.
 
@@ -754,6 +754,8 @@ Returns a portion of the supplied text, specified by a starting position and a l
 Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
+
+Another example: `substring("Metabase", 1, 4)` would return `"Meta"`.
 
 Related: [regexExtract](#regexextract), [replace](#replace).
 
@@ -866,6 +868,8 @@ Checks a date column's values to see if they're within the relative range.
 Syntax: `interval(column, number, text)`
 
 Example: `interval([Created At], -1, "month")`
+
+The range covers complete units and doesn't include the current one. For example, `interval([Created At], -3, "month")` would return true for rows created in the three full months before the current month.
 
 The `number` must be an integer. You cannot use a fractional value.
 
