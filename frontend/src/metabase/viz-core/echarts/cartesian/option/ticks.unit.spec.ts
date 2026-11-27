@@ -305,3 +305,33 @@ describe("waterfall Total tick", () => {
     expect(options.customValues).toContain(utc("2026-04-02").valueOf());
   });
 });
+
+describe("daily timeseries ticks across a month boundary", () => {
+  const utc = (value: string) => dayjs.utc(value);
+  const days = Array.from({ length: 14 }, (_, index) =>
+    utc("2026-10-27").add(index, "day").format("YYYY-MM-DD"),
+  );
+  const dailyModel: TimeSeriesXAxisModel = {
+    axisType: "time",
+    interval: { unit: "day", count: 1 },
+    intervalsCount: 13,
+    range: [utc("2026-10-27"), utc("2026-11-09")],
+    formatter: String,
+    toEChartsAxisValue: (value) =>
+      utc(String(value)).format("YYYY-MM-DDTHH:mm:ss[Z]"),
+    fromEChartsAxisValue: (value) => dayjs.utc(value),
+  };
+
+  it("labels every day when all labels fit on a wide chart", () => {
+    const options = getTicksOptions(
+      dailyModel,
+      createMockChartLayout({
+        outerWidth: 1600,
+        ticksDimensions: { getXTickWidth: () => 60 },
+      }),
+    );
+
+    expect(days.filter((day) => options.canRender(utc(day)))).toEqual(days);
+    expect(options.customValues).toEqual(days.map((day) => utc(day).valueOf()));
+  });
+});
