@@ -21,7 +21,7 @@ export const GroupDetailApp = ({ title }: { title?: string }) => {
 
   const error = getGroupReq.error ?? membershipsByUserReq.error;
   const isLoading =
-    getGroupReq.isLoading ?? membershipsByUserReq.isLoading ?? !currentUser;
+    getGroupReq.isLoading || membershipsByUserReq.isLoading || !currentUser;
 
   return (
     <SettingsPageWrapper title={title ?? t`Groups`}>
