@@ -145,7 +145,14 @@
 
 (mr/def ::options
   "The options of [[call-llm!]], checked as a closed map in production, so a misspelled key fails instead of being
-  ignored."
+  ignored.
+
+  - `:audience`: who the call serves, see [[::audience]].
+  - `:prompt` and `:response`: see [[::prompt]] and [[::response]].
+  - `:timeout-ms`: the deadline from entry for the wait on the provider, retries and backoff included.
+  - `:max-attempts`: attempts for transient provider failures, 3 when absent.
+  - `:request-id`: groups calls into one message for a message limit; made on the server, never from the client.
+  - `:conversation-id`: the Metabot conversation the call belongs to, in usage logs."
   [:map {:closed true}
    [:audience        ::audience]
    [:prompt          ::prompt]
@@ -388,19 +395,20 @@
 
 ;;; ----------------------------------------------- Provider errors ---------------------------------------------------
 
-(def ^:private typed-error?
-  #{:metabot/ai-disabled
-    :metabot/metabot-disabled
-    :metabot/invalid-call
-    :metabot/permission-denied
-    :metabot/llm-not-configured
-    :metabot/managed-limit-reached
-    :metabot/usage-limit-reached
-    :metabot/prompt-too-large
-    :metabot/provider-failure
-    :metabot/timeout
-    :metabot/structured-output-incomplete
-    :metabot/structured-output-invalid})
+(def error-types
+  "The `:type` of each error [[call-llm!]] throws on purpose, with what it means."
+  {:metabot/ai-disabled                  "AI features are turned off"
+   :metabot/metabot-disabled             "the Metabot setting of the call's audience is off"
+   :metabot/invalid-call                 "the call is set up wrong, such as a user feature with no bound user"
+   :metabot/permission-denied            "the user lacks the feature's permission"
+   :metabot/llm-not-configured           "the role's model has no usable connection"
+   :metabot/managed-limit-reached        "the managed AI allowance is used up"
+   :metabot/usage-limit-reached          "a usage limit is reached"
+   :metabot/prompt-too-large             "the prompt is too long for the model"
+   :metabot/provider-failure             "the provider failed, with the kind in `:provider-failure`"
+   :metabot/timeout                      "the deadline passed"
+   :metabot/structured-output-incomplete "the model stopped before it finished its answer"
+   :metabot/structured-output-invalid    "the answer doesn't match the schema"})
 
 (defn- provider-failure-error
   [feature-id kind e]
@@ -416,7 +424,7 @@
   (let [data         (ex-data e)
         call-failure (self/call-failure e)]
     (cond
-      (typed-error? (:type data))
+      (contains? error-types (:type data))
       e
 
       (self/context-overflow-error e)
@@ -519,39 +527,20 @@
           (throw e))))))
 
 (defn call-llm!
-  "The LLM facade, through which every one-call LLM feature calls its model.
-  Returns the answer of the feature `feature-id`, checked against its schema, with keyword keys at every level.
-  Code outside Metabot calls it as `metabase.metabot.core/call-llm!`.
+  "The LLM facade: the one way a feature calls its model.
+  Code outside Metabot calls it as [[metabase.metabot.core/call-llm!]].
 
-  The options `opts` are a closed map, see [[::options]]:
+  Calls the model of `feature-id`, registered in [[registry]], and returns its answer, decoded and validated against
+  the `:response` schema, with keyword keys at every level.
+  The options `opts` are described in [[::options]].
+  A `:trigger :user` feature needs a bound current user.
+  To refuse before reading data for the prompt, call [[check!]] first.
 
-    {:audience        :embedded  ; or :internal, or :any for work that serves no one audience
-     :prompt          {:system \"…\", :user \"…\", :untrusted {:request user-text}}  ; or :messages for both
-     :response        {:schema ::answer, :max-tokens 800, :temperature 0.0}
-     :timeout-ms      4000      ; deadline, see below
-     :max-attempts    2         ; attempts for transient failures, 3 by default
-     :request-id      \"…\"       ; groups calls into one message; never taken from the client
-     :conversation-id \"…\"}      ; links the call to a Metabot conversation in usage logs
+  The `:timeout-ms` deadline counts the checks too, but doesn't interrupt one blocked on the app DB.
 
-  The `:timeout-ms` deadline bounds the wait for the provider, retries and backoff included.
-  It starts at entry, so the checks use up part of it, and the call doesn't start once it has passed.
-  A check blocked on the app DB is not interrupted, so it can hold the caller past the deadline.
-
-  Throws `ex-info` with `:type`, `:status-code` and `:error-code`, and a translated message safe to show any user.
-
-  Before the provider is called, the checks throw, in this order:
-
-  - `:metabot/ai-disabled`
-  - `:metabot/metabot-disabled`, for the Metabot setting of `:audience`
-  - `:metabot/invalid-call`, which includes a `:trigger :user` feature with no bound user
-  - `:metabot/permission-denied`
-  - `:metabot/llm-not-configured`
-  - `:metabot/managed-limit-reached`
-  - `:metabot/usage-limit-reached`
-  - `:metabot/prompt-too-large`, see [[max-prompt-chars]]
-
-  After it: `:metabot/provider-failure`, `:metabot/timeout`, `:metabot/structured-output-incomplete` and
-  `:metabot/structured-output-invalid`."
+  An expected failure throws `ex-info` with `:type`, `:status-code` and `:error-code` in its data.
+  Its message is translated, and its `:type` is a key of [[error-types]].
+  Other exceptions, such as an interrupt, propagate unchanged."
   [feature-id opts]
   (let [start-nanos               (System/nanoTime)
         ;; destructured only once checked, since a key-value seq would destructure as a map
