@@ -530,11 +530,12 @@
   "The LLM facade: the one way a feature calls its model.
   Code outside Metabot calls it as [[metabase.metabot.core/call-llm!]].
 
-  Calls the model of `feature-id`, registered in [[registry]], and returns its answer, decoded and validated against
-  the `:response` schema, with keyword keys at every level.
-  The options `opts` are described in [[::options]].
-  A `:trigger :user` feature needs a bound current user.
-  To refuse before reading data for the prompt, call [[check!]] first.
+  Returns the feature's answer, decoded and validated against its `:response` schema, with keyword keys.
+
+  - `feature-id`: a key of [[registry]]. A `:trigger :user` feature needs a bound current user.
+  - `opts`: see [[::options]].
+
+  Call [[check!]] first to refuse before reading data for the prompt.
 
   The `:timeout-ms` deadline counts the checks too, but doesn't interrupt one blocked on the app DB.
 
