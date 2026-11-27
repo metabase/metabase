@@ -7,7 +7,13 @@ import {
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -462,6 +468,7 @@ describe("SettingsLdapForm", () => {
         "ldap-user-base": "ou=users,dc=example,dc=org",
         "ldap-enabled": true,
       });
+      await act(() => fetchMock.callHistory.flush(true));
     });
 
     it("stays clean after typing the saved port back", async () => {
@@ -992,6 +999,7 @@ describe("SettingsLdapForm", () => {
       ]);
       expect(groupMappingSwitch()).toBeChecked();
       expect(screen.getByText("No mappings yet")).toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
     });
   });
 });

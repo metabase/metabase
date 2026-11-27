@@ -11,7 +11,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { AuthSettingsPageTab } from "metabase/plugins";
 import type {
@@ -197,5 +197,6 @@ export const pauseResumeAndDeactivate = async (
     within(otherCard).getByRole("button", { name: "Edit" }),
   ).toBeInTheDocument();
 
+  await act(() => fetchMock.callHistory.flush(true));
   return deactivations[0].body;
 };

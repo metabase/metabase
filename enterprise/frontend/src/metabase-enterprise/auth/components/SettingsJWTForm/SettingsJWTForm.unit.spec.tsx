@@ -641,6 +641,7 @@ describe("SettingsJWTForm", () => {
       "jwt-shared-secret": GENERATED_TOKEN,
       "jwt-enabled": true,
     });
+    await act(() => fetchMock.callHistory.flush(true));
   });
 
   describe("user provisioning", () => {
@@ -1622,13 +1623,20 @@ describe("SettingsJWTForm", () => {
 
     it("deletes or clears the groups of mappings, turns off after the last one, and deletes the mappings when switching to automatic", async () => {
       await setup({ jwtEnabled: true, configured: true, groupSync: false });
+      // a click on a read-only mode is ignored, so wait for the control to be free first
+      const selectMode = async (name: string) => {
+        await waitFor(() =>
+          expect(modeLabel(name)).not.toHaveAttribute("data-read-only"),
+        );
+        await userEvent.click(screen.getByRole("radio", { name }));
+      };
       const mappingWrites = async () =>
         (await findRequests("PUT"))
           .filter(({ url }) => new URL(url).pathname === "/api/setting")
           .map(({ body }) => body);
 
       expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
-      await userEvent.click(screen.getByRole("radio", { name: "Manual" }));
+      await selectMode("Manual");
       await addMapping("cn=People1", "Administrators", "foo", "bar");
       await waitFor(() =>
         expect(findMappingRow("cn=People1")).toHaveTextContent(
@@ -1754,12 +1762,12 @@ describe("SettingsJWTForm", () => {
         { "jwt-group-mappings": {}, "jwt-group-sync": false },
       ]);
 
-      await userEvent.click(screen.getByRole("radio", { name: "Manual" }));
+      await selectMode("Manual");
       await addMapping("cn=People4", "readonly");
       await waitFor(() =>
         expect(findMappingRow("cn=People4")).toHaveTextContent("readonly"),
       );
-      await clickWhenEnabled(screen.getByRole("radio", { name: "Automatic" }));
+      await selectMode("Automatic");
       const switchDialog = within(await screen.findByRole("dialog"));
       expect(
         switchDialog.getByText("Switch to automatic group mapping?"),
@@ -1777,13 +1785,14 @@ describe("SettingsJWTForm", () => {
         "jwt-group-mappings": {},
       });
 
-      await clickWhenEnabled(screen.getByRole("radio", { name: "Manual" }));
+      await selectMode("Manual");
       expect(
         screen.getByText(
           "Add at least one mapping to use manual group mapping",
         ),
       ).toBeInTheDocument();
       expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
     });
   });
 });
