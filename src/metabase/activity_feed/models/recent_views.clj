@@ -46,7 +46,9 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(doto :model/RecentViews (derive :metabase/model))
+(doto :model/RecentViews
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/RecentViews
   {:context mi/transform-keyword})

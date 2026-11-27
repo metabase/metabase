@@ -16,6 +16,7 @@
    :ownership_mode mi/transform-keyword})
 
 (derive :model/SourceSegmentCompositeDaily :metabase/model)
+(derive :model/SourceSegmentCompositeDaily :hook/worktree-id)
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

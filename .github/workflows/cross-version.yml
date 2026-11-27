@@ -102,6 +102,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Download pre-built CLJS
@@ -127,6 +128,7 @@ jobs:
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           HEAD_DIGEST: ${{ inputs.digest }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           CYPRESS_KEEP_VIDEOS: "true"
         run: |
           cd cross-version
@@ -222,6 +224,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Download pre-built CLJS
@@ -243,6 +246,7 @@ jobs:
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           CYPRESS_KEEP_VIDEOS: "true"
         run: |
           cd cross-version

@@ -1,4 +1,7 @@
-import { screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { act, screen, waitFor } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   setup as baseSetup,
@@ -27,6 +30,35 @@ describe("Admin Settings Routing - OSS", () => {
     expect(
       await screen.findByTestId("admin-layout-content"),
     ).toBeInTheDocument();
+  });
+
+  it("returns to the previous page when navigating back from the admin settings (metabase#21532)", async () => {
+    const { router: maybeRouter } = await baseSetup({
+      enterprisePlugins: undefined,
+      isAdmin: true,
+      withAdminApp: true,
+    });
+    const router = checkNotNull(maybeRouter);
+
+    await userEvent.click(await screen.findByTestId("app-switcher-target"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Admin/ }),
+    );
+
+    expect(
+      await screen.findByTestId("admin-layout-content"),
+    ).toBeInTheDocument();
+    expect(router.location.pathname).toBe("/admin/settings/general");
+
+    act(() => {
+      router.back();
+    });
+
+    await waitFor(() => expect(router.location.pathname).toBe("/"));
+    expect(
+      screen.queryByTestId("admin-layout-content"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("app-switcher-target")).toBeInTheDocument();
   });
 
   describe("renders the OSS routes", () => {

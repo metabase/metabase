@@ -74,6 +74,9 @@
     ;; Tuple
     (str/starts-with? db-type "tuple")
     :type/*
+    ;; JSON, JSON(<typed paths>)
+    (or (= db-type "json") (str/starts-with? db-type "json("))
+    :type/JSON
     ;; SimpleAggregateFunction
     (str/starts-with? db-type "simpleaggregatefunction")
     (normalize-db-type (subs db-type (+ (str/index-of db-type ",") 2) (dec (count db-type))))

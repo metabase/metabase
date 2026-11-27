@@ -146,17 +146,6 @@
                                              :from   [[:venues]]
                                              :where  [:= :venues/name "a\\' OR 1 = 1 --"]}))))))
 
-(deftest ^:parallel like-pattern-escape-char-not-driver-inlined-test
-  (testing "LIKE's ESCAPE character compiles to a plain `'!'` even with a driver bound — a `_utf8mb4 X'21'` hex
-            literal carries utf8mb4's default collation and makes MySQL app DBs on another collation fail with
-            `Illegal mix of collations` (#81161 follow-up)"
-    (binding [driver/*driver* :mysql]
-      (is (= ["SELECT * FROM `t` WHERE LOWER(`name`) LIKE ? ESCAPE '!'" "%a!%b%"]
-             (sql/format {:select [:*]
-                          :from   [:t]
-                          :where  [:like [:lower :name] (h2x/like-substring "a%b")]}
-                         {:dialect :mysql}))))))
-
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
@@ -973,8 +962,7 @@
                          :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
                                                                   "age"   25}
                                                      :database   (:id database)
-                                                     :query      {:source-table $$test_users}
-                                                     :type       :query}))))))))))))
+                                                     :table-id   $$test_users}))))))))))))
 
 ;; this contains specical test cases for mysql
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
@@ -1006,8 +994,7 @@
                                                                   "column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
-                                                     :query      {:source-table $$mytable}
-                                                     :type       :query})))))
+                                                     :table-id   $$mytable})))))
               (testing "when updating"
                 (is (=? {:errors      {"column1" "This Column1 value already exists."
                                        "column2" "This Column2 value already exists."}
@@ -1018,9 +1005,8 @@
                          :model.row/update (mt/$ids {:update-row {"column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
-                                                     :query      {:source-table $$mytable
-                                                                  :filter       [:= $mytable.id 2]}
-                                                     :type       :query}))))))))))))
+                                                     :table-id   $$mytable
+                                                     :pk         {"id" 2}}))))))))))))
 
 (deftest ^:parallel parse-grant-test
   (testing "`parse-grant` should work correctly"

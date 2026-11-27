@@ -12,6 +12,7 @@
   | `:model/User`     | its email, or nil                  | its email                          |
   | any other model   | its entity id                      | its entity id                      |"
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.writes :as serialization.writes]
@@ -176,6 +177,16 @@
   [store forms walk]
   (walk-in-bulk forms walk #(row-refs store %1 %2)))
 
+(defn- insert-stubs!
+  "Insert the stub `rows` of `model`, Users, Databases, Tables or Fields an import does not find, in the main app,
+  which these belong to whatever worktree the import runs in (see [[metabase.serialization.writes/insert-matched!]])."
+  ([model rows]
+   (mdb/with-worktree-scope mdb/default-worktree-scope
+     (serialization.writes/insert-matched! model rows)))
+  ([model rows key-fn insert-fn]
+   (mdb/with-worktree-scope mdb/default-worktree-scope
+     (serialization.writes/insert-matched! model rows key-fn insert-fn))))
+
 (defn- insert-missing!
   "The map from each of the set `refs` that `found` lacks to the id of the `model` row inserted into the app DB for it
   by `->row` when `opts` has `:create-missing?`, merged into `found`. An inserted row is matched to its ref by its
@@ -185,7 +196,7 @@
     (if (and (:create-missing? opts) (seq missing))
       (into found
             (keep (fn [[ref instance]] (when instance [ref (:id instance)])))
-            (map vector missing (serialization.writes/insert-matched! model (mapv ->row missing))))
+            (map vector missing (insert-stubs! model (mapv ->row missing))))
       found)))
 
 (defn- ref-pks
@@ -213,11 +224,10 @@
     (if (and (:create-missing? opts) (seq missing))
       (into found
             (keep (fn [[email user]] (when user [email (:id user)])))
-            (map vector missing (serialization.writes/insert-matched!
-                                 :model/User
-                                 (mapv (fn [email] {:email email :is_active false}) missing)
-                                 #(some-> (:email %) u/lower-case-en)
-                                 serialization.writes/insert-stub-users!)))
+            (map vector missing (insert-stubs! :model/User
+                                               (mapv (fn [email] {:email email :is_active false}) missing)
+                                               #(some-> (:email %) u/lower-case-en)
+                                               serialization.writes/insert-stub-users!)))
       found)))
 
 (defn database-ids

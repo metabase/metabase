@@ -732,6 +732,25 @@
                                             :collection_id coll-id}})
           (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))))))
 
+(deftest record-saved-entity-goal-reference-test
+  (testing "a goal reading a missing card is refused and no card is created"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+          (mt/user-http-request :crowberto :post 404
+                                (str "metabot/conversations/" convo-id "/saved-entity")
+                                {:chart_id "chart-1"
+                                 :card     {:name                   "x"
+                                            :dataset_query          (venues-query)
+                                            :display                "gauge"
+                                            :visualization_settings {:gauge.segments [{:min   {:id     Integer/MAX_VALUE
+                                                                                               :type   "card"
+                                                                                               :column "count"}
+                                                                                       :max   100
+                                                                                       :color "red"}]}}})
+          (is (zero? (t2/count :model/Card :metabot_conversation_id convo-id))))))))
+
 (deftest record-saved-entity-permissions-test
   (let [user-id (mt/user->id :crowberto)
         body    {:chart_id "chart-1"

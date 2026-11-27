@@ -73,7 +73,8 @@
   (if qp.i/*skip-middleware-because-app-db-access*
     query
     (let [database              (lib.metadata/database (qp.store/metadata-provider))
-          impersonation-enabled? (impersonation.driver/impersonation-enabled-for-db? database)
+          impersonation-enabled? (and (lib/any-native-stage? query)
+                                      (impersonation.driver/impersonation-enabled-for-db? database))
           role                  (impersonation.driver/connection-impersonation-role database)]
       (cond-> query
         ;; Validate for ALL users if impersonation is configured on this DB

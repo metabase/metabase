@@ -20,5 +20,6 @@
   [model]
   (into #{}
         (map (comp keyword u/lower-case-en :column_name))
-        (t2/query ["SELECT column_name AS column_name FROM information_schema.columns WHERE lower(table_name) = ?"
-                   (name (t2/table-name model))])))
+        (t2/query {:select [[:column_name :column_name]]
+                   :from   [:information_schema.columns]
+                   :where  [:= [:lower :table_name] (name (t2/table-name model))]})))

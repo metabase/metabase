@@ -127,6 +127,39 @@ const setup = ({ initialRoute = FORM_URL, segments = [] }: SetupOpts = {}) => {
   };
 };
 
+const openOrdersFilterPopover = async () => {
+  await userEvent.click(screen.getByText("Select a table"));
+  await waitForLoaderToBeRemoved();
+  await userEvent.click(await screen.findByText("Databases"));
+  await userEvent.click(await screen.findByText("Sample Database"));
+  await userEvent.click(await screen.findByText("Orders"));
+  await waitFor(() =>
+    expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument(),
+  );
+
+  const editor = screen.getByTestId("segment-editor");
+  expect(await within(editor).findByText("Orders")).toBeInTheDocument();
+  const addFiltersButton = within(editor).getByRole("button", {
+    name: /Add filters to narrow your answer/,
+  });
+  await waitFor(() => expect(addFiltersButton).toBeEnabled());
+  await userEvent.click(addFiltersButton);
+
+  return await screen.findByTestId("segment-popover");
+};
+
+// Matches the whole text of an element, like Cypress's `have.text`.
+const exactText = (text: string) =>
+  new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+
+const pickUnit = async (unitInput: HTMLElement, unitName: string) => {
+  await userEvent.click(unitInput);
+  const listbox = await screen.findByRole("listbox");
+  await userEvent.click(
+    within(listbox).getByRole("option", { name: new RegExp(`^${unitName}`) }),
+  );
+};
+
 describe("SegmentApp", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -328,6 +361,94 @@ describe("SegmentApp", () => {
     });
 
     await waitForRequestsToSettle();
+  });
+
+  it.each([
+    {
+      unit: "day",
+      offsetUnit: "day",
+      pillText: "Created At is in the previous 68 days, starting 70 days ago",
+    },
+    {
+      unit: "week",
+      offsetUnit: "month",
+      pillText:
+        "Created At is in the previous 68 weeks, starting 70 months ago",
+    },
+  ])(
+    "applies a relative date range with a $offsetUnit offset from the segment filter popover (metabase#46714)",
+    async ({ unit, offsetUnit, pillText }) => {
+      setup();
+      const popover = await openOrdersFilterPopover();
+
+      await userEvent.click(within(popover).getByText("Created At"));
+      await userEvent.click(
+        await within(popover).findByText("Relative date range…"),
+      );
+      await userEvent.click(
+        await within(popover).findByRole("tab", { name: "Previous" }),
+      );
+      await userEvent.click(within(popover).getByLabelText("Starting from…"));
+
+      const interval = await within(popover).findByLabelText("Interval");
+      await userEvent.clear(interval);
+      await userEvent.type(interval, "68");
+      await pickUnit(
+        within(popover).getByRole("textbox", { name: "Unit" }),
+        unit,
+      );
+
+      const offsetInterval = within(popover).getByLabelText(
+        "Starting from interval",
+      );
+      await userEvent.clear(offsetInterval);
+      await userEvent.type(offsetInterval, "70");
+      await pickUnit(
+        within(popover).getByRole("textbox", { name: "Starting from unit" }),
+        offsetUnit,
+      );
+
+      await userEvent.click(
+        within(screen.getByTestId("segment-popover")).getByRole("button", {
+          name: "Add filter",
+        }),
+      );
+
+      expect(await screen.findByTestId("filter-pill")).toHaveTextContent(
+        exactText(pillText),
+      );
+      expect(screen.queryByTestId("segment-popover")).not.toBeInTheDocument();
+    },
+  );
+
+  it("picks a filter operator from the menu over the segment filter popover (metabase#46714)", async () => {
+    setup();
+    const popover = await openOrdersFilterPopover();
+
+    await userEvent.click(within(popover).getByText("Total"));
+    const operatorButton = await screen.findByLabelText("Filter operator");
+    expect(operatorButton).toHaveTextContent(exactText("Between"));
+
+    await userEvent.click(operatorButton);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Less than" }),
+    );
+    expect(screen.getByLabelText("Filter operator")).toHaveTextContent(
+      exactText("Less than"),
+    );
+
+    const segmentPopover = screen.getByTestId("segment-popover");
+    const valueInput =
+      within(segmentPopover).getByPlaceholderText("Enter a number");
+    await userEvent.clear(valueInput);
+    await userEvent.type(valueInput, "1000");
+    await userEvent.click(
+      within(segmentPopover).getByRole("button", { name: "Add filter" }),
+    );
+
+    expect(await screen.findByTestId("filter-pill")).toHaveTextContent(
+      exactText("Total is less than 1000"),
+    );
   });
 
   it("shows an existing segment in the edit form", async () => {

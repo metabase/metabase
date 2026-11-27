@@ -124,9 +124,10 @@
                                            :question_id   (:id card)
                                            :question_name (:name card)
                                            :question_url  (urls/card-url (:id card))
-                                           :visualization (let [{:keys [card dashcard result]} card_part]
+                                           :visualization (let [{:keys [card dashcard result goal-values]} card_part]
                                                             (channel.render/render-pulse-card-to-base64
-                                                             (or timezone (channel.render/defaulted-timezone card)) card dashcard result image-width))
+                                                             (or timezone (channel.render/defaulted-timezone card)) card dashcard result image-width
+                                                             {:channel.render/goal-values goal-values}))
                                            :raw_data      (qp-result->raw-data (:result card_part))}
                       :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))

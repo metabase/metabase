@@ -19,7 +19,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -95,10 +94,11 @@
              (isa? common/hierarchy etype ::common/collection-item)
              (and-not-archived-clause))))))
 
-(def ^:private personal-root-prefixes
+(defn- personal-root-prefixes
   "Subquery: the `location` prefix each personal-collection root imposes on its descendants - `/<id>/`.
   Personal collections only ever live at the root, so a collection is nested under one exactly when the
   first segment of its `location` names a personal root."
+  []
   ^:allow-subquery {:select [[[:concat "/" :id "/"] :prefix]]
                     :from   [(t2/table-name :model/Collection)]
                     :where  [:not= :personal_owner_id nil]})
@@ -112,7 +112,7 @@
   `POSITION(… IN …)` form; the `/` is spliced as a literal rather than bound. Comparing strings rather than ints
   avoids a dialect-specific cast."
   [:substring :location [:inline 1]
-   [:+ [:position (h2x/literal "/") [:substring :location [:inline 2]]]
+   [:+ [:position [:literal "/"] [:substring :location [:inline 2]]]
     [:inline 1]]])
 
 (defn- personal-collection-clause
@@ -129,7 +129,7 @@
     :from   [(t2/table-name :model/Collection)]
     :where  [:or
              [:not= :personal_owner_id nil]
-             [:in first-location-segment personal-root-prefixes]]}])
+             [:in first-location-segment (personal-root-prefixes)]]}])
 
 (defn name-search-clause
   "Case-insensitive substring match on the denormalized `entity_name`. Nil for a blank/absent query.
@@ -259,7 +259,7 @@
   (when (seq coll-ids)
     (let [colls (t2/hydrate (cd.db/collections [:and
                                                 [:in :id (set coll-ids)]
-                                                (perms/visible-collections-filter-clause :collection.id
+                                                (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id)
                                                                                          (api/current-user-info)
                                                                                          (assoc archived-inclusive-visibility :root-namespace nil))])
                             :effective_ancestors)]
@@ -362,7 +362,7 @@
   (cd.db/name-rows :model/Collection [:namespace]
                    [:and
                     [:in :id ids]
-                    (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:root-namespace nil})
+                    (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) (api/current-user-info) {:root-namespace nil})
                     (when exclude-personal? [:not (personal-collection-clause :id)])]))
 
 (defmethod read-entity-rows :transform

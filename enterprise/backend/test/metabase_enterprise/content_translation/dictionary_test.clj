@@ -5,9 +5,12 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase-enterprise.content-translation.utils :as ct-utils]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- count-translations
   "Count the number of translations in the database."

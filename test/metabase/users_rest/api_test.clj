@@ -2078,7 +2078,7 @@
 (deftest deactivate-missing-user-fails
   (testing "DELETE /api/user/:id"
     (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
-                                         :from :core_user}))]
+                                         :from (t2/table-name :model/User)}))]
       (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
 
 (deftest deactivate-deactivated-user-again-succeeds

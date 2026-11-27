@@ -100,8 +100,10 @@
 (apply require clojure.main/repl-requires)
 
 ;; REPL spy helper; tap> is the point
-#_{:clj-kondo/ignore [:discouraged-var :missing-docstring]}
-(defn tap>-spy [x]
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defn tap>-spy
+  "Send `x` to [[clojure.core/tap>]] and return it, for spying on values in the middle of a threading form."
+  [x]
   (doto x tap>))
 
 (p/import-vars

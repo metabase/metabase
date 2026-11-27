@@ -35,7 +35,7 @@
                                           [:or
                                            [:= :synced_root.id (column :id)]
                                            [:like (column :location)
-                                            [:concat (h2x/literal "/") :synced_root.id (h2x/literal "/%")]]]]}]
+                                            [:concat [:literal "/"] :synced_root.id [:literal "/%"]]]]]}]
       [:in (column :namespace) (mapv name always-synced)]]]))
 
 (mu/defn collection
@@ -46,7 +46,7 @@
 (mu/defn collection-for-content-checks
   "The ID, namespace, type and `archived` flag of the ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace :type :archived] :id [:auto/param collection-id]))
+  (t2/select-one [:model/Collection :id :namespace :type :archived] :id collection-id))
 
 (mu/defn collections-for-content-checks
   "A map of ID to the ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
@@ -93,7 +93,7 @@
 (mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
   "The map from id to location of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (app-db/select-batched-map #(t2/select-fn->fn :id :location :model/Collection :id [:in [:auto/param %]]) collection-ids))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :location :model/Collection :id [:in %]) collection-ids))
 
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
@@ -103,7 +103,7 @@
 (mu/defn root-collection-types-by-ids :- [:map-of ::lib.schema.id/collection [:maybe :string]]
   "The type of each of the top-level Collections among those with `collection-ids`, by id."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (app-db/select-batched-map #(t2/select-pk->fn :type :model/Collection :id [:in [:auto/param %]] :location "/") collection-ids))
+  (app-db/select-batched-map #(t2/select-pk->fn :type :model/Collection :id [:in %] :location "/") collection-ids))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
@@ -349,7 +349,7 @@
   [moves      :- [:sequential [:map [:old-location :string] [:new-location :string] [:remote-synced? :boolean]]]
    except-ids :- [:sequential ::lib.schema.id/collection]]
   (let [nearest-first (sort-by (comp - count :old-location) moves)]
-    (t2/query-one {:update :collection
+    (t2/query-one {:update (t2/table-name :model/Collection)
                    :set    {:location         (into [:case]
                                                     (mapcat (fn [{:keys [old-location new-location]}]
                                                               [(location-below old-location)
@@ -369,7 +369,7 @@
    ids   :- [:sequential ms/PositiveInt]]
   (app-db/select-batched #(t2/select [model :id [:c.is_remote_synced :is_remote_synced]]
                                      {:where [:in (keyword (str (name (t2/table-name model)) ".id")) %]
-                                      :join  [[:collection :c] [:= :collection_id :c.id]]})
+                                      :join  [[(t2/table-name :model/Collection) :c] [:= :collection_id :c.id]]})
                          ids))
 
 (mu/defn subtree-locations-to-flag :- [:sequential [:map [:id ::lib.schema.id/collection] [:location :string]]]
@@ -383,9 +383,9 @@
                                   {:where [:and [:not= :is_remote_synced remote-synced?] clause]}))]
     (into []
           (distinct)
-          (concat (app-db/select-batched #(select-where [:in :id [:auto/param %]]) collection-ids)
+          (concat (app-db/select-batched #(select-where [:in :id %]) collection-ids)
                   (app-db/select-batched #(select-where (into [:or]
-                                                              (map (fn [location] [:like :location [:auto/param (str location "%")]]))
+                                                              (map (fn [location] [:like :location (str location "%")]))
                                                               %))
                                          children-locations)))))
 
@@ -402,7 +402,7 @@
    ids   :- [:sequential ms/PositiveInt]]
   (app-db/select-batched-map #(t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
                                                 {:where [:in (keyword (str (name (t2/table-name model)) ".id")) %]
-                                                 :join  [[:collection :c] [:= :collection_id :c.id]]})
+                                                 :join  [[(t2/table-name :model/Collection) :c] [:= :collection_id :c.id]]})
                              ids))
 
 (defn- archivable-conditions
@@ -430,12 +430,13 @@
                              :from   [[parent-table :parent]]
                              :where  [:and [:= :parent.id child-column] [:= :parent.archived true]]}])
 
-(def ^:private archived-parent-clauses
+(defn- archived-parent-clauses
   "The conditions that keep a row from being restored along with its Collection while the Dashboard, Document or
   Exploration it belongs to stays archived, by model."
-  {:model/Card     [[:not (archived-parent-exists :report_dashboard :report_card.dashboard_id)]
-                    [:not (archived-parent-exists :document :report_card.document_id)]]
-   :model/Document [[:not (archived-parent-exists :exploration :document.exploration_id)]]})
+  []
+  {:model/Card     [[:not (archived-parent-exists (t2/table-name :model/Dashboard) (u/qualified-key (t2/table-name :model/Card) :dashboard_id))]
+                    [:not (archived-parent-exists (t2/table-name :model/Document) (u/qualified-key (t2/table-name :model/Card) :document_id))]]
+   :model/Document [[:not (archived-parent-exists (t2/table-name :model/Exploration) (u/qualified-key (t2/table-name :model/Document) :exploration_id))]]})
 
 (defn- restorable-where
   "The condition on the `model` rows in the Collections with `collection-ids` that restoring them restores."
@@ -444,7 +445,7 @@
          [:in :collection_id collection-ids]
          [:= :archived true]
          [:= :archived_directly false]]
-        (get archived-parent-clauses model)))
+        (get (archived-parent-clauses) model)))
 
 (mu/defn items-restored-with-collections
   "The `model` rows in the Collections with `collection-ids` that were archived along with them, unless the Dashboard,
@@ -514,15 +515,15 @@
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (app-db/select-batched #(t2/query {:select-distinct [:dashboard_id]
-                                     :from            :report_card
+                                     :from            (t2/table-name :model/Card)
                                      :where           [:and
                                                        [:= :archived false]
                                                        [:in :dashboard_id %]
                                                        [:exists ^:allow-subquery {:select 1
-                                                                                  :from   :report_dashboardcard
+                                                                                  :from   (t2/table-name :model/DashboardCard)
                                                                                   :where  [:and
-                                                                                           [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                           [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]})
+                                                                                           [:= (u/qualified-key (t2/table-name :model/DashboardCard) :card_id) (u/qualified-key (t2/table-name :model/Card) :id)]
+                                                                                           [:= (u/qualified-key (t2/table-name :model/DashboardCard) :dashboard_id) (u/qualified-key (t2/table-name :model/Card) :dashboard_id)]]}]]})
                          dashboard-ids))
 
 (defn unarchived-card-collection-types-in-reducible
@@ -530,7 +531,7 @@
   `collection-ids`, leaving out dashboard questions when `exclude-dashboard-questions?`."
   [collection-ids exclude-dashboard-questions?]
   (app-db/select-batched-reducible #(t2/reducible-query {:select-distinct [:collection_id :type]
-                                                         :from            [:report_card]
+                                                         :from            [(t2/table-name :model/Card)]
                                                          :where           [:and
                                                                            (when exclude-dashboard-questions?
                                                                              [:= :dashboard_id nil])
@@ -554,7 +555,7 @@
   `collection-ids`."
   [collection-ids source-types]
   (app-db/select-batched #(t2/query {:select-distinct [:collection_id]
-                                     :from            :transform
+                                     :from            (t2/table-name :model/Transform)
                                      :where           [:and
                                                        [:in :collection_id %]
                                                        [:in :source_type source-types]]})
@@ -564,7 +565,7 @@
   "The distinct `:collection_id`s of the unarchived Actions in the Collections with `collection-ids`."
   [collection-ids]
   (app-db/select-batched #(t2/query {:select-distinct [:collection_id]
-                                     :from            :action
+                                     :from            (t2/table-name :model/Action)
                                      :where           [:and
                                                        [:= :archived false]
                                                        [:in :collection_id %]]})
@@ -574,7 +575,7 @@
   "The distinct `:collection_id`s of the unarchived Dashboards in the Collections with `collection-ids`."
   [collection-ids]
   (app-db/select-batched #(t2/query {:select-distinct [:collection_id]
-                                     :from            :report_dashboard
+                                     :from            (t2/table-name :model/Dashboard)
                                      :where           [:and
                                                        [:= :archived false]
                                                        [:in :collection_id %]]})

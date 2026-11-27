@@ -1,6 +1,7 @@
 (ns metabase.mq.task.queue-reaper-test
   (:require
    [clojure.test :refer :all]
+   [metabase.mq.db :as mq.db]
    [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.task.queue-reaper :as queue-reaper]
    [metabase.test.fixtures :as fixtures]
@@ -18,14 +19,17 @@
   "Inserts a queue job + trigger row directly into the app-db QRTZ_* tables under `sched`."
   [sched jn state start]
   (let [jg quartz-affinity/queue-job-group]
-    (t2/query (str "INSERT INTO QRTZ_JOB_DETAILS (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
-                   " VALUES ('" sched "','" jn "','" jg "','x.Job',true,false,false,false)"))
-    (t2/query (str "INSERT INTO QRTZ_TRIGGERS (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
-                   " VALUES ('" sched "','t-" jn "','" jg "','" jn "','" jg "'," start ",5,'" state "','SIMPLE'," start ",-1)"))))
+    (t2/query {:insert-into (mq.db/quartz-table :QRTZ_JOB_DETAILS)
+               :values      [{:sched_name sched :job_name jn :job_group jg :job_class_name "x.Job"
+                              :is_durable true :is_nonconcurrent false :is_update_data false :requests_recovery false}]})
+    (t2/query {:insert-into (mq.db/quartz-table :QRTZ_TRIGGERS)
+               :values      [{:sched_name sched :trigger_name (str "t-" jn) :trigger_group jg :job_name jn :job_group jg
+                              :next_fire_time start :priority 5 :trigger_state state :trigger_type "SIMPLE"
+                              :start_time start :misfire_instr -1}]})))
 
 (defn- cleanup-sched! [sched]
-  (t2/query (str "DELETE FROM QRTZ_TRIGGERS WHERE sched_name='" sched "'"))
-  (t2/query (str "DELETE FROM QRTZ_JOB_DETAILS WHERE sched_name='" sched "'")))
+  (t2/query {:delete-from (mq.db/quartz-table :QRTZ_TRIGGERS) :where [:= :sched_name sched]})
+  (t2/query {:delete-from (mq.db/quartz-table :QRTZ_JOB_DETAILS) :where [:= :sched_name sched]}))
 
 (deftest orphaned-trigger-rows-selects-only-stuck-queue-triggers-test
   (testing "orphaned-trigger-rows selects only queue-group WAITING triggers older than the threshold"
@@ -38,10 +42,13 @@
         (insert-trigger! sched "fresh"        "WAITING"  recent)   ; too recent
         (insert-trigger! sched "old-acquired" "ACQUIRED" old)      ; not WAITING (being delivered)
         ;; a non-queue trigger (e.g. sync) in a different group
-        (t2/query (str "INSERT INTO QRTZ_JOB_DETAILS (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
-                       " VALUES ('" sched "','other-group','DEFAULT','x.Job',true,false,false,false)"))
-        (t2/query (str "INSERT INTO QRTZ_TRIGGERS (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
-                       " VALUES ('" sched "','t-other-group','DEFAULT','other-group','DEFAULT'," old ",5,'WAITING','SIMPLE'," old ",-1)"))
+        (t2/query {:insert-into (mq.db/quartz-table :QRTZ_JOB_DETAILS)
+                   :values      [{:sched_name sched :job_name "other-group" :job_group "DEFAULT" :job_class_name "x.Job"
+                                  :is_durable true :is_nonconcurrent false :is_update_data false :requests_recovery false}]})
+        (t2/query {:insert-into (mq.db/quartz-table :QRTZ_TRIGGERS)
+                   :values      [{:sched_name sched :trigger_name "t-other-group" :trigger_group "DEFAULT" :job_name "other-group" :job_group "DEFAULT"
+                                  :next_fire_time old :priority 5 :trigger_state "WAITING" :trigger_type "SIMPLE"
+                                  :start_time old :misfire_instr -1}]})
         (let [threshold (- now (* 24 60 60 1000)) ; 1 day
               rows      (#'queue-reaper/orphaned-trigger-rows sched threshold)]
           (is (= #{"stuck-old"} (set (map :job_name rows)))

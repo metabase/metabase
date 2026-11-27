@@ -18,6 +18,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.replacement.spec :as replacement]
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
@@ -167,7 +168,7 @@
   "How should we order fields."
   warehouse-schema.db/field-order-rule)
 
-(defn- check-changes
+(defn check-changes
   "Throws a 400 for a change in `changes` that `original`, the Table as stored, cannot take."
   [changes original]
   (when (contains? changes :db_id)
@@ -275,7 +276,7 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (dissoc table :is_defective_duplicate :unique_table_helper))
+  (dissoc table :is_defective_duplicate :unique_table_helper :worktree_id))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -292,18 +293,6 @@
                                     perm-type
                                     (into {} (map (juxt :id :db_id)) tables)))
 
-(defn- queryable-table-ids
-  "The ids of the `tables` the current user can query: those with unrestricted view-data on which they can create
-  queries, which on EE a Table published into a Collection they read also grants."
-  [tables]
-  (let [view-data      (table-permissions :perms/view-data tables)
-        create-queries (table-permissions :perms/create-queries tables)]
-    (into #{}
-          (comp (map :id)
-                (filter #(and (= :unrestricted (get view-data %))
-                              (perms/at-least-as-permissive? :perms/create-queries (get create-queries %) :query-builder))))
-          tables)))
-
 (defn- remap-target-table-ids
   "The ids of the other Tables that a query of each of `tables` joins for external remaps, by Table id, read only for
   a user who is not a superuser."
@@ -312,29 +301,13 @@
     {}
     (warehouse-schema.db/external-remap-target-table-ids (into #{} (map :id) tables))))
 
-(defn- queryable-with-remaps-table-ids
-  "The ids of the `tables` the current user can query, as [[queryable-table-ids]] answers, together with every Table
-  a query of them joins for external remaps."
-  [tables]
-  (let [targets   (remap-target-table-ids tables)
-        queryable (queryable-table-ids (into (vec tables)
-                                             (mapcat (fn [{:keys [id db_id]}]
-                                                       (map (fn [target-id] {:id target-id :db_id db_id})
-                                                            (get targets id))))
-                                             tables))]
-    (into #{}
-          (comp (map :id)
-                (filter #(and (contains? queryable %)
-                              (every? queryable (get targets %)))))
-          tables)))
-
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_read]
   "Whether the current user can see the metadata of each of `tables`: those they can query, and those whose metadata
   they manage."
   [_model k tables]
   (let [rows (into [] (remove nil?) tables)]
     (run! check-permission-keys rows)
-    (let [queryable (queryable-table-ids rows)
+    (let [queryable (query-perms/queryable-table-ids rows)
           others    (into [] (remove #(contains? queryable (:id %))) rows)
           manage    (if (seq others)
                       (table-permissions :perms/manage-table-metadata others)
@@ -350,7 +323,7 @@
   [_model k tables]
   (let [rows (into [] (remove nil?) tables)]
     (run! check-permission-keys rows)
-    (let [queryable (queryable-with-remaps-table-ids rows)]
+    (let [queryable (query-perms/queryable-table-ids rows (remap-target-table-ids rows))]
       (for [table tables]
         (when table
           (assoc table k (contains? queryable (:id table))))))))

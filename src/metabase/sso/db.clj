@@ -48,16 +48,16 @@
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/AuthIdentity :provider_id :metadata]
-                 :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+                 :user_id (long user-id) :provider "slack-connect"))
 
 (mu/defn auth-identity-ids :- [:sequential ms/PositiveInt]
   "The ids of every AuthIdentity of the User with `user-id` at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider [:auto/param provider])))
+  (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider provider)))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider [:auto/param provider]))
+  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))

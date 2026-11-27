@@ -5,7 +5,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.core :as lib]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.models.card :as card]
@@ -18,7 +20,6 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
@@ -57,22 +58,22 @@
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case
-             [:like [:lower :model] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :display_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :description] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :collection_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :collection_type] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :display] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :display_type] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_schema] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_display_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_description] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :database_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :model_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :dataset_query] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :slug] (h2x/like-substring "foo")] [:inline 0]
+             [:like [:lower :model] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :display_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :description] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :collection_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :collection_type] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :display] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :display_type] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_schema] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_display_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_description] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :database_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :model_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :dataset_query] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :slug] (funnysql.util/like-substring "foo")] [:inline 0]
              :else [:inline 1]]]
            (search.legacy/order-clause "Foo")))))
 
@@ -413,3 +414,30 @@
             [row]      (#'search.impl/hydrate-checks search-ctx :read [{:model "indexed-entity", :id 1, :database_id nil}])]
         (is (false? (#'search.impl/check-permissions-for-model search-ctx row)))
         (is (= [] (messages)))))))
+
+(deftest search-in-worktree-reads-worktree-content-in-place-test
+  (when config/ee-available?
+    (let [search-term "Worktree search test card"]
+      (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id}  {:branch "test-branch"}
+                     :model/Card               {main-card-id :id} {:name search-term}]
+        (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+          (mt/with-temp [:model/Card {card-id :id} {:name search-term}]
+            (testing "search in worktree uses in-place engine whatever engine it asks for"
+              (is (= :search.engine/in-place (#'search.impl/parse-engine "appdb"))))
+            (testing "search in worktree finds its content and not default worktree's"
+              (mt/with-current-user (mt/user->id :crowberto)
+                (is (= #{card-id}
+                       (->> (search.impl/search (search.impl/search-context
+                                                 {:search-string         search-term
+                                                  :search-engine         "appdb"
+                                                  :archived              false
+                                                  :models                #{"card"}
+                                                  :current-user-id       (mt/user->id :crowberto)
+                                                  :is-superuser?         true
+                                                  :is-impersonated-user? false
+                                                  :is-sandboxed-user?    false
+                                                  :is-routed-user?       false}))
+                            :data
+                            (map :id)
+                            (filter #{main-card-id card-id})
+                            set)))))))))))

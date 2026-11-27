@@ -39,7 +39,7 @@
 (defn- raw-transcript
   [id]
   (:query_plan_transcript (t2/query-one {:select [:query_plan_transcript]
-                                         :from   [:exploration_thread]
+                                         :from   [(t2/table-name :model/ExplorationThread)]
                                          :where  [:= :id id]})))
 
 (deftest transcript-is-stored-as-json-test
@@ -70,7 +70,7 @@
 (deftest transcript-unparseable-reads-as-nil-test
   (testing "an unparseable blob is logged and read as nil rather than breaking the thread read"
     (let [id (thread-with-transcript! nil)]
-      (t2/query {:update :exploration_thread
+      (t2/query {:update (t2/table-name :model/ExplorationThread)
                  :set    {:query_plan_transcript "{not json ]["}
                  :where  [:= :id id]})
       (is (nil? (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id id))))))

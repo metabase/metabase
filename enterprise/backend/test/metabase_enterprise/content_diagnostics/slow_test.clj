@@ -49,6 +49,9 @@
                ;; a cache hit at a huge time must NOT count toward the median (it would shift it to 65s)
                :model/QueryExecution _ {:card_id slow-card :started_at now
                                         :cache_hit true :running_time 99999}
+               ;; nor must a dynamic goal's run of the card
+               :model/QueryExecution _ {:card_id slow-card :started_at now :context :dynamic-goal
+                                        :cache_hit false :running_time 99999}
                ;; fast card: 500ms < 10s - never flagged, and never a culprit
                :model/Card           {fast-card :id} {:collection_id coll-id :name "Quick Lookup"}
                :model/QueryExecution _ {:card_id fast-card :started_at now

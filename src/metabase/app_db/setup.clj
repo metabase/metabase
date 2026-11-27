@@ -9,7 +9,6 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
@@ -21,6 +20,7 @@
    [metabase.app-db.liquibase.rollback :as rollback]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
@@ -126,9 +126,8 @@
   "Test connection to a `data-source`. Returns truthy on success; throws an exception or returns falsey if unable to
   connect."
   [^javax.sql.DataSource data-source]
-  (let [[first-row] (jdbc/query {:datasource data-source} ["SELECT 1"])
-        [result]    (vals first-row)]
-    (= result 1)))
+  (with-open [conn (.getConnection data-source)]
+    (.isValid conn 0)))
 
 (defn- unpooled-data-source
   "The plain [[javax.sql.DataSource]] a c3p0 pool was built from, or `data-source` unchanged if it isn't a c3p0 pool.
@@ -325,7 +324,8 @@
    (u/profile (trs "Database setup")
      (u/with-us-locale
        (binding [config/*disable-setting-cache* true
-                 custom-migrations/*create-sample-content* create-sample-content?]
+                 custom-migrations/*create-sample-content* create-sample-content?
+                 mdb.worktree/*scope* {:type :all}]
          (mdb.connection/with-application-db
            (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
            ;; Migrations ask whether this is MariaDB while Liquibase holds a connection. Answering now spares them a

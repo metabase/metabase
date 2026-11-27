@@ -4,7 +4,6 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -52,9 +51,9 @@
                      :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
                      :c.dashboard_id
                      [nil :location]
-                     [(h2x/literal "card") :model]
+                     [[:literal "card"] :model]
                      [^:allow-subquery {:select   [:status]
-                                        :from     [:moderation_review]
+                                        :from     [(t2/table-name :model/ModerationReview)]
                                         :where    [:and
                                                    [:= :moderated_item_type "card"]
                                                    [:= :moderated_item_id :c.id]
@@ -64,11 +63,11 @@
                                         :order-by [[:id :desc]]
                                         :limit    1}
                       :moderated_status]]
-            :from  [[:report_card :c]]
+            :from  [[(t2/table-name :model/Card) :c]]
             :where [:and
                     [:= :c.dashboard_id dashboard-id]
                     [:exists ^:allow-subquery {:select 1
-                                               :from   [[:report_dashboardcard :dc]]
+                                               :from   [[(t2/table-name :model/DashboardCard) :dc]]
                                                :where  [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
                     [:= :c.archived false]]}
      paged? (merge {:limit limit :offset offset}))))
@@ -106,7 +105,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."

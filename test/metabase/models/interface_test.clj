@@ -4,11 +4,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.timeline.models.timeline :as timeline]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -325,7 +327,7 @@
     (t2/delete! ::clean-hooks :key guard-test-key)
     (is (nil? (t2/select-one ::clean-hooks :key guard-test-key)))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest hook-running-statement-throws-test
   (try
@@ -333,23 +335,23 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-insert hook of .*reading-before-insert ran 1 app-DB statement"
                             (t2/insert! ::reading-before-insert {:key guard-test-key, :value "v"})))
-      (is (nil? (t2/select-one :setting :key guard-test-key))))
+      (is (nil? (t2/select-one (t2/table-name :model/Setting) :key guard-test-key))))
     (testing "before-update and before-delete"
-      (t2/insert! :setting {:key guard-test-key, :value "v"})
+      (t2/insert! (t2/table-name :model/Setting) {:key guard-test-key, :value "v"})
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-update hook of .*reading-before-update"
                             (t2/update! ::reading-before-update :key guard-test-key {:value "w"})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-delete hook of .*reading-before-delete"
                             (t2/delete! ::reading-before-delete :key guard-test-key)))
-      (is (= "v" (t2/select-one-fn :value :setting :key guard-test-key)))
-      (t2/delete! :setting :key guard-test-key))
+      (is (= "v" (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key)))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))
     (testing "after-insert"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"after-insert hook of .*reading-after-insert"
                             (t2/insert! ::reading-after-insert {:key guard-test-key, :value "v"}))))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest hook-reading-setting-while-cache-refreshes-passes-statement-guard-test
   (try
@@ -357,27 +359,27 @@
     (testing "hook read its setting from refreshed cache"
       (is (some? (setting.cache/cache)))
       (is (= (str (setting/get :site-locale))
-             (t2/select-one-fn :value :setting :key guard-test-key))))
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key))))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest before-update-with-different-changes-per-row-throws-test
   (let [other-key (str guard-test-key "-other")]
     (try
-      (t2/insert! :setting [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
+      (t2/insert! (t2/table-name :model/Setting) [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
       (testing "a multi-row update whose hook derives a different value for each row"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"before-update hook of .*key-deriving-before-update returned different changes for the rows of one update \(keys: :value\)"
                               (t2/update! ::key-deriving-before-update :key [:in [guard-test-key other-key]] {:value "w"})))
-        (is (= #{"v"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+        (is (= #{"v"} (t2/select-fn-set :value (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]]))))
       (testing "a single-row update of the same hook"
         (t2/update! ::key-deriving-before-update :key guard-test-key {:value "w"})
-        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value :setting :key guard-test-key))))
+        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key))))
       (testing "a multi-row update whose hook gives every row the same changes"
         (t2/update! ::clean-hooks :key [:in [guard-test-key other-key]] {:value "x"})
-        (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+        (is (= #{"x?"} (t2/select-fn-set :value (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]]))))
       (finally
-        (t2/delete! :setting :key [:in [guard-test-key other-key]])))))
+        (t2/delete! (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]])))))
 
 (deftest ^:synchronized automagic-hydration-partitions-test
   (let [user-ids (mapv mt/user->id [:rasta :crowberto :lucky :trashbird :rasta])
@@ -394,3 +396,56 @@
       (is (< (second (hydrate (cards 5)))
              (second (mt/with-partition-size 2
                        (hydrate (cards 5)))))))))
+
+(def ^:private test-worktree-branch
+  "The branch of the worktree the worktree insert and update tests create."
+  "interface-test-worktree")
+
+(defn- stored-worktree-id
+  "The `worktree_id` stored for the Timeline with `timeline-id`, read across every worktree."
+  [timeline-id]
+  (mdb/with-worktree-scope {:type :all}
+    (t2/select-one-fn :worktree_id :timeline :id timeline-id)))
+
+(defn- do-with-test-worktree!
+  "Call `f` with the id of a worktree created for it, deleting the worktree and its rows afterwards."
+  [f]
+  (let [worktree-id (t2/insert-returning-pk! :remote_sync_worktree {:branch test-worktree-branch})]
+    (try
+      (f worktree-id)
+      (finally
+        (t2/delete! :remote_sync_worktree :id worktree-id)))))
+
+(defn- create-timeline!
+  "The id of a Timeline named `timeline-name` created through its write function in `scope`."
+  [scope timeline-name]
+  (mdb/with-worktree-scope scope
+    (:id (first (timeline/create-timelines! [{:name timeline-name :creator_id (mt/user->id :rasta)}])))))
+
+(deftest insert-sets-worktree-id-from-scope-test
+  (do-with-test-worktree!
+   (fn [worktree-id]
+     (doseq [[scope expected] [[mdb/default-worktree-scope mdb/default-worktree-id]
+                               [{:type :worktree :worktree-id worktree-id} worktree-id]
+                               [{:type :all} mdb/default-worktree-id]]]
+       (testing (str "insert in scope " (pr-str scope))
+         (let [timeline-id (create-timeline! scope "Worktree hook timeline")]
+           (try
+             (is (= expected (stored-worktree-id timeline-id)))
+             (finally
+               (mdb/with-worktree-scope {:type :all}
+                 (t2/delete! :timeline :id timeline-id))))))))))
+
+(deftest update-refuses-worktree-id-change-test
+  (do-with-test-worktree!
+   (fn [worktree-id]
+     (let [timeline-id (create-timeline! mdb/default-worktree-scope "Worktree hook update timeline")]
+       (try
+         (testing "update changing worktree_id throws"
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"sandbox column :worktree_id"
+                                 (t2/update! :model/Timeline :id timeline-id {:worktree_id worktree-id}))))
+         (testing "stored worktree_id is unchanged"
+           (is (= mdb/default-worktree-id (stored-worktree-id timeline-id))))
+         (finally
+           (mdb/with-worktree-scope {:type :all}
+             (t2/delete! :timeline :id timeline-id))))))))

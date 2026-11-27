@@ -47,9 +47,10 @@ const REVERT_REVISION = createMockRevision({
 
 interface SetupOpts {
   canWrite: boolean;
+  revertError?: { status: number; message: string };
 }
 
-async function setupRevisionHistory({ canWrite }: SetupOpts) {
+async function setupRevisionHistory({ canWrite, revertError }: SetupOpts) {
   const card = createMockCard({
     ...TEST_STRUCTURED_CARD,
     name: "Orders renamed",
@@ -66,6 +67,18 @@ async function setupRevisionHistory({ canWrite }: SetupOpts) {
 
   // Registered before `setup` so this route wins over its static card mock.
   fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+  if (revertError) {
+    // Registered first, so it answers the revert of this card instead of the
+    // route `setupRevertableRevisionsEndpoints` adds.
+    fetchMock.post(
+      "path:/api/revision/revert",
+      {
+        status: revertError.status,
+        body: { message: revertError.message },
+      },
+      { body: { entity: "card", id: card.id }, matchPartialBody: true },
+    );
+  }
   setupRevertableRevisionsEndpoints({
     entity: "card",
     id: card.id,
@@ -78,7 +91,7 @@ async function setupRevisionHistory({ canWrite }: SetupOpts) {
   setupUsersEndpoints([createMockUserListResult()]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
 
-  await setup({ card });
+  await setup({ card, withUndos: true });
 
   return { card };
 }
@@ -123,6 +136,38 @@ describe("QueryBuilder > revision history", () => {
     );
 
     await waitFor(() => expect(getHeaderTitle()).toHaveValue("Orders"));
+    const revertCalls = fetchMock.callHistory.calls(
+      "path:/api/revision/revert",
+      { method: "POST" },
+    );
+    expect(revertCalls).toHaveLength(1);
+    const body: unknown = JSON.parse(String(revertCalls[0].options.body));
+    expect(body).toEqual({
+      entity: "card",
+      id: card.id,
+      revision_id: CREATION_REVISION.id,
+    });
+  });
+
+  it("shows the backend message in a toast when a revert fails (UXW-310)", async () => {
+    const { card } = await setupRevisionHistory({
+      canWrite: true,
+      revertError: { status: 500, message: "Cannot revert: missing card" },
+    });
+
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    const history = await findHistory();
+    await userEvent.click(
+      await within(history).findByRole("button", {
+        name: "revert to You created this",
+      }),
+    );
+
+    expect(
+      await within(await screen.findByTestId("toast-undo")).findByText(
+        "Cannot revert: missing card",
+      ),
+    ).toBeInTheDocument();
     const revertCalls = fetchMock.callHistory.calls(
       "path:/api/revision/revert",
       { method: "POST" },

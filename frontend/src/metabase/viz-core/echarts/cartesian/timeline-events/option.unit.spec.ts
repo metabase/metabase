@@ -1,18 +1,10 @@
+import { createMockChartContext } from "__support__/echarts";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
-
-import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
-import type { RenderingContext } from "../../../types";
 
 import { getTimelineEventsSelectionSeries } from "./option";
 import type { TimelineEventsModel } from "./types";
 
-const renderingContext: RenderingContext = {
-  getColor: (name) => name,
-  measureText: () => 0,
-  measureTextHeight: () => 0,
-  fontFamily: "",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+const renderingContext = createMockChartContext();
 
 const timelineEventsModel: TimelineEventsModel = [
   {

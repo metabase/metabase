@@ -90,7 +90,7 @@
   [alias]
   (let [column #(keyword (str (name alias) "." (name %)))]
     [:exists ^:allow-subquery {:select [1]
-                               :from   [[:revision :newer]]
+                               :from   [[(t2/table-name :model/Revision) :newer]]
                                :where  [:and
                                         [:= :newer.model (column :model)]
                                         [:= :newer.model_id (column :model_id)]
@@ -104,7 +104,7 @@
                                                           :id [:in ^:allow-subquery
                                                                {:select [:superseded.id]
                                                                 :from   [[^:allow-subquery {:select [:r.id]
-                                                                                            :from   [[:revision :r]]
+                                                                                            :from   [[(t2/table-name :model/Revision) :r]]
                                                                                             :where  [:and
                                                                                                      [:= :r.most_recent true]
                                                                                                      (entities-clause :r %)
@@ -121,12 +121,12 @@
                                                           :id [:in ^:allow-subquery
                                                                {:select [:old.id]
                                                                 :from   [[^:allow-subquery {:select [:r.id]
-                                                                                            :from   [[:revision :r]]
+                                                                                            :from   [[(t2/table-name :model/Revision) :r]]
                                                                                             :where  [:and
                                                                                                      (entities-clause :r %)
                                                                                                      [:<= kept ^:allow-subquery
                                                                                                       {:select [:%count.*]
-                                                                                                       :from   [[:revision :newer]]
+                                                                                                       :from   [[(t2/table-name :model/Revision) :newer]]
                                                                                                        :where  [:and
                                                                                                                 [:= :newer.model :r.model]
                                                                                                                 [:= :newer.model_id :r.model_id]
@@ -174,8 +174,8 @@
    ids      :- [:set ms/PositiveInt]]
   (mdb/select-batched-reducible #(t2/reducible-query
                                   {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                                   :from      [[:revision :r]]
-                                   :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                   :from      [[(t2/table-name :model/Revision) :r]]
+                                   :left-join [[(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
                                    :where     [:and
                                                [:= :r.model db-model]
                                                [:in :r.model_id %]
@@ -189,8 +189,8 @@
   (mdb/select-batched (fn [model+ids]
                         (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
                                                :r.model :r.model_id :r.timestamp]
-                                   :from      [[:revision :r]]
-                                   :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                                   :from      [[(t2/table-name :model/Revision) :r]]
+                                   :left-join [[(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
                                    :where     (into [:or]
                                                     (map (fn [[model-name pairs]]
                                                            [:and

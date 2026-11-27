@@ -37,6 +37,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -115,6 +116,7 @@
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
          _              (api/create-check :model/Dashboard dashboard-data)
          _              (check-new-references (constantly no-references) {:parameters parameters})
+         _              (dashboard-card/check-new-goal-references [] dashcards)
          dash           (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
@@ -340,6 +342,7 @@
                                                 (assoc :card_id (:id card)))]
                                dashcard))]
       (check-dashcard-parameter-mapping-permissions dashcards-to-add)
+      (dashboard-card/check-new-goal-references [] dashcards-to-add)
       (dashboard/update-dashboard! (:id dashboard)
                                    {:tabs      (vec tabs)
                                     :dashcards (vec dashcards-to-add)})
@@ -382,6 +385,9 @@
     ;; its events keeps them even if its tab is deleted and it is re-added elsewhere in the same request.
     (queries/check-newly-exposed-dashcards-timeline-permissions!
      dashboard (:dashcards dashboard) new-dashcards)
+    (queries/check-newly-exposed-dashcards-goal-permissions!
+     dashboard (:dashcards dashboard) new-dashcards)
+    (dashboard-card/check-new-goal-references (:dashcards dashboard) new-dashcards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
     ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).
@@ -608,6 +614,54 @@
              :discard []}
             (filter :card_id dashcards))))
 
+(defn- copyable-goal-source?
+  "Whether a deep copy duplicates `card`, a goal source that isn't on the dashboard. When it doesn't, the goal keeps
+  reading the original."
+  [card]
+  (and (not (:archived card))
+       (nil? (:dashboard_id card))
+       (nil? (:document_id card))
+       (contains? #{:question :metric} (keyword (:type card)))
+       (mi/can-read? card)))
+
+(defn add-goal-sources-to-copy
+  "Adds to `cards` (what `cards-to-copy` returned for `dashcards`) the goal sources of the copy that aren't on the
+  dashboard and that [[copyable-goal-source?]] accepts. Only direct sources: a copied source's own goals aren't
+  followed."
+  [{:keys [copy reference discard] :as cards} deep-copy? dashcards]
+  (if-not deep-copy?
+    cards
+    (let [kept?    (fn [{:keys [card_id]}] (or (contains? copy card_id) (contains? reference card_id)))
+          decided? (into (set (concat (keys copy) (keys reference))) (map :id) discard)
+          goal-ids (into #{}
+                         (comp (mapcat dynamic-goals/goal-card-ids) (filter pos-int?) (remove decided?))
+                         (concat (map :visualization_settings (vals copy))
+                                 (map :visualization_settings (filter kept? dashcards))))]
+      (update cards :copy merge
+              (m/index-by :id (filter copyable-goal-source?
+                                      (t2/hydrate (dashboards.db/cards-by-ids (vec goal-ids)) :can_read)))))))
+
+(defn remap-copied-goal-sources!
+  "Points the goals of the copies in `id->new-card` (old card id -> its copy) that read a copied card at that copy,
+  saving the copies that change with one call. Returns `id->new-card` with the changes."
+  [id->new-card]
+  (let [id->new-id (update-vals id->new-card :id)
+        changed    (into {}
+                         (keep (fn [[old-id {:keys [visualization_settings] :as new-card}]]
+                                 (let [viz (dynamic-goals/remap-goal-card-ids visualization_settings id->new-id)]
+                                   (when (not= viz visualization_settings)
+                                     [old-id (assoc new-card :visualization_settings viz)]))))
+                         id->new-card)]
+    (when (seq changed)
+      (queries.card/update-cards! (mapv #(select-keys % [:id :visualization_settings]) (vals changed))))
+    (merge id->new-card changed)))
+
+(defn remap-dashcard-goal-sources
+  "Points the goals of `dashcards` that read a card in `id->new-card` (old card id -> its copy) at that copy."
+  [dashcards id->new-card]
+  (let [id->new-id (update-vals id->new-card :id)]
+    (map #(m/update-existing % :visualization_settings dynamic-goals/remap-goal-card-ids id->new-id) dashcards)))
+
 (defn- maybe-duplicate-cards
   "Takes the `decisions` of [[cards-to-copy]], and duplicates the cards both on the dashboard's cards and dashcardseries
   as necessary, the Dashboard Questions of the new Dashboard `new-dashboard`, which has to exist for them.
@@ -748,21 +802,28 @@
                          ;; collection to change position, check that and fix up if needed
                          (collection/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
-                         (let [decisions     (cards-to-copy is_deep_copy (:dashcards existing-dashboard))
+                         (let [old-dashcards (:dashcards existing-dashboard)
+                               decisions     (add-goal-sources-to-copy (cards-to-copy is_deep_copy old-dashcards)
+                                                                       is_deep_copy
+                                                                       old-dashcards)
                                questions?    (boolean (some :dashboard_id (vals (:copy decisions))))
                                [created]     (when questions? (dashboard/create-dashboards! [dashboard-data]))
-                               {id->new-card :copied
+                               {id->copied-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}
                                (maybe-duplicate-cards decisions created existing-dashboard collection_id)
+                               id->new-card  (remap-copied-goal-sources! id->copied-card)
                                tabs          (mapv #(select-keys % [:id :name :position]) (:tabs existing-dashboard))
                                dashcards     (into []
                                                    (map #(update % :series (fn [series] (into [] (comp (remove nil?) (map u/the-id)) series))))
-                                                   (update-cards-for-copy (:dashcards existing-dashboard)
-                                                                          id->new-card
-                                                                          id->referenced-card
-                                                                          (zipmap (map :id tabs) (map :id tabs))))
+                                                   (remap-dashcard-goal-sources
+                                                    (update-cards-for-copy old-dashcards
+                                                                           id->new-card
+                                                                           id->referenced-card
+                                                                           (zipmap (map :id tabs) (map :id tabs)))
+                                                    id->new-card))
                                parts         (cond-> {} (seq tabs) (assoc :tabs tabs) (seq dashcards) (assoc :dashcards dashcards))
+                               _             (dashboard-card/check-new-goal-references old-dashcards dashcards)
                                dash          (if questions?
                                                (do (when (seq parts)
                                                      (dashboard/update-dashboard! (:id created) parts))

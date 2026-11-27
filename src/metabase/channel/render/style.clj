@@ -71,6 +71,10 @@
   "Color that matches text-primary used in the frontend"
   "#303D46")
 
+(def ^:const color-text-secondary
+  "Color that matches text-secondary used in the frontend"
+  "#656F76")
+
 (def ^:const color-border
   "Used as color for the border of table, table header, and table body rows for charts with `:table` visualization."
   "#F0F0F0")

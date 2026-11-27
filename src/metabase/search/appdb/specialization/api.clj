@@ -9,10 +9,40 @@
   {:arglists '([base-schema])}
   db-type)
 
+(defmulti table-options
+  "Options for the statement that creates the index table, such as MySQL's storage engine and collation."
+  {:arglists '([])}
+  db-type)
+
+(defmethod table-options :default [] {})
+
+(defmulti with-table-creation-settings
+  "Call `thunk`, which creates an index table, with any session settings the table needs."
+  {:arglists '([thunk])}
+  db-type)
+
+(defmethod with-table-creation-settings :default [thunk] (thunk))
+
 (defmulti post-create-statements
   "Any SQL statements that should be issued after the table is created, e.g. to create indexes."
   {:arglists '([unique-prefix table-name])}
   db-type)
+
+(defmulti table-complete?
+  "Whether the index table `table-name` has everything [[post-create-statements]] creates.
+  A database that creates the table and its indexes atomically needs no check."
+  {:arglists '([table-name])}
+  db-type)
+
+(defmethod table-complete? :default [_table-name] true)
+
+(defmulti table-abandoned?
+  "Whether the index table `table-name` is not [[table-complete?]], and the creation that left it so has stopped.
+  A database that creates the table and its indexes atomically never abandons one."
+  {:arglists '([table-name])}
+  db-type)
+
+(defmethod table-abandoned? :default [_table-name] false)
 
 (defmulti base-query
   "Generate the basic shape of the index table query, to be augmented with rankers and filters."
@@ -40,8 +70,9 @@
   db-type)
 
 (defmulti analyze-table!
-  "Refresh the database's statistics for the given table, so that [[index-size-estimate]] is accurate immediately,
-  rather than waiting for the database to re-sample it in the background. No-op for databases whose estimate is exact."
+  "Refresh statistics for the given table so [[index-size-estimate]] reflects a newly populated index.
+  MySQL skips this inside transactions to avoid committing caller writes.
+  Databases with exact estimates need no refresh."
   {:arglists '([table-name])}
   db-type)
 

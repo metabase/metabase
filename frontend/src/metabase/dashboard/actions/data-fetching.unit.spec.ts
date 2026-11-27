@@ -7,6 +7,7 @@ import {
   setupDashboardQueryMetadataEndpoint,
   setupDashboardsEndpoints,
   setupDatabaseEndpoints,
+  setupGoalSourceResultsEndpoint,
 } from "__support__/server-mocks";
 import type { StoreSeedState } from "__support__/state";
 import {
@@ -29,6 +30,8 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
+  DashboardCard,
+  GoalSegment,
   NormalizedQueryParameter,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -43,6 +46,7 @@ import {
   createMockParameterMapping,
   createMockVirtualCard,
   createMockVirtualDashCard,
+  createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -859,6 +863,263 @@ describe("fetchDashboardCardData", () => {
     // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
   });
+});
+
+describe("fetchCardDataAction with goal references", () => {
+  const DASHBOARD_ID = 5;
+  const QUERY_URL = `/api/dashboard/${DASHBOARD_ID}/dashcard/1/card/1/query`;
+  const SERIES_QUERY_URL = `/api/dashboard/${DASHBOARD_ID}/dashcard/1/card/2/query`;
+  const GOAL_SOURCE_RESULTS_URL = "path:/api/dynamic-goal/values";
+
+  const REF_SEGMENTS: GoalSegment[] = [
+    { min: 0, max: { type: "card", id: 9, column: "total" }, color: "red" },
+  ];
+
+  it("fetches the goal source results of a dashcard next to its query", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: { "gauge.segments": REF_SEGMENTS },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
+    expect(await getGoalSourceBodies()).toEqual([
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+    ]);
+  });
+
+  it("fetches the goal source results of the unsaved dashcard settings", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: {},
+      unsavedDashcardSettings: { "gauge.segments": REF_SEGMENTS },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(await getGoalSourceBodies()).toEqual([
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+    ]);
+  });
+
+  it("fetches the goal source results again when the query runs again", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: { "gauge.segments": REF_SEGMENTS },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    await waitForGoalSourceCalls(1);
+    await store.dispatch(
+      fetchCardDataAction({ card, dashcard, options: { reload: true } }),
+    );
+    await waitForGoalSourceCalls(2);
+
+    expect(fetchMock.callHistory.calls(QUERY_URL)).toHaveLength(2);
+    expect(await getGoalSourceBodies()).toEqual([
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+    ]);
+  });
+
+  it("does not fetch the goal source results again when the dashcard reuses its last result", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: { "gauge.segments": REF_SEGMENTS },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    await waitForGoalSourceCalls(1);
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.calls(QUERY_URL)).toHaveLength(1);
+    expect(getGoalSourceCalls()).toHaveLength(1);
+  });
+
+  it("fetches the goal source results again when the dashcard ignores the cache", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: { "gauge.segments": REF_SEGMENTS },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    await waitForGoalSourceCalls(1);
+    await store.dispatch(
+      fetchCardDataAction({
+        card,
+        dashcard,
+        options: { reload: true, ignoreCache: true },
+      }),
+    );
+    await waitForGoalSourceCalls(2);
+
+    expect(await getGoalSourceBodies()).toEqual([
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+      {
+        sources: [{ type: "card", id: 9 }],
+        dashboard_id: DASHBOARD_ID,
+        ignore_cache: true,
+      },
+    ]);
+  });
+
+  it("does not fetch goal source results for a dashcard without goal references", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: {
+        "gauge.segments": [{ min: 0, max: 10, color: "red" }],
+      },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
+    expect(getGoalSourceCalls()).toHaveLength(0);
+  });
+
+  it("does not fetch goal source results for a scalar dashcard with series", async () => {
+    const { store, card, dashcard } = setupScalarDashcardWithSeries();
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
+    expect(getGoalSourceCalls()).toHaveLength(0);
+  });
+
+  it("fetches the goal source results of a visualizer dashcard's chart", async () => {
+    const { store, card, dashcard } = setupVisualizerDashcard();
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(await getGoalSourceBodies()).toEqual([
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+    ]);
+  });
+
+  it("does not fetch goal source results for a visualizer dashcard's series card", async () => {
+    const { store, seriesCard, dashcard } = setupVisualizerDashcard();
+
+    await store.dispatch(
+      fetchCardDataAction({ card: seriesCard, dashcard, options: {} }),
+    );
+
+    expect(fetchMock.callHistory.called(SERIES_QUERY_URL)).toBe(true);
+    expect(getGoalSourceCalls()).toHaveLength(0);
+  });
+
+  function setupGaugeDashcard({
+    cardSettings,
+    unsavedDashcardSettings,
+  }: {
+    cardSettings: VisualizationSettings;
+    unsavedDashcardSettings?: VisualizationSettings;
+  }) {
+    const card = createMockCard({
+      id: 1,
+      display: "gauge",
+      visualization_settings: cardSettings,
+    });
+    const savedDashcard = createMockDashboardCard({
+      id: 1,
+      card_id: card.id,
+      dashboard_id: DASHBOARD_ID,
+      card,
+    });
+    const dashcard =
+      unsavedDashcardSettings != null
+        ? { ...savedDashcard, visualization_settings: unsavedDashcardSettings }
+        : savedDashcard;
+    const store = setupDashcardStore({ dashcard });
+
+    return { store, card, dashcard };
+  }
+
+  function setupScalarDashcardWithSeries() {
+    const card = createMockCard({
+      id: 1,
+      display: "scalar",
+      visualization_settings: {
+        "scalar.segments": [
+          {
+            min: 0,
+            max: { type: "card", id: 9, column: "total" },
+            color: "red",
+          },
+        ],
+      },
+    });
+    const seriesCard = createMockCard({ id: 2, display: "scalar" });
+    const dashcard = createMockDashboardCard({
+      id: 1,
+      card_id: card.id,
+      dashboard_id: DASHBOARD_ID,
+      card,
+      series: [seriesCard],
+    });
+    const store = setupDashcardStore({ dashcard });
+
+    return { store, card, dashcard };
+  }
+
+  function setupVisualizerDashcard() {
+    const card = createMockCard({ id: 1, display: "table" });
+    const seriesCard = createMockCard({ id: 2, display: "table" });
+    const dashcard = createMockVisualizerDashboardCard({
+      id: 1,
+      card_id: card.id,
+      dashboard_id: DASHBOARD_ID,
+      card,
+      series: [seriesCard],
+      visualization_settings: {
+        visualization: {
+          display: "gauge",
+          columnValuesMapping: {},
+          settings: { "gauge.segments": REF_SEGMENTS },
+        },
+      },
+    });
+    const store = setupDashcardStore({ dashcard });
+
+    return { store, card, seriesCard, dashcard };
+  }
+
+  function setupDashcardStore({ dashcard }: { dashcard: DashboardCard }) {
+    const dashboard = createMockDashboard({
+      id: DASHBOARD_ID,
+      dashcards: [dashcard],
+    });
+
+    const store = setup({
+      dashboards: [dashboard],
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD_ID,
+        dashboards: {
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            ...dashboard,
+            dashcards: [dashcard.id],
+          }),
+        },
+        dashcards: { [dashcard.id]: dashcard },
+      }),
+    });
+
+    fetchMock.post(QUERY_URL, { data: [] });
+    fetchMock.post(SERIES_QUERY_URL, { data: [] });
+    setupGoalSourceResultsEndpoint({});
+
+    return store;
+  }
+
+  function getGoalSourceCalls() {
+    return fetchMock.callHistory.calls(GOAL_SOURCE_RESULTS_URL);
+  }
+
+  async function waitForGoalSourceCalls(count: number) {
+    await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(count));
+  }
+
+  function getGoalSourceBodies(): Promise<unknown[]> {
+    return Promise.all(
+      getGoalSourceCalls().map((call): Promise<unknown> => {
+        return call.request?.json() ?? Promise.resolve(undefined);
+      }),
+    );
+  }
 });
 
 function setupDashboardWithCards({

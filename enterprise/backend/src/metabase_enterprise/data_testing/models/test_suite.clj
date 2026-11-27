@@ -27,11 +27,13 @@
 
 (doto :model/TestSuite
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (doto :model/TestSuiteMember
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/TestSuiteMember
   {:test_type mi/transform-keyword})

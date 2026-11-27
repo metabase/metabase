@@ -1553,8 +1553,7 @@
                          :model.row/create (mt/$ids {:create-row {"email" "invalid-email"
                                                                   "age"   25}
                                                      :database   (:id database)
-                                                     :query      {:source-table $$test_users}
-                                                     :type       :query}))))))))))))
+                                                     :table-id   $$test_users}))))))))))))
 
 ;; this contains special tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
@@ -1586,8 +1585,7 @@
                                                                   "column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
-                                                     :query      {:source-table $$mytable}
-                                                     :type       :query})))))
+                                                     :table-id   $$mytable})))))
               (testing "when updating"
                 (is (=? {:errors      {"column1" "This Column1 value already exists."
                                        "column2" "This Column2 value already exists."}
@@ -1598,9 +1596,8 @@
                          :model.row/update (mt/$ids {:update-row {"column1" "A"
                                                                   "column2" "A"}
                                                      :database   (:id database)
-                                                     :query      {:source-table $$mytable
-                                                                  :filter       [:= $mytable.id 2]}
-                                                     :type       :query}))))))))))))
+                                                     :table-id   $$mytable
+                                                     :pk         {"id" 2}}))))))))))))
 
 (deftest ^:parallel float-special-values-test
   ;; MotherDuck's endpoint sends infinities as `+Inf` and `-Inf`, which pgjdbc can't parse (QUE-1013).
@@ -2531,11 +2528,11 @@
                                            :dataset_query (mt/native-query {:query query})
                                            :database_id (mt/id)})]
           ;; update cards such that base_type is missing, similuating existing data
-          (t2/query ["update report_card set result_metadata = ? where id = ?"
-                     (json/encode [(first (:result_metadata model))
-                                   (assoc (second (:result_metadata model))
-                                          :base_type nil)])
-                     (:id model)])
+          (t2/query {:update (t2/table-name :model/Card)
+                     :set    {:result_metadata (json/encode [(first (:result_metadata model))
+                                                             (assoc (second (:result_metadata model))
+                                                                    :base_type nil)])}
+                     :where  [:= :id (:id model)]})
           (let [response (mt/user-http-request :crowberto :put 200
                                                (format "card/%d" (:id model))
                                                {:dataset_query

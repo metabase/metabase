@@ -44,7 +44,7 @@
     (let [session-id (mcp.session/create! (mt/user->id :crowberto) nil)]
       (is (string? session-id))
       (is (some? (parse-uuid (session-correlator session-id))))
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (not (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id)))
           "No core_session should exist yet"))))
 
 (deftest session-ui-capability-is-stateless-test
@@ -56,9 +56,9 @@
       (is (some? (parse-uuid (session-correlator ui-session-id))))
       (is (true? (mcp.session/supports-mcp-ui? ui-session-id)))
       (is (false? (mcp.session/supports-mcp-ui? plain-session-id)))
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash ui-session-id)))
+      (is (not (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash ui-session-id)))
           "Capability tracking should not materialize a core_session")
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash plain-session-id)))
+      (is (not (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash plain-session-id)))
           "Capability tracking should not materialize a core_session"))))
 
 (deftest create-session-id-length-test
@@ -224,11 +224,11 @@
           session-id (mcp.session/create! user-id nil)
           row        (mcp.session/get-or-create-embedding-session! session-id user-id)]
       (is (some? (:id row)))
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
+      (is (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id))
           "core_session should now exist")
       (testing "subsequent calls collapse to the same row rather than creating duplicates"
         (is (= (:id row) (:id (mcp.session/get-or-create-embedding-session! session-id user-id))))
-        (is (= 1 (t2/count :core_session :key_hashed (derived-hash session-id))))))))
+        (is (= 1 (t2/count (t2/table-name :model/Session) :key_hashed (derived-hash session-id))))))))
 
 (deftest embedding-session-key-never-escapes-the-namespace-test
   (testing "GHY-4333: `derive-embedding-session-key` takes only the MCP session id, which is client-supplied and
@@ -253,9 +253,9 @@
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id nil)
           _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))))))
+      (is (not (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id)))))))
 
 (deftest delete-scoped-to-user-test
   (testing "delete! only removes sessions owned by the given user"
@@ -263,12 +263,12 @@
           other-id   (mt/user->id :rasta)
           session-id (mcp.session/create! user-id nil)
           _          (mcp.session/get-or-create-embedding-session! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id other-id)
-      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
+      (is (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id))
           "Session should still exist — wrong user")
       (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
+      (is (not (t2/exists? (t2/table-name :model/Session) :key_hashed (derived-hash session-id)))
           "Session should be deleted by the owning user"))))
 
 (deftest owned-by-user-test
@@ -295,7 +295,7 @@
         (is (true? (mcp.session/owned-by-user? session-id other-id))))
       (mcp.session/get-or-create-embedding-session! session-id owner-id)
       (mcp.session/get-or-create-embedding-session! session-id other-id)
-      (is (= 2 (t2/count :core_session :key_hashed (derived-hash session-id)))
+      (is (= 2 (t2/count (t2/table-name :model/Session) :key_hashed (derived-hash session-id)))
           "rows are scoped to (key_hashed, user_id), so each user materializes their own")
       (testing "neither user is locked out by the other's row"
         (is (true? (mcp.session/owned-by-user? session-id owner-id)))
@@ -356,7 +356,7 @@
           session-id (mcp.session/create! user-id nil)
           handle     (mcp.session/store-handle! session-id user-id "payload")]
       (is (= "payload" (:encoded_query (mcp.session/resolve-query-handle session-id user-id handle))))
-      (t2/delete! :core_session :key_hashed (derived-hash session-id))
+      (t2/delete! (t2/table-name :model/Session) :key_hashed (derived-hash session-id))
       (is (nil? (mcp.session/resolve-query-handle session-id user-id handle))
           "cascade should reap the handle when the core_session row goes"))))
 

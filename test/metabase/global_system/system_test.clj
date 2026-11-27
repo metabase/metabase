@@ -786,6 +786,58 @@
         (finally
           (cleanup! handles))))))
 
+(deftest ^:synchronized halt-order-through-components-that-are-not-running-test
+  (testing "paths through components that are not running leave the rest in reverse start order"
+    (let [a1      (system/mutable-component-handle ::paths-a1 (constantly nil))
+          a2      (system/mutable-component-handle ::paths-a2 (constantly nil))
+          b1      (system/mutable-component-handle ::paths-b1 (constantly nil))
+          b2      (system/mutable-component-handle ::paths-b2 (constantly nil))
+          handles [a1 a2 b1 b2]]
+      (try
+        ;; each a uses a b that started after it, through a component that is not running
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (constantly nil)))
+        ;; both wirings, so the result holds whichever way the two middle components' names or hashes order
+        (is (= {:straight [a2 b2 a1 b1]
+                :crossed  [a2 b2 a1 b1]}
+               {:straight (filterv (set handles) (halt-order {::paths-a1 #{::paths-m1}
+                                                              ::paths-a2 #{::paths-m2}
+                                                              ::paths-m1 #{::paths-b1}
+                                                              ::paths-m2 #{::paths-b2}}))
+                :crossed  (filterv (set handles) (halt-order {::paths-a1 #{::paths-m2}
+                                                              ::paths-a2 #{::paths-m1}
+                                                              ::paths-m2 #{::paths-b1}
+                                                              ::paths-m1 #{::paths-b2}}))}))
+        (testing "and when one component uses both middle components, which clear at the same moment"
+          (is (= {:straight [a2 a1 b2 b1]
+                  :crossed  [a2 a1 b2 b1]}
+                 {:straight (filterv (set handles) (halt-order {::paths-a1 #{::paths-m1 ::paths-m2}
+                                                                ::paths-m1 #{::paths-b1}
+                                                                ::paths-m2 #{::paths-b2}}))
+                  :crossed  (filterv (set handles) (halt-order {::paths-a1 #{::paths-m1 ::paths-m2}
+                                                                ::paths-m2 #{::paths-b1}
+                                                                ::paths-m1 #{::paths-b2}}))})))
+        (finally
+          (cleanup! handles))))))
+
+(deftest ^:synchronized halt-order-after-a-component-stops-test
+  (testing "a component that started and then stopped counts as not running, not by where it started"
+    (let [m       (system/mutable-component-handle ::stopped-m (constantly nil))
+          x       (system/mutable-component-handle ::stopped-x (constantly nil))
+          a       (system/mutable-component-handle ::stopped-a (constantly nil))
+          b       (system/mutable-component-handle ::stopped-b (constantly nil))
+          handles [m x a b]]
+      (try
+        (doseq [handle handles]
+          (system/ensure-started! handle (constantly :running) (constantly nil)))
+        (system/stop! m)
+        ;; a uses b through m, and b started after x, so b stops before x
+        (is (= [a b x]
+               (filterv (set handles) (halt-order {::stopped-a #{::stopped-m}
+                                                   ::stopped-m #{::stopped-b}}))))
+        (finally
+          (cleanup! handles))))))
+
 (deftest dependency-cycle-test
   (testing "dependencies that form a cycle are refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Circular dependency"

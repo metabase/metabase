@@ -33,6 +33,7 @@ import {
   fetchDataOrError,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
+  getDashcardGoalSourcesScope,
 } from "metabase/dashboard/utils";
 import {
   paramFieldsFetched,
@@ -41,6 +42,7 @@ import {
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
+import { fetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import type {
   DashboardLinkTargets,
@@ -56,6 +58,8 @@ import {
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import { throwIfSignalAborted } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
+import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
+import type { GoalCard } from "metabase/viz-core";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -311,6 +315,16 @@ export const fetchCardDataAction = createAsyncThunk<
     }
 
     cancelFetchCardData(card.id, dashcard.id);
+
+    const goalCard = getDashcardGoalCard(card, dashcard);
+    if (goalCard != null) {
+      fetchGoalSourceResults(
+        dispatch,
+        getDashcardGoalSourcesScope(dashcard),
+        goalCard,
+        { ignoreCache },
+      );
+    }
 
     // When dashcard parameters change, we need to clean previous (stale)
     // state so that the loader spinner shows as expected (#33767)
@@ -661,6 +675,45 @@ export const clearCardData = createAction(
   CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
+
+// keep in sync with `goal-scope` in dynamic_goals.clj, which picks the goals anonymous goal routes run
+function getDashcardGoalCard(
+  card: Card,
+  dashcard: DashboardCard,
+): GoalCard | null {
+  if (dashcard.card_id != null && card.id !== dashcard.card_id) {
+    return null;
+  }
+
+  if (!isVisualizerDashboardCard(dashcard)) {
+    // adding multiple series to a scalar makes it not a scalar anymore, so resolving a goal does not make sense
+    const isMultiSeriesScalar =
+      card.display === "scalar" &&
+      "series" in dashcard &&
+      (dashcard.series?.length ?? 0) > 0;
+
+    if (isMultiSeriesScalar) {
+      return null;
+    }
+
+    return {
+      display: card.display,
+      visualization_settings: {
+        ...card.visualization_settings,
+        ...dashcard.visualization_settings,
+      },
+    };
+  }
+
+  const { display, settings } = dashcard.visualization_settings.visualization;
+  return {
+    display: display ?? DEFAULT_VISUALIZER_DISPLAY,
+    visualization_settings: {
+      ...settings,
+      ..._.omit(dashcard.visualization_settings, "visualization"),
+    },
+  };
+}
 
 function getDatasetQueryParams(datasetQuery?: JsonQuery) {
   const parameters = datasetQuery?.parameters ?? [];

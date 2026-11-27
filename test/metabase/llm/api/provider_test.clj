@@ -39,7 +39,7 @@
 (defn- do-with-another-instances-write!
   [conns thunk]
   (let [stale-conns   (get (setting.cache/cache) "llm-providers")
-        stale-updated (setting/cache-last-updated-at)]
+        stale-updated (setting/cached-marker)]
     (assert (some? stale-updated) "the cached settings-last-updated is what the rewind below makes stale")
     (llm.provider/set-connections! (vec conns))
     ;; close the once-a-minute window first, so nothing but an explicit forced check can reload the cache and the

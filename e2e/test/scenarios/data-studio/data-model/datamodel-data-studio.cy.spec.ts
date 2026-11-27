@@ -10,8 +10,7 @@ import type { TableId } from "metabase-types/api";
 const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection } = H.DataModel;
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > data studio > datamodel", () => {
   beforeEach(() => {
@@ -227,35 +226,7 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     describe("Sorting", () => {
-      it("should allow sorting fields as in the database, by drag & drop with a switch back to a predefined order (metabase#56482), alphabetically, and smartly", () => {
-        cy.log("database order");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "ID",
-            "Ean",
-            "Title",
-            "Category",
-            "Vendor",
-            "Price",
-            "Rating",
-            "Created At",
-          ],
-        });
-
-        cy.log("drag & drop order");
+      it("should allow sorting fields by drag & drop with a switch back to a predefined order (metabase#56482), and use the custom order in the query builder", () => {
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -338,68 +309,6 @@ describe("scenarios > data studio > datamodel", () => {
             "Price",
             "Rating",
             "Created At",
-          ],
-        });
-
-        cy.log("alphabetical order");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByLabelText("Alphabetical order")
-          .click();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Field order updated");
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("alphabetical")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "Category",
-            "Created At",
-            "Ean",
-            "ID",
-            "Price",
-            "Rating",
-            "Title",
-            "Vendor",
-          ],
-        });
-
-        cy.log("smart order");
-        H.DataModel.visitDataStudio({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.clickFieldsTab();
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput().findByLabelText("Auto order").click();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Field order updated");
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("smart")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "ID",
-            "Created At",
-            "Category",
-            "Ean",
-            "Price",
-            "Rating",
-            "Title",
-            "Vendor",
           ],
         });
       });
@@ -545,153 +454,14 @@ describe("scenarios > data studio > datamodel", () => {
       H.main().findAllByText("Amazing").should("be.visible");
     });
   });
+});
 
-  describe("Preview section", () => {
-    it("should close the preview with Esc key only when no overlay is open, and not auto-focus inputs in filtering preview", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
-      });
-
-      cy.log("close the preview with Esc key");
-      PreviewSection.get().should("not.exist");
-
-      FieldSection.getPreviewButton().click();
-      PreviewSection.get().scrollIntoView().should("be.visible");
-
-      cy.realPress("Escape");
-      PreviewSection.get().should("not.exist");
-
-      cy.log("do not close the preview with Esc key while modal is open");
-      FieldSection.getPreviewButton().click();
-      PreviewSection.get().scrollIntoView().should("be.visible");
-
-      FieldSection.getFieldValuesButton().click();
-      H.modal().should("be.visible");
-
-      cy.realPress("Escape");
-      H.modal().should("not.exist");
-      PreviewSection.get().should("be.visible");
-
-      cy.log(
-        "do not close the preview with Esc key while command palette is open",
-      );
-      H.openCommandPalette();
-      H.commandPalette().should("be.visible");
-
-      cy.realPress("Escape");
-      H.commandPalette().should("not.exist");
-      PreviewSection.get().should("be.visible");
-
-      cy.log("do not close the preview with Esc key while popover is open");
-      FieldSection.getSemanticTypeInput().click();
-      H.popover().should("be.visible");
-
-      cy.realPress("Escape");
-      H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-      PreviewSection.get().scrollIntoView().should("be.visible");
-
-      cy.log("do not auto-focus inputs in filtering preview");
-      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-
-      PreviewSection.get()
-        .findByPlaceholderText("Enter an ID")
-        .should("be.visible")
-        .and("not.be.focused");
-
-      FieldSection.getFilteringInput().click();
-      H.popover().findByText("A list of all values").click();
-
-      PreviewSection.get()
-        .findByPlaceholderText("Search the list")
-        .should("be.visible")
-        .and("not.be.focused");
-
-      TableSection.clickField("Tax");
-
-      PreviewSection.get()
-        .findByPlaceholderText("Min")
-        .should("be.visible")
-        .and("not.be.focused");
-
-      FieldSection.getFilteringInput().click();
-      H.popover().findByText("Search box").click();
-
-      PreviewSection.get()
-        .findByPlaceholderText("Enter a number")
-        .should("be.visible")
-        .and("not.be.focused");
-    });
-  });
-
-  it("should allow you to close table and field details, clear a field description, and use sync options, also for a hidden table", () => {
-    H.DataModel.visitDataStudio({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: ORDERS_ID,
-      fieldId: ORDERS.PRODUCT_ID,
-    });
-
-    FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
-
-    PreviewSection.get().should("exist");
-
-    FieldSection.getCloseButton().click();
-
-    PreviewSection.get().should("not.exist");
-    FieldSection.get().should("not.exist");
-    TableSection.get().should("exist");
-
-    TableSection.getCloseButton().click();
-    TableSection.get().should("not.exist");
-
-    cy.log(
-      "ensure that preview opened state was cleared and does not re-appear",
-    );
-    TablePicker.getTable("Orders").click();
-    TableSection.clickFieldsTab();
-    TableSection.clickField("Subtotal");
-    FieldSection.getNameInput().should("have.value", "Subtotal");
-    PreviewSection.get().should("not.exist");
-    FieldSection.get().should("exist");
-    TableSection.get().should("exist");
-
-    cy.log("clear the field description");
-    H.DataModel.visitDataStudio({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: ORDERS_ID,
-    });
-
-    TableSection.clickFieldsTab();
-    TableSection.getFieldDescriptionInput("Total").clear().blur();
-    cy.wait("@updateField");
-    verifyAndCloseToast("Description of Total updated");
-    TableSection.getFieldDescriptionInput("Total").should("have.value", "");
-
-    cy.log("verify preview");
-    TableSection.clickField("Total");
-    FieldSection.getPreviewButton().click();
-    verifyTablePreview({
-      column: "Total",
-      values: ["39.72", "117.03", "49.21", "115.23", "134.91"],
-    });
-    PreviewSection.get().findByTestId("header-cell").realHover();
-    H.hovercard()
-      .should("contain.text", "No description")
-      .and("not.contain.text", "The total billed amount.");
-
-    cy.visit(
-      `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
-    );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total").should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No description yet").should("be.visible");
-
-    cy.log("sync options from the actions menu");
+describe("scenarios > data studio > datamodel > table editing", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
     cy.intercept("POST", "/api/data-studio/table/sync-schema").as("syncSchema");
     cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
       "rescanValues",
@@ -699,184 +469,417 @@ describe("scenarios > data studio > datamodel", () => {
     cy.intercept("POST", "/api/data-studio/table/discard-values").as(
       "discardValues",
     );
-
-    H.DataModel.visitDataStudio({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: PRODUCTS_ID,
-    });
-
-    cy.log("re-sync schema");
-    TableSection.getActionsMenuButton().click();
-    H.menu().findByText("Re-sync schema").click();
-    cy.wait("@syncSchema");
-    verifyAndCloseToast("Sync triggered");
-
-    cy.log("re-scan field values");
-    TableSection.getActionsMenuButton().click();
-    H.menu().findByText("Re-scan field values").click();
-    cy.wait("@rescanValues");
-    verifyAndCloseToast("Scan triggered");
-
-    cy.log("discard cached field values");
-    TableSection.getActionsMenuButton().click();
-    H.menu().findByText("Discard cached field values").click();
-    cy.wait("@discardValues");
-    verifyAndCloseToast("Discard triggered");
-
-    cy.log("should not crash when viewing filtering preview of a hidden table");
-    H.DataModel.visitDataStudio({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: ORDERS_ID,
-    });
-
-    TableSection.clickDetailsTab();
-    TableSection.getVisibilityTypeInput().click();
-    H.popover().findByText("Hidden").click();
-    cy.wait("@updateTable");
-
-    TableSection.clickFieldsTab();
-    TableSection.clickField("Product ID");
-
-    FieldSection.getPreviewButton().click();
-    PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-    PreviewSection.get()
-      .findByPlaceholderText("Enter an ID")
-      .should("be.visible");
-    H.main().findByText("Something’s gone wrong").should("not.exist");
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
+      "publishTables",
+    );
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-tables").as(
+      "unpublishTables",
+    );
   });
 
-  describe("read-only remote sync", () => {
-    function verifyTableIsNotWritable(tableId: TableId) {
-      cy.request("GET", `/api/table/${tableId}/query_metadata`)
-        .its("body.can_write")
-        .should("eq", false);
-    }
+  it(
+    "syncs, edits attributes, publishes and unpublishes multiple tables",
+    { tags: ["@external"] },
+    () => {
+      // Not `postgres-writable`: restoring it empties the warehouse but keeps
+      // the old table metadata, so any sync deactivates the tables we use here.
+      H.restore("postgres-12");
+      H.activateToken("pro-self-hosted");
+      H.DataModel.visitDataStudio();
+      TablePicker.expandDatabase("QA Postgres12");
 
-    function verifyReadOnlyTablePage({ hasTabs }: { hasTabs: boolean }) {
-      cy.log("table picker and table");
-      TablePicker.getTable("Orders").should("be.visible");
-      TablePicker.getTable("Products").should("be.visible");
-      TableSection.getNameInput().should("have.value", "Orders");
-      if (hasTabs) {
-        TableSection.clickFieldsTab();
-      }
+      getTreeTableId("Orders").then((ordersTableId) => {
+        getTreeTableId("Products").then((productsTableId) => {
+          cy.wrap([ordersTableId, productsTableId]).as("tableIds");
+        });
+      });
 
-      cy.log("field metadata, FK target and remapping");
-      TableSection.clickField("Product ID");
-      FieldSection.getNameInput().should("have.value", "Product ID");
-      FieldSection.getSemanticTypeFkTarget().should(
-        "have.value",
-        "Products → ID",
-      );
-      FieldSection.getDisplayValuesInput().should(
-        "have.value",
-        "Use foreign key",
-      );
-      FieldSection.getDisplayValuesFkTargetInput().should(
-        "have.value",
-        "Title",
-      );
+      TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
+      TablePicker.getTable("Products").find('input[type="checkbox"]').check();
+      cy.findByRole("heading", { name: /2 tables selected/ });
 
-      cy.log("preview");
-      FieldSection.getPreviewButton().click();
-      PreviewSection.get().findByText("Product ID").should("be.visible");
-      PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-      PreviewSection.get().findByText("Product ID").should("be.visible");
-      PreviewSection.get()
-        .findByText("Sorry, you don’t have permission to see that.")
+      cy.findByRole("button", { name: /Sync settings/ }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_sync_settings_clicked",
+      });
+      cy.findByRole("button", { name: /Sync table schemas/ }).click();
+      cy.findByRole("button", { name: /Sync triggered!/ }).should("be.visible");
+      cy.get<number[]>("@tableIds").then((tableIds) => {
+        cy.wait<TablesActionRequest, TablesActionsResponse>("@syncSchema").then(
+          ({ request, response }) => {
+            expect(request.body.table_ids).to.deep.eq(tableIds);
+            expect(response?.statusCode).to.eq(204);
+          },
+        );
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_schema_sync_started",
+        result: "success",
+      });
+
+      cy.findByRole("button", { name: /Re-scan tables/ }).click();
+      cy.findByRole("button", { name: /Scan triggered!/ }).should("be.visible");
+
+      cy.get<number[]>("@tableIds").then((tableIds) => {
+        cy.wait<TablesActionRequest, TablesActionsResponse>(
+          "@rescanValues",
+        ).then(({ request, response }) => {
+          expect(request.body.table_ids).to.deep.eq(tableIds);
+          expect(response?.statusCode).to.eq(204);
+        });
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_fields_rescan_started",
+        result: "success",
+      });
+
+      cy.findByRole("button", { name: /Discard cached field values/ }).click();
+      cy.findByRole("button", { name: /Discard triggered!/ }).should(
+        "be.visible",
+      );
+      cy.get<number[]>("@tableIds").then((tableIds) => {
+        cy.wait<TablesActionRequest, TablesActionsResponse>(
+          "@discardValues",
+        ).then(({ request, response }) => {
+          expect(request.body.table_ids).to.deep.eq(tableIds);
+          expect(response?.statusCode).to.eq(204);
+        });
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_field_values_discard_started",
+        result: "success",
+      });
+
+      H.modal().should("be.visible");
+      cy.realPress("Escape");
+      H.modal().should("not.exist");
+
+      cy.log("edit attributes for multiple tables");
+      H.selectHasValue("Owner", "").click();
+      H.selectDropdown().contains("Bobby Tables").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "owner",
+        result: "success",
+      });
+
+      H.selectHasValue("Visibility layer", "").click();
+      H.selectDropdown().contains("Final").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "layer",
+        result: "success",
+      });
+
+      H.selectHasValue("Entity type", "").click();
+      H.selectDropdown().contains("Person").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "entity_type",
+        result: "success",
+      });
+
+      H.selectHasValue("Source", "").click();
+      H.selectDropdown().contains("Ingested").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_bulk_attribute_updated",
+        event_detail: "data_source",
+        result: "success",
+      });
+      H.undoToastList().should("have.length", 4);
+      TablePicker.getTable("Orders")
+        .findByTestId("table-owner")
+        .should("have.text", "Bobby Tables");
+      TablePicker.getTable("Products")
+        .findByTestId("table-owner")
+        .should("have.text", "Bobby Tables");
+
+      cy.log("publish and unpublish multiple tables");
+      TablePicker.getTable("Orders")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      TablePicker.getTable("Products")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      TablePicker.getTable("Reviews")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+
+      cy.log("publish the tables and verify they are published");
+      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().findByText("Create my semantic layer").click();
+      H.modal().findByText("Publish these tables").click();
+      cy.wait("@publishTables");
+      H.undoToastListContainer().within(() => {
+        cy.findByText("Published").should("be.visible");
+        cy.findByRole("button", { name: /Go to Data/ }).click();
+      });
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.tableItem("Products").should("be.visible");
+      cy.go("back");
+
+      cy.log("unpublish some tables and verify they are unpublished");
+      TablePicker.getTable("Orders")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      TablePicker.getTable("Products")
+        .findByRole("checkbox")
+        .scrollIntoView()
+        .check();
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().findByText("Unpublish these tables").click();
+      cy.wait("@unpublishTables");
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_unpublished",
+      });
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
+
+      H.DataStudio.Library.libraryPage().within(() => {
+        cy.findByText("Reviews").should("be.visible");
+        cy.findByText("Orders").should("not.exist");
+        cy.findByText("Products").should("not.exist");
+      });
+    },
+  );
+
+  it(
+    "should display metadata information and publish and unpublish a single table",
+    { tags: ["@external"] },
+    () => {
+      H.restore("mysql-8");
+      H.activateToken("pro-self-hosted");
+      H.DataModel.visitDataStudio();
+      TablePicker.getDatabase("QA MySQL8").click();
+      TablePicker.getTable("Orders").click();
+
+      cy.log("display metadata information");
+      cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
+        const viewCount = response?.body.view_count ?? 0;
+
+        cy.findByLabelText("Name in the database").should(
+          "have.text",
+          "ORDERS",
+        );
+        cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
+        cy.findByLabelText("View count").should("have.text", viewCount);
+        cy.findByLabelText("Est. row count").should("not.exist");
+        cy.findByLabelText("Dependencies").should("have.text", "0");
+        cy.findByLabelText("Dependents").should("have.text", "0");
+
+        H.DataModel.TableSection.get()
+          .findByRole("link", { name: "Dependency graph" })
+          .click();
+
+        H.DataStudio.Dependencies.graph().should("be.visible");
+      });
+      cy.go("back");
+      H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
+
+      cy.log("publish the table and verify it's published");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
         .should("not.exist");
-
-      cy.log("field values");
-      TablePicker.getTable("Products").click();
-      TableSection.getNameInput().should("have.value", "Products");
-      if (hasTabs) {
-        TableSection.clickFieldsTab();
-      }
-      TableSection.clickField("Category");
-      FieldSection.getNameInput().should("have.value", "Category");
-      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-      PreviewSection.get().findByText("Doohickey").should("be.visible");
-    }
-
-    beforeEach(() => {
-      H.remapDisplayValueToFK({
-        display_value: ORDERS.PRODUCT_ID,
-        name: "Product ID",
-        fk: PRODUCTS.TITLE,
+      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().findByText("Create my semantic layer").click();
+      H.modal().findByText("Publish this table").click();
+      cy.wait("@publishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("be.visible");
+      H.undoToastListContainer().within(() => {
+        cy.findByText("Published").should("be.visible");
+        cy.findByRole("button", { name: /Go to Data/ }).click();
       });
-      H.setupGitSync();
-      H.createLibrary();
-      H.copySyncedLibraryFixture();
-      H.commitToRepo();
-      H.configureGit("read-write");
-      cy.request("POST", "/api/ee/remote-sync/import", {
-        expected_branch: "main",
-        force: true,
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_published",
       });
-      H.pollForTask({ taskName: "import" });
-      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      cy.request("POST", "/api/ee/remote-sync/export", { branch: "main" });
-      H.pollForTask({ taskName: "export" });
-      H.configureGitAndPullChanges("read-only");
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      cy.go("back");
 
-      [ORDERS_ID, PRODUCTS_ID].forEach(verifyTableIsNotWritable);
-    });
+      cy.log("unpublish the table and verify it's unpublished");
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().findByText("Unpublish this table").click();
+      cy.wait("@unpublishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
+    },
+  );
 
-    it("should show a published table in the data studio data model", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
+  it("should allow to edit attributes", { tags: ["@external"] }, () => {
+    H.restore("postgres-12");
+    H.activateToken("pro-self-hosted");
+    H.DataModel.visitDataStudio();
+    TablePicker.getDatabase("QA Postgres12").click();
+    TablePicker.getTable("Orders").click();
+
+    cy.log("rename the table and verify the name is updated in the picker");
+    H.DataModel.TableSection.getNameInput()
+      .clear()
+      .type("Renamed Orders")
+      .blur();
+    cy.wait("@updateTable");
+    TablePicker.getTable("Renamed Orders").should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
+
+    H.selectHasValue("Owner", "No owner").click();
+    H.selectDropdown().contains("Bobby Tables").click();
+
+    H.undoToastListContainer()
+      .findByText("Table owner updated")
+      .should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
+
+    H.selectHasValue("Visibility layer", "Internal").click();
+    H.selectDropdown().contains("Final").click();
+    H.undoToastListContainer()
+      .findByText("Table visibility layer updated")
+      .should("be.visible");
+
+    cy.log(
+      "undo the change and verify the table updates to the reverted value",
+    );
+    H.undoToastListContainer()
+      .findByText("Table visibility layer updated")
+      .closest("[data-testid='toast-undo']")
+      .button("Undo")
+      .click();
+    cy.wait("@updateTable");
+    H.undoToastListContainer().findByText("Change undone").should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
+    H.selectHasValue("Visibility layer", "Internal");
+    TablePicker.getTable("Orders")
+      .findByTestId("table-data-layer")
+      .should("have.text", "Internal");
+
+    H.selectHasValue("Entity type", "Transaction").click();
+    H.selectDropdown().contains("Person").click();
+    H.undoToastListContainer()
+      .findByText("Entity type updated")
+      .should("be.visible");
+
+    H.selectHasValue("Source", "Unspecified").click();
+    H.selectDropdown().contains("Ingested").click();
+    H.undoToastListContainer()
+      .findByText("Table data source updated")
+      .should("be.visible");
+
+    // navigate away and back
+    TablePicker.getTable("Products").click();
+    TablePicker.getTable("Renamed Orders").click();
+
+    H.selectHasValue("Owner", "Bobby Tables");
+    H.selectHasValue("Visibility layer", "Internal");
+    H.selectHasValue("Entity type", "Person");
+    H.selectHasValue("Source", "Ingested");
+  });
+
+  it(
+    "transform-created table should have link and disabled source edit",
+    { tags: ["@external"] },
+    () => {
+      H.restore("postgres-writable");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+
+      const SOURCE_TABLE = "Animals";
+      const TARGET_TABLE = "transform_table";
+      const TARGET_SCHEMA = "Schema A";
+      const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
+      const TRANSFORM_NAME = "Test transform for animals";
+
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
+
+      // Create and run a transform to create a table
+      H.createAndRunMbqlTransform({
+        sourceTable: SOURCE_TABLE,
+        targetTable: TARGET_TABLE,
+        targetSchema: TARGET_SCHEMA,
+        name: TRANSFORM_NAME,
+      }).then(() => {
+        H.DataModel.visitDataStudio();
+        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getSchema(TARGET_SCHEMA).click();
+        TablePicker.getTable(TRANSFORM_TABLE_DISPLAY_NAME).click();
+
+        cy.findByRole("link", { name: new RegExp(TRANSFORM_NAME) }).should(
+          "be.visible",
+        );
+
+        H.selectIsDisabled("Source");
       });
-      TableSection.getNameInput().should("have.attr", "readonly");
-      verifyReadOnlyTablePage({ hasTabs: true });
-    });
+    },
+  );
 
-    it("should show a published table in the admin data model", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-      });
-      verifyReadOnlyTablePage({ hasTabs: false });
-    });
+  describe("with remote sync enabled", () => {
+    it(
+      "should update the tree after publishing, unpublishing, and renaming a table (metabase#69554)",
+      { tags: ["@external"] },
+      () => {
+        H.restore("mysql-8");
+        H.activateToken("pro-self-hosted");
+        H.setupGitSync();
+        H.configureGit("read-write");
+
+        H.DataModel.visitDataStudio();
+        TablePicker.getDatabase("QA MySQL8").click();
+        TablePicker.getTable("Orders").click();
+
+        cy.log("publish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Create my semantic layer").click();
+        H.modal().findByText("Publish this table").click();
+        cy.wait("@publishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("be.visible");
+
+        cy.log("unpublish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Unpublish/ }).click();
+        H.modal().findByText("Unpublish this table").click();
+        cy.wait("@unpublishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("not.exist");
+
+        cy.log("rename the table and verify the tree updates");
+        H.DataModel.TableSection.getNameInput()
+          .clear()
+          .type("Renamed Orders")
+          .blur();
+        cy.wait("@updateTable");
+        TablePicker.getTable("Renamed Orders").should("be.visible");
+
+        cy.log("update the owner and verify it is reflected");
+        TablePicker.getTable("Renamed Orders").should(
+          "not.contain.text",
+          "Bobby Tables",
+        );
+        H.selectHasValue("Owner", "No owner").click();
+        H.selectDropdown().contains("Bobby Tables").click();
+        cy.wait("@updateTable");
+        H.undoToastListContainer()
+          .findByText("Table owner updated")
+          .should("be.visible");
+        H.selectHasValue("Owner", "Bobby Tables");
+        TablePicker.getTable("Renamed Orders").should(
+          "contain.text",
+          "Bobby Tables",
+        );
+      },
+    );
   });
 });
-
-describe(
-  "scenarios > data studio > datamodel > preview empty states",
-  { tags: "@external" },
-  () => {
-    beforeEach(() => {
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.resetTestTable({ type: "postgres", table: "multi_schema" });
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-      H.queryWritableDB('delete from "Domestic"."Animals"');
-    });
-
-    it("should show empty state when there is no data", () => {
-      H.DataModel.visitDataStudio();
-
-      TablePicker.getDatabase("Writable Postgres12").click();
-      TablePicker.getSchema("Domestic").click();
-      TablePicker.getTable("Animals").click();
-      TableSection.clickFieldsTab();
-      TableSection.clickField("Name");
-      FieldSection.getPreviewButton().click();
-
-      PreviewSection.get()
-        .scrollIntoView()
-        .findByText("No data to show")
-        .should("be.visible");
-      PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-      PreviewSection.get().findByText("No data to show").should("be.visible");
-    });
-  },
-);
 
 type TableSummary = {
   id: TableId;
@@ -973,20 +976,24 @@ function verifyAndCloseToast(message: string) {
   H.undoToast().icon("close").click({ force: true });
 }
 
-function verifyTablePreview({
-  column,
-  values,
-}: {
-  column: string;
-  values: string[];
-}) {
-  PreviewSection.getPreviewTypeInput().findByText("Table").click();
-  cy.wait("@dataset");
+function getTreeTableId(tableName: string): Cypress.Chainable<TableId> {
+  return TablePicker.getTable(tableName)
+    .invoke("attr", "data-table-id")
+    .then((tableId: unknown) => Number(tableId));
+}
 
-  PreviewSection.get().within(() => {
-    H.assertTableData({
-      columns: [column],
-      firstRows: values.map((value) => [value]),
-    });
-  });
+interface TablesActionRequest {
+  database_ids: number[];
+  schema_ids: number[];
+  table_ids: number[];
+}
+
+interface TablesActionsResponse {
+  status: string;
+  message: string;
+}
+
+interface MetadataResponse {
+  data_layer: string;
+  view_count: number;
 }

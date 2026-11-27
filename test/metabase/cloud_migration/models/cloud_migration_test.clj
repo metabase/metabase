@@ -169,6 +169,8 @@
   For any new model added to [[copy/entities]], you must decide whether to add it here or
   in [[cloud-migration/read-only-mode-exceptions]]."
   (into #{:metabot_permissions
+          :remote_sync_worktree
+          :remote_sync_worktree_user
           :model/Action
           :model/ApiKey
           :model/ApplicationPermissionsRevision
@@ -323,7 +325,8 @@
                  :table_id
                  :type
                  :view_count
-                 :visualization_settings}
+                 :visualization_settings
+                 :worktree_id}
    :model/FieldValues #{:created_at
                         :field_id
                         :has_more_values

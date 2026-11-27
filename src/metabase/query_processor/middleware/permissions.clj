@@ -84,14 +84,13 @@
         ;; if card-id is bound this means that this is not an ad hoc query and we can just
         ;; check that the user has permission to read this card
         *card-id*
-        (do (query-perms/check-card-read-perms database-id *card-id*)
+        (do (query-perms/check-cards-read-perms database-id [*card-id*])
             (query-perms/check-card-result-metadata-data-perms database-id *card-id*)
             (when-not (query-perms/has-perm-for-query? query :perms/view-data required-perms)
               (throw (query-perms/perms-exception required-perms)))
             (let [other-card-ids (remove #{*card-id*} source-card-ids)]
               (query-perms/check-cards-read-perms database-id other-card-ids)
-              (doseq [card-id other-card-ids]
-                (query-perms/check-card-result-metadata-data-perms database-id card-id))))
+              (query-perms/check-cards-result-metadata-data-perms database-id other-card-ids)))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -104,8 +103,7 @@
           ;; the mapped Card, so this is the only check. The result_metadata check covers tables a Card's saved
           ;; columns name but its query footprint does not.
           (query-perms/check-cards-read-perms database-id source-card-ids)
-          (doseq [card-id source-card-ids]
-            (query-perms/check-card-result-metadata-data-perms database-id card-id))
+          (query-perms/check-cards-result-metadata-data-perms database-id source-card-ids)
           (when-not (query-perms/has-perm-for-query? query :perms/view-data required-perms)
             (throw (query-perms/perms-exception required-perms))))
 
@@ -118,8 +116,7 @@
           ;; Check that we have the data permissions to run this card
           (query-perms/check-data-perms query required-perms :throw-exceptions? true)
           ;; Check that all columns from source cards result_metadata are accessible
-          (doseq [card-id source-card-ids]
-            (query-perms/check-card-result-metadata-data-perms database-id card-id))
+          (query-perms/check-cards-result-metadata-data-perms database-id source-card-ids)
           ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
                                           (lib/query (qp.store/metadata-provider) query))]
@@ -153,7 +150,7 @@
   [{database-id :database, :as query} :- ::lib.schema/query]
   (check-no-sandboxed-action-access database-id)
   (when *card-id*
-    (query-perms/check-card-read-perms database-id *card-id*))
+    (query-perms/check-cards-read-perms database-id [*card-id*]))
   (when-not (query-perms/check-data-perms
              query
              (query-perms/required-perms-for-query query :already-preprocessed? true)

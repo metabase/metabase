@@ -46,7 +46,7 @@
             (let [metric-ids [table-metric card-metric two-stage-card-metric]]
               ;; A raw UPDATE, because before-insert forces `:card_schema` to current and `with-temp` would
               ;; silently ignore it.
-              (t2/query-one {:update :report_card
+              (t2/query-one {:update (t2/table-name :model/Card)
                              :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
                              :where  [:in :id metric-ids]})
               (mt/with-dynamic-fn-redefs [metrics/compute-full-dimension-set

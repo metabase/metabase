@@ -136,29 +136,31 @@
   nil)
 
 (defn metering-stats
-  "Collect metering statistics for billing purposes. Used by both token check and metering task. "
+  "Collect metering statistics for billing purposes, across every remote sync worktree. Used by both token check and
+  metering task."
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
-  (let [users                     (premium-features.settings/active-users-count)
-        ext-users                 (internal-stats/external-users-count)
-        embedding-dashboard-count (internal-stats/embedding-dashboard-count)
-        embedding-question-count  (internal-stats/embedding-question-count)
-        stats                     (merge (internal-stats/query-execution-last-utc-day)
-                                         (embedding-settings embedding-dashboard-count embedding-question-count)
-                                         (internal-stats/metabot-stats)
-                                         (internal-stats/data-app-stats)
-                                         (transform-stats)
-                                         {:users                     users
-                                          :embedding-dashboard-count embedding-dashboard-count
-                                          :embedding-question-count  embedding-question-count
-                                          :external-users            ext-users
-                                          :internal-users            (- users ext-users)
-                                          :domains                   (internal-stats/email-domain-count)
-                                          :tenant-users              (internal-stats/tenant-users-count)
-                                          :tenants                   (internal-stats/tenants-with-active-users-count)})]
-    (log/info "Reporting Metabase stats:" stats)
-    stats))
+  (app-db/with-worktree-scope {:type :all}
+    (let [users                     (premium-features.settings/active-users-count)
+          ext-users                 (internal-stats/external-users-count)
+          embedding-dashboard-count (internal-stats/embedding-dashboard-count)
+          embedding-question-count  (internal-stats/embedding-question-count)
+          stats                     (merge (internal-stats/query-execution-last-utc-day)
+                                           (embedding-settings embedding-dashboard-count embedding-question-count)
+                                           (internal-stats/metabot-stats)
+                                           (internal-stats/data-app-stats)
+                                           (transform-stats)
+                                           {:users                     users
+                                            :embedding-dashboard-count embedding-dashboard-count
+                                            :embedding-question-count  embedding-question-count
+                                            :external-users            ext-users
+                                            :internal-users            (- users ext-users)
+                                            :domains                   (internal-stats/email-domain-count)
+                                            :tenant-users              (internal-stats/tenant-users-count)
+                                            :tenants                   (internal-stats/tenants-with-active-users-count)})]
+      (log/info "Reporting Metabase stats:" stats)
+      stats)))
 
 (defn- token-status-url [token base-url]
   (when (seq token)

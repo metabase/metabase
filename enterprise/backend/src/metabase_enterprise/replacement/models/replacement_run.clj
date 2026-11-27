@@ -17,6 +17,7 @@
 (methodical/defmethod t2/table-name :model/ReplacementRun [_model] :source_replacement_run)
 
 (derive :model/ReplacementRun :metabase/model)
+(derive :model/ReplacementRun :hook/worktree-id)
 
 (def ^:private terminal-statuses
   #{:succeeded :failed :canceled :timeout})

@@ -24,6 +24,7 @@
 (methodical/defmethod t2/table-name :model/PersistedInfo [_model] :persisted_info)
 
 (derive :model/PersistedInfo :metabase/model)
+(derive :model/PersistedInfo :hook/worktree-id)
 
 (t2/define-before-insert :model/PersistedInfo
   [persisted-info]

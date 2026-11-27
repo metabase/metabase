@@ -22,14 +22,13 @@
    [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
-   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]))
 
 (defn- visibility-key
-  "The inputs [[metabase.queries.cached-result/viewer-can-view-cached-result?]] actually depends on,
-  so a batch can evaluate the verdict once per distinct key instead of once per artifact. The verdict
+  "[[metabase.queries.cached-result/cached-result-view-answers]] depends on these inputs of an artifact, so a
+  batch can evaluate the verdict once per distinct key instead of once per artifact. The verdict
   turns on the artifact's database, its captured lens token, and the perms its query requires — not
   on who created it, so `creator_id` is deliberately absent from the key (two creators' artifacts
   over the same table + lens share a verdict).
@@ -39,7 +38,7 @@
 
   The verdict's halves project the query *differently*, so the key has to carry each of them or it is
   not a partition. The lens comparison resolves the query first (`query->resolved-source-ids`
-  preprocesses, expanding implicit joins and card chains); `can-run-query?` needs both the raw
+  preprocesses, expanding implicit joins and card chains); `query-run-answers` needs both the raw
   projection and the resolved one — the latter because `:card-ids` only exist after preprocessing and
   each one costs a read-permission check on that card's collection.
 
@@ -60,9 +59,7 @@
   - the raw projection throws (`merge-source-ids` does so explicitly) => `::unprojectable`, likewise
     shared only with other throwers, which the perms check denies for the same reason it threw.
 
-  `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
-  a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
-  to collapse."
+  `resolve-source-ids` is the resolving half, passed in so a batch resolves all its queries together."
   [resolve-source-ids {:keys [database_id dataset_query data_access_token resolved_source_ids]}]
   (let [source-ids (try
                      (some-> dataset_query query-perms/query->source-ids)
@@ -76,15 +73,32 @@
        :else                                                           dataset_query)]))
 
 (defn- source-ids-resolver
-  "A memoized [[metabase.query-permissions.core/query->resolved-source-ids]] for one batch.
-  Throws are absorbed into a marker rather than propagated: an unpreprocessable query (a deleted card
-  in its source chain) is one the lens check denies anyway, and it must not take the batch down with
-  it."
-  []
-  (memoize (fn [query]
-             (try
-               (some-> query query-perms/query->resolved-source-ids)
-               (catch Throwable _ ::unresolvable)))))
+  "A function of a query to its [[metabase.query-permissions.core/query->resolved-source-ids]], answered from one bulk
+  resolution of the queries of `artifacts` that have no verified stored value, or on its own when that throws, with
+  what a query throws read as `::unresolvable`, so that an unpreprocessable query, which the lens check denies anyway,
+  does not take the batch down."
+  [artifacts]
+  (let [queries  (into []
+                       (comp (remove (fn [{:keys [dataset_query resolved_source_ids]}]
+                                       (query-perms/verified-resolved-source-ids dataset_query resolved_source_ids)))
+                             (keep :dataset_query)
+                             (distinct))
+                       artifacts)
+        resolved (try
+                   (zipmap queries (query-perms/resolved-source-ids-answers queries))
+                   (catch Throwable _
+                     {}))]
+    (fn [query]
+      (when query
+        (let [answer (if (contains? resolved query)
+                       (get resolved query)
+                       (try
+                         (query-perms/query->resolved-source-ids query)
+                         (catch Throwable e
+                           e)))]
+          (if (instance? Throwable answer)
+            ::unresolvable
+            answer))))))
 
 (defn- finalized-queries
   "The `exploration_query` rows for `thread-ids` that can be adjudicated, in the shape the gate takes.
@@ -131,36 +145,46 @@
                  (nil? card) (assoc ::indeterminate true))))
            threads))))
 
-(defn- artifact-visible?
-  "The gate's verdict for one artifact.
+(defn- artifact-visibility-answers
+  "The gate's verdict for each of `artifacts`, in order, answered for all of those with a query in one call.
 
   An artifact marked [[::indeterminate]] has no query left to adjudicate, so the gate cannot be asked
   (it throws without a `:dataset_query`). It denies instead — the same fail-closed choice
   [[source-ids-resolver]] makes for a query it cannot resolve. Callers exempt superusers before
   reaching here; the superuser check keeps the gate's own answer if this is reached directly."
-  [data-access-token-reader artifact]
-  (if (::indeterminate artifact)
-    (boolean api/*is-superuser?*)
-    (queries/viewer-can-view-cached-result? artifact {:data-access-token-reader data-access-token-reader})))
+  [artifacts]
+  (let [asked    (filterv (complement ::indeterminate) artifacts)
+        verdicts (zipmap (range) (queries/cached-result-view-answers
+                                  asked
+                                  {:share-token-reads? true}))
+        position (zipmap (keep-indexed (fn [i artifact] (when-not (::indeterminate artifact) i)) artifacts)
+                         (range))]
+    (into []
+          (map-indexed (fn [i artifact]
+                         (if (::indeterminate artifact)
+                           (boolean api/*is-superuser?*)
+                           (get verdicts (get position i)))))
+          artifacts)))
 
 (defn- blocked-thread-ids
   "Thread ids with at least one artifact the current user may not see.
 
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
-  the expensive check run once per group rather than once per artifact."
+  the check run once per group rather than once per artifact, for all groups together."
   [artifacts]
-  (let [data-access-token-reader (perms/data-access-token-reader)]
-    (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
-         (remove (fn [[_key [representative]]]
-                   (artifact-visible? data-access-token-reader representative)))
-         (mapcat val)
-         (map :exploration_thread_id)
-         set)))
+  (let [groups (vec (group-by (partial visibility-key (source-ids-resolver artifacts)) artifacts))]
+    (into #{}
+          (comp (remove first)
+                (mapcat (comp val second))
+                (map :exploration_thread_id))
+          (map vector
+               (artifact-visibility-answers (mapv (comp first val) groups))
+               groups))))
 
 (defn thread-ids-with-visible-derived-data
   "The subset of `thread-ids` whose derived read-data the current user may see: every row carrying
   text derived from warehouse values must pass the gate
-  ([[metabase.queries.cached-result/viewer-can-view-cached-result?]]) for the *current* user — the
+  ([[metabase.queries.cached-result/cached-result-view-answers]]) for the *current* user — the
   creator included. A thread carrying no such text yet stays visible, because there is nothing on it
   that was computed under anyone's lens. A superuser sees every thread. Returns a set.
 

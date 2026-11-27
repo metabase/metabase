@@ -295,13 +295,13 @@
             (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
             (testing "resolves while the user is active"
               (is (= user-id (:user-id (oauth-server/resolve-access-token token)))))
-            (t2/query {:update :core_user :set {:is_active false} :where [:= :id user-id]})
+            (t2/query {:update (t2/table-name :model/User) :set {:is_active false} :where [:= :id user-id]})
             (testing "stops resolving once the user is deactivated"
               (is (nil? (oauth-server/resolve-access-token token)))
               (testing "and the token itself was not revoked — the resolver's gate did the refusing"
                 (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token token)))))
             (finally
-              (t2/query {:update :core_user :set {:is_active true} :where [:= :id user-id]})
+              (t2/query {:update (t2/table-name :model/User) :set {:is_active true} :where [:= :id user-id]})
               (t2/delete! :model/OAuthAccessToken :token token))))))))
 
 (deftest bearer-only-paths-ignore-sessions-and-api-keys-test

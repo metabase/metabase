@@ -28,7 +28,7 @@
 (mu/defn destination-database-exists?
   "Whether one of the Databases with `database-ids` is a routing destination."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (boolean (some #(t2/exists? :model/Database :id [:in [:auto/param %]] :router_database_id [:not= nil])
+  (boolean (some #(t2/exists? :model/Database :id [:in %] :router_database_id [:not= nil])
                  (app-db/select-partitions (distinct database-ids)))))
 
 (mu/defn transform-exists-for-source-database?
@@ -49,7 +49,7 @@
 (mu/defn router-ids-for-databases
   "The ids of the DatabaseRouters of the Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/DatabaseRouter :database_id [:in [:auto/param %]]) database-ids)))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/DatabaseRouter :database_id [:in %]) database-ids)))
 
 (mu/defn router-user-attribute
   "The user attribute the router of the Database with `database-id` routes on."

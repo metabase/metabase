@@ -117,7 +117,8 @@ const USER_AGENT =
 const SANITIZED_USER_AGENT = "Browser (Chrome/OS X)";
 const QUERY = '{"lib/type":"mbql/query","stages":[{"source-card":306}]}';
 
-// The first row reads a question, the second runs an action.
+// The first row reads a question, the second runs an action, and the third reads a question in
+// another app. The unfiltered log returns the first `total` rows.
 const logDataset: Dataset = createMockDataset({
   data: createMockDatasetData({
     cols: [
@@ -164,16 +165,63 @@ const logDataset: Dataset = createMockDataset({
         null,
         null,
       ],
+      [
+        "2026-10-01T08:00:00Z",
+        "store-archive",
+        null,
+        null,
+        null,
+        "v1.0.5-SNAPSHOT",
+        1,
+        "Ada Lovelace",
+        "card_307",
+        "Archived orders",
+        QUERY,
+      ],
     ],
   }),
   database_id: AUDIT_DB_ID,
-  row_count: 2,
+  row_count: 3,
   running_time: 1,
 });
 
-/** At most `total` of the log's records, so the rows agree with the count. */
-const createLogDataset = (total: number): Dataset => {
-  const rows = logDataset.data.rows.slice(0, total);
+const LOG_COLUMN_INDEX = {
+  embedding_client_identifier: 1,
+  action_id: 2,
+};
+
+/**
+ * The log's records that the stage's app and entity type filters match, at most `total` of them,
+ * so the rows agree with the count.
+ */
+const createLogDataset = (
+  stage: DatasetStage | undefined,
+  total: number,
+): Dataset => {
+  const apps = stage
+    ? getEqualsFilterValues(stage, FIELD_IDS.embedding_client_identifier)
+    : undefined;
+  const entityOperator = stage
+    ? getFilterOperator(stage, FIELD_IDS.action_id)
+    : undefined;
+  const rows = logDataset.data.rows
+    .filter(
+      (row) =>
+        apps === undefined ||
+        apps.includes(row[LOG_COLUMN_INDEX.embedding_client_identifier]),
+    )
+    .filter((row) => {
+      const actionId = row[LOG_COLUMN_INDEX.action_id];
+      switch (entityOperator) {
+        case "not-null":
+          return actionId !== null;
+        case "is-null":
+          return actionId === null;
+        default:
+          return true;
+      }
+    })
+    .slice(0, total);
   return {
     ...logDataset,
     data: { ...logDataset.data, rows },
@@ -274,7 +322,7 @@ function setup({
       }
       return failingRequest === "rows"
         ? createFailure("Rows failed")
-        : createLogDataset(total);
+        : createLogDataset(stage, total);
     },
     { name: "dataset" },
   );
@@ -546,35 +594,113 @@ describe("DataAppsAnalyticsPage", () => {
   });
 
   it.each([
-    { label: "Action", type: "action", operator: "not-null" },
-    { label: "Question", type: "question", operator: "is-null" },
-  ])("scopes the log to $label records", async ({ label, type, operator }) => {
-    const { router } = setup();
+    {
+      label: "Action",
+      type: "action",
+      operator: "not-null",
+      shownApp: "unknown-app",
+      hiddenApp: "product-reviews",
+    },
+    {
+      label: "Question",
+      type: "question",
+      operator: "is-null",
+      shownApp: "product-reviews",
+      hiddenApp: "unknown-app",
+    },
+  ])(
+    "scopes the log to $label records",
+    async ({ label, type, operator, shownApp, hiddenApp }) => {
+      const { router } = setup();
 
-    await screen.findByRole("treegrid", { name: "Data app activity" });
-    await userEvent.click(screen.getByTestId("entity-type-filter-select"));
-    await userEvent.click(await screen.findByRole("option", { name: label }));
+      const table = await screen.findByRole("treegrid", {
+        name: "Data app activity",
+      });
+      expect(await within(table).findByText(hiddenApp)).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("Entity type"));
+      await userEvent.click(await screen.findByRole("option", { name: label }));
 
-    await waitFor(() => {
-      const scopedStages = getDatasetStages().filter(
-        (stage) => getFilterOperator(stage, FIELD_IDS.action_id) !== undefined,
-      );
-      // Both the count and the rows are scoped, so the total and the pages agree.
-      expect(
-        scopedStages.map((stage) => [
-          stage.page !== undefined,
-          getFilterOperator(stage, FIELD_IDS.action_id),
-        ]),
-      ).toEqual(
-        expect.arrayContaining([
-          [false, operator],
-          [true, operator],
-        ]),
-      );
+      await waitFor(() => {
+        const scopedStages = getDatasetStages().filter(
+          (stage) =>
+            getFilterOperator(stage, FIELD_IDS.action_id) !== undefined,
+        );
+        // Both the count and the rows are scoped, so the total and the pages agree.
+        expect(
+          scopedStages.map((stage) => [
+            stage.page !== undefined,
+            getFilterOperator(stage, FIELD_IDS.action_id),
+          ]),
+        ).toEqual(
+          expect.arrayContaining([
+            [false, operator],
+            [true, operator],
+          ]),
+        );
+      });
+      await waitFor(() => {
+        expect(router?.location.search).toContain(`type=${type}`);
+      });
+      await waitFor(() => {
+        expect(within(table).queryByText(hiddenApp)).not.toBeInTheDocument();
+      });
+      expect(within(table).getByText(shownApp)).toBeInTheDocument();
+      within(table)
+        .getAllByTestId("data-app-log-row")
+        .forEach((row) => {
+          expect(within(row).getByText(label)).toBeInTheDocument();
+        });
+    },
+  );
+
+  it("clears the entity type, then scopes the log to the selected data app by its slug", async () => {
+    const { router } = setup({
+      initialRoute: `${Urls.monitorAiAuditingDataApps()}?type=action`,
     });
-    await waitFor(() => {
-      expect(router?.location.search).toContain(`type=${type}`);
+
+    const table = await screen.findByRole("treegrid", {
+      name: "Data app activity",
     });
+    expect(await within(table).findByText("unknown-app")).toBeInTheDocument();
+    expect(
+      within(table).queryByText("Product reviews"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("Entity type"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "All entity types" }),
+    );
+    await waitFor(() => {
+      expect(router?.location.search).not.toContain("type=");
+    });
+
+    await userEvent.click(screen.getByLabelText("Data app"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Archive" }),
+    );
+    await waitFor(() => {
+      expect(router?.location.search).toContain("app=store-archive");
+    });
+
+    // The Archive app's only record is a question, so the action scope has to be gone.
+    expect(
+      await within(table).findByText("Archived orders"),
+    ).toBeInTheDocument();
+    const [row, ...otherRows] =
+      within(table).getAllByTestId("data-app-log-row");
+    expect(otherRows).toHaveLength(0);
+    expect(within(row).getByText("Archive")).toBeInTheDocument();
+    expect(within(row).getByText("store-archive")).toBeInTheDocument();
+    const [lastRowsStage] = getRowsStages().slice(-1);
+    expect(
+      getEqualsFilterValues(
+        lastRowsStage ?? {},
+        FIELD_IDS.embedding_client_identifier,
+      ),
+    ).toEqual(["store-archive"]);
+    expect(
+      getFilterOperator(lastRowsStage ?? {}, FIELD_IDS.action_id),
+    ).toBeUndefined();
   });
 
   it("offers the installed apps, disabled ones included, and the removed apps with activity in the date range by their identifier, in sections of their own", async () => {

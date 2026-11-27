@@ -37,7 +37,7 @@
   [input-hash :- :string
    changes    :- ::sql-tools.schema/shadow-difference.changes]
   (t2/update! :model/SqlParsingShadowDifference
-              {:input_hash [:auto/param input-hash]}
+              {:input_hash input-hash}
               (assoc changes
                      :seen_count   [:+ :seen_count 1]
                      :last_seen_at :%now)))

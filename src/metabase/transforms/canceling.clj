@@ -181,7 +181,8 @@
 (task/defjob CancelOldTransformRuns
   "Cancel items that haven't been canceled in two minutes"
   {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
-   :concurrent? false}
+   :concurrent? false
+   :worktree-scope :each}
   [ctx]
   (cancel-old-transform-runs! ctx))
 

@@ -14,7 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (defn- max-id []
-  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0))
+  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [(t2/table-name :model/AuditLog)]})) 0))
 
 (defn- rows-since [before]
   (mapv #(select-keys % [:topic :model :model_id :details])

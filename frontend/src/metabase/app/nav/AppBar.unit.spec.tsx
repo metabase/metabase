@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -7,6 +7,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupDatabasesEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -455,6 +456,96 @@ describe("AppBar official collection breadcrumbs", () => {
   );
 });
 
+const ROOT_COLLECTION = createMockCollection({
+  id: "root",
+  name: "Our analytics",
+});
+
+const CARD_IN_ROOT = createMockCard({ id: 6, collection_id: null });
+
+const CARD_IN_ROOT_DASHBOARD = createMockCard({
+  id: 7,
+  collection_id: null,
+  dashboard_id: 4,
+  dashboard: BAR_DASHBOARD,
+});
+
+describe("AppBar saved question breadcrumbs", () => {
+  const matchMediaSpy = jest.spyOn(window, "matchMedia");
+
+  beforeEach(() => {
+    matchMediaSpy.mockReturnValue(getMediaQuery({ matches: false }));
+  });
+
+  afterEach(() => {
+    matchMediaSpy.mockReset();
+  });
+
+  function getAppBar() {
+    return screen.getByTestId("app-bar");
+  }
+
+  it("links a question in the root collection to the root collection", async () => {
+    const { router } = setup({
+      card: CARD_IN_ROOT,
+      initialRoute: `/question/${CARD_IN_ROOT.id}`,
+      collections: [ROOT_COLLECTION, FOO_COLLECTION],
+      withKBar: true,
+    });
+
+    const rootLink = await within(getAppBar()).findByRole("link", {
+      name: /Our analytics/,
+    });
+
+    await userEvent.click(rootLink);
+    expect(router?.location.pathname).toBe("/collection/root");
+  });
+
+  it("links a question in a non-root collection to its collection", async () => {
+    const { router } = setup({
+      card: CARD_IN_COLLECTION,
+      initialRoute: `/question/${CARD_IN_COLLECTION.id}`,
+      collections: [ROOT_COLLECTION, FOO_COLLECTION],
+      withKBar: true,
+    });
+
+    const collectionLink = await within(getAppBar()).findByRole("link", {
+      name: new RegExp(FOO_COLLECTION.name),
+    });
+
+    await userEvent.click(collectionLink);
+    expect(router?.location.pathname).toBe("/collection/3-foo-collection");
+  });
+
+  it("links a question in a dashboard to its dashboard, and drops the dashboard once you leave the question", async () => {
+    const { router } = setup({
+      card: CARD_IN_ROOT_DASHBOARD,
+      initialRoute: `/question/${CARD_IN_ROOT_DASHBOARD.id}`,
+      collections: [ROOT_COLLECTION, FOO_COLLECTION],
+      withKBar: true,
+    });
+
+    const dashboardLink = await within(getAppBar()).findByRole("link", {
+      name: new RegExp(BAR_DASHBOARD.name),
+    });
+    expect(
+      within(getAppBar()).getByRole("link", { name: /Our analytics/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(dashboardLink);
+
+    expect(router?.location.pathname).toBe("/dashboard/4-bar-dashboard");
+    await waitFor(() =>
+      expect(
+        within(getAppBar()).queryByText(BAR_DASHBOARD.name),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      within(getAppBar()).getByRole("link", { name: /Our analytics/ }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("getSearchResultSelection", () => {
   const indexedEntity = createMockSearchResult({
     id: 42,
@@ -502,6 +593,7 @@ function setup({
   collections = [FOO_COLLECTION],
   tokenFeatures,
   enterprisePlugins,
+  withKBar = false,
 }: {
   embedOptions?: Partial<InteractiveEmbeddingOptions>;
   card?: Card;
@@ -510,6 +602,7 @@ function setup({
   collections?: Collection[];
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  withKBar?: boolean;
 }) {
   const settings = tokenFeatures
     ? mockSettings({
@@ -526,9 +619,12 @@ function setup({
   setupCollectionByIdEndpoint({ collections });
   setupCardEndpoints(card);
   setupDashboardEndpoints(BAR_DASHBOARD);
+  // the "New" button lists databases, and only shows outside embedding
+  setupDatabasesEndpoints([]);
 
   return renderWithProviders(<Route path="*" element={<AppBarContainer />} />, {
     withRouter: true,
+    withKBar,
     initialRoute,
     storeInitialState: {
       app: createMockAppState({ isNavbarOpen: false }),

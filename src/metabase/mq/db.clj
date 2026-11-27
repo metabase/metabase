@@ -3,9 +3,15 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn quartz-table
+  "The Quartz table `table`, upper case on MySQL and lower case elsewhere, as Quartz's schema creates it."
+  [table]
+  (if (= :mysql (mdb/db-type)) table (keyword (u/lower-case-en (name table)))))
 
 (mu/defn waiting-queue-triggers-before
   "The `{:trigger_name :job_name}` rows of `trigger-group` triggers in `sched-name`'s Quartz store that are `WAITING`
@@ -13,11 +19,13 @@
   [sched-name    :- :string
    trigger-group :- :string
    threshold     :- :int]
-  ;; unquoted upper-case `QRTZ_TRIGGERS` resolves on every app DB; see [[metabase.mq.task.queue-reaper]].
-  (t2/query [(str "SELECT trigger_name, job_name FROM QRTZ_TRIGGERS"
-                  " WHERE sched_name = ? AND trigger_group = ? AND trigger_state = 'WAITING'"
-                  " AND start_time < ?")
-             sched-name trigger-group threshold]))
+  (t2/query {:select [:trigger_name :job_name]
+             :from   [(quartz-table :QRTZ_TRIGGERS)]
+             :where  [:and
+                      [:= :sched_name sched-name]
+                      [:= :trigger_group trigger-group]
+                      [:= :trigger_state "WAITING"]
+                      [:< :start_time threshold]]}))
 
 (mu/defn insert-outbox-row!
   "Insert a `queue_message_outbox` row for `queue-name` with `payload` and return its id."

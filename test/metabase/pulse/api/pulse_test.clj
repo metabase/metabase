@@ -84,11 +84,16 @@
     (mt/with-temp [:model/Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; use db/execute! instead of t2/update! so the updated_at field doesn't get automatically updated!
-      (when (seq pulses-or-ids)
-        (t2/query-one {:update :pulse
-                       :set    {:collection_id (u/the-id collection)}
-                       :where  [:in :id (set (map u/the-id pulses-or-ids))]}))
-      (f))))
+      (letfn [(move! [collection-id]
+                (when (seq pulses-or-ids)
+                  (t2/query-one {:update (t2/table-name :model/Pulse)
+                                 :set    {:collection_id collection-id}
+                                 :where  [:in :id (set (map u/the-id pulses-or-ids))]})))]
+        (move! (u/the-id collection))
+        (try
+          (f)
+          (finally
+            (move! nil)))))))
 
 (defmacro ^:private with-pulses-in-nonreadable-collection! [pulses-or-ids & body]
   `(do-with-pulses-in-a-collection! (constantly nil) ~pulses-or-ids (fn [] ~@body)))

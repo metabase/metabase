@@ -965,6 +965,20 @@
                 create-resp))
         (t2/delete! :model/Card :id (:id create-resp))))))
 
+(deftest question-goal-reference-test
+  (testing "A goal reading a missing card is refused when a question is created or updated with it"
+    (mt/with-model-cleanup [:model/Card]
+      (let [query (:query (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                {:query (orders-query :limit 10)}))
+            viz   {:gauge.segments [{:min {:type "card" :id Integer/MAX_VALUE :column "count"} :max 100 :color "red"}]}]
+        (mt/user-http-request :rasta :post 404 "agent/v1/question"
+                              {:name "Agent goal question" :query query :display "gauge" :visualization_settings viz})
+        (is (not (t2/exists? :model/Card :name "Agent goal question")))
+        (let [{card-id :id} (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                  {:name "Agent question without a goal" :query query})]
+          (mt/user-http-request :rasta :put 404 (str "agent/v1/question/" card-id) {:visualization_settings viz})
+          (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id))))))))
+
 (deftest create-question-without-run-permissions-test
   (testing "Returns 403 when caller cannot run the proposed query"
     ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
@@ -1074,6 +1088,24 @@
                                                       :dataset_query (orders-limit-query 5)}]
         (mt/user-http-request :rasta :post 403
                               (format "agent/v1/question/%d/query" card-id))))))
+
+(deftest execute-question-runs-no-goal-queries-test
+  (testing "Running a saved question whose chart reads a dynamic goal runs only the question's own query"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (orders-count-query)}
+                   :model/Card {card-id :id} {:dataset_query          (orders-count-query)
+                                              :display                :progress
+                                              :visualization_settings {:progress.goal {:id     goal-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}]
+      (let [runs          (atom 0)
+            process-query (mt/original-fn #'qp/process-query)]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
+                                                       (swap! runs inc)
+                                                       (apply process-query args))]
+          (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
+            (is (=? {:status "completed" :row_count 1} resp))
+            (is (not (contains? (:data resp) :referenced_entities)))
+            (is (= 1 @runs))))))))
 
 (deftest execute-question-rejects-parameterized-test
   (testing "Refuses a card with a native template-tag variable (400)"
@@ -1773,6 +1805,38 @@
                                 {:dashcards [{:action "add" :card_id card-id}]})
           (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
 
+(deftest update-dashboard-dashcards-add-restricted-goal-card-test
+  (testing "Adding a card to a shared dashboard needs read access to the sources of its goals"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Card {goal-id :id} {:collection_id (:id restricted)
+                                                :dataset_query (orders-count-query)}
+                     :model/Card {card-id :id} {:name          "Orders gauge"
+                                                :dataset_query (orders-count-query)
+                                                :display       :gauge
+                                                :visualization_settings
+                                                {:gauge.segments [{:min   {:type "card" :id goal-id :column "count"}
+                                                                   :max   100
+                                                                   :color "red"}]}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (doseq [[sharing dashboard-props] [["public"   {:public_uuid (str (random-uuid))}]
+                                           ["embedded" {:enable_embedding true}]]]
+          (testing sharing
+            (mt/with-temp [:model/Dashboard {dash-id :id} dashboard-props]
+              (is (re-find #"You don't have permissions to do that\."
+                           (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                                 {:dashcards [{:action "add" :card_id card-id}]})))
+              (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+              (testing "a user who can read the goal source can add it"
+                (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
+                                      {:dashcards [{:action "add" :card_id card-id}]})
+                (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+          (testing "private: the same user can add it"
+            (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+              (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                    {:dashcards [{:action "add" :card_id card-id}]})
+              (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))))
+
 (deftest update-dashboard-dashcards-statements-do-not-grow-with-mutations-test
   (testing "adds to a shared dashboard and removals cost the same number of statements for any number of mutations"
     (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -2451,7 +2515,7 @@
   "Throw an app DB lookup error without leaving the surrounding transaction aborted."
   [& _]
   (t2/with-transaction [_conn]
-    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+    (t2/query {:select [:no_such_column] :from [(t2/table-name :model/Field)]})))
 
 (defn- logs-app-db-error?
   "Whether captured log `messages` include the app DB error that [[reject-app-db-lookup]] causes."

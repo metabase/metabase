@@ -15,7 +15,7 @@
 
 ;; Keep the :metabase-search/appdb-index-size product gauge up to date (per-instance). Skips the work entirely
 ;; unless appdb is a supported engine here, so this is safe to leave registered regardless of which search
-;; engine is in use. The estimate is cheap (no full scan), so it's refreshed roughly once a minute.
+;; engine is in use. Refresh roughly once a minute.
 (defmethod analytics/pull-collector ::index-size [_]
   {:min-interval-s 60
    :f (fn []

@@ -18,7 +18,8 @@
 (methodical/defmethod t2/table-name :model/UserParameterValue [_model] :user_parameter_value)
 
 (doto :model/UserParameterValue
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (defn- json-out
   "A version of `metabase.models.interface/json-out` that does not log a parse error.

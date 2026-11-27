@@ -846,7 +846,7 @@
                         (personal-collection-id))]
     (when validate-query!
       (validate-query! dataset-query))
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (query-perms/check-run-permissions-for-queries [dataset-query])
     (let [card {:name                   card-name
                 :type                   card-type
                 :dataset_query          dataset-query
@@ -855,6 +855,7 @@
                 :collection_id          collection_id
                 :visualization_settings (or visualization_settings {})}]
       (api/create-check :model/Card card)
+      (queries.card/check-new-card-goal-references card)
       (create-card-response
        (t2/with-transaction [_conn]
          (let [[created] (queries.card/create-cards! [(queries.card/new-card-row card api/*current-user-id*)])]
@@ -908,10 +909,11 @@
     ;; target collection. The caller's `api/write-check :model/Card` only covered the source entity.
     ;; The update check asks write on both collections.
     (api/update-check card-before-update card-updates)
+    (queries.card/check-updated-goal-references [[card-before-update card-updates]])
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
+      (query-perms/check-run-permissions-for-queries [(:dataset_query card-updates)]))
     (t2/with-transaction [_conn]
       (collection/maybe-reconcile-collection-position!
        (select-keys card-before-update [:collection_id :collection_position])
@@ -1418,10 +1420,11 @@
                               :added   []
                               :removed []
                               :next-id -1})]
-    ;; A card placed on a shared dashboard exposes its selected timeline events, so the same read check the REST
-    ;; writer applies runs here too.
-    (queries/check-newly-exposed-dashcards-timeline-permissions!
-     dashboard current (into [] (comp (filter (comp #{"add"} :action)) (map #(select-keys % [:card_id]))) mutations))
+    ;; A card placed on a shared dashboard exposes its selected timeline events and its goals, so the same read
+    ;; checks the REST writer applies run here too.
+    (let [added-dashcards (into [] (comp (filter (comp #{"add"} :action)) (map #(select-keys % [:card_id]))) mutations)]
+      (queries/check-newly-exposed-dashcards-timeline-permissions! dashboard current added-dashcards)
+      (queries/check-newly-exposed-dashcards-goal-permissions! dashboard current added-dashcards))
     (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text tab_id] :as mutation}]
             (map-indexed vector mutations)]
       (try

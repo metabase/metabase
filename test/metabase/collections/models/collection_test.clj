@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.impl :as audit]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
@@ -19,6 +20,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -419,7 +421,7 @@
                     :is-data-analyst? (boolean api/*is-data-analyst?*)}
          options   (merge {:root-namespace nil} visibility-config)]
      (cond-> (t2/select-pks-set :model/Collection
-                                {:where (perms/visible-collections-filter-clause :collection.id user-info options)})
+                                {:where (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) user-info options)})
        (seq (t2/query {:select [[[:inline 1] :one]]
                        :from   [[^:allow-subquery {:select [[[:case [:= [:inline 1] [:inline 0]] [:inline 1]] :collection_id]]} :row]]
                        :where  (perms/visible-collections-filter-clause :row.collection_id user-info options)}))
@@ -2460,3 +2462,11 @@
                                      (#'collection/root-collection-permission-at-least? root :read-and-write)])
                          roots)
                    (:values (hydrate 6))))))))))
+
+(deftest worktree-collections-get-no-permissions-test
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (remote-sync/ensure-built-ins!)
+        (let [[{collection-id :id}] (collection/create-collections! [{:name "Test Collection"}])]
+          (is (not (t2/exists? :model/Permissions :collection_id collection-id))))))))
