@@ -384,7 +384,7 @@
     context))
 
 (defn- filter-recents-to-curated
-  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative)."
+  "Keep only recents that are curated (verified, official-collection, or library/published)."
   [recents]
   ;; Delegates to `curation/curated-ids`, the source-of-truth check, so recent-view filtering can't drift from the
   ;; canonical rule and doesn't depend on the search index. A metric needs its own curation signal here, as in search
@@ -409,7 +409,7 @@
   (Excludes collections and documents for now, which aren't searchable by Metabot.)
 
   When the Metabot has `use_verified_content` enabled, filters recents down
-  to curated content (verified, official-collection, library/published, or authoritative) before taking
+  to curated content (verified, official-collection, or library/published) before taking
   the top 5, matching how search filters answer sources.
 
   Skips recents entirely for profiles in [[profiles-excluding-recent-views]]."

@@ -79,8 +79,9 @@
      [:collection_type :text]
      [:root_collection_type :text]
      [:data_layer :text]
-     ;; Unused. Nodes running a version from before 0.66 still read and write it, during a rolling upgrade or
-     ;; after a rollback, so it stays until no supported version does.
+     ;; Unused.
+     ;; Nodes running a version from before 0.66 still read and write it, during a rolling upgrade or after a
+     ;; rollback, so it stays until no supported version does.
      [:data_authority :text]
      ;; Precomputed "verified or curated content" flag — see metabase.collections.curation/curated?
      [:curated :boolean]

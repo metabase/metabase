@@ -310,7 +310,7 @@
     :native-query            {:type :native-query, :context-key :search-native-query}
     :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
     ;; "Verified or curated content" (Metabot). Backed by the precomputed `curated` index column
-    ;; (an OR over verified + official + library/published + authoritative, computed at ingestion),
+    ;; (an OR over verified + official + library/published, computed at ingestion),
     ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
     ;; its feature is present, so the precomputed flag is already feature-correct.
     :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
