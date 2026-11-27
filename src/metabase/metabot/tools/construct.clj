@@ -433,7 +433,7 @@
                      (lib.metadata.protocols/table metadata-provider table-id)
                      (catch Exception _ nil))]
     (when (and (not (false? (:active table)))
-               (not (contains? #{:hidden :technical :cruft} (:visibility-type table))))
+               (not (contains? #{:hidden "hidden"} (:data-layer table))))
       table)))
 
 (def ^:private hidden-field-visibility-types

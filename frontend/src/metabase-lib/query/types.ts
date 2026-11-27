@@ -12,8 +12,8 @@ import type {
   RowValue,
   SchemaId,
   SchemaName,
+  TableDataLayer,
   TableId,
-  TableVisibilityType,
 } from "metabase-types/api";
 
 import type {
@@ -187,7 +187,7 @@ export type TableDisplayInfo = {
   isQuestion?: boolean;
   isModel?: boolean;
   isMetric?: boolean;
-  visibilityType?: TableVisibilityType;
+  dataLayer?: TableDataLayer;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;

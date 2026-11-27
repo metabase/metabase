@@ -538,7 +538,7 @@
   (cond-> (merge (default-display-info query stage-number table)
                  {:is-source-table (= (lib.util/source-table-id query) (:id table))
                   :schema (:schema table)
-                  :visibility-type (:visibility-type table)})
+                  :data-layer (:data-layer table)})
     (:description table) (assoc :description (:description table))))
 
 (mr/def ::column-metadata-with-source
