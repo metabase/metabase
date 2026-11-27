@@ -459,6 +459,27 @@
                    ;; active` *and* inactive tables both have their schemas changed.
                    (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))))))
 
+(deftest ci-probe-61492-multi-level-toggle-keeps-table-ids-test
+  (mt/test-driver :databricks
+    (let [details (get (mt/db) :details)]
+      (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
+        (mt/with-db db
+          (sync/sync-database! (mt/id))
+          (let [venues-id (mt/id :venues)
+                table-ids (t2/select-fn-set :id :model/Table :db_id db-id :active true)]
+            (is (seq table-ids))
+            (doseq [multi-level? [true false]]
+              (testing (str "multi-level-schema " multi-level?)
+                (t2/update! :model/Database :id db-id {:details (assoc details :multi-level-schema multi-level?)})
+                (sync/sync-database! db-id)
+                (is (= table-ids (t2/select-fn-set :id :model/Table :db_id db-id :active true)))
+                (is (= 1 (t2/count :model/Table :db_id db-id :name "venues")))
+                (is (true? (t2/select-one-fn :active :model/Table :id venues-id)))
+                (let [mp (lib.metadata/application-database-metadata-provider db-id)
+                      q  (-> (lib/query mp (lib.metadata/table mp venues-id))
+                             (lib/limit 1))]
+                  (is (= 1 (count (mt/rows (qp/process-query q))))))))))))))
+
 (deftest multi-level-schema-wanted-catalogs-test
   (mt/test-driver :databricks
     (let [details (get (mt/db) :details)
