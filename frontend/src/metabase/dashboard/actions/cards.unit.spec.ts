@@ -19,10 +19,12 @@ import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   CardId,
+  ClickBehavior,
   DashCardId,
   Dashboard,
   DashboardTabId,
   QuestionDashboardCard,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -52,6 +54,7 @@ import {
   duplicateCard,
   removeCardFromDashboard,
   replaceCard,
+  replaceCardWithVisualization,
 } from "./cards-typed";
 import { fetchCardData } from "./data-fetching";
 
@@ -437,6 +440,48 @@ describe("dashboard/actions/cards", () => {
       });
 
       expect(nextDashCard.parameter_mappings).toEqual([]);
+    });
+  });
+
+  describe("replaceCardWithVisualization", () => {
+    it("should keep dashcard click behavior (metabase#84706)", async () => {
+      const clickBehavior: ClickBehavior = {
+        type: "crossfilter",
+        parameterMapping: {},
+      };
+      const dashcard = createMockDashboardCard({
+        ...TABLE_DASHCARD,
+        visualization_settings: {
+          "card.title": "Old title",
+          click_behavior: clickBehavior,
+        },
+      });
+      const visualization: VisualizerVizDefinition = {
+        display: "bar",
+        columnValuesMapping: {
+          COLUMN_1: [
+            {
+              sourceId: `card:${ORDERS_TABLE_CARD.id}`,
+              originalName: "ID",
+              name: "COLUMN_1",
+            },
+          ],
+        },
+        settings: { "card.title": "New title" },
+      };
+      const { store } = setup({
+        dashcards: [dashcard, ...DASHCARDS.slice(1)],
+      });
+      setupDashcardQueryEndpoints(DASHBOARD.id, dashcard, createMockDataset());
+
+      await replaceCardWithVisualization({
+        dashcardId: dashcard.id,
+        visualization,
+      })(store.dispatch, store.getState);
+
+      expect(
+        getDashCardById(store.getState(), dashcard.id).visualization_settings,
+      ).toEqual({ click_behavior: clickBehavior, visualization });
     });
   });
 
