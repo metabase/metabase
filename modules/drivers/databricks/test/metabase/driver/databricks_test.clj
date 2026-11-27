@@ -475,7 +475,7 @@
                 (is (= table-ids (t2/select-fn-set :id :model/Table :db_id db-id :active true)))
                 (is (= 1 (t2/count :model/Table :db_id db-id :name "venues")))
                 (is (true? (t2/select-one-fn :active :model/Table :id venues-id)))
-                (let [mp (lib.metadata/application-database-metadata-provider db-id)
+                (let [mp (lib-be/application-database-metadata-provider db-id)
                       q  (-> (lib/query mp (lib.metadata/table mp venues-id))
                              (lib/limit 1))]
                   (is (= 1 (count (mt/rows (qp/process-query q))))))))))))))
