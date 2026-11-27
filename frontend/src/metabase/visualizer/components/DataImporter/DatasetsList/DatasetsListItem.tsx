@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
-import { Box, Button, Ellipsified, Icon, Tooltip } from "metabase/ui";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Box, Button, Ellipsified, Flex, Icon, Tooltip } from "metabase/ui";
 import type {
   Field,
+  ModerationReviewStatus,
   VisualizationDisplay,
   VisualizerDataSource,
 } from "metabase-types/api";
@@ -13,6 +15,7 @@ export type Item = VisualizerDataSource & {
   notRecommended?: boolean;
   display: VisualizationDisplay | null;
   result_metadata?: Field[];
+  moderated_status?: ModerationReviewStatus;
 };
 
 interface DatasetsListItemProps {
@@ -60,7 +63,15 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         </Box>
       }
     >
-      <Ellipsified>{item.name}</Ellipsified>
+      <Flex align="center" miw={0}>
+        <Ellipsified>{item.name}</Ellipsified>
+        <PLUGIN_MODERATION.ModerationStatusIcon
+          status={item.moderated_status}
+          filled
+          size={14}
+          ml="xs"
+        />
+      </Flex>
     </Button>
   );
 };
