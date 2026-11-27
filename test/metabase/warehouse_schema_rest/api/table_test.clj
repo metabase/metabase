@@ -1223,11 +1223,33 @@
                               {:data_layer "internal"})
         (is (= :internal (user-table-fn :data_layer (u/the-id table))))
         (is (= nil (user-table-fn :visibility_type (u/the-id table)))))
-      (testing "cannot update both visibility_type and data_layer at once"
-        (is (= "Cannot update both visibility_type and data_layer"
+      (testing "cannot update visibility_type and data_layer to values that disagree"
+        (is (= "visibility_type and data_layer must agree: data_layer is hidden exactly when visibility_type is set"
                (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
-                                     {:visibility_type  "hidden"
-                                      :data_layer "hidden"})))))))
+                                     {:visibility_type "hidden"
+                                      :data_layer      "final"}))))
+      (testing "updating both to values that agree stores both"
+        (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                              {:visibility_type "hidden"
+                               :data_layer      "hidden"})
+        (is (= :hidden (user-table-fn :data_layer (u/the-id table))))
+        (is (= :hidden (user-table-fn :visibility_type (u/the-id table))))))))
+
+(deftest update-table-both-visibility-columns-test
+  (mt/with-temp [:model/Table {single :id} {:visibility_type :hidden}
+                 :model/Table {bulk :id}   {:visibility_type :hidden}]
+    (let [state (fn [table-id]
+                  {:table    (t2/select-one-fn (juxt :visibility_type :data_layer) :model/Table :id table-id)
+                   :settings (t2/select-one-fn (juxt :visibility_type :data_layer) :model/TableUserSettings
+                                               :table_id table-id)})]
+      (testing "PUT /api/table/:id stores a visible final pair on the Table and its settings"
+        (is (=? {:visibility_type nil :data_layer "final"}
+                (mt/user-http-request :crowberto :put 200 (format "table/%d" single)
+                                      {:visibility_type nil :data_layer "final"})))
+        (is (= {:table [nil :final] :settings [nil :final]} (state single))))
+      (testing "PUT /api/table stores a visible final pair on the Table and its settings"
+        (mt/user-http-request :crowberto :put 200 "table" {:ids [bulk] :visibility_type nil :data_layer "final"})
+        (is (= {:table [nil :final] :settings [nil :final]} (state bulk)))))))
 
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan-only=true"

@@ -159,7 +159,7 @@
        [:map {:closed true}
         [:data_authority {:optional true} ::data-authorities]
         [:data_source {:optional true} [:maybe ::data-sources]]
-        [:data_layer {:optional true} [:maybe ::data-layers]]
+        [:data_layer {:optional true} ::data-layers]
         [:entity_type {:optional true} [:maybe :string]]
         [:owner_email {:optional true} [:maybe :string]]
         [:owner_user_id {:optional true} [:maybe :int]]]]]

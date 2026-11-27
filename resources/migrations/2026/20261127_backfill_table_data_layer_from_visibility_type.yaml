@@ -1,0 +1,64 @@
+## metabase_table.data_layer takes over from visibility_type as the one column that says whether a Table is hidden.
+## Only updates kept the two in step, so Tables inserted hidden (sync marks cruft Tables on insert) have a
+## non-NULL visibility_type but a data_layer of 'internal'. These changesets make data_layer agree with
+## visibility_type, which is what the application has been reading.
+
+databaseChangeLog:
+  - changeSet:
+      id: i1e0dd
+      author: ranquild
+      comment: Set data_layer to hidden for every Table that has a visibility_type
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = 'hidden'
+              WHERE visibility_type IS NOT NULL
+                AND (data_layer IS NULL OR data_layer <> 'hidden')
+      rollback:
+
+  - changeSet:
+      id: q7m2tb
+      author: ranquild
+      comment: Set data_layer to internal for every visible Table whose data_layer is hidden or missing
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = 'internal'
+              WHERE visibility_type IS NULL
+                AND (data_layer IS NULL OR data_layer = 'hidden')
+      rollback:
+
+  - changeSet:
+      id: w4h8zc
+      author: ranquild
+      comment: Make metabase_table.data_layer NOT NULL now that every row has one
+      changes:
+        - addNotNullConstraint:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultNullValue: internal
+      rollback:
+        - dropNotNullConstraint:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+        - addDefaultValue:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultValue: internal
+
+  - changeSet:
+      id: b9k3yf
+      author: ranquild
+      comment: Reassert the internal default of metabase_table.data_layer, which MySQL drops with the NOT NULL change
+      changes:
+        - addDefaultValue:
+            tableName: metabase_table
+            columnName: data_layer
+            columnDataType: varchar(254)
+            defaultValue: internal
+      rollback:

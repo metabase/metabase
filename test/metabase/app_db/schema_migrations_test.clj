@@ -5655,3 +5655,34 @@
         (is (= {published [true collection-id], unpublished [false nil], plain [false nil]}
                (t2/select-pk->fn (juxt :is_published :collection_id) :metabase_table
                                  :id [:in [published unpublished plain]])))))))
+
+(deftest backfill-table-data-layer-from-visibility-type-test
+  (impl/test-migrations ["i1e0dd" "b9k3yf"] [migrate!]
+    (let [db-id  (t2/insert-returning-pk! :metabase_database {:name       "Data Layer DB"
+                                                              :engine     "h2"
+                                                              :created_at :%now
+                                                              :updated_at :%now
+                                                              :details    "{}"})
+          table! (fn [values]
+                   (t2/insert-returning-pk! :metabase_table (merge {:active     true
+                                                                    :db_id      db-id
+                                                                    :name       (mt/random-name)
+                                                                    :created_at :%now
+                                                                    :updated_at :%now}
+                                                                   values)))
+          rows   {(table! {:visibility_type "cruft" :data_layer "internal"})    "hidden"
+                  (table! {:visibility_type "technical" :data_layer "final"})   "hidden"
+                  (table! {:visibility_type "hidden" :data_layer nil})          "hidden"
+                  (table! {:visibility_type "hidden" :data_layer "hidden"})     "hidden"
+                  (table! {:visibility_type nil :data_layer "hidden"})          "internal"
+                  (table! {:visibility_type nil :data_layer nil})               "internal"
+                  (table! {:visibility_type nil :data_layer "internal"})        "internal"
+                  (table! {:visibility_type nil :data_layer "final"})           "final"}]
+      (migrate!)
+      (is (= rows
+             (t2/select-pk->fn :data_layer :metabase_table :id [:in (keys rows)])))
+      (testing "new row without data_layer gets internal"
+        (is (= "internal"
+               (t2/select-one-fn :data_layer :metabase_table :id (table! {})))))
+      (testing "null data_layer is rejected"
+        (is (thrown? Exception (table! {:data_layer nil})))))))
