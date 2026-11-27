@@ -656,6 +656,44 @@ describe("DataModel (data studio, enterprise)", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should switch between the Fields and Measures tabs", async () => {
+      const tableUrl = `${BASE_PATH}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`;
+      const { getPathname } = setup({ initialRoute: `${tableUrl}/field` });
+
+      const fieldsTab = await screen.findByRole("tab", { name: /Fields/ });
+      expect(fieldsTab).toHaveAttribute("aria-selected", "true");
+      await userEvent.click(screen.getByRole("tab", { name: /Measures/ }));
+
+      await waitFor(() => expect(getPathname()).toBe(`${tableUrl}/measures`));
+      expect(
+        await within(getTableSection()).findByText("No measures yet"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: /Measures/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await userEvent.click(screen.getByRole("tab", { name: /Fields/ }));
+      await waitFor(() => expect(getPathname()).toBe(`${tableUrl}/field`));
+    });
+
+    it("should select the Measures tab when opened at its URL", async () => {
+      setup({
+        initialRoute: `${BASE_PATH}/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Measures/ }),
+      ).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: /Fields/ })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(
+        await within(getTableSection()).findByText("No measures yet"),
+      ).toBeInTheDocument();
+    });
+
     it("should allow changing the table description", async () => {
       const { updates } = setup({
         editableTable: ORDERS_TABLE,
