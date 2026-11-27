@@ -14,6 +14,15 @@
           set
           not-empty))
 
+(defenterprise allowed-email-addresses
+  "Returns the `email-addresses` that the [[subscription-allowed-domains]] Setting allows, which is all of them when it
+  is unset."
+  :feature :email-allow-list
+  [email-addresses]
+  (if-let [allowed-domains (allowed-domains-set)]
+    (filter #(allowed-domains (u/email->domain %)) email-addresses)
+    email-addresses))
+
 (defenterprise validate-email-domains!
   "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting, if set.
   This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the `:email-allow-list` feature."

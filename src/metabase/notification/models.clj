@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -504,6 +505,13 @@
   [_email-addresses]
   nil)
 
+(defenterprise allowed-email-addresses
+  "Returns the `email-addresses` that the [[subscription-allowed-domains]] Setting allows, which is all of them when it
+  is unset or we do not have a premium token with the `:email-allow-list` feature."
+  metabase-enterprise.advanced-config.models.notification
+  [email-addresses]
+  email-addresses)
+
 (defn- validate-raw-value-email-domain!
   "Enforce the `subscription-allowed-domains` allow-list on any write of a raw-value email recipient. Must run on both
   insert and update so no write path (e.g. the unauthenticated unsubscribe-undo endpoint) can skip it."
@@ -631,6 +639,23 @@
            (filter #(= :notification-recipient/raw-value (:type %)))
            (map #(get-in % [:details :value]))
            validate-email-domains!))
+
+(mu/defn remove-disallowed-email-recipients :- [:sequential :map]
+  "Removes the external recipients of email handlers whose addresses [[subscription-allowed-domains]] does not allow."
+  [handlers :- [:maybe [:sequential :map]]]
+  (let [raw-value? #(= :notification-recipient/raw-value (:type %))
+        email?     #(= :channel/email (:channel_type %))
+        addresses  (into [] (comp (filter email?) (mapcat :recipients) (filter raw-value?) (map #(get-in % [:details :value])))
+                         handlers)
+        allowed    (set (allowed-email-addresses addresses))]
+    (when-let [skipped (seq (remove allowed addresses))]
+      (log/warnf "Skipping %d email recipients not allowed by subscription-allowed-domains" (count skipped)))
+    (mapv (fn [handler]
+            (cond-> handler
+              (email? handler)
+              (update :recipients (partial filterv #(or (not (raw-value? %))
+                                                        (allowed (get-in % [:details :value])))))))
+          handlers)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
