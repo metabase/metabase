@@ -379,6 +379,15 @@ describe("TablePicker", () => {
       expect(item(PRIVATE_SCHEMA)).not.toBeInTheDocument();
     });
 
+    it("does not make row text selectable", async () => {
+      setup({ path: {} });
+
+      await waitLoading();
+
+      const label = screen.getByText(DATABASE_WITH_MULTIPLE_SCHEMAS.name);
+      expect(label.closest('[style*="user-select: none"]')).toBeInTheDocument();
+    });
+
     it("flattens schemas with no names", async () => {
       const { onChange } = setup({ path: {} });
 

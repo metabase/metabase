@@ -57,6 +57,11 @@ import {
   transformToTreeTableFormat,
 } from "../utils";
 
+const ROW_STYLES = {
+  treeCell: { userSelect: "none" },
+  cell: { userSelect: "none" },
+} as const;
+
 const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 
 interface Props {
@@ -452,6 +457,7 @@ export function TablePickerTreeTable({
       isChildrenLoading={isChildrenLoading}
       isRowDisabled={isRowDisabled}
       getRowProps={getRowProps}
+      styles={ROW_STYLES}
       ariaLabel={t`Tables`}
     />
   );
