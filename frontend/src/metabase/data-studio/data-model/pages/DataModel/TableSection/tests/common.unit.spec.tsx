@@ -12,15 +12,13 @@ import { createOrdersQuantityField } from "metabase-types/api/mocks/presets";
 import { setup } from "./setup";
 
 describe("TableSection", () => {
-  it("should render the link to explore this table in the query builder", () => {
-    const table = createMockTable();
+  it("should link to table page", () => {
+    const table = createMockTable({ id: 42, display_name: "Order Lines" });
     setup({ table });
 
-    const tableLink = screen.getByLabelText("Go to this table");
-    expect(tableLink).toBeInTheDocument();
-    expect(tableLink).toHaveAttribute(
+    expect(screen.getByLabelText("Go to this table")).toHaveAttribute(
       "href",
-      `/question#?db=${table.db_id}&table=${table.id}`,
+      "/table/42-order-lines",
     );
   });
 

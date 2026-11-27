@@ -312,13 +312,7 @@ const TableSectionBase = ({
 };
 
 function TableLink({ table }: { table: Table }) {
-  const url =
-    Urls.modelToUrl({
-      id: Number(table.id),
-      name: table.name,
-      model: "table",
-      database: { id: table.db_id },
-    }) ?? "#";
+  const url = Urls.table({ id: table.id, name: table.display_name });
 
   return (
     <Tooltip label={t`Go to this table`} position="top">
