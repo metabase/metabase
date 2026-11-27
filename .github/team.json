@@ -58,6 +58,7 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
+      "codeowner": "@metabase/embedding",
       "owns": [
         "embedding SDK",
         "modular embedding",

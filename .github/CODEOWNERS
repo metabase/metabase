@@ -128,11 +128,23 @@ enterprise/backend/src/metabase_enterprise/data_apps.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/data_apps @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/data_apps_test.* @metabase/data-apps
 
+# enterprise/data-studio (Data Apps)
+enterprise/backend/src/metabase_enterprise/data_studio @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/data_studio.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/data_studio @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/data_studio_test.* @metabase/data-apps
+
 # enterprise/dependencies (Data Apps)
 enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
 enterprise/backend/src/metabase_enterprise/dependencies.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/dependencies @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/dependencies_test.* @metabase/data-apps
+
+# enterprise/embedding (Embedding)
+enterprise/backend/src/metabase_enterprise/embedding_hub @metabase/embedding
+enterprise/backend/src/metabase_enterprise/embedding_hub.* @metabase/embedding
+enterprise/backend/test/metabase_enterprise/embedding_hub @metabase/embedding
+enterprise/backend/test/metabase_enterprise/embedding_hub_test.* @metabase/embedding
 
 # enterprise/lint (Verification)
 enterprise/backend/src/metabase_enterprise/lint @metabase/verification
@@ -146,6 +158,12 @@ enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/remote_sync @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/remote_sync_test.* @metabase/data-apps
 
+# enterprise/dependencies.replacement (Data Apps)
+enterprise/backend/src/metabase_enterprise/replacement @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/replacement.* @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/replacement @metabase/data-apps
+enterprise/backend/test/metabase_enterprise/replacement_test.* @metabase/data-apps
+
 # enterprise/search (Metabot)
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot
 enterprise/backend/src/metabase_enterprise/search.* @metabase/metabot
@@ -158,11 +176,83 @@ enterprise/backend/src/metabase_enterprise/serialization.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/serialization @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/serialization_test.* @metabase/data-apps
 
+# enterprise/tenants (Embedding)
+enterprise/backend/src/metabase_enterprise/tenants @metabase/embedding
+enterprise/backend/src/metabase_enterprise/tenants.* @metabase/embedding
+enterprise/backend/test/metabase_enterprise/tenants @metabase/embedding
+enterprise/backend/test/metabase_enterprise/tenants_test.* @metabase/embedding
+
+# sync.analyze (Data Apps)
+src/metabase/analyze @metabase/data-apps
+src/metabase/analyze.* @metabase/data-apps
+test/metabase/analyze @metabase/data-apps
+test/metabase/analyze_test.* @metabase/data-apps
+
+# batch-processing (Data Apps)
+src/metabase/batch_processing @metabase/data-apps
+src/metabase/batch_processing.* @metabase/data-apps
+test/metabase/batch_processing @metabase/data-apps
+test/metabase/batch_processing_test.* @metabase/data-apps
+
 # data-apps (Data Apps)
 src/metabase/data_apps @metabase/data-apps
 src/metabase/data_apps.* @metabase/data-apps
 test/metabase/data_apps @metabase/data-apps
 test/metabase/data_apps_test.* @metabase/data-apps
+
+# data-studio (Data Apps)
+src/metabase/data_studio @metabase/data-apps
+src/metabase/data_studio.* @metabase/data-apps
+test/metabase/data_studio @metabase/data-apps
+test/metabase/data_studio_test.* @metabase/data-apps
+
+# dependencies (Data Apps)
+src/metabase/dependencies @metabase/data-apps
+src/metabase/dependencies.* @metabase/data-apps
+test/metabase/dependencies @metabase/data-apps
+test/metabase/dependencies_test.* @metabase/data-apps
+
+# api.eid-translation (Data Apps)
+src/metabase/eid_translation @metabase/data-apps
+src/metabase/eid_translation.* @metabase/data-apps
+test/metabase/eid_translation @metabase/data-apps
+test/metabase/eid_translation_test.* @metabase/data-apps
+
+# embedding (Embedding)
+src/metabase/embedding @metabase/embedding
+src/metabase/embedding.* @metabase/embedding
+test/metabase/embedding @metabase/embedding
+test/metabase/embedding_test.* @metabase/embedding
+
+# embedding-hub (Embedding)
+src/metabase/embedding_hub @metabase/embedding
+src/metabase/embedding_hub.* @metabase/embedding
+test/metabase/embedding_hub @metabase/embedding
+test/metabase/embedding_hub_test.* @metabase/embedding
+
+# embedding.rest (Embedding)
+src/metabase/embedding_rest @metabase/embedding
+src/metabase/embedding_rest.* @metabase/embedding
+test/metabase/embedding_rest @metabase/embedding
+test/metabase/embedding_rest_test.* @metabase/embedding
+
+# util.graph (Data Apps)
+src/metabase/graph @metabase/data-apps
+src/metabase/graph.* @metabase/data-apps
+test/metabase/graph @metabase/data-apps
+test/metabase/graph_test.* @metabase/data-apps
+
+# public-sharing (Embedding)
+src/metabase/public_sharing @metabase/embedding
+src/metabase/public_sharing.* @metabase/embedding
+test/metabase/public_sharing @metabase/embedding
+test/metabase/public_sharing_test.* @metabase/embedding
+
+# public-sharing.rest (Embedding)
+src/metabase/public_sharing_rest @metabase/embedding
+src/metabase/public_sharing_rest.* @metabase/embedding
+test/metabase/public_sharing_rest @metabase/embedding
+test/metabase/public_sharing_rest_test.* @metabase/embedding
 
 # remote-sync (Data Apps)
 src/metabase/remote_sync @metabase/data-apps
@@ -170,10 +260,40 @@ src/metabase/remote_sync.* @metabase/data-apps
 test/metabase/remote_sync @metabase/data-apps
 test/metabase/remote_sync_test.* @metabase/data-apps
 
+# replacement (Data Apps)
+src/metabase/replacement @metabase/data-apps
+src/metabase/replacement.* @metabase/data-apps
+test/metabase/replacement @metabase/data-apps
+test/metabase/replacement_test.* @metabase/data-apps
+
 # search (Metabot)
 src/metabase/search @metabase/metabot
 src/metabase/search.* @metabase/metabot
 test/metabase/search @metabase/metabot
 test/metabase/search_test.* @metabase/metabot
+
+# serialization (Data Apps)
+src/metabase/serialization @metabase/data-apps
+src/metabase/serialization.* @metabase/data-apps
+test/metabase/serialization @metabase/data-apps
+test/metabase/serialization_test.* @metabase/data-apps
+
+# lib.source-swap (Data Apps)
+src/metabase/source_swap @metabase/data-apps
+src/metabase/source_swap.* @metabase/data-apps
+test/metabase/source_swap @metabase/data-apps
+test/metabase/source_swap_test.* @metabase/data-apps
+
+# sync (Data Apps)
+src/metabase/sync @metabase/data-apps
+src/metabase/sync.* @metabase/data-apps
+test/metabase/sync @metabase/data-apps
+test/metabase/sync_test.* @metabase/data-apps
+
+# users.tenants (Embedding)
+src/metabase/tenants @metabase/embedding
+src/metabase/tenants.* @metabase/embedding
+test/metabase/tenants @metabase/embedding
+test/metabase/tenants_test.* @metabase/embedding
 
 # ===== END generated module ownership =====
