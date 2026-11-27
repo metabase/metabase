@@ -223,6 +223,16 @@
   [stages]
   (count (take-while (complement (comp find-metric-ids :aggregation)) stages)))
 
+(defn- stage-input-source-card
+  "The id of the card whose rows reach the stage at `stage-index` of `stages` without being aggregated, or nil."
+  [stages stage-index]
+  (let [stage (nth stages stage-index)]
+    (or (:qp/stage-had-source-card stage)
+        (when (pos? stage-index)
+          (let [previous-stage (nth stages (dec stage-index))]
+            (when-not (or (:aggregation previous-stage) (:breakout previous-stage))
+              (recur stages (dec stage-index))))))))
+
 (defn- add-join-aliases
   [x source-field->join-alias]
   (match/replace x
@@ -261,7 +271,7 @@
                          (if (and (= (lib/primary-source-table-id query) (lib/primary-source-table-id metric-query))
                                   (or (= (lib/stage-count metric-query) 1)
                                       (= (:qp/stage-had-source-card (last (:stages metric-query)))
-                                         (:qp/stage-had-source-card (lib/query-stage query agg-stage-index)))))
+                                         (stage-input-source-card (:stages query) agg-stage-index))))
                            (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)
                                  lookup (-> lookup
                                             (assoc-in [metric-id :query] metric-query)

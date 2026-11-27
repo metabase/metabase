@@ -828,6 +828,56 @@
                                          0]]]}]}
               (adjust query))))))
 
+(deftest ^:parallel metric-refs-in-second-stage-over-model-test
+  (let [model {:lib/type :metadata/card
+               :id (fresh-card-id meta/metadata-provider)
+               :entity-id (u/generate-nano-id)
+               :database-id (meta/id)
+               :name "Mock Model"
+               :type :model
+               :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :products))}
+        model-mp (lib/composed-metadata-provider
+                  meta/metadata-provider
+                  (lib.tu/mock-metadata-provider {:cards [model]}))
+        rating-col (m/find-first (comp #{"RATING"} :name) (lib/returned-columns (lib/query model-mp model)))
+        metric1 {:lib/type :metadata/card
+                 :id (fresh-card-id model-mp)
+                 :database-id (meta/id)
+                 :name "Mock Metric 1"
+                 :type :metric
+                 :dataset-query (-> model-mp
+                                    (lib/query model)
+                                    (lib/aggregate (lib/avg rating-col)))}
+        metric2 {:lib/type :metadata/card
+                 :id (fresh-card-id model-mp)
+                 :database-id (meta/id)
+                 :name "Mock Metric 2"
+                 :type :metric
+                 :dataset-query (-> model-mp
+                                    (lib/query model)
+                                    (lib/aggregate (lib/count)))}
+        mp (lib/composed-metadata-provider
+            model-mp
+            (lib.tu/mock-metadata-provider {:cards [metric1 metric2]}))
+        metric-ratio (lib// (lib.metadata/metric mp (:id metric1))
+                            (lib.metadata/metric mp (:id metric2)))]
+    (testing "metrics defined on a model can be referenced from a stage after the model stage"
+      (is (=? {:stages [{:source-table (meta/id :products)}
+                        {:qp/stage-had-source-card (:id model)}
+                        {:aggregation [[:/ {} [:avg {} [:field {} "RATING"]] [:count {}]]]}]}
+              (adjust (-> (lib/query mp model)
+                          (lib/append-stage)
+                          (lib/aggregate metric-ratio))))))
+    (testing "metrics defined on a model cannot be referenced from a stage after an aggregation of the model"
+      (let [query (-> (lib/query mp model)
+                      (lib/aggregate (lib/count)))
+            query (-> query
+                      (lib/breakout (m/find-first (comp #{"CATEGORY"} :name) (lib/breakoutable-columns query)))
+                      (lib/append-stage)
+                      (lib/aggregate metric-ratio))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                              (adjust query)))))))
+
 (deftest ^:parallel model-based-metric-with-implicit-join-test
   (let [mp           (mt/metadata-provider)
         model-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
