@@ -148,7 +148,12 @@
     (testing "advisories were last evaluated on this version: waits for the schedule"
       (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
                                          security-center-last-evaluated-version "v1.64.4"]
-        (is (= #{} (run-init! "v1.64.4")))))))
+        (is (= #{} (run-init! "v1.64.4")))))
+    (testing "a build without a version tag: neither re-evaluates nor clears the stored version"
+      (mt/with-temporary-setting-values [security-center-last-synced-at          #t "2026-01-01T00:00:00Z"
+                                         security-center-last-evaluated-version "v1.64.4"]
+        (is (= #{} (run-init! nil)))
+        (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))))
 
 (defn- sync-and-evaluate-on!
   "Run [[sync-advisories/sync-and-evaluate!]] on version `tag`, with fetch and evaluation stubbed."
@@ -164,4 +169,7 @@
     (mt/with-temporary-setting-values [security-center-last-evaluated-version "v1.64.3"]
       (testing "records the running version"
         (sync-and-evaluate-on! "v1.64.4")
+        (is (= "v1.64.4" (settings/security-center-last-evaluated-version))))
+      (testing "a build without a version tag keeps the previous version"
+        (sync-and-evaluate-on! nil)
         (is (= "v1.64.4" (settings/security-center-last-evaluated-version)))))))
