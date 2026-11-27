@@ -36,13 +36,15 @@
   discarded.
 
   * Splice the [[metabase.query-processor.pivot.common/group-bitmask]] into each row in the same position as the pivot
-    column grouping metadata."
+    column grouping metadata.
+
+  Queries without breakouts in their last stage are left alone, the same as on the single-query pivot path."
   [{unremapped-breakout-combination :qp.pivot/unremapped-breakout-combination
     num-remapped-breakouts          :qp.pivot/num-remapped-breakouts
     num-unremapped-breakouts        :qp.pivot/num-unremapped-breakouts
     :as                             _subquery}
    rff]
-  (if-not unremapped-breakout-combination
+  (if-not (and unremapped-breakout-combination (pos? num-unremapped-breakouts))
     rff
     (fn rff' [metadata]
       (let [metadata'     (m/update-existing metadata :cols add-column-grouping-metadata num-remapped-breakouts)
