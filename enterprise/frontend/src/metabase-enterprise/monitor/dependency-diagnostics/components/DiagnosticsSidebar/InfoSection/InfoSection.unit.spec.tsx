@@ -50,6 +50,17 @@ describe("InfoSection", () => {
     expect(screen.getByText("My card description")).toBeInTheDocument();
   });
 
+  it("should render description as markdown", () => {
+    setup({
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          description: "Some **bold** words",
+        }),
+      }),
+    });
+    expect(screen.getByText("bold").tagName).toBe("STRONG");
+  });
+
   it("should display 'No description' when description is empty", () => {
     setup({
       node: createMockCardDependencyNode({

@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
+import { Markdown } from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -50,7 +51,9 @@ export function InfoSection({ node }: InfoSectionProps) {
       {description != null && (
         <InfoSectionItem label={t`Description`}>
           {description.length > 0 ? (
-            <Box className={CS.textWrap}>{description}</Box>
+            <Box className={CS.textWrap}>
+              <Markdown disallowHeading>{description}</Markdown>
+            </Box>
           ) : (
             <Box c="text-secondary">{t`No description`}</Box>
           )}
