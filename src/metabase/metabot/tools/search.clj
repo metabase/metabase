@@ -418,7 +418,8 @@
                             ranked))
         ranked-fn*      (fn [search-engine queries]
                           (let [searches (search.engine/disjunction search-engine queries)
-                                ;; A disjunction either keeps the queries apart or folds them all into one search.
+                                ;; Only the in-place engine folds the queries into one search; every other engine
+                                ;; keeps them apart, so each is searched, scored and prefixed on its own.
                                 covered  (if (= 1 (count searches)) [queries] (map vector queries))]
                             (mapv #(assoc %1 :queries %2) (run-searches ranked-fn search-engine searches) covered)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
