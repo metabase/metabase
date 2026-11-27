@@ -287,6 +287,12 @@ function getDefaultQueriedValues() {
   );
 }
 
+function getDashboardGetCalls() {
+  return fetchMock.callHistory.calls(`path:/api/dashboard/${DASHBOARD_ID}`, {
+    method: "GET",
+  });
+}
+
 function getPutCalls() {
   return fetchMock.callHistory.calls(`path:/api/dashboard/${DASHBOARD_ID}`, {
     method: "PUT",
@@ -350,26 +356,27 @@ async function closeSettingsSidebar() {
 
 async function toggleAutoApply({ from, to }: { from: boolean; to: boolean }) {
   const putCount = getPutCalls().length;
+  const getCount = getDashboardGetCalls().length;
   const sidebar = await openSettingsSidebar();
-  const toggle = within(sidebar).getByLabelText("Auto-apply filters");
-  if (from) {
-    expect(toggle).toBeChecked();
-  } else {
-    expect(toggle).not.toBeChecked();
-  }
-  await userEvent.click(toggle);
+  expect(within(sidebar).getByLabelText("Auto-apply filters")).toHaveProperty(
+    "checked",
+    from,
+  );
+  await userEvent.click(within(sidebar).getByLabelText("Auto-apply filters"));
   await waitFor(() => expect(getPutCalls()).toHaveLength(putCount + 1));
   expect(parseBody(getPutCalls()[putCount].options.body)).toEqual({
     auto_apply_filters: to,
   });
-  await waitFor(() => {
-    const toggle = within(sidebar).getByLabelText("Auto-apply filters");
-    if (to) {
-      expect(toggle).toBeChecked();
-    } else {
-      expect(toggle).not.toBeChecked();
-    }
-  });
+  // the app reloads the dashboard after the update
+  await waitFor(() =>
+    expect(getDashboardGetCalls()).toHaveLength(getCount + 1),
+  );
+  await waitFor(() =>
+    expect(within(sidebar).getByLabelText("Auto-apply filters")).toHaveProperty(
+      "checked",
+      to,
+    ),
+  );
   await closeSettingsSidebar();
 }
 
@@ -611,6 +618,7 @@ describe("DashboardApp > auto-apply filters", () => {
       ),
     );
     await expectCount(53);
+    expect(getDefaultQueriedValues()).toEqual([["Gadget"]]);
     await userEvent.click(
       within(checkToast()).getByRole("button", { name: "Apply" }),
     );
