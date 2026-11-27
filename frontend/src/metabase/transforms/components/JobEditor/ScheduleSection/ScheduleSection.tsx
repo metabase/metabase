@@ -95,7 +95,7 @@ const DEFAULT_SETTINGS: ScheduleBuilderValue = {
 
 function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
   const verb = c("A verb in the imperative mood").t`Run`;
-  const systemTimezone = useSetting("system-timezone") ?? "UTC";
+  const timezone = useSetting("report-timezone-long");
 
   const renderScheduleDescription = (
     value: ScheduleValue,
@@ -110,7 +110,7 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       return null;
     }
 
-    return t`This job will run ${scheduleExplanation}, ${systemTimezone}`;
+    return t`This job will run ${scheduleExplanation}, ${timezone}`;
   };
 
   const value: ScheduleValue =
@@ -133,7 +133,7 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
       value={value}
       scheduleOptions={SCHEDULE_OPTIONS}
       verb={verb}
-      timezone={systemTimezone}
+      timezone={timezone}
       layout="horizontal"
       renderScheduleDescription={renderScheduleDescription}
       data-testid="schedule-picker"

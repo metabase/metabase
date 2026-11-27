@@ -6,6 +6,8 @@ import {
   setupGetTransformJobEndpoint,
   setupRunTransformJobEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformJob } from "metabase-types/api";
 import {
@@ -32,6 +34,52 @@ function setup({ job = createMockTransformJob() }: SetupOpts = {}) {
 }
 
 describe("ScheduleSection", () => {
+  it("shows report timezone instead of system timezone for cron schedule", () => {
+    const job = createMockTransformJob({
+      ui_display_type: "cron/raw",
+      schedule: "0 0 8 * * ? *",
+    });
+    setupGetTransformJobEndpoint(job);
+    renderWithProviders(
+      <ScheduleSection job={job} onScheduleChange={jest.fn()} />,
+      {
+        storeInitialState: createMockState({
+          settings: mockSettings({
+            "system-timezone": "Europe/Paris",
+            "report-timezone-long": "Asia/Tokyo",
+          }),
+        }),
+      },
+    );
+
+    expect(screen.getByText(/This job will run/)).toHaveTextContent(
+      "Asia/Tokyo",
+    );
+  });
+
+  it("shows report timezone instead of system timezone for daily schedule", () => {
+    const job = createMockTransformJob({
+      ui_display_type: "cron/builder",
+      schedule: "0 0 8 * * ? *",
+    });
+    setupGetTransformJobEndpoint(job);
+    renderWithProviders(
+      <ScheduleSection job={job} onScheduleChange={jest.fn()} />,
+      {
+        storeInitialState: createMockState({
+          settings: mockSettings({
+            "system-timezone": "Europe/Paris",
+            "report-timezone-long": "Asia/Tokyo",
+          }),
+        }),
+      },
+    );
+
+    expect(screen.getByLabelText("Your Metabase timezone")).toHaveTextContent(
+      "Asia/Tokyo",
+    );
+  });
+
   it("should allow to change the schedule", async () => {
     const { onScheduleChange } = setup({
       job: createMockTransformJob({ ui_display_type: "cron/raw" }),
