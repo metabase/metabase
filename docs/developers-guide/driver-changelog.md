@@ -107,6 +107,9 @@ summary: Changes to the Metabase driver interface, listed by release.
 - `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends.
   If your driver derives from `:postgres` and overrides the method, extend `:postgres`'s list rather than `:sql-jdbc`'s.
 
+- A table returned by `metabase.driver/describe-database` can no longer have a `:visibility_type` key. No bundled
+  driver set it. Sync hides tables that match the cruft patterns itself.
+
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while

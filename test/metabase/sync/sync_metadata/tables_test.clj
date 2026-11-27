@@ -18,7 +18,6 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
@@ -40,9 +39,9 @@
 (deftest crufty-tables-test
   (testing "south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such"
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-a-crufty-table
-      (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
-               {:name "ACQUIRED_TOUCANS"       :visibility_type nil :initial_sync_status "complete"}}
-             (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
+      (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :data_layer :hidden :initial_sync_status "complete"}
+               {:name "ACQUIRED_TOUCANS"       :data_layer :internal :initial_sync_status "complete"}}
+             (set (for [table (t2/select [:model/Table :name :data_layer :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest transform-temp-tables-are-skipped-without-premium-features
@@ -113,8 +112,8 @@
                                        :settings {:auto-cruft-tables [".*"]}}]
       (run-twice
        (sync-metadata/sync-db-metadata! (:id db))
-       (is (= #{:cruft}
-              (t2/select-fn-set :visibility_type
+       (is (= #{:hidden}
+              (t2/select-fn-set :data_layer
                                 :model/Table
                                 :db_id
                                 (u/the-id db))))))))
@@ -123,36 +122,32 @@
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables [".*"]}}]
-      (let [->tables-info #(t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))]
+      (let [->tables-info #(t2/select-fn-set (juxt :name :data_layer) :model/Table :db_id (u/the-id db))]
         (sync-metadata/sync-db-metadata! (:id db))
         (testing "Observe: the tables are marked as crufty"
-          (is (= #{["employees" :cruft] ["transactions" :cruft]} (->tables-info))))
+          (is (= #{["employees" :hidden] ["transactions" :hidden]} (->tables-info))))
         ;; make employees visible:
-        (t2/update! :model/Table :db_id (u/the-id db) :name "employees" {:visibility_type nil})
+        (t2/update! :model/Table :db_id (u/the-id db) :name "employees" {:data_layer :internal})
         (testing "Observe: employees is visible, but transactions is still crufty"
-          (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))
+          (is (= #{["employees" :internal] ["transactions" :hidden]} (->tables-info))))
         (sync-metadata/sync-db-metadata! (:id db))
         (testing "tables are unchanged after sync"
-          (is (= #{["employees" nil] ["transactions" :cruft]} (->tables-info))))))))
+          (is (= #{["employees" :internal] ["transactions" :hidden]} (->tables-info))))))))
 
-(defn run-auto-cruft-hidden-test! [original-vis-type]
-  (testing (str "Make sure a db's settings.auto-cruft-tables do not unhide " original-vis-type " tables")
+(deftest auto-cruft-no-tables-hidden-test
+  (testing "Make sure a db's settings.auto-cruft-tables do not unhide hidden tables"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
                                        :settings {:auto-cruft-tables []}}]
       (try
         (sync-metadata/sync-db-metadata! (:id db))
-        (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type original-vis-type})
+        (t2/update! :model/Table :db_id (u/the-id db) {:data_layer :hidden})
         (sync-metadata/sync-db-metadata! (:id db))
-        (is (= #{["employees" original-vis-type]
-                 ["transactions" original-vis-type]}
-               (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))
+        (is (= #{["employees" :hidden]
+                 ["transactions" :hidden]}
+               (t2/select-fn-set (juxt :name :data_layer) :model/Table :db_id (u/the-id db))))
         (finally
           (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
             (database/delete-databases! [(:id db)])))))))
-
-(deftest auto-cruft-no-tables-hidden-test
-  (doseq [vis-type (sort table/visibility-types)]
-    (run-auto-cruft-hidden-test! vis-type)))
 
 (deftest auto-cruft-employee-table-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
@@ -161,9 +156,9 @@
       (try
         (run-twice
          (sync-metadata/sync-db-metadata! (:id db))
-         (is (= #{["employees" :cruft]
-                  ["transactions" nil]}
-                (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))
+         (is (= #{["employees" :hidden]
+                  ["transactions" :internal]}
+                (t2/select-fn-set (juxt :name :data_layer) :model/Table :db_id (u/the-id db)))))
         (finally
           (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
             (database/delete-databases! [(:id db)])))))))
@@ -175,9 +170,9 @@
       (try
         (run-twice
          (sync-metadata/sync-db-metadata! (:id db))
-         (is (= #{["employees" :cruft]
-                  ["transactions" nil]}
-                (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))
+         (is (= #{["employees" :hidden]
+                  ["transactions" :internal]}
+                (t2/select-fn-set (juxt :name :data_layer) :model/Table :db_id (u/the-id db)))))
         (finally
           (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
             (database/delete-databases! [(:id db)])))))))
@@ -189,9 +184,9 @@
       (try
         (run-twice
          (sync-metadata/sync-db-metadata! (:id db))
-         (is (= #{["employees" :cruft]
-                  ["transactions" nil]}
-                (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db)))))
+         (is (= #{["employees" :hidden]
+                  ["transactions" :internal]}
+                (t2/select-fn-set (juxt :name :data_layer) :model/Table :db_id (u/the-id db)))))
         (finally
           (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
             (database/delete-databases! [(:id db)])))))))
@@ -341,7 +336,6 @@
                                         :database_require_filter nil
                                         :estimated_row_count     100
                                         :initial_sync_status     "complete"
-                                        :visibility_type         nil
                                         :is_writable             false
                                         :data_authority          :unconfigured}]
       (let [select-cols        (into [:model/Table :id :name :schema :data_authority]
