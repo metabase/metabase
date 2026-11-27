@@ -850,6 +850,26 @@
           (testing "and retires that column in every Table"
             (is (= [4 16] [(:check small) (:check large)]))))))))
 
+(deftest sync-fields-retire-failure-logs-once-test
+  (mt/test-driver :h2
+    (testing "when retiring dropped columns fails, one error is logged for the Table, not one per Field"
+      (do-with-h2-warehouse!
+       "sync_fields_retire_failure" 1
+       (fn [db-id spec]
+         (sync-tables! db-id spec)
+         (sync-fields/sync-fields! (driver.u/lib-database db-id))
+         (doseq [column ["A" "B" "C"]]
+           (jdbc/execute! spec [(format "ALTER TABLE T0 DROP COLUMN %s" column)]))
+         (let [update-fields! (mt/original-fn #'sync.updates/update-fields!)]
+           (mt/with-dynamic-fn-redefs [sync.updates/update-fields! (fn [rows & more]
+                                                                     (if (some #(false? (:active %)) rows)
+                                                                       (throw (java.sql.SQLException. "connection is closed"))
+                                                                       (apply update-fields! rows more)))]
+             (mt/with-log-messages-for-level [messages [metabase.sync.util :warn]]
+               (sync-fields/sync-fields! (driver.u/lib-database db-id))
+               (is (= 1 (count (filter #(re-find #"Error retiring" (:message %)) (messages)))))
+               (is (some #(re-find #"Error retiring 3 Fields" (:message %)) (messages)))))))))))
+
 (deftest sync-reactivated-tables-statement-count-test
   (mt/test-driver :h2
     (testing "syncing Tables that come back issues as many statements for 16 Tables as for 4"
