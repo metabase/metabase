@@ -15,6 +15,7 @@
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.app-db.core :as mdb]
    [metabase.search.query-semantics :as fixtures]
+   [metabase.search.settings :as search.settings]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
@@ -78,8 +79,10 @@
     (search.tu/with-temp-index-table
       (search.tu/index-labelled-documents! docs label->id)
       (let [id->label (set/map-invert label->id)]
-        ;; The production threshold, which these catalogues are always below.
-        (mt/with-temporary-setting-values [semantic-search-min-results-threshold nil]
+        ;; Semantic search falls back to the first other engine, so a configured in-place engine would replace app-db.
+        ;; The threshold is the production default, which these catalogues are always below.
+        (mt/with-temporary-setting-values [search.settings/search-engine          "semantic"
+                                           semantic-search-min-results-threshold nil]
           (testing (str id " semantic with fallback")
             (is (= (fixtures/expected-hits case :semantic-with-fallback)
                    (fallback-hits! query id->label))))
