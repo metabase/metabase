@@ -55,7 +55,7 @@
 
 (defn index-labelled-documents!
   "Insert `docs`, a map from a label to card attributes, into the active app-db search index.
-  Each document is a card with the id `label->id` gives its label."
+  Each document becomes a card, with the id that `label->id` gives its label."
   [docs label->id]
   (#'specialization/batch-upsert!
    (search.index/active-table)

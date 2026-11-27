@@ -73,23 +73,24 @@
 
 (defn- check-fallback!
   "Index `case`'s documents for app-db search too, then check semantic search's complete results."
-  [{:keys [id docs query] :as case} rewrites label->id]
+  [{:keys [id docs query] :as case} rewrites label->id id->label]
   ;; The report models the fallback with PostgreSQL's app-db engine.
   (when (= :postgres (mdb/db-type))
     (search.tu/with-temp-index-table
       (search.tu/index-labelled-documents! docs label->id)
-      (let [id->label (set/map-invert label->id)]
-        ;; Semantic search falls back to the first other engine, so a configured in-place engine would replace app-db.
-        ;; The threshold is the production default, which these catalogues are always below.
-        (mt/with-temporary-setting-values [search.settings/search-engine          "semantic"
-                                           semantic-search-min-results-threshold nil]
-          (testing (str id " semantic with fallback")
-            (is (= (fixtures/expected-hits case :semantic-with-fallback)
-                   (fallback-hits! query id->label))))
-          (doseq [comparison rewrites
-                  :let [{:keys [query hits]} (fixtures/comparison-spec case comparison :semantic-with-fallback)]]
-            (testing (str id " / " (:focus comparison) " semantic with fallback")
-              (is (= hits (fallback-hits! query id->label))))))))))
+      ;; Semantic search falls back to the first other engine.
+      ;; A configured in-place engine would take app-db's place.
+      ;; The threshold is the production default, which these catalogues are always below.
+      (mt/with-temporary-setting-values [search.settings/search-engine         "semantic"
+                                         semantic-search-min-results-threshold nil]
+        (testing (str id " semantic with fallback")
+          (is (= (fixtures/expected-hits case :semantic-with-fallback)
+                 (fallback-hits! query id->label))))
+        (doseq [comparison rewrites
+                :let [{:keys [query hits]} (fixtures/comparison-spec
+                                            case comparison :semantic-with-fallback)]]
+          (testing (str id " / " (:focus comparison) " semantic with fallback")
+            (is (= hits (fallback-hits! query id->label)))))))))
 
 (defn- frozen-embeddings
   "Select the frozen vectors for `inputs`; throws if any is missing."
@@ -135,7 +136,7 @@
              (testing (str id " / " (:focus comparison) " semantic " (name arm) " arm")
                (is (= (set (if (= arm :vector) hits keyword))
                       (sql-arm-hits! index (query-vector query) (search-context query) id->label arm)))))
-           (check-fallback! case rewrites label->id)))))))
+           (check-fallback! case rewrites label->id id->label)))))))
 
 (deftest semantic-query-semantics-test
   (mt/with-premium-features #{:semantic-search}
