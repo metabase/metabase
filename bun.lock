@@ -57,6 +57,7 @@
         "@tiptap/extension-paragraph": "^3.31.3",
         "@tiptap/extension-placeholder": "^3.31.3",
         "@tiptap/extension-text": "^3.31.3",
+        "@tiptap/extensions": "^3.31.3",
         "@tiptap/pm": "^3.31.3",
         "@tiptap/react": "^3.31.3",
         "@tiptap/starter-kit": "^3.31.3",

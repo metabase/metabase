@@ -44,6 +44,7 @@ const knownIssues = [
   "--mantine-spacing-xxs",
   "--mantine-spacing-xxl",
   "--mantine-spacing-xxxl",
+  "--mantine-radius-xxxs",
   "--mantine-radius-xxs",
   "--mantine-shadow-xs_outline",
   "--mantine-shadow-sm_outline",

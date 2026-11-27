@@ -158,6 +158,11 @@ const onboardingPage = () =>
     /* webpackChunkName: "onboarding" */ "metabase/home/components/Onboarding"
   ).then(({ Onboarding }) => ({ Component: Onboarding }));
 
+const filterBarDevPage = () =>
+  import(/* webpackChunkName: "filter-bar-dev" */ "metabase/filter-bar").then(
+    ({ FilterBarDevPage }) => ({ Component: FilterBarDevPage }),
+  );
+
 const searchApp = () =>
   import(
     /* webpackChunkName: "search" */ "metabase/search/containers/SearchApp"
@@ -301,6 +306,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               { path: "search", lazy: searchApp },
+              { path: "_dev/filter-bar", lazy: filterBarDevPage },
               // Send historical /archive route to trash - can remove in v52
               { path: "archive", element: redirect("../trash") },
               { path: "trash", lazy: trashCollectionLanding },

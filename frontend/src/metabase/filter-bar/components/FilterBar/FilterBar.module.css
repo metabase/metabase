@@ -1,0 +1,81 @@
+.editor {
+  --row-height: 2.125rem;
+  --pill-height: 1.625rem;
+
+  flex: 1;
+  min-width: 0;
+
+  & :global(.ProseMirror) {
+    padding: calc((3rem - var(--row-height)) / 2) 0
+      calc((3rem - var(--row-height)) / 2)
+      calc(var(--mantine-spacing-xxl) - var(--mantine-spacing-xxs));
+    outline: none;
+    font-size: 0.875rem;
+    line-height: var(--row-height);
+    caret-color: transparent;
+  }
+
+  & :global(.react-renderer) {
+    display: inline-flex;
+  }
+
+  & :global(.ProseMirror > .react-renderer) {
+    align-items: center;
+    height: var(--row-height);
+    padding: 0 var(--mantine-spacing-xxs);
+    vertical-align: top;
+    pointer-events: none;
+  }
+
+  & :global(.react-renderer) > [data-node-view-wrapper] {
+    display: inline-flex;
+    user-select: none;
+    pointer-events: auto;
+  }
+
+  & [data-hidden] > [data-node-view-wrapper] {
+    width: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  & :global(.ProseMirror:not(.ProseMirror-focused)) .caret,
+  & :global(.ProseMirror:active) .caret {
+    visibility: hidden;
+  }
+}
+
+.caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1lh;
+  vertical-align: top;
+
+  & > [data-caret-frame] {
+    position: absolute;
+    top: 50%;
+    left: var(--mantine-spacing-xxs);
+    width: 0;
+    height: var(--pill-height);
+    transform: translateY(-50%);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 1px;
+    height: 0.875rem;
+    transform: translateY(-50%);
+    background-color: var(--mb-color-icon-primary);
+    animation: blink 1s steps(1) infinite;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

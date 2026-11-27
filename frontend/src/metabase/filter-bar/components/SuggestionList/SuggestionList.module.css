@@ -1,0 +1,27 @@
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.items {
+  overflow-y: auto;
+}
+
+.footer {
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}
+
+.groupIcon {
+  color: var(--mb-color-icon-brand);
+}
+
+.hint {
+  color: var(--mb-color-text-secondary);
+}
+
+.option:hover .groupIcon,
+.option:hover .hint,
+.option[data-combobox-selected="true"] .groupIcon,
+.option[data-combobox-selected="true"] .hint {
+  color: inherit;
+}
