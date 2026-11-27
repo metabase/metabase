@@ -211,9 +211,12 @@ describe("MetabotAgentDataSourcePills", () => {
       ).toHaveLength(1),
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Source is wrong" }),
-    );
+    // The buttons are disabled while the first request is in flight.
+    const wrongButton = await screen.findByRole("button", {
+      name: "Source is wrong",
+    });
+    await waitFor(() => expect(wrongButton).toBeEnabled());
+    await userEvent.click(wrongButton);
 
     await waitFor(() =>
       expect(

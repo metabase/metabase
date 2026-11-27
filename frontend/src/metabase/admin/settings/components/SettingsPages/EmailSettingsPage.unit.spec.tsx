@@ -64,6 +64,12 @@ const setup = async (props: {
   });
 };
 
+// The inputs are disabled while a setting saves.
+const findEnabledInput = async (value: string) => {
+  await waitFor(() => expect(screen.getByDisplayValue(value)).toBeEnabled());
+  return screen.getByDisplayValue(value);
+};
+
 describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
     await setup({});
@@ -97,13 +103,13 @@ describe("EmailSettingsPage", () => {
       await userEvent.click(elementOutside); // blur
     };
 
-    const nameInput = await screen.findByDisplayValue("Metatest");
+    const nameInput = await findEnabledInput("Metatest");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Meta Best");
     await blur();
     await screen.findByDisplayValue("Meta Best");
 
-    const emailInput = await screen.findByDisplayValue("replies@metatest.com");
+    const emailInput = await findEnabledInput("replies@metatest.com");
     await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "support@metatest.com");
     await blur();

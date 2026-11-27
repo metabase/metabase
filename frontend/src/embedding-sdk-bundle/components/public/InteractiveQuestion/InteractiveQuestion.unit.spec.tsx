@@ -403,7 +403,7 @@ describe('questionId: "new"', () => {
     ).toBeVisible();
 
     expect(
-      within(await findDataPickerPopover()).getByRole("link", {
+      await within(await findDataPickerPopover()).findByRole("link", {
         name: "Orders model",
       }),
     ).toBeVisible();
@@ -417,12 +417,12 @@ describe('questionId: "new"', () => {
     ).toBeVisible();
 
     const withinPopover = within(await findDataPickerPopover());
+    expect(await withinPopover.findByText("Raw Data")).toBeVisible();
     expect(
       withinPopover.queryByRole("link", {
         name: "Orders model",
       }),
     ).not.toBeInTheDocument();
-    expect(withinPopover.getByText("Raw Data")).toBeVisible();
     expect(withinPopover.getByText("Models")).toBeVisible();
     expect(withinPopover.getByText("Metrics")).toBeVisible();
   });

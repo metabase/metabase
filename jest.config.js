@@ -121,6 +121,7 @@ const config = {
             ...nodeProject,
             displayName: "harness-compat-dom",
             testEnvironment: baseConfig.testEnvironment,
+            setupFiles: ["<rootDir>/frontend/test/harness-compat/dom-setup.js"],
             testMatch: [
               "<rootDir>/frontend/test/harness-compat/dom-fixtures/**/*.fixture.js",
             ],

@@ -41,6 +41,7 @@ type Worker = {
    */
   projectName: string;
   running: { file: string; since: number } | null;
+  filesRun: string[];
   started: boolean;
 };
 
@@ -118,7 +119,9 @@ export function createPool({
         file,
         durationMs: Date.now() - since,
         result: message.result,
+        earlierFiles: [...worker.filesRun],
       });
+      worker.filesRun.push(file);
       finished();
       return;
     }
@@ -148,7 +151,12 @@ export function createPool({
     if (worker.running) {
       const { file } = worker.running;
       worker.running = null;
-      onFileDone({ file, durationMs: 0, result: crashResult(code) });
+      onFileDone({
+        file,
+        durationMs: 0,
+        result: crashResult(code),
+        earlierFiles: worker.filesRun,
+      });
       finished();
     }
     // A worker that dies before it asks for a file would die again. The
@@ -169,7 +177,12 @@ export function createPool({
   const failQueuedFiles = (code: number | null) => {
     for (const name of projectNames) {
       for (const file of queues[name].splice(0)) {
-        onFileDone({ file, durationMs: 0, result: startupFailureResult(code) });
+        onFileDone({
+          file,
+          durationMs: 0,
+          result: startupFailureResult(code),
+          earlierFiles: [],
+        });
         finished();
       }
     }
@@ -191,6 +204,7 @@ export function createPool({
       child,
       projectName,
       running: null,
+      filesRun: [],
       started: false,
     };
     starting[projectName] += 1;

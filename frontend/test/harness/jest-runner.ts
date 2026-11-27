@@ -179,6 +179,7 @@ export default class HarnessRunner {
     const testsByFile = new Map(tests.map((test) => [test.path, test]));
     const startedAt = new Map<string, number>();
     const callbacks: Promise<void>[] = [];
+    const failedFiles: FileDone[] = [];
 
     const pool = createPool({
       workers: this.#globalConfig.maxWorkers,
@@ -188,6 +189,9 @@ export default class HarnessRunner {
         callbacks.push(onStart(testOf(testsByFile, file)));
       },
       onFileDone: (done) => {
+        if (done.result.failed > 0 || done.result.suiteErrors.length > 0) {
+          failedFiles.push(done);
+        }
         const test = testOf(testsByFile, done.file);
         const start = startedAt.get(done.file) ?? Date.now() - done.durationMs;
         const brokenFile = fileError(done.result.failures);
@@ -212,6 +216,9 @@ export default class HarnessRunner {
       pool.close();
     }
     await Promise.all(callbacks);
+    if (process.env.CI) {
+      failedFiles.forEach(printEarlierFiles);
+    }
   }
 
   #workerEnvironment(): NodeJS.ProcessEnv {
@@ -229,6 +236,23 @@ export default class HarnessRunner {
       ...(process.stdout.isTTY && { FORCE_COLOR: "1" }),
     };
   }
+}
+
+// A failure can come from a file that ran earlier in the same worker. The
+// list is what it takes to reproduce it.
+function printEarlierFiles({ file, earlierFiles }: FileDone): void {
+  if (earlierFiles.length === 0) {
+    return;
+  }
+  const paths = earlierFiles.map((earlier) => path.relative(root, earlier));
+  process.stderr.write(
+    [
+      `::group::${path.relative(root, file)} ran after ${paths.length} files in its worker`,
+      ...paths,
+      "::endgroup::",
+      "",
+    ].join("\n"),
+  );
 }
 
 function runOrder(files: string[], workers: number): string[] {

@@ -203,6 +203,10 @@ function setupEnvironment({ useTenants = true }: SetupEnvironmentOpts = {}) {
 
 const findPicker = () => screen.findByTestId("entity-picker-modal");
 
+// The picker's content fades in, so it is not visible as soon as it mounts.
+const waitForVisibleText = (picker: HTMLElement, text: string) =>
+  waitFor(() => expect(within(picker).getByText(text)).toBeVisible());
+
 const clickItem = async (picker: HTMLElement, name: string) =>
   userEvent.click(await within(picker).findByText(name));
 
@@ -301,13 +305,11 @@ describe("entity picker > shared tenant collections", () => {
       setup();
       const picker = await findPicker();
 
-      expect(await within(picker).findByText("Our analytics")).toBeVisible();
+      await waitForVisibleText(picker, "Our analytics");
       expect(within(picker).getByText(TENANT_ROOT_NAME)).toBeVisible();
 
       await clickItem(picker, TENANT_ROOT_NAME);
-      expect(
-        await within(picker).findByText(TENANT_COLLECTION.name),
-      ).toBeVisible();
+      await waitForVisibleText(picker, TENANT_COLLECTION.name);
       expect(
         within(picker).getByText(OTHER_TENANT_COLLECTION.name),
       ).toBeVisible();
@@ -318,10 +320,8 @@ describe("entity picker > shared tenant collections", () => {
       const picker = await findPicker();
 
       // The root items are computed together, so they are final once one shows.
-      expect(await within(picker).findByText("Our analytics")).toBeVisible();
-      expect(
-        await within(picker).findByText(REGULAR_COLLECTION.name),
-      ).toBeVisible();
+      await waitForVisibleText(picker, "Our analytics");
+      await waitForVisibleText(picker, REGULAR_COLLECTION.name);
       expect(
         within(picker).queryByText(TENANT_ROOT_NAME),
       ).not.toBeInTheDocument();
@@ -356,9 +356,7 @@ describe("entity picker > shared tenant collections", () => {
 
       await searchFor(picker, TENANT_COLLECTION.name);
 
-      expect(
-        await within(picker).findByText(TENANT_COLLECTION.name),
-      ).toBeVisible();
+      await waitForVisibleText(picker, TENANT_COLLECTION.name);
       expect(getLastSearchParams().get("q")).toBe(TENANT_COLLECTION.name);
       expect(getLastSearchParams().getAll("models")).toEqual([
         "collection",
@@ -427,10 +425,8 @@ describe("entity picker > shared tenant collections", () => {
       const { onClose } = setup({ collection: COLLECTION_TO_MOVE });
       const picker = await findPicker();
 
-      expect(await within(picker).findByText("Our analytics")).toBeVisible();
-      expect(
-        await within(picker).findByText(REGULAR_COLLECTION.name),
-      ).toBeVisible();
+      await waitForVisibleText(picker, "Our analytics");
+      await waitForVisibleText(picker, REGULAR_COLLECTION.name);
       expect(
         within(picker).queryByText(TENANT_ROOT_NAME),
       ).not.toBeInTheDocument();
@@ -449,7 +445,7 @@ describe("entity picker > shared tenant collections", () => {
       setup({ collection: TENANT_SUB_COLLECTION });
       const picker = await findPicker();
 
-      expect(await within(picker).findByText(TENANT_ROOT_NAME)).toBeVisible();
+      await waitForVisibleText(picker, TENANT_ROOT_NAME);
       expect(
         within(picker).queryByText("Our analytics"),
       ).not.toBeInTheDocument();
@@ -461,9 +457,7 @@ describe("entity picker > shared tenant collections", () => {
 
       await searchFor(picker, REGULAR_COLLECTION.name);
 
-      expect(
-        await within(picker).findByText(REGULAR_COLLECTION.name),
-      ).toBeVisible();
+      await waitForVisibleText(picker, REGULAR_COLLECTION.name);
       expect(getLastSearchParams().get("q")).toBe(REGULAR_COLLECTION.name);
       expect(getLastSearchParams().getAll("models")).toEqual(["collection"]);
     });

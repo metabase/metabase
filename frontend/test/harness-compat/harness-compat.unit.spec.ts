@@ -30,8 +30,10 @@ type FileSummary = {
 
 const ROOT = path.resolve(__dirname, "../../..");
 const FIXTURES = path.join(__dirname, "fixtures");
+const DOM_FIXTURES = path.join(__dirname, "dom-fixtures");
 const JEST = path.join(ROOT, "node_modules/jest/bin/jest.js");
 const RUNNER = path.join(ROOT, "frontend/test/harness/jest-runner.ts");
+const SEQUENCER = path.join(__dirname, "given-order-sequencer.js");
 const RUN_TIMEOUT_MS = 120_000;
 
 // jest's own runner crashes its worker on these, so it reports only that the
@@ -41,6 +43,10 @@ const FIXTURES_THAT_CRASH_JEST = [
   "immediate-rejection.fixture.js",
 ];
 
+// The node:test runner skips the rest of this file on purpose. React stays
+// loaded in its worker, so the next tests could not render.
+const FIXTURE_THAT_LEAVES_REACT_STUCK = "react-stuck.fixture.js";
+
 describe("the node:test runner", () => {
   it(
     "reports the same results as jest's own runner",
@@ -48,7 +54,10 @@ describe("the node:test runner", () => {
       const jest = summarize(runJest("jest", ["--ci"]));
       const harness = summarize(runJest("harness", ["--ci"]));
 
-      for (const file of FIXTURES_THAT_CRASH_JEST) {
+      for (const file of [
+        ...FIXTURES_THAT_CRASH_JEST,
+        FIXTURE_THAT_LEAVES_REACT_STUCK,
+      ]) {
         expect([jest[file].status, harness[file].status]).toEqual([
           "failed",
           "failed",
@@ -60,6 +69,54 @@ describe("the node:test runner", () => {
       // The fixture that runs last in the worker passes, so no error left
       // an earlier file.
       expect(harness["z.fixture.js"].status).toBe("passed");
+    },
+    RUN_TIMEOUT_MS,
+  );
+
+  it.each([
+    {
+      fixture: FIXTURE_THAT_LEAVES_REACT_STUCK,
+      tests: {
+        "leaves React inside a commit": "failed",
+        "is skipped, because React cannot render": "pending",
+        "a later block is skipped too": "pending",
+      },
+    },
+    {
+      fixture: "react-stuck-in-after-all.fixture.js",
+      tests: {
+        "passes before its afterAll hook leaves React stuck": "passed",
+      },
+    },
+  ])(
+    "runs the next file in a new worker after $fixture leaves React stuck",
+    ({ fixture, tests }) => {
+      const files = [fixture, "after-react-stuck.fixture.js"];
+      const paths = files.map((file) => path.join(DOM_FIXTURES, file));
+      const runLog = path.join(
+        os.tmpdir(),
+        `harness-compat-runs-${process.pid}-${Date.now()}.log`,
+      );
+      try {
+        const results = summarize(
+          runJest("harness", [`--testSequencer=${SEQUENCER}`, ...paths], {
+            HARNESS_COMPAT_ORDER: JSON.stringify(paths),
+            HARNESS_COMPAT_RUN_LOG: runLog,
+          }),
+        );
+        const runs = fs
+          .readFileSync(runLog, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => line.split(" "));
+
+        expect(results[fixture]).toEqual({ status: "failed", tests });
+        expect(results["after-react-stuck.fixture.js"].status).toBe("passed");
+        expect(runs.map(([file]) => file)).toEqual(files);
+        expect(runs[1][1]).not.toBe(runs[0][1]);
+      } finally {
+        fs.rmSync(runLog, { force: true });
+      }
     },
     RUN_TIMEOUT_MS,
   );
@@ -128,7 +185,11 @@ describe("the node:test runner", () => {
 // so it uses its workers. The node:test runner gets one worker for each
 // project, so that a file that changes shared state runs before the file that
 // checks it. jest runs the larger file first.
-function runJest(runner: Runner, args: string[]): JestJson {
+function runJest(
+  runner: Runner,
+  args: string[],
+  environment: NodeJS.ProcessEnv = {},
+): JestJson {
   const outputFile = path.join(
     os.tmpdir(),
     `harness-compat-${process.pid}-${runner}-${Date.now()}.json`,
@@ -149,7 +210,14 @@ function runJest(runner: Runner, args: string[]): JestJson {
       "--json",
       `--outputFile=${outputFile}`,
     ],
-    { cwd: ROOT, env: cleanEnvironment(), timeout: RUN_TIMEOUT_MS },
+    {
+      cwd: ROOT,
+      env: { ...cleanEnvironment(), ...environment },
+      // The results come from the output file. The printed output can pass
+      // spawnSync's buffer limit.
+      stdio: "ignore",
+      timeout: RUN_TIMEOUT_MS,
+    },
   );
   if (error) {
     throw error;
