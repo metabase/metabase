@@ -11,6 +11,7 @@ import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { ActionIcon, Flex, Icon, Indicator, Tooltip } from "metabase/ui";
 import { isSmallScreen } from "metabase/utils/dom";
+import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -150,7 +151,13 @@ function OverflowToggle({
   });
 
   return (
-    <Indicator size={8} offset={7} disabled={!isCollapsed || activeCount === 0}>
+    <Indicator
+      // Hidden but still taking its space, so exports keep the layout they measured
+      className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
+      size={8}
+      offset={7}
+      disabled={!isCollapsed || activeCount === 0}
+    >
       <Tooltip label={label}>
         <ActionIcon
           variant="subtle"
@@ -178,9 +185,19 @@ function getOverflowToggleLabel({
     return t`Show fewer filters`;
   }
   if (activeCount > 0) {
-    return c("{1} is how many of the hidden filters have a value").ngettext(
-      msgid`Show ${hiddenCount} more filter (${activeCount} active)`,
-      `Show ${hiddenCount} more filters (${activeCount} active)`,
+    // Separate, so each count picks its own plural form
+    const activeLabel = c(
+      "{0} is how many of the hidden filters have a value",
+    ).ngettext(
+      msgid`${activeCount} active`,
+      `${activeCount} active`,
+      activeCount,
+    );
+    return c(
+      "{1} is a phrase like '2 active', for the hidden filters that have a value",
+    ).ngettext(
+      msgid`Show ${hiddenCount} more filter (${activeLabel})`,
+      `Show ${hiddenCount} more filters (${activeLabel})`,
       hiddenCount,
     );
   }

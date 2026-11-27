@@ -1,6 +1,8 @@
 import { type RefObject, useLayoutEffect, useState } from "react";
 import _ from "underscore";
 
+import resizeObserver from "metabase/utils/resize-observer";
+
 export interface ListItemWidths {
   itemWidths: number[];
   availableWidth: number;
@@ -26,7 +28,7 @@ export function useListItemWidths({
   const [measurement, setMeasurement] = useState<ListItemWidths | null>(null);
   const measuredItemCount = measurement?.itemWidths.length;
 
-  // `measuredItemCount` re-subscribes once the items render, which can be after the list
+  // `measuredItemCount` measures again before paint once the items render, which can be after the list
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!isEnabled || !list) {
@@ -42,14 +44,29 @@ export function useListItemWidths({
     };
     measure();
 
-    if (typeof ResizeObserver === "undefined") {
-      return;
-    }
     // Widgets resize as their values change, and the list as the window does
-    const observer = new ResizeObserver(measure);
-    observer.observe(list);
-    Array.from(list.children).forEach((child) => observer.observe(child));
-    return () => observer.disconnect();
+    let observedElements: Element[] = [];
+    const unobserveAll = () =>
+      observedElements.forEach((element) =>
+        resizeObserver.unsubscribe(element, measure),
+      );
+    const observeListAndItems = () => {
+      unobserveAll();
+      observedElements = [list, ...Array.from(list.children)];
+      observedElements.forEach((element) =>
+        resizeObserver.subscribe(element, measure),
+      );
+    };
+    observeListAndItems();
+
+    // Widgets can be swapped for others without their count changing, like on a tab switch
+    const mutationObserver = new MutationObserver(observeListAndItems);
+    mutationObserver.observe(list, { childList: true });
+
+    return () => {
+      mutationObserver.disconnect();
+      unobserveAll();
+    };
   }, [listRef, itemCount, isEnabled, measuredItemCount]);
 
   return measurement;
