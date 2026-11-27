@@ -157,7 +157,8 @@
 (defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks.
-  The scheduler is a global-system component, so halting the system stops it too."
+  The scheduler is a global-system component, so halting the system stops it too.
+  Throws if there is no scheduler and the global system has halted, until [[system/reopen!]]."
   []
   (classloader/the-classloader)
   ;; one start at a time, which [[system/start!]] ensures: Quartz hands every caller the same default scheduler, so two
