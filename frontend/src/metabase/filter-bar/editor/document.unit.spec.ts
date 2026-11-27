@@ -63,11 +63,11 @@ describe("document", () => {
       AND,
       B,
     ]);
-    editPillAt(1, A);
+    editPillAt(0, A);
     const newA = pillToken("new A", createTestPill("A"));
     replacePillTokens(editor, [[newA, AND, B]]);
     expect(getStages()[0][0]).toBe(newA);
-    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    editor.commands.setTextSelection(editor.state.doc.content.size);
     expect(findDraft()).toBeNull();
     expect(getStages()).toEqual([[newA, AND, B]]);
   });
@@ -116,7 +116,7 @@ describe("document", () => {
         OR,
         B,
       ]);
-      editPillAt(1, A);
+      editPillAt(0, A);
       normalizeDocument(editor);
       expect(findDraft()).toBeNull();
       expect(getStages()).toEqual([[A, OR, B]]);
@@ -124,10 +124,10 @@ describe("document", () => {
   });
 
   it.each([
+    { pos: 0, stage: 0 },
     { pos: 1, stage: 0 },
-    { pos: 2, stage: 0 },
+    { pos: 2, stage: 1 },
     { pos: 3, stage: 1 },
-    { pos: 4, stage: 1 },
   ])("finds stage $stage at $pos", ({ pos, stage }) => {
     const { editor } = createTestEditor([A], [B]);
     expect(getStageAt(editor.state.doc, pos)).toBe(stage);
@@ -135,7 +135,7 @@ describe("document", () => {
 
   it("replaces the pill at the position with the placed one", () => {
     const { editor, getStages } = createTestEditor([A, AND, B]);
-    placePillAt(editor, 1, C, 0);
+    placePillAt(editor, 0, C, 0);
     expect(getStages()).toEqual([[C, AND, B]]);
   });
 });

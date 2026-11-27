@@ -32,6 +32,7 @@ export type {
 export { isDraftNode } from "./nodes/types";
 export {
   createColumnNode,
+  createDocumentNode,
   createConnectorNode,
   createDraftInputNode,
   createDraftNode,

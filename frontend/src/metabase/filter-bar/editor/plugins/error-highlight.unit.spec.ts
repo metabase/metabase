@@ -40,9 +40,9 @@ describe("error highlight", () => {
   });
 
   it.each([
-    { stages: [[A, AND]], stage: 0, positions: [2] },
-    { stages: [[A], [B, OR]], stage: 1, positions: [4] },
-    { stages: [[A], [OPEN, CLOSE]], stage: 1, positions: [3, 4] },
+    { stages: [[A, AND]], stage: 0, positions: [1] },
+    { stages: [[A], [B, OR]], stage: 1, positions: [3] },
+    { stages: [[A], [OPEN, CLOSE]], stage: 1, positions: [2, 3] },
   ])("highlights $positions in $stages", ({ stages, stage, positions }) => {
     const { editor } = setup(...stages);
     expect(highlightErrors(editor)).toMatchObject({ stageIndex: stage });
@@ -52,8 +52,8 @@ describe("error highlight", () => {
   it("moves the highlight with the document edits", () => {
     const { editor } = setup([A, AND]);
     highlightErrors(editor);
-    editor.commands.insertContentAt(1, pillContent(B));
-    expect(getErrorPositions(editor)).toEqual([3]);
+    editor.commands.insertContentAt(0, pillContent(B));
+    expect(getErrorPositions(editor)).toEqual([2]);
   });
 
   it("tells an error decoration from the others", () => {

@@ -4,12 +4,10 @@ import { Plugin, TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
 const placeCaretFromBlank = (view: EditorView, event: MouseEvent) => {
-  const line = view.dom.firstElementChild;
-  const isBlank = event.target === view.dom || event.target === line;
-  if (!isBlank || !line) {
+  if (event.target !== view.dom) {
     return false;
   }
-  const rect = line.getBoundingClientRect();
+  const rect = view.dom.getBoundingClientRect();
   const result = view.posAtCoords({
     left: clamp(event.clientX, rect.left, rect.right),
     top: clamp(event.clientY, rect.top + 1, rect.bottom - 1),

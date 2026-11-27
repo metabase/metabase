@@ -47,7 +47,7 @@ describe("filter bar keys", () => {
       placeCaret(2);
       press("Backspace");
       expect(getStages()).toEqual([[A], [B]]);
-      expect(editor.state.selection.from).toBe(2);
+      expect(editor.state.selection.from).toBe(1);
     });
 
     it("moves the caret after then instead of removing it on Delete", () => {
@@ -58,7 +58,7 @@ describe("filter bar keys", () => {
       placeCaret(1);
       press("Delete");
       expect(getStages()).toEqual([[A], [B]]);
-      expect(editor.state.selection.from).toBe(3);
+      expect(editor.state.selection.from).toBe(2);
     });
 
     it("removes a paren without its pair", () => {
@@ -110,14 +110,14 @@ describe("filter bar keys", () => {
       const { editor, placeCaret, press } = createTestEditor([A, OR, B]);
       placeCaret(2);
       press("Home");
-      expect(editor.state.selection.from).toBe(1);
+      expect(editor.state.selection.from).toBe(0);
     });
 
     it("moves the caret to the end on End", () => {
       const { editor, placeCaret, press } = createTestEditor([A, OR, B]);
       placeCaret(1);
       press("End");
-      expect(editor.state.selection.from).toBe(4);
+      expect(editor.state.selection.from).toBe(3);
     });
   });
 
@@ -139,7 +139,7 @@ describe("filter bar keys", () => {
         press("Enter");
         expect(getStages()).toEqual([[A, to, B, OR, C]]);
         expect(editor.state.selection).toBeInstanceOf(NodeSelection);
-        expect(editor.state.selection).toMatchObject({ from: 2, to: 3 });
+        expect(editor.state.selection).toMatchObject({ from: 1, to: 2 });
       },
     );
 
@@ -152,9 +152,9 @@ describe("filter bar keys", () => {
 
     it("adds no new line on Enter at the caret", () => {
       const { editor, getStages, press } = createTestEditor([A, OR, B]);
-      editor.commands.setTextSelection(2);
+      editor.commands.setTextSelection(1);
       expect(press("Enter")).toBe(true);
-      expect(editor.state.doc.childCount).toBe(1);
+      expect(editor.state.doc.childCount).toBe(3);
       expect(getStages()).toEqual([[A, OR, B]]);
     });
   });

@@ -56,6 +56,6 @@ describe("parens", () => {
     placeCaret(2);
     type(")");
     expect(getStages()).toEqual([[OPEN, A, CLOSE]]);
-    expect(editor.state.selection.from).toBe(4);
+    expect(editor.state.selection.from).toBe(3);
   });
 });

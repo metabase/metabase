@@ -1,6 +1,4 @@
 import { type AnyExtension, Editor, findChildren } from "@tiptap/core";
-import Document from "@tiptap/extension-document";
-import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 
 import type { PillToken, Token } from "../model";
@@ -17,6 +15,7 @@ import { findDraftAt } from "./draft/read";
 import {
   createColumnNode,
   createConnectorNode,
+  createDocumentNode,
   createDraftInputNode,
   createDraftNode,
   createOperatorNode,
@@ -50,8 +49,7 @@ export const createTestEditorWith = <F = string>(
 ) => {
   const editor = new Editor({
     extensions: [
-      Document,
-      Paragraph,
+      createDocumentNode(),
       Text,
       createPillNode(),
       createConnectorNode(),
@@ -76,10 +74,9 @@ export const createTestEditorWith = <F = string>(
 
   const getStages = () => documentToTokens<F>(editor.state.doc);
 
-  const placeCaret = (gap: number) => editor.commands.setTextSelection(1 + gap);
+  const placeCaret = (gap: number) => editor.commands.setTextSelection(gap);
 
-  const selectNode = (index: number) =>
-    editor.commands.setNodeSelection(1 + index);
+  const selectNode = (index: number) => editor.commands.setNodeSelection(index);
 
   const press = (key: string, modifiers: KeyModifiers = {}) =>
     Boolean(

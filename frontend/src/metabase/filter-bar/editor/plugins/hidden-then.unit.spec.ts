@@ -36,13 +36,13 @@ describe("hidden then", () => {
 
   it("shows a then after a row filter that is being edited", () => {
     const { editor, editPillAt } = createTestEditor([A], [B]);
-    editPillAt(1, A);
+    editPillAt(0, A);
     expect(countHidden(editor)).toBe(0);
   });
 
   it("shows the then of a stage with only a draft in it", () => {
     const { editor } = createTestEditor([A], []);
-    insertDraft(editor, { from: 3, to: 3 }, draftContent("co"), 1);
+    insertDraft(editor, { from: 2, to: 2 }, draftContent("co"), 1);
     expect(countHidden(editor)).toBe(0);
   });
 });

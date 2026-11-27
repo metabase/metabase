@@ -68,7 +68,7 @@ const IS_EMPTY: FilterOperator = {
 const mockPill = (filter: MockFilter) =>
   pillToken(filter, MOCK_ADAPTER.stage(0).toPill(filter));
 
-const START = { from: 1, to: 1 };
+const START = { from: 0, to: 0 };
 
 const setup = (
   column: FilterColumn,
@@ -109,7 +109,7 @@ describe("createDraftActions", () => {
       const filter = mockFilter("status", "is-empty");
       const { editor, actions, findDraft, getStages, press } =
         setupPill(filter);
-      actions.editPill(editor, 1);
+      actions.editPill(editor, 0);
       press("Enter");
       expect(findDraft()).toBeNull();
       expect(getStages()).toEqual([[mockPill(filter)]]);
@@ -253,7 +253,7 @@ describe("createDraftActions", () => {
       expect(openFilterEditor).toHaveBeenCalledWith({
         type: "new",
         column: CREATED_AT,
-        pos: 1,
+        pos: 0,
         targetStage: 0,
       });
     });
@@ -262,7 +262,7 @@ describe("createDraftActions", () => {
       const { editor, actions, read } = setupPill(
         mockFilter("subtotal", "=", "1", "2"),
       );
-      actions.editPill(editor, 1, "column");
+      actions.editPill(editor, 0, "column");
       actions.pickColumn(editor, START, ID, 0);
       expect(read()).toMatchObject({
         step: "value",
@@ -276,7 +276,7 @@ describe("createDraftActions", () => {
       const { editor, actions, read } = setupPill(
         mockFilter("subtotal", "between", "1", "2"),
       );
-      actions.editPill(editor, 1, "column");
+      actions.editPill(editor, 0, "column");
       actions.pickColumn(editor, START, STATUS, 0);
       expect(read()).toMatchObject({
         step: "operator",
@@ -295,7 +295,7 @@ describe("createDraftActions", () => {
       const { editor, actions, read } = setupPill(
         mockFilter("subtotal", "=", "1", "2"),
       );
-      actions.editPill(editor, 1, "operator");
+      actions.editPill(editor, 0, "operator");
       actions.pickOperator(editor, START, operator);
       expect(read()).toMatchObject({ step: "value", values });
     });
@@ -314,12 +314,12 @@ describe("createDraftActions", () => {
       const filter = mockSegment("Active users");
       const { editor, actions, findDraft, openFilterEditor } =
         setupPill(filter);
-      expect(actions.editPill(editor, 1)).toBe(true);
+      expect(actions.editPill(editor, 0)).toBe(true);
       expect(findDraft()).toBeNull();
       expect(openFilterEditor).toHaveBeenCalledWith({
         type: "edit",
         filter,
-        pos: 1,
+        pos: 0,
         targetStage: 0,
       });
     });
@@ -330,7 +330,7 @@ describe("createDraftActions", () => {
         const { editor, actions, read } = setupPill(
           mockFilter("subtotal", "=", "1"),
         );
-        actions.editPill(editor, 1, step);
+        actions.editPill(editor, 0, step);
         expect(read()).toMatchObject({ step });
       },
     );

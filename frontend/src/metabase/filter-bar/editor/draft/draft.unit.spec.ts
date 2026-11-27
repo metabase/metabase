@@ -55,7 +55,7 @@ const setupPillDraft = (
   const operatorPart = toOperatorPart(operator);
   insertPillDraft(
     editor,
-    { from: 2, to: 2 },
+    { from: 1, to: 1 },
     pill("C"),
     { column: COLUMN_PART, operator: operatorPart, values },
     "value",
@@ -76,8 +76,8 @@ describe("draft", () => {
         2,
         "st",
       );
-      expect(findDraft()).toEqual({ pos: 3, text: "st" });
-      expect(editor.state.selection.from).toBe(7);
+      expect(findDraft()).toEqual({ pos: 2, text: "st" });
+      expect(editor.state.selection.from).toBe(6);
       expect(getStages()).toEqual([[A, AND, B]]);
     });
 
@@ -101,7 +101,7 @@ describe("draft", () => {
       const { editor, getStages, findDraft } = createWithDraft([A], 1, text);
       expect(findDraft()).toBeNull();
       expect(getStages()).toEqual([[A, boolOp]]);
-      expect(editor.state.selection.from).toBe(3);
+      expect(editor.state.selection.from).toBe(2);
     });
 
     it.each([
@@ -115,7 +115,7 @@ describe("draft", () => {
       );
       expect(findDraft()).toBeNull();
       expect(getStages()).toEqual([[A, boolOp, B]]);
-      expect(editor.state.selection.from).toBe(3);
+      expect(editor.state.selection.from).toBe(2);
     });
 
     it("keeps other text, even a word that ends with and / or", () => {
@@ -129,38 +129,38 @@ describe("draft", () => {
       const { editor, findDraft, press } = createWithDraft([A], 1, "st");
       press("Home");
       expect(findDraft()?.text).toBe("st");
-      expect(editor.state.selection.from).toBe(4);
+      expect(editor.state.selection.from).toBe(3);
     });
 
     it("moves the caret to the end of the draft on End", () => {
       const { editor, findDraft, press } = createWithDraft([A], 1, "st");
-      editor.commands.setTextSelection(4);
+      editor.commands.setTextSelection(3);
       press("End");
       expect(findDraft()?.text).toBe("st");
-      expect(editor.state.selection.from).toBe(6);
+      expect(editor.state.selection.from).toBe(5);
     });
   });
 
   describe("leaving", () => {
     it("removes the draft when the caret leaves it", () => {
       const { editor, findDraft } = createWithDraft([A, AND, B], 2, "x");
-      editor.commands.setTextSelection(1);
+      editor.commands.setTextSelection(0);
       expect(findDraft()).toBeNull();
     });
 
     it("selects the token before on ← at its start", () => {
       const { editor, findDraft, press } = createWithDraft([A, AND, B], 2, "x");
-      editor.commands.setTextSelection(5);
+      editor.commands.setTextSelection(4);
       press("ArrowLeft");
       expect(findDraft()).toBeNull();
-      expect(editor.state.selection).toMatchObject({ from: 2, to: 3 });
+      expect(editor.state.selection).toMatchObject({ from: 1, to: 2 });
     });
 
     it("selects the token after on → at its end", () => {
       const { editor, findDraft, press } = createWithDraft([A, AND, B], 2, "x");
       press("ArrowRight");
       expect(findDraft()).toBeNull();
-      expect(editor.state.selection).toMatchObject({ from: 3, to: 4 });
+      expect(editor.state.selection).toMatchObject({ from: 2, to: 3 });
     });
 
     it("removes the draft on Escape", () => {
@@ -172,7 +172,7 @@ describe("draft", () => {
 
     it("removes the draft once its text is gone", () => {
       const { editor, findDraft } = createWithDraft([A], 1, "x");
-      editor.commands.deleteRange({ from: 4, to: 5 });
+      editor.commands.deleteRange({ from: 3, to: 4 });
       expect(findDraft()).toBeNull();
     });
   });
@@ -182,7 +182,7 @@ describe("draft", () => {
       const { editor, placeCaret } = createTestEditor([A, AND, B]);
       placeCaret(2);
       expect(findPartStep(editor.state.selection.$from)).toEqual({
-        range: { from: 3, to: 3 },
+        range: { from: 2, to: 2 },
         query: "",
         text: "",
       });
@@ -191,7 +191,7 @@ describe("draft", () => {
     it("matches the whole draft with its text as the query", () => {
       const { editor } = createWithDraft([A], 1, "st");
       expect(findPartStep(editor.state.selection.$from)).toMatchObject({
-        range: { from: 2, to: 8 },
+        range: { from: 1, to: 7 },
         query: "st",
       });
     });
@@ -200,13 +200,13 @@ describe("draft", () => {
       const { editor, type } = createTestEditor([A]);
       insertDraft(
         editor,
-        { from: 2, to: 2 },
+        { from: 1, to: 1 },
         columnDraftContent(COLUMN_PART),
         0,
       );
       type("is");
       expect(findPartStep(editor.state.selection.$from)).toMatchObject({
-        range: { from: 2, to: 9 },
+        range: { from: 1, to: 8 },
         query: "is",
       });
     });
@@ -215,7 +215,7 @@ describe("draft", () => {
       const { editor, getCaretDraft } = createTestEditor([A]);
       insertDraft(
         editor,
-        { from: 2, to: 2 },
+        { from: 1, to: 1 },
         columnDraftContent(COLUMN_PART),
         0,
       );
@@ -232,7 +232,7 @@ describe("draft", () => {
       const { editor, press } = setupPillDraft(LIST, ["a"]);
       press("ArrowLeft");
       expect(findPartStep(editor.state.selection.$from)).toEqual({
-        range: { from: 2, to: 6 },
+        range: { from: 1, to: 5 },
         query: "",
         text: "",
       });
@@ -244,19 +244,19 @@ describe("draft", () => {
       const { editor, findDraft } = createWithDraft([A], 1, "st");
       insertDraft(
         editor,
-        { from: 2, to: 8 },
+        { from: 1, to: 7 },
         columnDraftContent(COLUMN_PART),
         0,
       );
-      expect(findDraft()).toEqual({ pos: 2, text: "" });
-      expect(editor.state.selection.from).toBe(5);
+      expect(findDraft()).toEqual({ pos: 1, text: "" });
+      expect(editor.state.selection.from).toBe(4);
     });
 
     it("keeps and / or as text after the column", () => {
       const { editor, type, findDraft } = createTestEditor([A]);
       insertDraft(
         editor,
-        { from: 2, to: 2 },
+        { from: 1, to: 1 },
         columnDraftContent(COLUMN_PART),
         0,
       );
@@ -268,7 +268,7 @@ describe("draft", () => {
       const { editor, press, findDraft } = createTestEditor([A]);
       insertDraft(
         editor,
-        { from: 2, to: 2 },
+        { from: 1, to: 1 },
         columnDraftContent(COLUMN_PART),
         0,
       );
@@ -480,7 +480,7 @@ describe("draft", () => {
       const testEditor = createTestEditor([A, AND, B]);
       insertPillDraft(
         testEditor.editor,
-        { from: 1, to: 2 },
+        { from: 0, to: 1 },
         A,
         { column: COLUMN_PART, operator: toOperatorPart(LIST), values: [] },
         "value",
@@ -495,7 +495,7 @@ describe("draft", () => {
 
     it("puts the pill back when the caret leaves", () => {
       const { editor, getStages, findDraft } = editA();
-      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.commands.setTextSelection(editor.state.doc.content.size);
       expect(findDraft()).toBeNull();
       expect(getStages()).toEqual([[A, AND, B]]);
     });

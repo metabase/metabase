@@ -1,4 +1,5 @@
 import { type JSONContent, Node, type NodeConfig } from "@tiptap/core";
+import Document from "@tiptap/extension-document";
 import type { Node as PmNode } from "@tiptap/pm/model";
 
 import type { ConnectorToken, PillToken } from "../../model";
@@ -21,6 +22,8 @@ const ATOM: Partial<NodeConfig> = {
   // unmounts) and throws without it.
   renderHTML: () => ["span"],
 };
+
+export const createDocumentNode = () => Document.extend({ content: "inline*" });
 
 const createAtom = (type: NodeName, config: Partial<NodeConfig> = {}) =>
   Node.create({ ...ATOM, ...config, name: type });

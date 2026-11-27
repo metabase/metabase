@@ -10,10 +10,6 @@
       calc((3rem - var(--row-height)) / 2)
       calc(var(--mantine-spacing-xxl) - var(--mantine-spacing-xxs));
     outline: none;
-  }
-
-  & :global(.ProseMirror p) {
-    margin: 0;
     font-size: 0.875rem;
     line-height: var(--row-height);
     caret-color: transparent;
@@ -23,7 +19,7 @@
     display: inline-flex;
   }
 
-  & :global(.ProseMirror p > .react-renderer) {
+  & :global(.ProseMirror > .react-renderer) {
     align-items: center;
     height: var(--row-height);
     padding: 0 var(--mantine-spacing-xxs);

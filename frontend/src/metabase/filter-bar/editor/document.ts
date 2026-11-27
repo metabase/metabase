@@ -45,15 +45,10 @@ const tokenToNode = <F>(token: Token<F>): JSONContent =>
 
 export const tokensToContent = <F>(stages: TokenStages<F>): JSONContent => ({
   type: "doc",
-  content: [
-    {
-      type: "paragraph",
-      content: join(
-        stages.map((tokens) => tokens.map(tokenToNode)),
-        thenContent,
-      ),
-    },
-  ],
+  content: join(
+    stages.map((tokens) => tokens.map(tokenToNode)),
+    thenContent,
+  ),
 });
 
 const nodeToToken = <F>(node: PmNode): Token<F> | null =>
@@ -97,7 +92,7 @@ const findStageEnd = (doc: PmNode, stage: number) => {
   const next = thens.at(stage);
   return next
     ? { pos: next.pos, missingThens: 0 }
-    : { pos: doc.content.size - 1, missingThens: stage - thens.length };
+    : { pos: doc.content.size, missingThens: stage - thens.length };
 };
 
 export const insertAtStage = (

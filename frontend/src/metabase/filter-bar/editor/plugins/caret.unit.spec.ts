@@ -5,9 +5,7 @@ const A = pill("A");
 const B = pill("B");
 
 const findCaretIndex = (dom: HTMLElement) =>
-  [...(dom.querySelector("p")?.children ?? [])].findIndex((child) =>
-    child.matches(".caret"),
-  );
+  [...dom.children].findIndex((child) => child.matches(".caret"));
 
 describe("caret", () => {
   it("is drawn at the caret position", () => {
