@@ -60,25 +60,6 @@ export function selectFilterValueFromList(
 }
 
 /**
- * Applies filter value by filter type
- *
- * @param {string} filter
- * @param {string} value
- */
-
-export function applyFilterByType(
-  filter,
-  value,
-  { buttonLabel = "Add filter", search = false } = {},
-) {
-  if (["Is", "Is not"].includes(filter)) {
-    selectFilterValueFromList(value, { buttonLabel, search });
-  } else {
-    addWidgetStringFilter(value, { buttonLabel });
-  }
-}
-
-/**
  * Adds default string filter value when the filter is marked as required.
  *
  * @param {string} value
