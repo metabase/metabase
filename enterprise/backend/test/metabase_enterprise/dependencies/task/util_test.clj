@@ -1,11 +1,13 @@
 (ns metabase-enterprise.dependencies.task.util-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.task.core :as task]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (java.util Date)
    (java.util.concurrent.locks ReentrantLock)
@@ -127,3 +129,68 @@
       (is (not= ::timed-out (deref drain 10000 ::timed-out)))
       (is (not= ::timed-out (deref scheduled 10000 ::timed-out)))
       (is (= [:drain :scheduled :drain :drain] @events)))))
+
+(def ^:private ^:dynamic *bound* nil)
+
+(deftest map-in-parallel-test
+  (testing "returns each call's value in order, calling them on several threads in the caller's bindings"
+    (let [threads (atom #{})]
+      (is (= [:a :a :a :a]
+             (binding [*bound* :a]
+               (task.util/map-in-parallel 4
+                                          (fn [_]
+                                            (swap! threads conj (Thread/currentThread))
+                                            (Thread/sleep 50)
+                                            *bound*)
+                                          (range 4)))))
+      (is (< 1 (count @threads)))))
+  (testing "calls each one on the caller's thread inside a transaction"
+    (let [threads (atom #{})]
+      (t2/with-transaction [_]
+        (task.util/map-in-parallel 4 (fn [_] (swap! threads conj (Thread/currentThread))) (range 4)))
+      (is (= #{(Thread/currentThread)} @threads)))))
+
+(deftest map-in-parallel-rethrows-earliest-test
+  (testing "rethrows what the earliest element's call threw, even when a later one threw first"
+    (is (thrown-with-msg? Exception #"first"
+                          (task.util/map-in-parallel 4
+                                                     (fn [x]
+                                                       (case x
+                                                         1 (do (Thread/sleep 100) (throw (Exception. "first")))
+                                                         2 (throw (Exception. "second"))
+                                                         x))
+                                                     [0 1 2])))))
+
+(deftest map-in-parallel-waits-for-running-calls-test
+  (testing "returns only once a call that ignores the interrupt has finished"
+    (let [finished? (atom false)]
+      (is (thrown? Exception
+                   (task.util/map-in-parallel 2
+                                              (fn [x]
+                                                (if (= x :slow)
+                                                  (let [until (+ (System/currentTimeMillis) 300)]
+                                                    (while (< (System/currentTimeMillis) until))
+                                                    (reset! finished? true))
+                                                  (throw (Exception. "boom"))))
+                                              [:slow :fail])))
+      (is @finished?))))
+
+(deftest compute-in-parallel-test
+  (testing "returns the non-nil values in order, then hands each failure to on-failure! on the caller's thread, in order"
+    (let [failures (atom [])]
+      (is (= [0 4]
+             (task.util/compute-in-parallel (fn [x]
+                                              (case x
+                                                (1 3) (throw (ex-info "failed" {:x x}))
+                                                2     nil
+                                                x))
+                                            (fn [x e]
+                                              (swap! failures conj [x (:x (ex-data e)) (Thread/currentThread)]))
+                                            (range 5))))
+      (is (= [[1 1 (Thread/currentThread)] [3 3 (Thread/currentThread)]] @failures)))))
+
+(deftest dependency-job-threads-at-least-one-test
+  (testing "a dependency-job-threads setting that isn't positive means one thread"
+    (doseq [threads ["0" "-1"]]
+      (mt/with-temp-env-var-value! [mb-dependency-job-threads threads]
+        (is (= 1 (deps.settings/dependency-job-threads)))))))

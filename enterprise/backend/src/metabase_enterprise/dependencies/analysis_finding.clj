@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -147,14 +148,13 @@
                                                                     (record-failed-finding! entity-type entity-id e)
                                                                     (record-analysis-failure! entity-type entity-id)))
                       analyses (into {}
-                                     (keep (fn [entity]
-                                             (try
-                                               (let [analyzed (analyze-entity entity)]
-                                                 [(:entity-id analyzed) (:analysis analyzed)])
-                                               (catch Throwable e
-                                                 (handle-analysis-failure! entity-type (:id entity) e)
-                                                 nil))))
-                                     entities)]
+                                     (task.util/compute-in-parallel
+                                      (fn [entity]
+                                        (let [analyzed (analyze-entity entity)]
+                                          [(:entity-id analyzed) (:analysis analyzed)]))
+                                      (fn [entity e]
+                                        (handle-analysis-failure! entity-type (:id entity) e))
+                                      entities))]
                 :when (seq analyses)]
           (try
             (store-analyses-and-clear! entity-type stale analyses)

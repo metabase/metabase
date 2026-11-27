@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]))
+   [metabase.settings.core :as setting :refer [defsetting]]))
 
 (defsetting dependency-backfill-batch-size
   "The number of entities that the dependency job will process per run."
@@ -76,6 +76,16 @@
   :default    30
   :setter     :none
   :export?    false)
+
+(defsetting dependency-job-threads
+  "How many entities of a batch each dependency job computes at the same time, at least 1. Each one can use an
+  application database connection, in addition to the one the job uses."
+  :visibility :internal
+  :type       :integer
+  :default    4
+  :setter     :none
+  :export?    false
+  :getter     #(max 1 (setting/get-value-of-type :integer :dependency-job-threads)))
 
 (defsetting dependency-max-failures
   "How many times in a row a dependency job fails to process an entity before it gives up on it until a write changes

@@ -838,11 +838,13 @@
   (testing "re-deriving cards of one table through inference runs no more app DB statements per extra card"
     (with-dependencies-feature
       (let [infer (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))]
-        (rederive-statement-count! 2 infer)
-        ;; fewer than one per extra card rather than none, since a write from an earlier test can land during the
-        ;; batch; one cache per card runs about 5
-        (is (> 30 (- (:count (rederive-statement-count! 40 infer))
-                     (:count (rederive-statement-count! 10 infer)))))))))
+        ;; on one thread, since threads that miss the shared cache together each read the table
+        (mt/with-temp-env-var-value! [mb-dependency-job-threads 1]
+          (rederive-statement-count! 2 infer)
+          ;; fewer than one per extra card rather than none, since a write from an earlier test can land during the
+          ;; batch; one cache per card runs about 5
+          (is (> 30 (- (:count (rederive-statement-count! 40 infer))
+                       (:count (rederive-statement-count! 10 infer))))))))))
 
 (deftest unreadable-card-fails-alone-in-batch-test
   (testing "a card the job can't read counts one failure, and the rest of its batch is re-derived"

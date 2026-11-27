@@ -145,18 +145,16 @@
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (let [computed (into []
-                           (keep (fn [entity]
-                                   (try
-                                     (log/debug "Computing dependencies for" type-name (:id entity))
-                                     [entity (deps.calculation/calculate-deps entity-type entity)]
-                                     (catch Throwable e
-                                       (handle-failure! entity-type (:id entity) e)
-                                       nil))))
-                           (when (seq statuses)
-                             (dependencies.db/readable-entities #(hydrated-entities entity-type %)
-                                                                (set (keys stale))
-                                                                #(record-failure! entity-type %1 %2))))]
+      (let [computed (task.util/compute-in-parallel
+                      (fn [entity]
+                        (log/debug "Computing dependencies for" type-name (:id entity))
+                        [entity (deps.calculation/calculate-deps entity-type entity)])
+                      (fn [entity e]
+                        (handle-failure! entity-type (:id entity) e))
+                      (when (seq statuses)
+                        (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                           (set (keys stale))
+                                                           #(record-failure! entity-type %1 %2))))]
         (when (seq computed)
           (try
             (store-and-clear! entity-type stale computed)
