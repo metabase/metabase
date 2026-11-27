@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import {
   useMetabotAgent,
@@ -13,20 +13,20 @@ function MetabotNewRoute() {
   const { submitInput } = useMetabotAgent("omnibot");
   const prompt = searchParams.get("q") ?? "";
   const navigate = useNavigate();
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
-    if (isLoading || hasSubmitted) {
+    if (isLoading || hasRedirectedRef.current) {
       return;
     }
 
+    hasRedirectedRef.current = true;
     navigate("/", { replace: true });
 
     if (prompt && canUseMetabot) {
       void submitInput(prompt, { focusInput: true });
-      setHasSubmitted(true);
     }
-  }, [isLoading, canUseMetabot, prompt, submitInput, hasSubmitted, navigate]);
+  }, [isLoading, canUseMetabot, prompt, submitInput, navigate]);
 
   return <Loader m="5rem auto" display="block" size="xl" />;
 }
