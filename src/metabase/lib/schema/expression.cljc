@@ -145,19 +145,19 @@
               (type-of? % base-type)))]])
 
 (mr/def ::boolean
-  (expression-schema :type/Boolean #(i18n/tru "a boolean")
+  (expression-schema :type/Boolean #(i18n/tru "true or false")
                      "an expression returning a boolean"))
 
 (mr/def ::string
-  (expression-schema :type/Text #(i18n/tru "a string")
+  (expression-schema :type/Text #(i18n/tru "text")
                      "an expression returning a string"))
 
 (mr/def ::integer
-  (expression-schema :type/Integer #(i18n/tru "an integer")
+  (expression-schema :type/Integer #(i18n/tru "a whole number")
                      "an expression returning an integer"))
 
 (mr/def ::non-integer-real
-  (expression-schema :type/Float #(i18n/tru "a non-integer real number")
+  (expression-schema :type/Float #(i18n/tru "a decimal number")
                      "an expression returning a non-integer real number"))
 
 (mr/def ::number
@@ -173,11 +173,11 @@
                      "an expression returning a time"))
 
 (mr/def ::datetime
-  (expression-schema :type/DateTime #(i18n/tru "a date time")
+  (expression-schema :type/DateTime #(i18n/tru "a date and time")
                      "an expression returning a date time"))
 
 (mr/def ::temporal
-  (expression-schema :type/Temporal #(i18n/tru "a temporal value")
+  (expression-schema :type/Temporal #(i18n/tru "a date or time")
                      "an expression returning a temporal value"))
 
 (def orderable-types
@@ -185,7 +185,7 @@
   #{:type/Text :type/Number :type/Temporal :type/Boolean :type/MongoBSONID})
 
 (mr/def ::orderable
-  (expression-schema orderable-types #(i18n/tru "an orderable type (e.g. number, string, temporal)")
+  (expression-schema orderable-types #(i18n/tru "a number, text or date")
                      "an expression returning an orderable type (e.g. number, string, temporal)"))
 
 (defn comparable-expressions?

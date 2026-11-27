@@ -1,0 +1,20 @@
+.closeIcon {
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+/* A long name ends with an ellipsis, so that the pill fits in its cell. */
+.pill {
+  max-width: 100%;
+
+  > * {
+    min-width: 0;
+  }
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}

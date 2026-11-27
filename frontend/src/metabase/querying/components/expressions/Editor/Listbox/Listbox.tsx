@@ -12,30 +12,46 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { c } from "ttag";
 
 import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
-import type { ExpressionSuggestion } from "metabase/querying/expressions";
-import { Box, DelayGroup, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
+import {
+  type ExpressionSuggestion,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
+import { DelayGroup, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
+
+import { FUNCTION_ICONS } from "../../ExpressionSidePanel/content";
+import { SIDE_PANEL_ICONS } from "../../ExpressionSidePanel/icons";
 
 import S from "./Listbox.module.css";
 import { MatchText } from "./MatchText";
 import { useCompletions } from "./util";
+
+type DescriptionOptions = {
+  database: Pick<Database, "engine" | "features"> | undefined;
+  reportTimezone?: string;
+};
+
 export function Listbox({
   state,
   view,
   query,
   stageIndex,
+  database,
+  reportTimezone,
+  heading,
   className,
 }: {
   state: EditorState;
   view: EditorView;
   query: Lib.Query;
   stageIndex: number;
+  /** Shown above the options, like the description of the current argument. */
+  heading?: string;
   className?: string;
-}) {
+} & DescriptionOptions) {
   const { options, selectedOption } = useCompletions(state);
 
   const onCompletionClick = useCallback(
@@ -58,22 +74,37 @@ export function Listbox({
 
   return (
     <>
+      {heading && <div className={S.heading}>{heading}</div>}
       <ul role="listbox" className={cx(S.listbox, className)}>
         <DelayGroup>
           {options.map((completion, index) => (
-            <CompletionItem
-              key={completion.displayLabel ?? completion.label}
-              completion={completion}
-              index={index}
-              selected={selectedOption === index}
-              onCompletionClick={onCompletionClick}
-              query={query}
-              stageIndex={stageIndex}
-            />
+            <Fragment key={completion.displayLabel ?? completion.label}>
+              {completion.heading != null && (
+                <li role="presentation" className={S.section}>
+                  {completion.heading}
+                </li>
+              )}
+              {completion.type === "empty" ? (
+                // No column of the type the function takes: nothing to pick.
+                <li role="presentation" className={S.empty}>
+                  {completion.displayLabel}
+                </li>
+              ) : (
+                <CompletionItem
+                  completion={completion}
+                  index={index}
+                  selected={selectedOption === index}
+                  onCompletionClick={onCompletionClick}
+                  query={query}
+                  stageIndex={stageIndex}
+                  database={database}
+                  reportTimezone={reportTimezone}
+                />
+              )}
+            </Fragment>
           ))}
         </DelayGroup>
       </ul>
-      <Footer />
     </>
   );
 }
@@ -85,6 +116,8 @@ function CompletionItem({
   index,
   query,
   stageIndex,
+  database,
+  reportTimezone,
 }: {
   completion: ExpressionSuggestion;
   index: number;
@@ -92,7 +125,7 @@ function CompletionItem({
   selected: boolean;
   query: Lib.Query;
   stageIndex: number;
-}) {
+} & DescriptionOptions) {
   const ref = useRef<HTMLLIElement>(null);
   const handleMouseDown = useCallback(
     (evt: MouseEvent<HTMLLIElement>) => {
@@ -113,6 +146,13 @@ function CompletionItem({
     });
   }, [selected]);
 
+  const column =
+    completion.column != null
+      ? getColumnParts(query, stageIndex, completion, completion.column)
+      : null;
+  const description =
+    column?.source ?? getDescription(completion, { database, reportTimezone });
+
   return (
     <li
       ref={ref}
@@ -121,48 +161,91 @@ function CompletionItem({
       onMouseDown={handleMouseDown}
       className={S.item}
     >
-      {completion.column && (
-        <QueryColumnInfoIcon
-          query={query}
-          stageIndex={stageIndex}
-          column={completion.column}
-          position="top"
-          className={S.icon}
-        />
+      <span
+        className={cx(S.name, {
+          [S.withDescription]: description,
+          [S.columnName]: column != null,
+        })}
+      >
+        {completion.column ? (
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={stageIndex}
+            column={completion.column}
+            position="top"
+            className={cx(S.icon, S.columnIcon)}
+          />
+        ) : (
+          <CompletionIcon completion={completion} />
+        )}
+        <span className={S.label}>
+          <MatchText
+            text={column?.name ?? completion.displayLabel ?? completion.label}
+            ranges={column?.matches ?? completion.matches}
+          />
+          {completion.clauseName != null && (
+            <span className={S.parens}>()</span>
+          )}
+        </span>
+      </span>
+      {description && <span className={S.description}>{description}</span>}
+      {completion.hint != null && (
+        <span className={S.hint}>{completion.hint}</span>
       )}
-      {!completion.column && <Icon name={completion.icon} className={S.icon} />}
-      <MatchText
-        text={completion.displayLabel ?? completion.label}
-        ranges={completion.matches}
-      />
     </li>
   );
 }
 
-function Footer() {
-  return (
-    <Box className={S.footer}>
-      {c(
-        "{0} is an icon representing the up and down arrows on a keyboard. {1} is an icon representing the Enter key",
-      ).jt`${(
-        <Fragment key="updown">
-          <KeyIcon name="arrow_up" key="arrow_up" />
-          <KeyIcon name="arrow_down" key="arrow_down" />
-        </Fragment>
-      )} to navigate. ${(
-        <Fragment key="select">
-          <span key="space" />
-          <KeyIcon name="enter_or_return" key="enter_or_return" />
-        </Fragment>
-      )} to select.`}
-    </Box>
-  );
+function CompletionIcon({ completion }: { completion: ExpressionSuggestion }) {
+  if (completion.clauseName != null) {
+    const name = completion.displayLabel ?? completion.label;
+    const FunctionIcon =
+      SIDE_PANEL_ICONS[FUNCTION_ICONS[name] ?? "function-general"];
+    return <FunctionIcon className={cx(S.icon, S.functionIcon)} aria-hidden />;
+  }
+  return <Icon name={completion.icon} className={S.icon} />;
 }
 
-function KeyIcon({ name }: { name: IconName }) {
-  return (
-    <span className={S.key}>
-      <Icon name={name} width={12} height={12} />
-    </span>
+const SEPARATOR = " → ";
+
+/**
+ * The name of a column without the name of its join or table, which shows
+ * on the right, like in "Full Name   Customer".
+ */
+function getColumnParts(
+  query: Lib.Query,
+  stageIndex: number,
+  completion: ExpressionSuggestion,
+  column: Lib.ColumnMetadata,
+) {
+  const label = completion.displayLabel ?? completion.label;
+  const index = label.lastIndexOf(SEPARATOR);
+  const name = index >= 0 ? label.slice(index + SEPARATOR.length) : label;
+  const source =
+    index >= 0
+      ? label.slice(0, index)
+      : Lib.displayInfo(query, stageIndex, column).table?.displayName;
+  // The matches are in the full label.
+  const offset = label.length - name.length;
+  const matches = completion.matches?.flatMap(
+    ([from, to]): [number, number][] =>
+      to < offset ? [] : [[Math.max(0, from - offset), to - offset]],
   );
+  return { name, source, matches };
+}
+
+/** The first sentence of a function's description, as plain text. */
+function getDescription(
+  completion: ExpressionSuggestion,
+  { database, reportTimezone }: DescriptionOptions,
+) {
+  const clause =
+    completion.clauseName != null
+      ? getClauseDefinition(completion.clauseName)
+      : undefined;
+  const description = clause?.description?.(database ?? {}, reportTimezone);
+  return description
+    ?.split(/(?<=\.)\s/)[0]
+    .replace(/[`$]/g, "")
+    .trim();
 }

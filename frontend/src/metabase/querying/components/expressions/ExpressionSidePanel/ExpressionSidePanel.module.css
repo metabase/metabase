@@ -1,0 +1,317 @@
+/* The whole panel. Its 360px width is SIDEBAR_WIDTH in ExpressionSidebarSlot.tsx */
+.panel {
+  position: relative;
+  height: 100%;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+/* The list, and a function's page over it. The list stays mounted, and
+   hidden, under the page. */
+.page,
+.detailPage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.page[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.detailPage {
+  position: absolute;
+  inset: 0;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+/* Top row: "List of expressions" (or the back button and the function's
+   name) and the close button */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--mantine-spacing-xl);
+}
+
+/* The back button and the function's name, 16px apart */
+.headerStart {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-lg);
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: 0.17px;
+  color: var(--mb-color-text-primary);
+}
+
+/* The search and the Functions / Snippets switch, which stay put while the
+   list scrolls */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  padding: 0 var(--mantine-spacing-xl);
+}
+
+/* Everything below the switch. The list scrolls up to 16px under the switch,
+   and starts 32px below that: 48px in all. */
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--mantine-spacing-lg);
+}
+
+.scrollContent {
+  padding-top: var(--mantine-spacing-xxl);
+}
+
+/* The grey band between sections, 32px from the rows on either side */
+.divider {
+  height: 8px;
+  margin: var(--mantine-spacing-xxl) 0;
+  background-color: var(--mb-color-background_page-secondary);
+  box-shadow: inset 0 0.5px 0 var(--mb-color-border-neutral);
+}
+
+/* A section, such as Text or Dates */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+
+  &:last-child {
+    padding-bottom: var(--mantine-spacing-xxl);
+  }
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 0 var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--mb-color-text-primary);
+}
+
+/* A group of rows. Groups after the first get a line 24px below the rows
+   above (the section's 16px gap plus 8px), and 24px of space under it. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  & + & {
+    margin-top: var(--mantine-spacing-sm);
+    padding-top: var(--mantine-spacing-xl);
+    box-shadow: inset 0 0.5px 0 var(--mb-color-border-neutral);
+  }
+}
+
+/* Functions are inset 16px, so that the NavLink's 8px padding lines its
+   icon up with the 24px section title. Snippets span the whole panel. */
+.functionBlock {
+  padding: 0 var(--mantine-spacing-lg);
+}
+
+/* "Didn't find any results" */
+.empty {
+  padding: 0 var(--mantine-spacing-xl);
+  color: var(--mb-color-text-secondary);
+}
+
+/* Why a row matches the search, like an alias or "related". */
+.hint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* A function: the app's NavLink (secondary variant) with a description.
+   Only what the NavLink doesn't do on its own is here. */
+.functionLink {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* The type icon and the chevron sit on the name's line, not in the middle
+   of a two-line row. Their height is the name's line height. */
+.functionLinkSection {
+  height: calc(var(--mantine-font-size-md) * 1.22); /* md line height */
+}
+
+/* The name: 14px regular, like a menu item */
+.functionLinkLabel {
+  display: flex;
+  align-items: center;
+  line-height: var(--mantine-line-height-md);
+  color: var(--mb-color-text-primary);
+}
+
+/* The description: 12px, 4px below the name and lined up with it */
+.functionLinkDescription {
+  margin-top: var(--mantine-spacing-xs);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
+  color: var(--mb-color-text-secondary);
+}
+
+/* A function this database doesn't support: greyed out; its page says so */
+.functionLink[data-unsupported] {
+  .functionLinkSection,
+  .functionLinkLabel,
+  .functionLinkDescription {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* A snippet, styled after the SQL editor's snippets: full width, 24px at the
+   sides and 12px above and below, and the description 24px in, under the
+   name */
+.snippet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  width: 100%;
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-xl);
+  text-align: left;
+
+  /* Hover: the insert icon, and the icon and the name in the strong brand
+     color */
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+
+    .snippetIconDefault {
+      display: none;
+    }
+
+    .snippetIconHover {
+      display: block;
+    }
+
+    .snippetIcon,
+    .snippetName {
+      color: var(--mb-color-text-brand-strong);
+    }
+  }
+}
+
+/* The icon and the name, 8px apart */
+.snippetHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+}
+
+/* The snippet icon, which turns into "insert" (an arrow to a line) on hover */
+.snippetIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.snippetIconHover {
+  display: none;
+}
+
+/* The name: 14px bold */
+.snippetName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  line-height: var(--mantine-line-height-md);
+  color: var(--mb-color-text-primary);
+}
+
+/* The description: 12px, 24px in (the icon and the gap) */
+.snippetDescription {
+  padding-left: var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
+  color: var(--mb-color-text-secondary);
+}
+
+/* A function's page below its header: the old editor's help popover, laid
+   out for the panel. 24px at the sides and the bottom, 16px between parts. */
+.detailScrollArea {
+  flex: 1;
+  min-height: 0;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-lg);
+  padding: 0 var(--mantine-spacing-xl) var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-md);
+  line-height: 20px;
+  color: var(--mb-color-text-primary);
+}
+
+/* "This database doesn't support …" */
+.detailNotice {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-secondary);
+}
+
+/* The signature, such as case(condition, output, …) */
+.signature {
+  padding-bottom: var(--mantine-spacing-lg);
+  border-bottom: 0.5px solid var(--mb-color-border-neutral);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: var(--mantine-font-size-md);
+  color: var(--mb-color-text-secondary);
+}
+
+/* An argument's name, in the signature, the table and the descriptions */
+.argName {
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 13px;
+  color: var(--mb-color-text-syntax-parameter);
+}
+
+.detailText p {
+  margin: 0;
+}
+
+/* Each argument's name, and what it is, side by side */
+.arguments {
+  display: grid;
+  grid-template-columns: minmax(4rem, max-content) 1fr;
+  gap: var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+}
+
+/* "Example" and the formatted example in a grey box */
+.example {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.exampleTitle {
+  color: var(--mb-color-text-secondary);
+}
+
+/* "Learn more", with the book icon, to the function's page in the docs */
+.learnMore {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  font-weight: 700;
+  color: var(--mb-color-text-brand);
+}

@@ -1,0 +1,25 @@
+/* The bar below the code: one line of plain text in the warning color
+   (Figma 417:18113). 32px tall for one line: 20px of text and 6px above and
+   below; longer text wraps. */
+.errors {
+  min-height: 32px;
+  padding: 6px var(--mantine-spacing-xl) 6px
+    var(--editor-text-start, var(--mantine-spacing-xl));
+  background-color: var(--mb-color-background_surface-warning);
+  box-shadow: inset 0 0.5px 0 rgba(0, 0, 0, 0.15);
+  color: var(--mb-color-feedback-warning-strong);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+/* Code in the message, like [Column] or isNull([Column]). */
+.code {
+  padding: 2px;
+  border-radius: 2px;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: inherit;
+  font-family: var(--mb-default-monospace-font-family), monospace;
+  font-size: 10.5px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}

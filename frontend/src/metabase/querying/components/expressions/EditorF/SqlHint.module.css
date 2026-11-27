@@ -1,0 +1,19 @@
+/* "Fix with AI" at the end of the error text (Figma 417:18190): bold and
+   underlined, in the error's warning color. */
+.fixWithAi {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: bold;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* "Fixing with AI…" in its place while the AI works (Figma 417:18260): bold,
+   not underlined. */
+.fixing {
+  font-weight: bold;
+}

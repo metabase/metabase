@@ -1,19 +1,16 @@
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import cx from "classnames";
+import { type RefObject, useMemo } from "react";
 
-import { enclosingFunction } from "metabase/querying/expressions";
+import {
+  enclosingFunction,
+  getClauseDefinition,
+} from "metabase/querying/expressions";
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
-import { HelpText } from "../HelpText";
 import { Listbox, useCompletions } from "../Listbox";
 
 import S from "./Tooltip.module.css";
@@ -24,7 +21,6 @@ export function Tooltip({
   database,
   reportTimezone,
   tooltipRef,
-  expressionMode,
 
   state,
   view,
@@ -33,7 +29,6 @@ export function Tooltip({
   stageIndex: number;
   database: Pick<Database, "engine" | "features"> | undefined;
   reportTimezone?: string;
-  expressionMode: Lib.ExpressionMode;
 
   // from tooltip extension
   tooltipRef: RefObject<HTMLDivElement | null>;
@@ -47,42 +42,14 @@ export function Tooltip({
     [doc, state.selection.main.head],
   );
 
-  const [hasMovedCursor, setHasMovedCursor] = useState(false);
-
-  useEffect(() => {
-    setHasMovedCursor(
-      (hasMovedCursor) => hasMovedCursor || state.selection.main.head !== 0,
-    );
-  }, [state.selection.main.head]);
-
   const { options: completions } = useCompletions(state);
-
-  const [isHelpTextOpen, setIsHelpTextOpen] = useState(true);
-  const [preferHelpText, setPreferHelpText] = useState(false);
-
-  const handleToggleHelpText = useCallback(() => {
-    if (completions.length > 0) {
-      setIsHelpTextOpen(!preferHelpText);
-      setPreferHelpText(!preferHelpText);
-      return;
-    }
-    setIsHelpTextOpen((open) => !open);
-  }, [completions, preferHelpText]);
-
-  useEffect(() => {
-    if (completions.length > 0) {
-      setPreferHelpText(false);
-    }
-  }, [completions.length, enclosingFn]);
-
-  const shouldShowHelpText =
-    completions.length === 0 ? isHelpTextOpen : preferHelpText;
-  const shouldShowCompletions =
-    completions.length === 0 ? false : !preferHelpText;
+  const hasCompletions = completions.length > 0;
 
   return (
     <Popover
-      opened={hasMovedCursor}
+      // Only the suggestions show here, as soon as there are any, also in an
+      // editor that just opened.
+      opened={hasCompletions}
       position="bottom-start"
       returnFocus
       closeOnEscape
@@ -95,28 +62,35 @@ export function Tooltip({
       </Popover.Target>
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
-        className={S.dropdown}
+        className={cx(S.dropdown, {
+          [S.completions]: hasCompletions,
+        })}
         data-ignore-editor-clicks="true"
       >
         <div className={S.tooltip} ref={tooltipRef}>
-          <HelpText
-            enclosingFunction={enclosingFn}
-            database={database}
-            reportTimezone={reportTimezone}
-            open={shouldShowHelpText}
-            onToggle={handleToggleHelpText}
-            expressionMode={expressionMode}
-          />
-          {shouldShowCompletions && (
+          {hasCompletions && (
             <Listbox
               state={state}
               view={view}
               query={query}
               stageIndex={stageIndex}
+              database={database}
+              reportTimezone={reportTimezone}
+              heading={getArgDescription(enclosingFn)}
             />
           )}
         </div>
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+/** The description of the argument at the cursor, as plain text. */
+function getArgDescription(fn: ReturnType<typeof enclosingFunction>) {
+  if (fn?.arg == null) {
+    return undefined;
+  }
+  const args = getClauseDefinition(fn.name)?.args ?? [];
+  const arg = args[fn.arg.index];
+  return arg?.name !== "…" ? arg?.description?.replace(/`/g, "") : undefined;
 }

@@ -1,11 +1,11 @@
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ExpandingContent } from "metabase/common/components/ExpandingContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type {
@@ -16,6 +16,10 @@ import type {
 import { NotebookActionButton } from "./NotebookActionButton";
 import S from "./NotebookStep.module.css";
 import { NotebookStepPreview } from "./NotebookStepPreview";
+import {
+  StepPreviewContext,
+  type StepPreviewControls,
+} from "./StepPreviewContext";
 import { getStepConfig } from "./utils";
 
 function hasLargeButton(action: NotebookStepAction) {
@@ -43,6 +47,20 @@ export function NotebookStep({
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
+  // An inline editor's Run opens the preview and keeps it on the query as it
+  // changes, until the code is edited again.
+  const [previewRunId, setPreviewRunId] = useState(0);
+  const [isPreviewLive, setIsPreviewLive] = useState(false);
+  const previewControls = useMemo<StepPreviewControls>(
+    () => ({
+      run: () => {
+        openPreview();
+        setPreviewRunId((id) => id + 1);
+      },
+      setIsLive: setIsPreviewLive,
+    }),
+    [openPreview],
+  );
 
   const actionButtons = useMemo(() => {
     const actions = [];
@@ -110,21 +128,25 @@ export function NotebookStep({
           />
         </Box>
 
-        <Flex align="center">
-          <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
-            <Step
-              step={step}
-              query={step.query}
-              stageIndex={step.stageIndex}
-              color={color}
-              updateQuery={updateQuery}
-              isLastOpened={isLastOpened}
-              reportTimezone={reportTimezone}
-              readOnly={readOnly}
-            />
-          </Box>
+        {/* A grid, so that the preview button stays next to the step's cell
+            when an inline editor opens below it. */}
+        <div className={S.StepBody}>
+          <div className={S.StepContent}>
+            <StepPreviewContext.Provider value={previewControls}>
+              <Step
+                step={step}
+                query={step.query}
+                stageIndex={step.stageIndex}
+                color={color}
+                updateQuery={updateQuery}
+                isLastOpened={isLastOpened}
+                reportTimezone={reportTimezone}
+                readOnly={readOnly}
+              />
+            </StepPreviewContext.Provider>
+          </div>
           {!readOnly && (
-            <Box flex={`1 1 ${(1 / 12) * 100}%`}>
+            <Box className={S.StepActions}>
               <Box
                 className={cx(S.PreviewButton, {
                   [S.noPreviewButton]: !hasPreviewButton,
@@ -138,10 +160,15 @@ export function NotebookStep({
               />
             </Box>
           )}
-        </Flex>
+        </div>
 
         {canPreview && isPreviewOpen && (
-          <NotebookStepPreview step={step} onClose={closePreview} />
+          <NotebookStepPreview
+            step={step}
+            runId={previewRunId}
+            isLive={isPreviewLive}
+            onClose={closePreview}
+          />
         )}
 
         {actionButtons.length > 0 && !readOnly && (

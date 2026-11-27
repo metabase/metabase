@@ -16,7 +16,7 @@ export const tags = styleTags({
   Or: t.logicOperator,
   Not: t.logicOperator,
   '+ - "*" "/"': t.arithmeticOperator,
-  '< > =< => = "!-"': t.compareOperator,
+  '< > "<=" ">=" = "!="': t.compareOperator,
   "( )": t.paren,
   "[ ]": t.bracket,
   "{ }": t.brace,

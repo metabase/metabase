@@ -1,3 +1,24 @@
 .PreviewVisualization {
   contain: strict;
 }
+
+/* The preview box, with the run button of an outdated preview on it. */
+.preview {
+  position: relative;
+  min-width: 0;
+}
+
+/* The rows of an outdated preview fade. */
+.outdated .body {
+  opacity: 0.5;
+}
+
+/* Runs an outdated preview again. It sits on the middle of the faded rows. */
+.preview .runButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  box-shadow: var(--mantine-shadow-md);
+}

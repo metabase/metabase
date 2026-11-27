@@ -1,0 +1,161 @@
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import type { Extension } from "@codemirror/state";
+import { EditorView, tooltips } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
+import { useMemo } from "react";
+
+import {
+  expressionEditing,
+  expressionTemplates,
+  functionArgumentPlaceholders,
+  tokenAtPos,
+} from "metabase/querying/expressions";
+import { STRING } from "metabase/querying/expressions/pratt";
+import { isNotNull } from "metabase/utils/types";
+import type * as Lib from "metabase-lib";
+import type { Database } from "metabase-types/api";
+
+import { POPULAR_FUNCTIONS } from "../ExpressionSidePanel/content";
+
+import S from "./EditorF.module.css";
+import { useGetColumnValues } from "./column-values";
+import { customExpression } from "./language";
+import { suggestionsB } from "./suggest";
+
+type Options = {
+  expressionMode: Lib.ExpressionMode;
+  query: Lib.Query;
+  stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
+  database: Pick<Database, "features"> | undefined;
+  /**
+   * Opens the docs side panel, at a function's page when given its name. Must
+   * not change, or the editor reconfigures.
+   */
+  openDocs: (functionName?: string) => void;
+  /** True while the docs side panel is open. Must not change either. */
+  isDocsOpen: () => boolean;
+  /** See `SuggestOptions`. */
+  highlightFirstSuggestion?: boolean;
+  extensions?: Extension[];
+};
+
+function getTooltipParent() {
+  let el = document.getElementById("query-builder-tooltip-parent");
+  if (el) {
+    return el;
+  }
+
+  el = document.createElement("div");
+  el.id = "query-builder-tooltip-parent";
+  el.className = S.tooltips;
+  document.body.append(el);
+  return el;
+}
+
+export function useExtensions(options: Options): Extension[] {
+  const {
+    expressionMode,
+    query,
+    stageIndex,
+    availableColumns,
+    availableMetrics,
+    database,
+    openDocs,
+    isDocsOpen,
+    highlightFirstSuggestion,
+    extensions: extra = [],
+  } = options;
+  const getColumnValues = useGetColumnValues(query);
+
+  return useMemo(() => {
+    return [
+      customExpression({
+        expressionMode,
+        query,
+        stageIndex,
+        availableColumns,
+        availableMetrics,
+        database,
+      }),
+      expander(),
+      // Columns in the darker blue of the design.
+      syntaxHighlighting(
+        HighlightStyle.define([
+          { tag: tags.processingInstruction, class: S.columnToken },
+        ]),
+      ),
+      expressionEditing(),
+      functionArgumentPlaceholders(),
+      expressionTemplates({ activeClassName: S.templateActive }),
+      suggestionsB({
+        query,
+        stageIndex,
+        expressionMode,
+        availableColumns,
+        availableMetrics,
+        database,
+        popularFunctions: POPULAR_FUNCTIONS[expressionMode],
+        getColumnValues,
+        openDocs,
+        isDocsOpen,
+        highlightFirstSuggestion,
+      }),
+      tooltips({
+        position: "fixed",
+        parent: getTooltipParent(),
+      }),
+      ...extra,
+    ]
+      .flat()
+      .filter(isNotNull);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    expressionMode,
+    query,
+    stageIndex,
+    availableColumns,
+    database,
+    getColumnValues,
+    openDocs,
+    isDocsOpen,
+    highlightFirstSuggestion,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ...extra,
+  ]);
+}
+
+/**
+ * Expands -> to → when the user is typing.
+ */
+function expander() {
+  return EditorView.updateListener.of((update) => {
+    if (!update.docChanged) {
+      return;
+    }
+    const { state, view } = update;
+    const pos = state.selection.main.head;
+    const before = state.doc.sliceString(pos - 2, pos);
+    if (before !== "->") {
+      return;
+    }
+
+    // Not in a text value, where "->" may be meant as it is.
+    const token = tokenAtPos(state.doc.toString(), pos - 1);
+    if (token?.type === STRING) {
+      return;
+    }
+
+    // With a space before it, like the separator in column names
+    // ("Product → Title"). The space after it is usually typed next.
+    const hasSpaceBefore = /\s/.test(state.doc.sliceString(pos - 3, pos - 2));
+    view.dispatch({
+      changes: {
+        from: pos - 2,
+        to: pos,
+        insert: hasSpaceBefore || pos < 3 ? "→" : " →",
+      },
+    });
+  });
+}

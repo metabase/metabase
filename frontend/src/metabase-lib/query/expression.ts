@@ -17,6 +17,7 @@ import type {
 type ErrorWithMessage = {
   message: string;
   friendly?: boolean;
+  kind?: "type" | "unsupported" | "reference";
 };
 
 export function expression(

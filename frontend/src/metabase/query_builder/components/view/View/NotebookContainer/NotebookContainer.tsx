@@ -16,6 +16,7 @@ import { Box, Flex, rem } from "metabase/ui";
 import { setNotebookNativePreviewSidebarWidth } from "../../../../actions";
 import { getUiControls } from "../../../../store/selectors";
 import { canShowNativePreview } from "../../ViewHeader/utils";
+import { ExpressionSidebarSlot } from "../ExpressionSidebarSlot";
 
 import { NotebookNativePreview } from "./NotebookNativePreview";
 
@@ -148,6 +149,10 @@ export const NotebookContainer = ({
           />
         </Box>
       )}
+
+      {/* While the chart shows, the view has its own slot: this one is
+          off-screen with the notebook. */}
+      {isOpen && <ExpressionSidebarSlot />}
 
       {renderNativePreview && (
         <>

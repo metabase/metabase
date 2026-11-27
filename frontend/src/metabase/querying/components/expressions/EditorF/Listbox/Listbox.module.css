@@ -1,0 +1,192 @@
+/* Everything below the heading: the options, which scroll, and the docs row,
+   which stays at the bottom. Each level is a column that may shrink, so that
+   the options scroll once the popover reaches its 500px. */
+.options {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Mantine's scroll area, with its thin scrollbar, instead of the browser's.
+   Its viewport is 100% tall by default, which needs a fixed height; here it
+   takes the height of the options, up to what's left of the 500px. */
+.scrollArea {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+
+  .viewport {
+    flex: 0 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+.listbox {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--mantine-spacing-sm);
+}
+
+/* "Open docs", fixed below the options, with the group line above it */
+.footer {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-sm);
+  border-top: 0.5px solid var(--mb-color-border-neutral-strong);
+}
+
+.heading {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-xl);
+  box-shadow: inset 0 -0.5px 0 0 var(--mb-color-border-neutral-strong);
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.section {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding-inline: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* "There are no text columns to use here.", when no column fits the value */
+.empty {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding-inline: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+}
+
+.item {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding-inline: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-brand-subtle);
+  }
+
+  &[aria-selected="true"] {
+    background-color: var(--mb-color-background_surface-brand-strong-hover);
+
+    .name,
+    .description,
+    .hint {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    .parens {
+      color: var(--mb-color-text-disabled-inverse);
+    }
+
+    /* The function icons have their own colors. */
+    .icon {
+      filter: brightness(0) invert(1);
+    }
+  }
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  flex: 1;
+  min-width: 0;
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 13.5px;
+  line-height: 1.22;
+  white-space: nowrap;
+
+  &.withDescription {
+    flex: 0 0 200px;
+  }
+
+  &.columnName {
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
+
+  .functionIcon {
+    color: var(--mb-color-core-red-saturated);
+  }
+
+  .columnIcon {
+    color: var(--mb-color-icon-brand);
+  }
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.parens {
+  color: var(--mb-color-text-disabled);
+}
+
+.description {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Why an option matches, like an alias, when its label does not show it. */
+.hint {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--mb-color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.highlight {
+  font-weight: bold;
+}
+
+/* The line between the groups (functions, columns, others, docs), across
+   the whole list. 8px above and below it, like the padding of the list. */
+.divider {
+  flex-shrink: 0;
+  margin: var(--mantine-spacing-sm) calc(-1 * var(--mantine-spacing-sm));
+  border-top: 0.5px solid var(--mb-color-border-neutral-strong);
+}
+
+/* "Open docs": text, not code. */
+.docs .name {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.22;
+}
+
+.docs .icon {
+  color: var(--mb-color-text-primary);
+}

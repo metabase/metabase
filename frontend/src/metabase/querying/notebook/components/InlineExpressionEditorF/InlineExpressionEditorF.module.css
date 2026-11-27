@@ -1,0 +1,253 @@
+/* The editor, below the step's cell. Run opens the step's preview. */
+.root {
+  margin-top: var(--mantine-spacing-sm);
+}
+
+/* The editor. The step's preview button is on the right of the step's cell,
+   above it. */
+.editorRow {
+  position: relative;
+}
+
+/* The box around the editor. */
+.panel {
+  background-color: var(--mb-color-background_page-primary);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: 8px;
+  box-shadow: var(--mantine-shadow-xs);
+  overflow: hidden;
+}
+
+/* The end of the editor: the button, and the loader before Stop, 16px
+   apart. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Cancel, Run, Stop and Done: a small (24px) button. Cancel and Stop are
+   subtle neutral; Run and Done are light brand, at least 64px wide. */
+.actionButton {
+  &.isPrimary {
+    min-width: 64px;
+  }
+}
+
+/* The loader before Stop while the AI works: three 4px dots, 7px apart, in
+   two shades that swap from side to side. The middle dot is the element; the
+   side dots are its shadows, so its margin makes room for them. The design
+   uses 74% and 22% of the text color, which have no tokens; these are the
+   closest. */
+.loader {
+  --loader-dot-strong: var(--mb-color-icon-primary);
+  --loader-dot-faint: var(--mb-color-border-neutral-strong);
+
+  flex-shrink: 0;
+  width: 4px;
+  aspect-ratio: 1;
+  margin-inline: 7px;
+  border-radius: 50%;
+  animation: loader-dots 0.35s infinite linear alternate;
+}
+
+@keyframes loader-dots {
+  0% {
+    box-shadow:
+      7px 0 var(--loader-dot-strong),
+      -7px 0 var(--loader-dot-faint);
+    background: var(--loader-dot-strong);
+  }
+
+  33% {
+    box-shadow:
+      7px 0 var(--loader-dot-strong),
+      -7px 0 var(--loader-dot-faint);
+    background: var(--loader-dot-faint);
+  }
+
+  66% {
+    box-shadow:
+      7px 0 var(--loader-dot-faint),
+      -7px 0 var(--loader-dot-strong);
+    background: var(--loader-dot-faint);
+  }
+
+  100% {
+    box-shadow:
+      7px 0 var(--loader-dot-faint),
+      -7px 0 var(--loader-dot-strong);
+    background: var(--loader-dot-strong);
+  }
+}
+
+/* Version F: the switch between the AI prompt and the code. A grey strip,
+   32px wide, on the left edge, with a line on its right, as tall as the
+   editor. The current mode is a white 32px cell over the line, with a line
+   between it and the other cell. */
+.modeSwitch {
+  display: flex;
+  flex-direction: column;
+  width: 32px;
+  background-color: var(--mb-color-background_surface-secondary);
+  box-shadow: inset -0.5px 0 0 rgba(0, 0, 0, 0.15);
+}
+
+.modeOption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--mb-color-text-secondary);
+
+  &:hover:not(:disabled, [aria-checked="true"]) {
+    background-color: var(--mb-color-background_surface-secondary-hover);
+    color: var(--mb-color-text-primary);
+  }
+
+  &[aria-checked="true"] {
+    position: relative;
+    z-index: 1;
+    background-color: var(--mb-color-background_surface-primary);
+    color: var(--mb-color-icon-brand);
+
+    &:first-child {
+      box-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    /* A line below it too, where the strip goes on under a taller editor. */
+    &:last-child {
+      box-shadow:
+        0 -0.5px 0 rgba(0, 0, 0, 0.15),
+        0 0.5px 0 rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  /* While the AI works. */
+  &:disabled {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* The AI mode: the prompt, and the code it changes, in a column. The
+   prompt's padding is the code's, so that the text doesn't move when the
+   mode changes. At most 800px wide. */
+.ai {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  max-width: 800px;
+  /* The row has the left padding, before the mode switch. */
+  padding: 21.5px 0;
+}
+
+.promptRow {
+  display: flex;
+  align-items: center;
+}
+
+/* The prompt and its placeholder, drawn over it. */
+.promptField {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.promptRoot,
+.promptWrapper {
+  width: 100%;
+}
+
+.promptInput {
+  min-height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-font-family);
+  font-size: 14px;
+  line-height: 20px;
+  resize: none;
+
+  /* While the AI works, the prompt is greyed out. */
+  &.isGenerating {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* "Ask AI, or type = to write an expression". */
+.placeholder {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--mb-color-text-disabled);
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The "=" key in the placeholder. */
+.key {
+  display: inline-flex;
+  vertical-align: 1px;
+  justify-content: center;
+  min-width: 16px;
+  padding: 0 2px;
+  border-radius: 4px;
+  background-color: var(--mb-color-background_surface-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* The code that the prompt changes, as a pill below the prompt, at most
+   320px wide. */
+.context {
+  display: flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  max-width: 320px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background-color: var(--mb-color-background_surface-brand-strong);
+  color: var(--mb-color-text-primary-inverse);
+  cursor: pointer;
+  user-select: none;
+
+  /* While the AI works. */
+  &.isDisabled {
+    cursor: default;
+    background-color: var(--mb-color-background_surface-disabled);
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+.contextCode {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextRemove {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: inherit;
+}

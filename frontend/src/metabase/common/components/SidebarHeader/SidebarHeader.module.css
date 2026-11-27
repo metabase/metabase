@@ -1,12 +1,3 @@
-.CloseButton {
-  color: var(--mb-color-text-primary);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--mb-color-core-brand);
-  }
-}
-
 .HeaderTitleContainer {
   flex: 1;
   font-size: 1.17em;

@@ -1,0 +1,5 @@
+/* Below the column list of the popover. */
+.hint {
+  max-width: 300px;
+  border-top: 1px solid var(--mb-color-border-neutral);
+}

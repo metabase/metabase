@@ -35,6 +35,7 @@ import {
   type Transaction,
 } from "@uiw/react-codemirror";
 import { useMemo } from "react";
+import { useLatest } from "react-use";
 
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import { isMac } from "metabase/utils/browser";
@@ -48,6 +49,13 @@ export type ExtensionOptions = {
   autoFocus?: boolean;
   autoCorrect?: string;
   tabIndex?: number;
+  /** The brackets whose match is outlined next to the cursor. */
+  matchBrackets?: string;
+  /**
+   * False: Tab types no spaces when it has nothing else to do, so the browser
+   * moves the focus out of the editor.
+   */
+  tabIndents?: boolean;
   extensions?: (Extension | null)[];
 };
 
@@ -83,7 +91,12 @@ function useBaseExtensions({
   autoFocus,
   autoCorrect,
   tabIndex,
+  matchBrackets = "()",
+  tabIndents = true,
 }: Omit<ExtensionOptions, "extensions">) {
+  // Read when a key is pressed: a change of onFormat must not reconfigure the
+  // editor, which would end an active snippet.
+  const onFormatRef = useLatest(onFormat);
   return useMemo(
     () => [
       nonce(),
@@ -93,10 +106,11 @@ function useBaseExtensions({
         drawRangeCursor: false,
       }),
       bracketMatching({
-        brackets: "()",
+        brackets: matchBrackets,
       }),
       search(),
-      keyboardShortcuts({ onFormat }),
+      keyboardShortcuts({ onFormatRef, tabIndents }),
+      formatWithAltShiftF({ onFormatRef }),
       closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
       highlighting(),
@@ -108,7 +122,7 @@ function useBaseExtensions({
         tabIndex,
       }),
     ],
-    [onFormat, tabIndex, autoFocus, autoCorrect],
+    [onFormatRef, tabIndex, autoFocus, autoCorrect, matchBrackets, tabIndents],
   );
 }
 
@@ -164,7 +178,42 @@ function closeSearchPanelAfterLastReplace() {
   }));
 }
 
-function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
+/**
+ * Alt+Shift+F formats, like in VS Code. It is not in the keymap: on macOS,
+ * Option changes the character of the key, so the key code is checked.
+ */
+function formatWithAltShiftF({ onFormatRef }: { onFormatRef: OnFormatRef }) {
+  return Prec.highest(
+    EditorView.domEventHandlers({
+      keydown(event) {
+        const onFormat = onFormatRef.current;
+        if (
+          onFormat == null ||
+          event.code !== "KeyF" ||
+          !event.altKey ||
+          !event.shiftKey ||
+          event.metaKey ||
+          event.ctrlKey
+        ) {
+          return false;
+        }
+        event.preventDefault();
+        onFormat();
+        return true;
+      },
+    }),
+  );
+}
+
+type OnFormatRef = { readonly current: (() => void) | undefined };
+
+function keyboardShortcuts({
+  onFormatRef,
+  tabIndents,
+}: {
+  onFormatRef: OnFormatRef;
+  tabIndents: boolean;
+}) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
   return Prec.highest(
@@ -181,10 +230,7 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
         key: "Tab",
         run: acceptCompletion,
       },
-      {
-        key: "Tab",
-        run: insertIndent,
-      },
+      ...(tabIndents ? [{ key: "Tab", run: insertIndent }] : []),
       {
         key: "Mod-j",
         run: moveCompletionSelection(true),
@@ -196,10 +242,11 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
       {
         key: "Shift-Mod-f",
         run: () => {
-          onFormat?.();
+          onFormatRef.current?.();
           return true;
         },
       },
+
       ...searchKeymap.map((binding) => {
         if (binding.key === "Mod-f") {
           const replace: KeyBinding = {

@@ -1,0 +1,83 @@
+/* The font size of the data grid. */
+.container {
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--mb-color-background_surface-primary);
+  color: var(--mb-color-text-primary);
+}
+
+/* The cells of the data grid fill the table cells: 36px rows, and a 37px
+   header with a line below it. */
+.cell {
+  height: 36px;
+  max-width: 320px;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.header {
+  height: 37px;
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+  font-weight: normal;
+
+  /* The header pill of the data grid, as plain text: the preview can't be
+     sorted. */
+  [data-grid-header-cell-content] {
+    background-color: transparent;
+    cursor: default;
+  }
+}
+
+/* Rows can't be clicked here, so no pointer and no hover color. */
+.bodyCell.bodyCell {
+  cursor: default;
+
+  &:hover {
+    background-color: transparent;
+  }
+
+  tbody tr:last-child & {
+    border-bottom: none;
+  }
+}
+
+/* The first result column, after a dashed line. */
+.result {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--mb-color-border-neutral-strong) 0 1px,
+      transparent 1px 3px
+    );
+  }
+}
+
+/* Whether the row passes all the filters. */
+.total .bodyCell {
+  font-weight: bold;
+}
+
+/* The rest of the width, after the last column, so that a right-aligned
+   column stays next to the others. It has the row lines of the cells. */
+.filler {
+  width: 100%;
+  padding: 0;
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
+
+  tbody tr:last-child & {
+    border-bottom: none;
+  }
+}

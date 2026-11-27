@@ -509,14 +509,14 @@
                               (lib.tu/venues-query) 0 mode
                               (lib.convert/->mbql5 expr)
                               #?(:clj nil :cljs js/undefined)))
-      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number as the 1st parameter."
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "/ needs a number as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
       ;; To make this test case work, the aggregation schema has to be
       ;; tighter and not allow anything. That's a bigger piece of work,
       ;; because it makes expressions and aggregations mutually recursive
       ;; or requires a large amount of duplication.
       #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-      :filter      [:sum [:field 1 {:base-type :type/Integer}]] "Types are incompatible."
-      :filter      [:value "not a boolean" {:base_type :type/Text}] "Types are incompatible.")))
+      :filter      [:sum [:field 1 {:base-type :type/Integer}]] "A filter has to be true or false for each row. Add a comparison, like [Total] > 100."
+      :filter      [:value "not a boolean" {:base_type :type/Text}] "A filter has to be true or false for each row. Add a comparison, like [Total] > 100.")))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
@@ -549,7 +549,7 @@
                              (assoc 4 (lib/count)))                  nil
             :filter      (assoc (get exprs "circular-c") 0 :=)      c-pos))
         (testing "circular definition"
-          (is (=? {:message "Cycle detected: c → x → b → c"}
+          (is (=? {:message "These depend on each other, so they can't be calculated: c → x → b → c. Remove one of the references to break the loop."}
                   (lib.expression/diagnose-expression query 0 :expression
                                                       (get exprs "circular-c")
                                                       c-pos))))))))
@@ -557,7 +557,7 @@
 (deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
   (testing "adding/editing an expression using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:message "OFFSET is not supported in custom columns"}
+      (is (=? {:message "Offset() only works in Summarize, so it can't be used in a custom column."}
               (lib.expression/diagnose-expression query 0 :expression
                                                   (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                   nil))))))
@@ -565,7 +565,7 @@
 (deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
   (testing "adding/editing a filter using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:message  "OFFSET is not supported in custom filters"
+      (is (=? {:message  "Offset() only works in Summarize, so it can't be used in a custom filter."
                :friendly true}
               (lib.expression/diagnose-expression query 0 :filter
                                                   (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
@@ -578,7 +578,7 @@
           query (lib/query restricted-provider (meta/table-metadata :orders))
           expr  (lib.expression/value true)]
       (doseq [mode [:expression :filter]]
-        (is (=? {:message  "Standalone constants are not supported."
+        (is (=? {:message  "A value on its own can't be used with this database. Use a column or a calculation instead."
                  :friendly true}
                 (lib.expression/diagnose-expression query 0 mode expr nil)))))))
 
@@ -596,7 +596,7 @@
         :expression  bool-expr
         :filter      bool-expr))
     (testing "invalid literal expressions are rejected when not suppressing type checks"
-      (are [mode expr] (=? {:message "Types are incompatible."} (diagnose-expr mode expr))
+      (are [mode expr] (=? {:message "A filter has to be true or false for each row. Add a comparison, like [Total] > 100."} (diagnose-expr mode expr))
         :filter str-expr
         :filter int-expr))))
 
@@ -609,7 +609,7 @@
         [:avg [:field 1]]
         [:offset {:lib/uuid (str (random-uuid))} [:sum [:field 42]] 1]))
     (testing "invalid aggregation expressions are rejected"
-      (are [expr culprit] (= (str "Embedding " culprit " in aggregation functions is not supported")
+      (are [expr culprit] (= (str culprit "() can't be used inside another summary function. Use it on its own.")
                              (:message (diagnose-expr expr)))
         [:sum [:avg [:field 1]]]                                                  "Average"
         [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
@@ -626,7 +626,7 @@
           expr (->> (lib/aggregable-columns query2 nil)
                     (m/find-first (comp #{expr-name} :name))
                     (lib/* 2))]
-      (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
+      (is (=? {:message (str "These depend on each other, so they can't be calculated: " expr-name " → " expr-name ". Remove one of the references to break the loop.")}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
 (deftest ^:parallel diagnose-expression-incompatible-types-test
@@ -638,29 +638,29 @@
                         (lib.convert/->mbql5 expr)
                         #?(:clj nil :cljs js/undefined)))
       ;; basic checks with different types
-      [:+ 1 true]  "Types are incompatible: + expects a number as the 2nd parameter."
-      [:- 1 "str"] "Types are incompatible: - expects a number as the 2nd parameter."
-      [:* false 1] "Types are incompatible: * expects a number as the 1st parameter."
-      [:/ "str" 1] "Types are incompatible: / expects a number as the 1st parameter."
+      [:+ 1 true]  "+ needs a number as its 2nd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:- 1 "str"] "- needs a number as its 2nd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:* false 1] "* needs a number as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:/ "str" 1] "/ needs a number as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
       ;; functions that expect different types
-      [:upper 1]   "Types are incompatible: upper expects a string as the 1st parameter."
-      [:get-day 1] "Types are incompatible: get-day expects a temporal value as the 1st parameter."
-      [:not 1]     "Types are incompatible: not expects a boolean as the 1st parameter."
-      [:> 1 true]  "Types are incompatible."
-      [:> [:field 1 {:base-type :type/JSON}] 1] "Types are incompatible: > expects an orderable type (e.g. number, string, temporal) as the 1st parameter."
+      [:upper 1]   "upper needs text as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:get-day 1] "get-day needs a date or time as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:not 1]     "not needs true or false as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:> 1 true]  "One of the values here is the wrong type. Check that numbers, text and dates are used where they're expected."
+      [:> [:field 1 {:base-type :type/JSON}] 1] "> needs a number, text or date as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
       ;; function with multiple args of different types
-      [:substring 1 1 1]        "Types are incompatible: substring expects a string as the 1st parameter."
-      [:substring "str" 1 true] "Types are incompatible: substring expects an integer as the 3rd parameter."
-      [:substring "str" true 1] "Types are incompatible: substring expects an integer as the 2nd parameter."
-      [:substring 1 true false] "Types are incompatible: substring expects a string as the 1st parameter."
+      [:substring 1 1 1]        "substring needs text as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:substring "str" 1 true] "substring needs a whole number as its 3rd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:substring "str" true 1] "substring needs a whole number as its 2nd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:substring 1 true false] "substring needs text as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
       ;; nested expressions
-      [:+ 1 [:- 1 true] 1] "Types are incompatible: - expects a number as the 2nd parameter."
-      [:+ true [:- 1 1] 1] "Types are incompatible: + expects a number as the 1st parameter."
-      [:+ 1 [:- 1 1] true] "Types are incompatible: + expects a number as the 3rd parameter."
-      [:+ true [:- 1 true] 1] "Types are incompatible: + expects a number as the 1st parameter."
-      [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number as the 2nd parameter."
-      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number as the 2nd parameter."
-      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number as the 1st parameter.")))
+      [:+ 1 [:- 1 true] 1] "- needs a number as its 2nd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:+ true [:- 1 1] 1] "+ needs a number as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:+ 1 [:- 1 1] true] "+ needs a number as its 3rd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:+ true [:- 1 true] 1] "+ needs a number as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:+ 1 [:- 1 true] true] "- needs a number as its 2nd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "/ needs a number as its 2nd value. Check that you're using the right column, or convert it with a function like text() or integer()."
+      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "* needs a number as its 1st value. Check that you're using the right column, or convert it with a function like text() or integer().")))
 
 (deftest ^:parallel diagnose-expression-unaggregated-fields-test
   (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -848,7 +848,7 @@
 
 (deftest ^:parallel temporal-functions-require-temporal-args-test
   (testing "#26512 temporal-extraction / datetime-arithmetic functions reject non-temporal first args"
-    (are [expr] (=? {:message #"(?i).*incompatible.*" :friendly true}
+    (are [expr] (=? {:message #"(?i).*needs a date or time.*" :friendly true}
                     (lib.expression/diagnose-expression
                      (lib.tu/venues-query) 0 :expression (lib.convert/->mbql5 expr)
                      #?(:clj nil :cljs js/undefined)))

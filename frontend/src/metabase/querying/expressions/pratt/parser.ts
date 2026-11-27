@@ -48,7 +48,10 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): Node {
     const token = tokens[index];
 
     if (token.type === BAD_TOKEN) {
-      error(t`Unexpected token "${token.text}"`, node);
+      error(
+        t`"${token.text}" doesn't belong here. Remove it, or check for a typo.`,
+        node,
+      );
 
       // If we don't throw on error, we skip the bad token
       continue;
@@ -96,7 +99,10 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): Node {
         // If the current token isn't in the list of the AST type's ignored
         // tokens and it's not the terminator the current node requires, we'll
         // throw an error
-        error(t`Expected expression`, node);
+        error(
+          t`Something's missing here. Add a column, value or function to finish the expression.`,
+          node,
+        );
 
         if (token.type === END_OF_INPUT) {
           // We complete and reparent/place the final node by running the for
@@ -117,7 +123,10 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): Node {
         // ie. +42
         continue;
       } else {
-        error(t`Expected expression`, node);
+        error(
+          t`Something's missing here. Add a column, value or function to finish the expression.`,
+          node,
+        );
       }
     } else {
       // Create the AST node. It will be marked as complete if the node doesn't
@@ -133,7 +142,10 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): Node {
 
   const childViolation = ROOT.checkChildConstraints(root);
   if (childViolation !== null) {
-    error(t`Unexpected token`, node);
+    error(
+      t`Part of this expression is in the wrong place. Check for extra commas, brackets or symbols.`,
+      node,
+    );
   }
   return root;
 }
@@ -157,7 +169,10 @@ function place(node: Node, error: (message: string, node?: Node) => void) {
 
   const childViolation = type.checkChildConstraints(node);
   if (childViolation !== null) {
-    error(t`Unexpected token`, node);
+    error(
+      t`Part of this expression is in the wrong place. Check for extra commas, brackets or symbols.`,
+      node,
+    );
   }
   assert(parent, "Tried to place a node without a parent", node);
   parent.children.push(node);

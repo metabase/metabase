@@ -1,10 +1,12 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
-import Fuse from "fuse.js";
 
 import type * as Lib from "metabase-lib";
 
 import { CALL, FIELD, IDENTIFIER, type Token } from "../pratt";
 
+import { FUNCTION_ALIASES } from "./aliases";
+import { withPlaceholders } from "./placeholders";
+import { matchOptions } from "./text-match";
 import type { ExpressionSuggestion } from "./types";
 
 export function expressionClauseCompletion(
@@ -17,40 +19,42 @@ export function expressionClauseCompletion(
     matches?: [number, number][];
   },
 ): ExpressionSuggestion {
-  const completion = snippetCompletion(expressionClauseSnippet(clause), {
-    type,
-    label: clause.displayName,
-    displayLabel: clause.displayName,
-  });
-  return { ...completion, icon: "function", matches };
+  const template = expressionClauseSnippet(clause);
+  const completion = withPlaceholders(
+    snippetCompletion(template, {
+      type,
+      label: clause.displayName,
+      displayLabel: clause.displayName,
+    }),
+    template,
+  );
+  return {
+    ...completion,
+    icon: "function",
+    clauseName: clause.name,
+    matches,
+    aliases: FUNCTION_ALIASES[clause.name],
+  };
 }
 
+/**
+ * A function with a placeholder for each value it needs, like
+ * `datetimeDiff(${datetime1}, ${datetime2}, ${unit})${}`. Optional values are
+ * left out; a comma after the last value adds them. The empty stop at the end
+ * is where Tab goes after the last value, after the parentheses.
+ */
 export function expressionClauseSnippet(clause: Lib.MBQLClauseFunctionConfig) {
-  const args =
-    clause.args
-      .filter((arg) => arg.name !== "…")
-      .map((arg) => "${" + (arg.template ?? arg.name) + "}")
-      .join(", ") ?? "";
+  const args = clause.args
+    .filter((arg) => arg.name !== "…" && !arg.optional)
+    .map((arg) => "${" + (arg.template ?? arg.name) + "}");
 
-  return `${clause.displayName}(${args})`;
+  const call = `${clause.displayName}(${args.join(", ")})`;
+  return args.length > 0 ? `${call}\${}` : call;
 }
 
 export function fuzzyMatcher(options: ExpressionSuggestion[]) {
-  const fuse = new Fuse(options, {
-    keys: ["displayLabel"],
-    includeScore: true,
-    includeMatches: true,
-  });
-
   return function (word: string) {
-    return fuse
-      .search(word)
-      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-      .map((result) => {
-        result.item.matches =
-          result.matches?.flatMap((match) => match.indices) ?? [];
-        return result.item;
-      });
+    return matchOptions(options, word);
   };
 }
 
