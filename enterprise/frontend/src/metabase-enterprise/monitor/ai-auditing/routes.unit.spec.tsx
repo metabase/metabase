@@ -69,6 +69,7 @@ jest.mock("./data-apps-analytics/components/DataAppsAnalyticsPage", () => ({
 
 type SetupOpts = {
   route: string;
+  hasAuditApp?: boolean;
   upsell?: boolean;
   aiFeaturesEnabled?: boolean;
   isConfigured?: boolean;
@@ -78,6 +79,7 @@ type SetupOpts = {
 
 function setup({
   route,
+  hasAuditApp = true,
   upsell = false,
   aiFeaturesEnabled = true,
   isConfigured = true,
@@ -100,7 +102,7 @@ function setup({
           // One tree serves both worlds; the features decide what each leaf
           // renders, read through MetabaseSettings when a route resolves.
           "token-features": createMockTokenFeatures({
-            audit_app: true,
+            audit_app: hasAuditApp,
             ai_controls: !upsell,
             "data-apps": hasDataApps,
           }),
@@ -111,6 +113,18 @@ function setup({
 }
 
 describe("AI Auditing routes", () => {
+  it("shows the not-found page without the audit_app feature", async () => {
+    setup({
+      route: Urls.monitorAiAuditingUsage(),
+      hasAuditApp: false,
+    });
+
+    expect(
+      await screen.findByText("The page you asked for couldn't be found."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Usage stats page")).not.toBeInTheDocument();
+  });
+
   afterEach(() => {
     reinitialize();
   });
