@@ -921,7 +921,7 @@ describe("QueryBuilder", () => {
     // But native queries won't run the query on first load, we need to manually
     // click the run button, but our mock `NativeQueryEditor` doesn't have a run
     // button wired up, and it's quite hard to do so (I've tried).
-    // So I test that case in Cypress in `28834-modified-native-question.cy.spec.js` instead.
+    // So that case is tested in Cypress by "issue 10803" in `downloads.cy.spec.ts` instead.
 
     it("should allow downloading results for a native query", async () => {
       fetchMock.post(`path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`, {});
@@ -954,48 +954,58 @@ describe("QueryBuilder", () => {
       ).toHaveLength(1);
     });
 
-    it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
-      fetchMock.post("path:/api/dataset/csv", {});
-      await setup({
-        card: TEST_NATIVE_CARD,
-        dataset: TEST_NATIVE_CARD_DATASET,
-      });
+    it.each(["csv", "xlsx"])(
+      "should allow downloading %s results for a native query using the current result even the query has changed but not rerun (metabase#28834)",
+      async (format) => {
+        fetchMock.post(`path:/api/dataset/${format}`, {});
+        await setup({
+          card: TEST_NATIVE_CARD,
+          dataset: TEST_NATIVE_CARD_DATASET,
+        });
 
-      const container = screen.getByTestId("test-container");
+        const container = screen.getByTestId("test-container");
 
-      await waitForFaviconReady(container);
+        await waitForFaviconReady(container);
 
-      const inputArea = within(
-        screen.getByTestId("mock-native-query-editor"),
-      ).getByRole("textbox");
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
 
-      await userEvent.click(inputArea);
-      await userEvent.type(inputArea, " union SELECT 2");
+        await userEvent.click(inputArea);
+        await userEvent.type(inputArea, " union SELECT 2");
 
-      await userEvent.tab();
+        await userEvent.tab();
 
-      expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
+        expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      await userEvent.click(
-        screen.getByTestId("question-results-download-button"),
-      );
-      await userEvent.click(await screen.findByLabelText(".csv"));
-      await userEvent.click(
-        await screen.findByTestId("download-results-button"),
-      );
+        await userEvent.click(
+          screen.getByTestId("question-results-download-button"),
+        );
+        await userEvent.click(await screen.findByLabelText(`.${format}`));
+        await userEvent.click(
+          await screen.findByTestId("download-results-button"),
+        );
 
-      const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");
-      const lastCall = calls[calls.length - 1];
-      const body = await Promise.resolve(lastCall.options?.body);
-      // Unjustified type cast. FIXME
-      const urlSearchParams = new URLSearchParams(body as string);
-      expect(lastCall.url).toEqual(expect.stringContaining("/api/dataset/csv"));
-      const query =
-        urlSearchParams instanceof URLSearchParams
-          ? JSON.parse(urlSearchParams.get("query") ?? "{}")
-          : {};
-      expect(query).toMatchObject({ stages: [{ native: "SELECT 1" }] });
-    });
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/dataset/${format}`),
+          ).toHaveLength(1),
+        );
+        const [lastCall] = fetchMock.callHistory.calls(
+          `path:/api/dataset/${format}`,
+        );
+        const body = await Promise.resolve(lastCall.options?.body);
+        const urlSearchParams = new URLSearchParams(String(body));
+        expect(lastCall.url).toEqual(
+          expect.stringContaining(`/api/dataset/${format}`),
+        );
+        const query =
+          urlSearchParams instanceof URLSearchParams
+            ? JSON.parse(urlSearchParams.get("query") ?? "{}")
+            : {};
+        expect(query).toMatchObject({ stages: [{ native: "SELECT 1" }] });
+      },
+    );
   });
 
   describe("column header drills", () => {
