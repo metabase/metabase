@@ -48,6 +48,7 @@ export const CustomGeoJSONWidget = () => {
     data: geoJson,
     error: geoJsonError,
     isFetching: geoJsonLoading,
+    reset: resetGeoJSON,
   } = result;
 
   const {
@@ -99,7 +100,8 @@ export const CustomGeoJSONWidget = () => {
     });
     setOriginalMap(undefined);
     setCurrentId(uuid());
-  }, []);
+    resetGeoJSON();
+  }, [resetGeoJSON]);
 
   const handleEditMap = useCallback(
     (mapToEdit: CustomGeoJSONMap, mapId: string) => {
