@@ -1,9 +1,11 @@
 (ns metabase.metabot.config
   (:require
    [metabase.api.common :as api]
+   [metabase.embedding.util :as embedding.util]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.db :as metabot.db]
-   [metabase.metabot.settings :as metabot.settings]))
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.request.core :as request]))
 
 (def internal-metabot-id
   "The entity ID of the internal Metabot instance."
@@ -41,6 +43,33 @@
                 [403 "Embedded Metabot is not enabled."])
      (api/check (metabot.settings/metabot-enabled?)
                 [403 "Metabot is not enabled."]))))
+
+(defn embedded-request?
+  "Whether `request` comes from an embed: an `<iframe>` (`X-Metabase-Embedded`) or the SDK or modular embedding
+  (`X-Metabase-Client`). Matches the frontend's choice between `embedded-metabot-enabled?` and `metabot-enabled?`.
+  The headers are set by the client, so this picks a product switch and is not a security boundary."
+  [request]
+  (boolean (and request
+                (or (request/embedded? request)
+                    (embedding.util/is-modular-embedding-request? request)))))
+
+(defn metabot-enabled-for-request?
+  "Whether the Metabot switch for the audience of the bound request is on: `embedded-metabot-enabled?` for an embed,
+  `metabot-enabled?` otherwise. True when no request is bound, since background work isn't tied to an audience and
+  checks its own switch."
+  []
+  (let [req (request/current-request)]
+    (cond
+      (nil? req)              true
+      (embedded-request? req) (metabot.settings/embedded-metabot-enabled?)
+      :else                   (metabot.settings/metabot-enabled?))))
+
+(defn check-metabot-enabled-for-request!
+  "Throw a 403 unless the Metabot switch for the bound request's audience is on. See
+  [[metabot-enabled-for-request?]]."
+  []
+  (api/check (metabot-enabled-for-request?)
+             [403 "Metabot is not enabled."]))
 
 (defn metabot-id->profile-id
   "Return the configured profile ID for a Metabot entity ID, or nil."

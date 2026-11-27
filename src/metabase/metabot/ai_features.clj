@@ -12,6 +12,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
@@ -152,6 +153,9 @@
   "Run every check that decides whether `feature-id` can call its model now, in order, and throw the typed error of
   the first one that fails. Returns `{:entry :model-ref}` when they all pass.
 
+  The second check reads the bound request: an embed needs `embedded-metabot-enabled?`, anything else
+  `metabot-enabled?`. See [[metabot.config/metabot-enabled-for-request?]].
+
   `opts` are checked when given. [[unavailable-reason]] passes none. `request-id` is the id the caller supplied: a
   message limit leaves that request's earlier calls out of its count.
 
@@ -159,6 +163,8 @@
   [feature-id opts]
   (when-not (llm.settings/ai-features-enabled?)
     (throw (error :metabot/ai-disabled 403 "ai_disabled" (tru "AI features are turned off."))))
+  (when-not (metabot.config/metabot-enabled-for-request?)
+    (throw (error :metabot/metabot-disabled 403 "metabot_disabled" (tru "Metabot is turned off."))))
   (let [entry (feature-entry feature-id)]
     (when-not entry
       (throw (invalid-call-error feature-id "not registered" {})))
@@ -203,11 +209,17 @@
 ;;; -------------------------------------------------- Prompt --------------------------------------------------------
 
 (defn- delimiter-pattern
-  "Matches an opening or closing tag of any of `tags`, in any case and with any spacing."
+  "Matches an opening or closing tag of any of `tags` in any case and with any whitespace or attributes, or the start
+  of one with no closing `>`.
+
+  Invisible format characters, like a zero-width space, count as whitespace. The possessive quantifiers never
+  backtrack and `[^<>]` stops at the next `<`, so matching takes time linear in the length of the input. The
+  lookahead is ASCII-only because `U` makes `\\w` match Unicode, which would reject a tag name followed by a
+  zero-width joiner or combining mark. The same pattern as Excel Mode's `prompt-tag-pattern`."
   [tags]
-  (re-pattern (str "(?i)<\\s*/?\\s*(?:"
+  (re-pattern (str "(?iU)<[\\s\\p{Cf}]*+/?[\\s\\p{Cf}]*+(?:"
                    (str/join "|" (map #(java.util.regex.Pattern/quote (name %)) tags))
-                   ")\\s*>")))
+                   ")(?![A-Za-z0-9_-])(?:[^<>]*+>)?")))
 
 (defn- strip-delimiters
   "`s` without any match of `pattern`. Repeats until nothing matches, so a value can't build a tag from the pieces
@@ -218,13 +230,16 @@
       (if (= stripped s) s (recur stripped)))))
 
 (defn render-untrusted
-  "Render `untrusted`, a map of tag keyword to value, as one `<tag>…</tag>` block per key, sorted by tag.
+  "Render `untrusted`, a map of tag keyword to value, as one `<tag>…</tag>` block per key, in the map's order.
+
+  A literal map of up to 8 keys keeps the order it is written in. A larger one may not, so the order is a
+  convenience for the reader of the prompt, not something a feature can rely on: use `:messages` for that.
 
   Strings go in as written, so `AT&T` stays `AT&T`, and other values go in as JSON. Every tag of this call is
   removed from every value, so no value can close its own block early or open another one. Nothing is escaped:
   SQL and other text full of `<` and `>` must arrive intact."
   [untrusted]
-  (let [tags    (sort-by name (keys untrusted))
+  (let [tags    (keys untrusted)
         pattern (delimiter-pattern tags)]
     (str/join "\n\n"
               (for [tag tags
@@ -236,7 +251,7 @@
 (defn- data-sentence
   "The system-prompt sentence that tells the model the blocks of `tags` are data."
   [tags]
-  (let [blocks (map #(str "<" (name %) ">") (sort-by name tags))
+  (let [blocks (map #(str "<" (name %) ">") tags)
         listed (if (next blocks)
                  (str (str/join ", " (butlast blocks)) " and " (last blocks))
                  (first blocks))]
@@ -281,7 +296,7 @@
 ;;; ----------------------------------------------- Provider errors ---------------------------------------------------
 
 (def ^:private typed-error?
-  #{:metabot/ai-disabled :metabot/invalid-call :metabot/permission-denied :metabot/llm-not-configured
+  #{:metabot/ai-disabled :metabot/metabot-disabled :metabot/invalid-call :metabot/permission-denied :metabot/llm-not-configured
     :metabot/managed-limit-reached :metabot/usage-limit-reached :metabot/prompt-too-large :metabot/provider-failure
     :metabot/timeout :metabot/structured-output-incomplete :metabot/structured-output-invalid})
 
@@ -369,7 +384,8 @@
      :conversation-id \"…\"}      ; links the call to a Metabot conversation in usage logs
 
   Throws `ex-info` with `:type`, `:status-code` and `:error-code`, whose message is translated and safe to show any
-  user. Checked in this order before the provider is called: `:metabot/ai-disabled`, `:metabot/invalid-call`,
+  user. Checked in this order before the provider is called: `:metabot/ai-disabled`, `:metabot/metabot-disabled`
+  (the switch for the request's audience), `:metabot/invalid-call`,
   `:metabot/permission-denied`, `:metabot/llm-not-configured`, `:metabot/managed-limit-reached` and
   `:metabot/usage-limit-reached`. Then `:metabot/prompt-too-large`, `:metabot/provider-failure` (with its
   `:provider-failure` kind), `:metabot/timeout`, `:metabot/structured-output-incomplete` and
