@@ -26,19 +26,21 @@
   (testing "runs fetch then evaluate"
     (let [called (atom [])]
       (mt/with-premium-features #{:admin-security-center}
-        (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
-                                    fetch/sync-advisories!                    #(swap! called conj :fetch)
-                                    matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
-          (#'sync-advisories/sync-and-evaluate!)
-          (is (= [:fetch :evaluate] @called))))))
+        (mt/with-temporary-setting-values [security-center-sync-state nil]
+          (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                      fetch/sync-advisories!                    #(swap! called conj :fetch)
+                                      matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
+            (#'sync-advisories/sync-and-evaluate!)
+            (is (= [:fetch :evaluate] @called)))))))
   (testing "evaluate still runs when fetch throws"
     (let [called (atom [])]
       (mt/with-premium-features #{:admin-security-center}
-        (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
-                                    fetch/sync-advisories!                    #(throw (Exception. "fetch failed"))
-                                    matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
-          (#'sync-advisories/sync-and-evaluate!)
-          (is (= [:evaluate] @called)))))))
+        (mt/with-temporary-setting-values [security-center-sync-state nil]
+          (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                      fetch/sync-advisories!                    #(throw (Exception. "fetch failed"))
+                                      matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
+            (#'sync-advisories/sync-and-evaluate!)
+            (is (= [:evaluate] @called))))))))
 
 (deftest sync-and-evaluate-last-synced-at-test
   (testing "last-synced-at is bumped only when fetch/sync-advisories! succeeds"
@@ -101,24 +103,25 @@
     (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
       (mt/with-premium-features #{:admin-security-center}
         (mt/test-helpers-set-global-values!
-          (mt/with-temp [:model/SecurityAdvisory advisory
-                         {:advisory_id       "SC-E2E-001"
-                          :severity          "critical"
-                          :title             "E2E test advisory"
-                          :description       "Tests the full sync-and-evaluate flow"
-                          :remediation       "Upgrade"
-                          :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
-                          :matching_query    {:default {:select [[1 :one]]}}
-                          ;; query returns rows unconditionally — tests the full evaluate flow
-                          :match_status      "not_affected"
-                          :published_at      #t "2026-03-24T00:00:00Z"
-                          :updated_at        #t "2026-03-24T00:00:00Z"}]
-            (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
-                                        fetch/sync-advisories!                    (constantly nil)]
-              (#'sync-advisories/sync-and-evaluate!)
-              (let [updated (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
-                (is (= :active (:match_status updated)))
-                (is (some? (:last_evaluated_at updated)))))))))))
+          (mt/with-temporary-setting-values [security-center-sync-state nil]
+            (mt/with-temp [:model/SecurityAdvisory advisory
+                           {:advisory_id       "SC-E2E-001"
+                            :severity          "critical"
+                            :title             "E2E test advisory"
+                            :description       "Tests the full sync-and-evaluate flow"
+                            :remediation       "Upgrade"
+                            :affected_versions [{:min "0.1.0" :fixed "1.999.0"}]
+                            :matching_query    {:default {:select [[1 :one]]}}
+                            ;; query returns rows unconditionally — tests the full evaluate flow
+                            :match_status      "not_affected"
+                            :published_at      #t "2026-03-24T00:00:00Z"
+                            :updated_at        #t "2026-03-24T00:00:00Z"}]
+              (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                          fetch/sync-advisories!                    (constantly nil)]
+                (#'sync-advisories/sync-and-evaluate!)
+                (let [updated (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+                  (is (= :active (:match_status updated)))
+                  (is (some? (:last_evaluated_at updated))))))))))))
 
 (defn- run-init!
   "Run the job's `task/init!` on version `tag` with the scheduler stubbed out, and return what it ran at startup."
@@ -154,12 +157,14 @@
         (is (= "v1.64.4" (settings/last-evaluated-version)))))))
 
 (defn- sync-and-evaluate-on!
-  "Run [[sync-advisories/sync-and-evaluate!]] on version `tag`, with fetch and evaluation stubbed."
+  "Run [[sync-advisories/sync-and-evaluate!]] on version `tag`, with fetch, evaluation, notifications and metrics stubbed."
   [tag]
   (with-redefs [config/mb-version-info {:tag tag}]
-    (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
-                                fetch/sync-advisories!                    (constantly nil)
-                                matching/evaluate-all-advisories!         (constantly nil)]
+    (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled?  (constantly true)
+                                fetch/sync-advisories!                     (constantly nil)
+                                matching/evaluate-all-advisories!          (constantly nil)
+                                sync-advisories/send-repeat-notifications! (constantly nil)
+                                metrics/refresh-metrics!                   (constantly nil)]
       (#'sync-advisories/sync-and-evaluate!))))
 
 (deftest sync-and-evaluate-records-evaluated-version-test
