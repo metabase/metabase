@@ -720,7 +720,7 @@ describe("DataPickerModal", () => {
       });
       fetchMock.put(`path:/api/table/${ORDERS_TABLE.id}`, (call) => {
         const body = JSON.parse(String(call.options.body));
-        if (body.visibility_type === "hidden") {
+        if (body.data_layer === "hidden") {
           hiddenTableIds.add(Number(ORDERS_TABLE.id));
         }
         return { ...ORDERS_TABLE, ...body };

@@ -731,7 +731,7 @@ describe("TablePicker", () => {
       await waitLoading();
 
       const quuCheckbox = () =>
-        within(screen.getByRole("row", { name: /Quu$/ })).getByRole("checkbox");
+        within(screen.getByRole("row", { name: /Quu/ })).getByRole("checkbox");
 
       await userEvent.type(searchInput(), "Q");
       expect(await screen.findByText(QUU.display_name)).toBeInTheDocument();

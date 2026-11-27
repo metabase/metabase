@@ -63,7 +63,7 @@ export type Table = {
   updated_at: string;
 
   data_source: TableDataSource | null;
-  data_layer: TableDataLayer | null;
+  data_layer: TableDataLayer;
   owner_email: string | null;
   owner_user_id: UserId | null;
   owner?: TableOwner | { email: string } | null;
@@ -154,7 +154,7 @@ export interface UpdateTableRequest {
   field_order?: TableFieldOrder;
 
   data_source?: TableDataSource | null;
-  data_layer?: TableDataLayer | null;
+  data_layer?: TableDataLayer;
   entity_type?: TableEntityType | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
@@ -171,7 +171,7 @@ export interface UpdateTableListRequest {
   show_in_getting_started?: boolean;
 
   data_source?: TableDataSource | null;
-  data_layer?: TableDataLayer | null;
+  data_layer?: TableDataLayer;
   entity_type?: TableEntityType | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
@@ -189,7 +189,7 @@ export interface EditTablesRequest {
   visibility_type?: TableVisibilityType;
   data_authority?: string;
   data_source?: TableDataSource | null;
-  data_layer?: TableDataLayer | null;
+  data_layer?: TableDataLayer;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
   entity_type?: TableEntityType | null;

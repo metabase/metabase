@@ -17,13 +17,13 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   const [updateTable, { isLoading }] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const isHidden = table.visibility_type != null;
+  const isHidden = table.data_layer === "hidden";
   const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
     const { error } = await updateTable({
       id: table.id,
-      visibility_type: "hidden",
+      data_layer: "hidden",
     });
 
     onUpdateRef.current();
@@ -34,7 +34,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
       sendSuccessToast(t`Hid ${table.display_name}`, async () => {
         const { error } = await updateTable({
           id: table.id,
-          visibility_type: null,
+          data_layer: "internal",
         });
 
         onUpdateRef.current();
@@ -46,7 +46,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   const unhide = async () => {
     const { error } = await updateTable({
       id: table.id,
-      visibility_type: null,
+      data_layer: "internal",
     });
 
     onUpdateRef.current();
@@ -57,7 +57,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
       sendSuccessToast(t`Unhid ${table.display_name}`, async () => {
         const { error } = await updateTable({
           id: table.id,
-          visibility_type: "hidden",
+          data_layer: "hidden",
         });
 
         onUpdateRef.current();
@@ -85,7 +85,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
       <ActionIcon
         variant="subtle"
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
-        c={table.visibility_type != null ? "text-secondary" : undefined}
+        c={isHidden ? "text-secondary" : undefined}
         className={className}
         size="sm"
         loading={isLoading}

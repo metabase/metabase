@@ -50,6 +50,7 @@ describe("NewMeasurePage", () => {
     setup({
       table: createMockTable({
         visibility_type: "hidden",
+        data_layer: "hidden",
       }),
     });
     expect(
