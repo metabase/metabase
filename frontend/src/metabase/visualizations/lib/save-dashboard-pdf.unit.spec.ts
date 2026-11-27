@@ -80,6 +80,20 @@ describe("save-dashboard-pdf", () => {
       const breaks = findPageBreakCandidates(cards);
       expect(breaks).toEqual([20]);
     });
+
+    it("should keep row breaks of table card that is last card on dashboard", () => {
+      const cards = [
+        {
+          top: 0,
+          bottom: 300,
+          height: 300,
+          allowedBreaks: new Set<number>([100, 200]),
+        },
+      ];
+
+      const breaks = findPageBreakCandidates(cards);
+      expect(breaks).toEqual([100, 200]);
+    });
   });
 
   describe("getPageBreaks", () => {
