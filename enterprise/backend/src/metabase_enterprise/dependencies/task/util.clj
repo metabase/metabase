@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
@@ -17,7 +18,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (java.util Date)
-   (java.util.concurrent ExecutionException Executors Future TimeUnit)
+   (java.util.concurrent Executors Future TimeUnit)
    (java.util.concurrent.locks ReentrantLock)
    (org.quartz Scheduler)))
 
@@ -145,51 +146,42 @@
       :idle)
     :disabled))
 
-(mu/defn map-in-parallel :- [:sequential :any]
-  "What `f` returns for each of `xs`, in order, calling it on up to `threads` threads in the caller's dynamic bindings,
-  or one at a time on the caller's thread inside a transaction, whose one connection the threads would share. When
-  calls throw, rethrows the Throwable of the earliest element of `xs` whose call threw, interrupting the calls still
-  running, and returns only once none runs."
-  [threads :- ms/PositiveInt
-   f       :- [:fn {:error/message "a function"} ifn?]
-   xs      :- [:sequential [:fn {:error/message "a value"} some?]]]
-  (if (or (= 1 threads) (< (count xs) 2) (mdb/in-transaction?))
-    (mapv f xs)
-    (let [pool (Executors/newFixedThreadPool (min threads (count xs)))
-          f    (bound-fn* f)]
-      (try
-        (mapv (fn [^Future result]
-                (try
-                  (.get result)
-                  (catch ExecutionException e
-                    (throw (or (ex-cause e) e)))))
-              (mapv (fn [x] (.submit pool ^Callable (fn [] (f x)))) xs))
-        (finally
-          (.shutdownNow pool)
-          ;; an interrupt doesn't stop a call that ignores it, and a call outliving its caller would still be writing
-          ;; once the caller released what it held
-          (.awaitTermination pool Long/MAX_VALUE TimeUnit/NANOSECONDS))))))
-
 (mu/defn compute-in-parallel :- [:sequential :any]
-  "The non-nil values `compute` returns for each of `xs`, in order, computed on up to `dependency-job-threads`
-  threads, then calling `on-failure!` on the caller's thread with each element whose call threw and its Throwable, in
-  order."
+  "The non-nil values `compute` returns for each of `xs`, in order, computed on up to `dependency-job-threads` threads
+  in the caller's dynamic bindings, or one at a time on the caller's thread inside a transaction, whose one connection
+  the threads would share. Calls `on-failure!` on the caller's thread, in order, with each element whose call threw and
+  its Throwable. Once a call throws an Error, or throws while the app DB is unreachable, no further call starts, and the
+  elements left out return nothing. Returns or throws only once no call runs."
   [compute     :- [:fn {:error/message "a function"} ifn?]
    on-failure! :- [:fn {:error/message "a function"} ifn?]
    xs          :- [:maybe [:sequential [:fn {:error/message "a value"} some?]]]]
-  (let [outcomes (map-in-parallel (deps.settings/dependency-job-threads)
-                                  (fn [x]
-                                    (try
-                                      {:value (compute x)}
-                                      (catch Throwable e
-                                        {:error e})))
-                                  (vec xs))]
-    (into []
-          (keep (fn [[x {:keys [value error]}]]
-                  (if error
-                    (do (on-failure! x error) nil)
-                    value)))
-          (map vector xs outcomes))))
+  (let [threads  (min (deps.settings/dependency-job-threads) (count xs))
+        stopped? (atom false)
+        run      (fn [x]
+                   (when-not @stopped?
+                     (try
+                       {:value (compute x)}
+                       (catch Throwable e
+                         (when (or (not (instance? Exception e)) (not (dependencies.db/app-db-reachable?)))
+                           (reset! stopped? true))
+                         {:error e}))))
+        handle!  (fn [x {:keys [value error]}]
+                   (if error
+                     (do (on-failure! x error) nil)
+                     value))]
+    (if (or (< threads 2) (mdb/in-transaction?))
+      (into [] (keep #(handle! % (run %))) xs)
+      (let [pool (Executors/newFixedThreadPool threads)
+            run  (bound-fn* run)]
+        (try
+          (into []
+                (keep (fn [[x ^Future outcome]] (handle! x (.get outcome))))
+                (mapv (fn [x] [x (.submit pool ^Callable (fn [] (run x)))]) xs))
+          (finally
+            (.shutdownNow pool)
+            ;; an interrupt doesn't stop a call that ignores it, and a call outliving its caller would overlap the
+            ;; caller's next batch
+            (.awaitTermination pool Long/MAX_VALUE TimeUnit/NANOSECONDS)))))))
 
 (mu/defn trigger-run! :- :any
   "Schedule a run of `job` a second from now, unless a batch size that isn't positive disables it."

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.task.util-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase-enterprise.dependencies.task.util :as task.util]
@@ -132,48 +133,61 @@
 
 (def ^:private ^:dynamic *bound* nil)
 
-(deftest map-in-parallel-test
+(deftest compute-in-parallel-order-test
   (testing "returns each call's value in order, calling them on several threads in the caller's bindings"
-    (let [threads (atom #{})]
-      (is (= [:a :a :a :a]
-             (binding [*bound* :a]
-               (task.util/map-in-parallel 4
-                                          (fn [_]
-                                            (swap! threads conj (Thread/currentThread))
-                                            (Thread/sleep 50)
-                                            *bound*)
-                                          (range 4)))))
-      (is (< 1 (count @threads)))))
+    (mt/with-temp-env-var-value! [mb-dependency-job-threads 4]
+      (let [threads (atom #{})]
+        (is (= [[:a 0] [:a 1] [:a 2] [:a 3]]
+               (binding [*bound* :a]
+                 (task.util/compute-in-parallel (fn [x]
+                                                  (swap! threads conj (Thread/currentThread))
+                                                  (Thread/sleep (long (* 40 (- 4 x))))
+                                                  [*bound* x])
+                                                (fn [_ e] (throw e))
+                                                (range 4)))))
+        (is (< 1 (count @threads))))))
   (testing "calls each one on the caller's thread inside a transaction"
-    (let [threads (atom #{})]
-      (t2/with-transaction [_]
-        (task.util/map-in-parallel 4 (fn [_] (swap! threads conj (Thread/currentThread))) (range 4)))
-      (is (= #{(Thread/currentThread)} @threads)))))
+    (mt/with-temp-env-var-value! [mb-dependency-job-threads 4]
+      (let [threads (atom #{})]
+        (t2/with-transaction [_]
+          (task.util/compute-in-parallel (fn [x] (swap! threads conj (Thread/currentThread)) x)
+                                         (fn [_ e] (throw e))
+                                         (range 4)))
+        (is (= #{(Thread/currentThread)} @threads))))))
 
-(deftest map-in-parallel-rethrows-earliest-test
-  (testing "rethrows what the earliest element's call threw, even when a later one threw first"
-    (is (thrown-with-msg? Exception #"first"
-                          (task.util/map-in-parallel 4
-                                                     (fn [x]
-                                                       (case x
-                                                         1 (do (Thread/sleep 100) (throw (Exception. "first")))
-                                                         2 (throw (Exception. "second"))
-                                                         x))
-                                                     [0 1 2])))))
+(deftest compute-in-parallel-rethrows-earliest-test
+  (testing "hands on-failure! the earliest element's Error first, even when a later one threw first"
+    (mt/with-temp-env-var-value! [mb-dependency-job-threads 4]
+      (let [started (promise)]
+        (is (thrown-with-msg? AssertionError #"first"
+                              (task.util/compute-in-parallel (fn [x]
+                                                               (case x
+                                                                 1 (do (deliver started true)
+                                                                       (Thread/sleep 100)
+                                                                       (throw (AssertionError. "first")))
+                                                                 2 (do (deref started 10000 nil)
+                                                                       (throw (AssertionError. "second")))
+                                                                 x))
+                                                             (fn [_ e] (throw e))
+                                                             [0 1 2])))))))
 
-(deftest map-in-parallel-waits-for-running-calls-test
-  (testing "returns only once a call that ignores the interrupt has finished"
-    (let [finished? (atom false)]
-      (is (thrown? Exception
-                   (task.util/map-in-parallel 2
-                                              (fn [x]
-                                                (if (= x :slow)
-                                                  (let [until (+ (System/currentTimeMillis) 300)]
-                                                    (while (< (System/currentTimeMillis) until))
-                                                    (reset! finished? true))
-                                                  (throw (Exception. "boom"))))
-                                              [:slow :fail])))
-      (is @finished?))))
+(deftest compute-in-parallel-waits-for-running-calls-test
+  (testing "throws only once a call that ignores the interrupt has finished"
+    (mt/with-temp-env-var-value! [mb-dependency-job-threads 2]
+      (let [started   (promise)
+            finished? (atom false)]
+        (is (thrown? AssertionError
+                     (task.util/compute-in-parallel (fn [x]
+                                                      (if (= x :slow)
+                                                        (let [until (+ (System/currentTimeMillis) 300)]
+                                                          (deliver started true)
+                                                          (while (< (System/currentTimeMillis) until))
+                                                          (reset! finished? true))
+                                                        (do (deref started 10000 nil)
+                                                            (throw (AssertionError. "boom")))))
+                                                    (fn [_ e] (throw e))
+                                                    [:fail :slow])))
+        (is @finished?)))))
 
 (deftest compute-in-parallel-test
   (testing "returns the non-nil values in order, then hands each failure to on-failure! on the caller's thread, in order"
@@ -189,8 +203,67 @@
                                             (range 5))))
       (is (= [[1 1 (Thread/currentThread)] [3 3 (Thread/currentThread)]] @failures)))))
 
+(deftest compute-in-parallel-stops-at-rethrown-error-test
+  (doseq [threads [1 4]]
+    (testing (str "an Error that on-failure! rethrows stops the batch before the elements queued behind the running ones, at "
+                  threads " threads")
+      (mt/with-temp-env-var-value! [mb-dependency-job-threads threads]
+        (let [computed (atom 0)]
+          (is (thrown? StackOverflowError
+                       (task.util/compute-in-parallel (fn [x]
+                                                        (swap! computed inc)
+                                                        (if (= x 1)
+                                                          (throw (StackOverflowError.))
+                                                          (Thread/sleep 50))
+                                                        x)
+                                                      (fn [_ e]
+                                                        (when-not (instance? Exception e)
+                                                          (throw e)))
+                                                      (range 20))))
+          (is (<= @computed (inc threads))))))))
+
+(deftest compute-in-parallel-stops-while-app-db-unreachable-test
+  (doseq [threads [1 4]]
+    (testing (str "a call that throws while the app DB is unreachable stops the batch before the elements queued behind "
+                  "the running ones, checking reachability once, at " threads " threads")
+      (mt/with-temp-env-var-value! [mb-dependency-job-threads threads]
+        (let [computed (atom 0)
+              failures (atom [])
+              checks   (atom 0)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (fn []
+                                                                          (swap! checks inc)
+                                                                          false)]
+            (is (thrown-with-msg? Exception #"outage"
+                                  (task.util/compute-in-parallel (fn [x]
+                                                                   (swap! computed inc)
+                                                                   (if (= x 1)
+                                                                     (throw (Exception. "outage"))
+                                                                     (Thread/sleep 50))
+                                                                   x)
+                                                                 ;; like the jobs' handlers, which rethrow during an outage
+                                                                 (fn [x e]
+                                                                   (swap! failures conj x)
+                                                                   (throw e))
+                                                                 (range 20)))))
+          (is (<= @computed (inc threads)))
+          (is (= [1] @failures))
+          (is (= 1 @checks)))))))
+
 (deftest dependency-job-threads-at-least-one-test
   (testing "a dependency-job-threads setting that isn't positive means one thread"
     (doseq [threads ["0" "-1"]]
       (mt/with-temp-env-var-value! [mb-dependency-job-threads threads]
         (is (= 1 (deps.settings/dependency-job-threads)))))))
+
+(deftest dependency-job-threads-default-test
+  (testing "unset, dependency-job-threads is the smallest of 4, the CPU cores and a quarter of the app DB pool, at least 1"
+    (doseq [[cores pool-size expected] [[8 15 3] [8 16 4] [8 40 4] [2 40 2] [1 40 1] [8 3 1] [8 0 1]]]
+      (is (= expected (#'deps.settings/default-job-threads cores pool-size))
+          (str cores " cores, a pool of " pool-size)))
+    (mt/with-dynamic-fn-redefs [deps.settings/app-db-max-pool-size (constantly 8)]
+      (is (= (min 2 (.availableProcessors (Runtime/getRuntime))) (deps.settings/dependency-job-threads))))
+    (testing "and reads the pool size from the app DB's pool"
+      (is (pos-int? (#'deps.settings/app-db-max-pool-size))))
+    (testing "and a value that is set overrides it"
+      (mt/with-temp-env-var-value! [mb-dependency-job-threads 7]
+        (is (= 7 (deps.settings/dependency-job-threads)))))))
