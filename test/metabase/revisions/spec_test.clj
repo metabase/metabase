@@ -36,6 +36,8 @@
         (is (some? schema))
         (is (str/ends-with? (name schema) ".revision"))
         (is (some? (mr/registered-schema schema))))
+      (testing "lists no top-level `:id`, which the after-select of Revision drops from every snapshot it reads"
+        (is (not (contains? (set (revisions.spec/schema-keys schema)) :id))))
       (testing "lists each tracked column in it, and other keys only when the spec adds them to its snapshots"
         (let [keys* (set (revisions.spec/snapshot-keys model))]
           (is (set/subset? (set track) keys*))
