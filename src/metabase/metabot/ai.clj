@@ -150,7 +150,7 @@
    [:prompt          ::prompt]
    [:response        ::response]
    [:timeout-ms      {:optional true} pos-int?]
-   [:max-attempts    {:optional true} [:int {:min 1 :max 5}]]
+   [:max-attempts    {:optional true} [:int {:min 1, :max 5}]]
    [:request-id      {:optional true} :string]
    [:conversation-id {:optional true} :string]])
 
@@ -163,7 +163,7 @@
   ([type status-code error-code message]
    (error type status-code error-code message nil nil))
   ([type status-code error-code message data cause]
-   (ex-info message (merge data {:type type :status-code status-code :error-code error-code}) cause)))
+   (ex-info message (merge data {:type type, :status-code status-code, :error-code error-code}) cause)))
 
 ;; An invalid call is a 500, whose ex-data can reach the client and the logs, so it must not carry option or prompt
 ;; values.
@@ -249,7 +249,7 @@
                       (usage/managed-free-limit-message))))
       (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
         (throw (error :metabot/usage-limit-reached 429 "ai_usage_limit_reached" limit-msg)))
-      {:entry entry :model-ref model-ref})))
+      {:entry entry, :model-ref model-ref})))
 
 (defn check!
   "Throw the typed error [[call-llm!]] would throw for `feature-id` serving `audience` before it contacts the
@@ -333,11 +333,13 @@
   See [[::prompt]] and [[render-untrusted]]."
   [{:keys [system user untrusted messages]} boundary]
   (if messages
-    (into [{:role "system" :content system}] messages)
-    [{:role "system" :content (cond-> system
-                                (seq untrusted) (str "\n\n" (data-sentence (keys untrusted))))}
-     {:role "user" :content (cond-> user
-                              (seq untrusted) (str "\n\n" (render-untrusted untrusted boundary)))}]))
+    (into [{:role "system", :content system}] messages)
+    [{:role    "system"
+      :content (cond-> system
+                 (seq untrusted) (str "\n\n" (data-sentence (keys untrusted))))}
+     {:role    "user"
+      :content (cond-> user
+                 (seq untrusted) (str "\n\n" (render-untrusted untrusted boundary)))}]))
 
 ;;; ------------------------------------------------- Response -------------------------------------------------------
 
@@ -397,7 +399,7 @@
     (log/warnf e "AI feature %s: provider call failed (kind=%s)" feature-id kind)
     (error :metabot/provider-failure (if (= :rate-limit kind) 429 502) (or error-code "ai_provider_failure")
            (or message (tru "The AI provider couldn''t answer. Please try again in a moment."))
-           {:feature-id feature-id :provider-failure kind} e)))
+           {:feature-id feature-id, :provider-failure kind} e)))
 
 (defn- typed-call-error
   "The typed error of [[call-llm!]] for `e`, thrown by the structured call."
@@ -466,7 +468,7 @@
   [feature-id timeout-ms cause]
   (error :metabot/timeout 504 "ai_timeout"
          (tru "The AI model took too long to answer. Please try again.")
-         {:feature-id feature-id :timeout-ms timeout-ms} cause))
+         {:feature-id feature-id, :timeout-ms timeout-ms} cause))
 
 (defn- with-deadline
   "Run `thunk` and return its value, or throw `:metabot/timeout` once `timeout-ms` passes.
