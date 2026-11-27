@@ -1,7 +1,6 @@
 (ns metabase.sso.ldap
   (:require
    [clj-ldap.client :as ldap]
-   [clojure.string :as str]
    [diehard.core :as dh]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap.default-implementation :as default-impl]
@@ -13,7 +12,9 @@
    (com.unboundid.ldap.sdk LDAPConnection LDAPConnectionOptions LDAPConnectionPool LDAPException
                            SimpleBindRequest StartTLSPostConnectProcessor)
    (com.unboundid.ldap.sdk.extensions StartTLSExtendedRequest)
-   (com.unboundid.util.ssl HostNameSSLSocketVerifier SSLUtil TrustAllTrustManager TrustStoreTrustManager)))
+   (com.unboundid.util.ssl HostNameSSLSocketVerifier SSLUtil TrustStoreTrustManager)
+   (java.security KeyStore)
+   (javax.net.ssl TrustManagerFactory X509TrustManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,15 +33,6 @@
    :ldap-group-sync          :group-sync
    :ldap-group-base          :group-base})
 
-(defn- default-trust-store-path
-  "Path to the JVM's default CA trust store, honoring the standard
-  `javax.net.ssl.trustStore` system property and otherwise falling back to
-  `$JAVA_HOME/lib/security/cacerts`."
-  []
-  (or (not-empty (System/getProperty "javax.net.ssl.trustStore"))
-      (str/join java.io.File/separator
-                [(System/getProperty "java.home") "lib" "security" "cacerts"])))
-
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   (let [security (keyword security)
         port     (if (string? port)
@@ -57,8 +49,7 @@
              :startTLS? (= security :starttls)}
       ;; Validate the server certificate against the operator-configured CA
       ;; store when set, otherwise the JVM default trust store.
-      tls? (assoc :trust-store (or (sso.settings/ldap-trust-store)
-                                   (default-trust-store-path))))))
+      tls? (assoc :trust-store (sso.settings/ldap-trust-store)))))
 
 (defn- settings->ldap-options []
   (details->ldap-options {:host      (sso.settings/ldap-host)
@@ -67,11 +58,18 @@
                           :password  (sso.settings/ldap-password)
                           :security  (sso.settings/ldap-security)}))
 
+(defn- jvm-trust-manager
+  "The JVM's default trust manager, configured by the `javax.net.ssl.trustStore*` system properties."
+  ^X509TrustManager []
+  (let [factory (doto (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
+                  (.init ^KeyStore (cast KeyStore nil)))]
+    (some #(when (instance? X509TrustManager %) %) (.getTrustManagers factory))))
+
 (defn- trust-manager
-  ^javax.net.ssl.X509TrustManager [trust-store]
+  ^X509TrustManager [trust-store]
   (if trust-store
     (TrustStoreTrustManager. ^String trust-store)
-    (TrustAllTrustManager.)))
+    (jvm-trust-manager)))
 
 (defn- ldap-connection-options
   "`LDAPConnectionOptions` configured to verify that the server certificate matches the host we
