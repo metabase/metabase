@@ -541,6 +541,7 @@ class DashboardGridInner extends Component<
         mode={visualizerModalStatus.mode}
         initialState={visualizerModalStatus.state}
         dashboardId={this.props.dashboard.id}
+        dashcardId={visualizerModalStatus.dashcardId}
         onSave={this.onVisualizerModalSave}
         onClose={this.onVisualizerModalClose}
       />
@@ -582,6 +583,7 @@ class DashboardGridInner extends Component<
       <Box
         key={String(dc.id)}
         data-testid="dashcard-container"
+        data-dashcard-id={dc.id}
         className={cx(
           DashboardS.DashCard,
           EmbedFrameS.DashCard,
@@ -604,7 +606,7 @@ class DashboardGridInner extends Component<
 
   renderGrid() {
     const { width } = this.props;
-    const { layouts, visualizerModalStatus } = this.state;
+    const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
 
     return (
@@ -627,7 +629,10 @@ class DashboardGridInner extends Component<
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
         onDragStop={this.onDragStop}
-        isEditing={this.isEditingLayout && !visualizerModalStatus}
+        // The editor covers the grid, so the grid can stay in the editing layout.
+        // Leaving it removes the empty rows at the bottom, and the scroll bar
+        // of the dashboard goes away while the editor is open.
+        isEditing={this.isEditingLayout}
         compactType="vertical"
         items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}

@@ -1,0 +1,71 @@
+.Overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-background_page-primary) 60%,
+    transparent
+  );
+  backdrop-filter: blur(6px);
+  transition:
+    opacity 400ms ease,
+    backdrop-filter 400ms ease;
+}
+
+.Overlay[data-phase="enter"],
+.Overlay[data-phase="leave"] {
+  background-color: transparent;
+  backdrop-filter: blur(0);
+}
+
+.Overlay[data-phase="leave"] {
+  pointer-events: none;
+}
+
+.ChartCard {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: 0 8px 32px var(--mb-color-shadow-default);
+  transition:
+    left 400ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 400ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 400ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ChartTitle {
+  flex-shrink: 0;
+  padding-bottom: var(--mantine-spacing-sm);
+}
+
+.ChartBody {
+  flex: 1;
+  min-height: 0;
+}
+
+.PanelCard {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: 0 8px 32px var(--mb-color-shadow-default);
+  transition:
+    opacity 300ms ease 100ms,
+    transform 300ms ease 100ms;
+}
+
+.Overlay[data-phase="enter"] .PanelCard,
+.Overlay[data-phase="leave"] .PanelCard {
+  opacity: 0;
+  transform: translateX(24px);
+  transition-delay: 0ms;
+}
