@@ -68,12 +68,14 @@ bin/ui-package @metabase/devex
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
 
 # @metabase/metabot
-# Backend modules are in the generated block below.
+# Backend modules are in the generated block below. Their prompts, skills and MCP skill packs are here.
 enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot
 frontend/src/metabase/metabot @metabase/metabot
 frontend/src/metabase-types/api/search.ts @metabase/metabot
 frontend/src/metabase/api/search.ts @metabase/metabot
 modules/embedder @metabase/metabot
+resources/mcp @metabase/metabot
+resources/metabot @metabase/metabot
 
 # @metabase/gadget
 # Not enforced: uncomment these lines once the team agrees to review these paths.
@@ -225,7 +227,3 @@ test/metabase/slackbot @metabase/metabot
 test/metabase/slackbot_test.* @metabase/metabot
 
 # ===== END generated module ownership =====
-
-# Metabot prompts and skills, and the MCP tool definitions, which no module directory covers
-resources/metabot @metabase/metabot
-resources/mcp @metabase/metabot
