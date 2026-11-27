@@ -20,6 +20,7 @@ import type {
   UserId,
   UserInfo,
   VirtualCardDisplay,
+  VisualizerDimensionOverride,
   VisualizerVizDefinition,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
@@ -369,6 +370,7 @@ export type DashboardCardQueryRequest = {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
   cardId: CardId;
+  dimension_override?: VisualizerDimensionOverride;
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];

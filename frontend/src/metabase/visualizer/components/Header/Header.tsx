@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useDispatch, useSelector } from "metabase/redux";
-import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getCurrentVisualizerState,
@@ -29,6 +29,8 @@ interface HeaderProps {
   saveLabel?: string;
   allowSaveWhenPristine?: boolean;
   className?: string;
+  showDataSidebarToggle?: boolean;
+  subtitle?: string;
 }
 
 export function Header({
@@ -37,6 +39,8 @@ export function Header({
   saveLabel,
   allowSaveWhenPristine = false,
   className,
+  showDataSidebarToggle = true,
+  subtitle,
 }: HeaderProps) {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
   const { setDataSidebarOpen } = useVisualizerUi();
@@ -53,7 +57,12 @@ export function Header({
     trackVisualizerSaveClicked();
 
     onSave(
-      _.pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
+      _.pick(visualizerState, [
+        "display",
+        "columnValuesMapping",
+        "settings",
+        "dimensionOverrides",
+      ]),
     );
   };
 
@@ -74,12 +83,19 @@ export function Header({
       className={className}
       data-testid="visualizer-header"
     >
-      <ActionIcon
-        variant="subtle"
-        onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}
-      >
-        <Icon name="sidebar_open" />
-      </ActionIcon>
+      {showDataSidebarToggle && (
+        <ActionIcon
+          variant="subtle"
+          onClick={() => setDataSidebarOpen((isOpen) => !isOpen)}
+        >
+          <Icon name="sidebar_open" />
+        </ActionIcon>
+      )}
+      {subtitle && (
+        <Text fw="bold" c="text-secondary" style={{ flexShrink: 0 }}>
+          {subtitle}
+        </Text>
+      )}
       <EditableText
         initialValue={title}
         isOptional

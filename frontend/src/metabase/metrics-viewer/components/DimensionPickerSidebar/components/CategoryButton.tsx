@@ -7,7 +7,7 @@ import { ActionIcon, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 import S from "./CategoryButton.module.css";
 
 type CategoryButtonProps = {
-  item: DimensionPickerSidebarCategory;
+  item: Pick<DimensionPickerSidebarCategory, "name" | "icon">;
   isSelected: boolean;
   canConfigure: boolean;
   isExpanded: boolean;

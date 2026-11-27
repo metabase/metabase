@@ -33,8 +33,10 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/utils/dashboard_grid";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import { isVisualizerSupportedVisualization } from "metabase/visualizer/utils";
+import {
+  VisualizationEditorModal,
+  type VisualizationEditorMode,
+} from "metabase/visualizer/components/VisualizationEditor/VisualizationEditorModal";
 import type {
   BaseDashboardCard,
   Card,
@@ -44,7 +46,6 @@ import type {
   DashboardTabId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
-import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -94,6 +95,7 @@ interface DashboardGridInnerState {
   visualizerModalStatus?: {
     dashcardId: number;
     state: VisualizerVizDefinition;
+    mode: VisualizationEditorMode;
   };
 }
 
@@ -453,11 +455,13 @@ class DashboardGridInner extends Component<
   onEditVisualization = (
     dashcard: BaseDashboardCard,
     initialState: VisualizerVizDefinition,
+    mode: VisualizationEditorMode,
   ) => {
     this.setState({
       visualizerModalStatus: {
         dashcardId: dashcard.id,
         state: initialState,
+        mode,
       },
     });
 
@@ -527,29 +531,18 @@ class DashboardGridInner extends Component<
   };
 
   renderVisualizerModal() {
-    const { dashcards } = this.props;
     const { visualizerModalStatus } = this.state;
     if (!visualizerModalStatus) {
       return null;
     }
 
-    const dashcard = dashcards[visualizerModalStatus.dashcardId];
-
-    // We want to allow saving a visualization as is if it's initial display type
-    // isn't supported by visualizer. For example, taking a pivot table and saving
-    // it as a bar chart with several columns selected.
-    const allowSaveWhenPristine =
-      !isVisualizerDashboardCard(dashcard) &&
-      !isVisualizerSupportedVisualization(dashcard?.card.display);
-
     return (
-      <VisualizerModal
+      <VisualizationEditorModal
+        mode={visualizerModalStatus.mode}
+        initialState={visualizerModalStatus.state}
+        dashboardId={this.props.dashboard.id}
         onSave={this.onVisualizerModalSave}
         onClose={this.onVisualizerModalClose}
-        initialState={{ state: visualizerModalStatus.state }}
-        saveLabel={t`Save`}
-        allowSaveWhenPristine={allowSaveWhenPristine}
-        dashboardId={this.props.dashboard.id}
       />
     );
   }

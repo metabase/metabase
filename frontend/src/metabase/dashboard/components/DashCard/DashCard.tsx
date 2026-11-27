@@ -29,6 +29,7 @@ import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/vi
 import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
+import type { VisualizationEditorMode } from "metabase/visualizer/components/VisualizationEditor/VisualizationEditorModal";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
@@ -96,6 +97,7 @@ export interface DashCardProps {
   onEditVisualization: (
     dashcard: StoreDashcard,
     initialState: VisualizerVizDefinitionWithColumns,
+    mode: VisualizationEditorMode,
   ) => void;
 }
 
@@ -337,13 +339,16 @@ function DashCardInner({
     }
   }, [dashcard, datasets, series]);
 
-  const onEditVisualizationClick = useCallback(() => {
-    const initialState = getVisualizerInitialState();
+  const onEditVisualizationClick = useCallback(
+    (mode: VisualizationEditorMode) => {
+      const initialState = getVisualizerInitialState();
 
-    if (initialState != null) {
-      onEditVisualization(dashcard, initialState);
-    }
-  }, [dashcard, onEditVisualization, getVisualizerInitialState]);
+      if (initialState != null) {
+        onEditVisualization(dashcard, initialState, mode);
+      }
+    },
+    [dashcard, onEditVisualization, getVisualizerInitialState],
+  );
 
   const handleEditVisualization = isDashCardDataSeries(series)
     ? onEditVisualizationClick
@@ -436,8 +441,8 @@ function DashCardInner({
           }
           onTogglePreviewing={handlePreviewToggle}
           onEditVisualization={
-            isVisualizerDashboardCard(dashcard)
-              ? handleEditVisualization
+            isVisualizerDashboardCard(dashcard) && handleEditVisualization
+              ? () => handleEditVisualization("appearance")
               : undefined
           }
         />

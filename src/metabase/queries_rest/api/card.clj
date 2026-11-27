@@ -806,6 +806,28 @@
     (api/check-404 (queries/cached-dataset sr sort))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/dimension-options"
+  "Describe how the questions with `card_ids` can be regrouped for a visualizer chart: the current breakout of each,
+  and, with `axis`, how each can follow that x-axis. A question keeps its `preferred` column when that column is in
+  the category of the axis. With `include_columns`, also list the columns each question can be grouped by."
+  [_route-params
+   _query-params
+   {:keys [card_ids axis preferred include_columns]}
+   :- [:map {:closed true}
+       [:card_ids        [:sequential ms/PositiveInt]]
+       [:axis            {:optional true} [:maybe qp.dashboard/DimensionAxis]]
+       [:preferred       {:optional true} [:maybe [:sequential qp.dashboard/PreferredDimension]]]
+       [:include_columns {:optional true} [:maybe :boolean]]]]
+  (let [card-id->preferred (into {} (map (juxt :cardId :override)) preferred)]
+    (into {}
+          (keep (fn [card-id]
+                  (when-let [card (queries-rest.db/card card-id)]
+                    (when (mi/can-read? card)
+                      [(keyword (str card-id))
+                       (qp.dashboard/card-dimension-options card axis (card-id->preferred card-id) include_columns)]))))
+          (distinct card_ids))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
   and optionally re-sorts the rows via the `sort` body param."
@@ -813,9 +835,10 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
+   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort dimension_override]}
    :- [:map {:closed true}
        [:ignore_cache       {:default false} :boolean]
+       [:dimension_override {:optional true} [:maybe qp.dashboard/DimensionOverride]]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
@@ -838,11 +861,15 @@
          :parameters parameters
          :ignore-cache ignore_cache
          :dashboard-id dashboard_id
-         :card-transform (cond
-                           ;; Collection previews start from the aggregate so no usable default stays scalar
-                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
-                                                    metric-card-without-query-breakouts)
-                           dashboard_id       qp.dashboard/card-with-default-metric-dimension)
+         :card-transform (let [transform (cond
+                                           ;; Collection previews start from the aggregate so no usable default stays scalar
+                                           collection_preview (comp qp.dashboard/card-with-default-metric-dimension
+                                                                    metric-card-without-query-breakouts)
+                                           dashboard_id       qp.dashboard/card-with-default-metric-dimension
+                                           :else              identity)]
+                           ;; The visualizer editor previews a question regrouped onto the x-axis of a visualization.
+                           (fn [card]
+                             (qp.dashboard/card-with-dimension-override (transform card) dimension_override)))
          :context (cond
                     collection_preview :collection
                     dashboard_id       :dashboard

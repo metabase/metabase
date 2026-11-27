@@ -209,6 +209,189 @@
             merged-parameters)
       (log/tracef "Resolved %d parameter(s)" (count <>)))))
 
+;;; ------------------------------------------- Visualizer dimension overrides -------------------------------------------
+;;; A visualizer dashcard can regroup a question onto the shared x-axis of the visualization without changing the
+;;; question. The override names the column that replaces the breakouts of the last stage:
+;;; `{:fieldId 2187, :sourceFieldId nil, :temporalUnit "month"}`. The dashcard stores the overrides in
+;;; `visualization_settings.visualization.dimensionOverrides`, keyed by data source id (`"card:95"`).
+
+(def DimensionOverride
+  "The column that replaces the breakouts of the last stage of a question."
+  [:map {:closed true}
+   [:fieldId       pos-int?]
+   [:sourceFieldId {:optional true} [:maybe pos-int?]]
+   [:temporalUnit  {:optional true} [:maybe :string]]])
+
+(def DimensionAxis
+  "The shared x-axis of a visualizer chart: a dimension category, like `\"time\"` or `\"name:channel\"`, and the
+  temporal unit for time. The field is the column of the main question, that other questions prefer when they have it."
+  [:map {:closed true}
+   [:key           :string]
+   [:temporalUnit  {:optional true} [:maybe :string]]
+   [:fieldId       {:optional true} [:maybe pos-int?]]
+   [:sourceFieldId {:optional true} [:maybe pos-int?]]
+   [:displayName   {:optional true} [:maybe :string]]])
+
+(def PreferredDimension
+  "The column that a question already uses for the x-axis. It stays when it is still in the category of the axis."
+  [:map {:closed true}
+   [:cardId   pos-int?]
+   [:override DimensionOverride]])
+
+(defn- normalize-dimension-override [override]
+  (when (map? override)
+    (let [override (update-keys override keyword)]
+      (when (pos-int? (:fieldId override))
+        override))))
+
+(defn- temporal-column? [column]
+  (isa? ((some-fn :effective-type :base-type) column) :type/Temporal))
+
+(defn- regroupable-query
+  "The card query as a lib query, when its last stage can take a new breakout: an MBQL stage with an aggregation."
+  [card]
+  (let [query (lib/query (lib-be/application-database-metadata-provider (:database_id card)) (:dataset_query card))]
+    (when (and (lib/mbql-stage? query -1)
+               (seq (lib/aggregations query -1)))
+      query)))
+
+(defn- find-override-column [query {:keys [fieldId sourceFieldId]}]
+  (let [columns (lib/breakoutable-columns query -1)]
+    (or (u/seek #(and (= fieldId (:id %)) (= sourceFieldId (:fk-field-id %))) columns)
+        (u/seek #(= fieldId (:id %)) columns))))
+
+(defn card-with-dimension-override
+  "Replace the breakouts of the last stage of `card` with the column that `override` names. Returns `card` unchanged
+  when there is no override, the card is native, or the last stage has no aggregation or no such column."
+  [card override]
+  (let [override (normalize-dimension-override override)
+        query    (when override (regroupable-query card))
+        column   (when query (find-override-column query override))]
+    (if-not column
+      card
+      (let [unit   (some-> (:temporalUnit override) keyword)
+            column (cond-> column
+                     (and unit (temporal-column? column)) (lib/with-temporal-bucket unit))]
+        (assoc card :dataset_query (-> query
+                                       lib/remove-all-breakouts
+                                       (lib/breakout column)))))))
+
+(defn dashcard-dimension-override
+  "The dimension override that `dashcard` stores for the card with `card-id`, if any."
+  [dashcard card-id]
+  (let [overrides (get-in dashcard [:visualization_settings :visualization :dimensionOverrides])
+        k         (str "card:" card-id)]
+    (or (get overrides k) (get overrides (keyword k)))))
+
+(defn- dimension-kind
+  "The kind of a dimension column, as the metrics explorer groups them."
+  [column]
+  (let [semantic (:semantic-type column)
+        type     ((some-fn :effective-type :base-type) column)]
+    (cond
+      (isa? type :type/HasDate)                   :time
+      (temporal-column? column)                   nil
+      (isa? semantic :type/Country)               :geo
+      (isa? semantic :type/State)                 :geo
+      (isa? semantic :type/City)                  :geo
+      (or (isa? semantic :type/PK)
+          (isa? semantic :type/FK))               nil
+      (isa? type :type/Boolean)                   :boolean
+      (isa? type :type/Number)                    :numeric
+      (isa? type :type/Text)                      :category
+      :else                                       nil)))
+
+(defn- dimension-category
+  "The category of a dimension column. Questions can share an x-axis when each has a column of the same category:
+  any time column for time, a column of the same geo type for geo, and a column with the same name otherwise."
+  [column display-name]
+  (when-let [kind (dimension-kind column)]
+    (let [semantic (:semantic-type column)]
+      (case kind
+        :time {:key "time" :name (tru "Time")}
+        :geo  (cond
+                (isa? semantic :type/Country) {:key "geo:country" :name (tru "Country")}
+                (isa? semantic :type/State)   {:key "geo:state" :name (tru "State")}
+                :else                         {:key "geo:city" :name (tru "City")})
+        {:key  (str "name:" (u/lower-case-en display-name))
+         :name display-name}))))
+
+(defn- column->option [query column]
+  (let [info     (lib/display-info query -1 column)
+        name     (:display-name info)
+        category (dimension-category column name)]
+    {:fieldId       (:id column)
+     :sourceFieldId (:fk-field-id column)
+     :name          name
+     :displayName   (or (:long-display-name info) name)
+     :temporal      (temporal-column? column)
+     :kind          (some-> (dimension-kind column) clojure.core/name)
+     :categoryKey   (:key category)
+     :categoryName  (:name category)}))
+
+(defn- current-breakout [query]
+  (when-let [breakout (first (lib/breakouts query -1))]
+    (let [column (lib/breakout-column query -1 breakout)]
+      (when (:id column)
+        (assoc (column->option query column)
+               :temporalUnit (some-> (lib/temporal-bucket breakout) :unit name))))))
+
+(defn- same-column? [a b]
+  (and (= (:fieldId a) (:fieldId b))
+       (= (:sourceFieldId a) (:sourceFieldId b))))
+
+(defn- match-axis
+  "How a card can follow the x-axis `axis`: `:match` when its own breakout already is the axis, `:regroup` with the
+  override to apply, or `:incompatible` with a reason. Among the columns of the axis category, the card uses the
+  `preferred` column, its own breakout, the column of the main question, a column of its own table, in this order."
+  [query current axis preferred]
+  (let [options  (into []
+                       (comp (filter :id)
+                             (map #(column->option query %))
+                             (filter #(= (:key axis) (:categoryKey %))))
+                       (lib/breakoutable-columns query -1))
+        own      (lib/breakoutable-columns query -1)
+        own-ids  (into #{} (comp (filter #(= :source/table-defaults (:lib/source %))) (map :id)) own)
+        option   (or (when preferred (u/seek #(same-column? preferred %) options))
+                     (when current (u/seek #(same-column? current %) options))
+                     (u/seek #(same-column? axis %) options)
+                     (u/seek #(= (:fieldId axis) (:fieldId %)) options)
+                     (u/seek #(and (nil? (:sourceFieldId %)) (own-ids (:fieldId %))) options)
+                     (first options))]
+    (if-not option
+      {:status :incompatible
+       :reason (tru "Has no {0} column" (or (:displayName axis) (:key axis)))}
+      (let [override (cond-> (select-keys option [:fieldId :sourceFieldId])
+                       (:temporal option) (assoc :temporalUnit (:temporalUnit axis)))]
+        (if (and current
+                 (same-column? current override)
+                 (= (:temporalUnit current) (:temporalUnit override))
+                 (= 1 (count (lib/breakouts query -1))))
+          {:status :match}
+          {:status   :regroup
+           :override override
+           :column   option})))))
+
+(defn card-dimension-options
+  "Describe how `card` can be regrouped: its current breakout, and, with `axis`, how it can follow that x-axis.
+  With `include-columns?`, also every column the last stage can be grouped by, with its dimension category."
+  [card axis preferred include-columns?]
+  (let [query (try (regroupable-query card) (catch Throwable _ nil))]
+    (if-not query
+      {:supported false
+       :reason    (if (= :native (keyword (:query_type card)))
+                    (tru "SQL questions can''t be regrouped")
+                    (tru "Can''t be regrouped"))}
+      (let [current (current-breakout query)]
+        (cond-> {:supported true
+                 :current   current}
+          axis             (assoc :axis (match-axis query current axis preferred))
+          include-columns? (assoc :columns (into []
+                                                 (comp (filter :id)
+                                                       (map #(column->option query %))
+                                                       (filter :categoryKey))
+                                                 (lib/breakoutable-columns query -1))))))))
+
 (defn process-query-for-dashcard
   "Like [[metabase.query-processor.card/process-query-for-card]], but runs the query for a `DashboardCard` with
   `parameters` and `constraints`. By default, returns a `metabase.server.streaming_response.StreamingResponse` (see
@@ -217,7 +400,7 @@
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
   {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints parameters middleware]}])}
-  [& {:keys [dashboard card dashcard parameters export-format]
+  [& {:keys [dashboard card dashcard parameters export-format dimension-override]
       :or   {export-format :api}
       :as   options}]
   (let [dashboard-id (:id dashboard)
@@ -249,7 +432,7 @@
                              {:ignore-cache false
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
-                             (dissoc options :dashboard :card :export-format)
+                             (dissoc options :dashboard :card :export-format :dimension-override)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"
@@ -257,4 +440,10 @@
         ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
         (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
           (m/mapply qp.card/process-query-for-card card export-format
-                    (assoc options :card-transform card-with-default-metric-dimension)))))))
+                    ;; An override in the request is the unsaved state of the dashboard editor. It wins over the
+                    ;; override that the saved dashcard stores.
+                    (let [override (or dimension-override (dashcard-dimension-override dashcard card-id))]
+                      (assoc options :card-transform (fn [card]
+                                                       (-> card
+                                                           card-with-default-metric-dimension
+                                                           (card-with-dimension-override override)))))))))))

@@ -1,4 +1,4 @@
-import type { IconName } from "metabase-types/api";
+import type { IconName, VisualizerDimensionOverride } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -748,6 +748,7 @@ export type StoredResultSort =
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
+  dimension_override?: VisualizerDimensionOverride;
   collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];

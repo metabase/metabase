@@ -217,6 +217,18 @@ type FetchCardDataActionReturned =
     }
   | undefined;
 
+// A visualizer dashcard can regroup a question onto its shared x-axis. Send
+// the override with the query, so that it also applies before the dashboard
+// is saved.
+function getDimensionOverride(dashcard: DashboardCard, cardId: CardId) {
+  if (!isVisualizerDashboardCard(dashcard)) {
+    return undefined;
+  }
+  return dashcard.visualization_settings.visualization.dimensionOverrides?.[
+    `card:${cardId}`
+  ];
+}
+
 export const fetchCardDataAction = createAsyncThunk<
   FetchCardDataActionReturned,
   FetchCardDataActionArgs
@@ -409,6 +421,7 @@ export const fetchCardDataAction = createAsyncThunk<
             cardId: card.id,
             dashboardId: dashcard.dashboard_id,
             ignore_cache: ignoreCache,
+            dimension_override: getDimensionOverride(dashcard, card.id),
           }),
         )) as Dataset | { error: unknown };
       } else {
@@ -422,6 +435,7 @@ export const fetchCardDataAction = createAsyncThunk<
             ignore_cache: ignoreCache,
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
+            dimension_override: getDimensionOverride(dashcard, card.id),
           }),
         )) as Dataset | { error: unknown };
       }

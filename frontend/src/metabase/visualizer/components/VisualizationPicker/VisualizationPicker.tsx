@@ -10,14 +10,19 @@ import { trackVisualizerDataChanged } from "../analytics";
 interface VisualizationPickerProps {
   value: VisualizationDisplay | null;
   onChange: (vizType: string) => void;
+  filter?: (display: VisualizationDisplay) => boolean;
 }
 export function VisualizationPicker({
   value,
   onChange,
+  filter,
 }: VisualizationPickerProps) {
   const options = useMemo(() => {
     return Array.from(visualizations)
-      .filter(([, viz]) => !viz.hidden && viz.supportsVisualizer)
+      .filter(
+        ([vizType, viz]) =>
+          !viz.hidden && viz.supportsVisualizer && (!filter || filter(vizType)),
+      )
       .map(([vizType, viz]) => {
         return {
           label: viz.getUiName(),
@@ -26,7 +31,7 @@ export function VisualizationPicker({
           iconUrl: viz.iconUrl,
         };
       });
-  }, []);
+  }, [filter]);
 
   return (
     <>

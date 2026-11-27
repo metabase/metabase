@@ -16,11 +16,9 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import {
-  isDisabledForVisualizer,
-  isVisualizerSupportedVisualization,
-} from "metabase/visualizer/utils";
-import { getVisualizationRaw } from "metabase/viz-core";
+import type { VisualizationEditorMode } from "metabase/visualizer/components/VisualizationEditor/VisualizationEditorModal";
+import { isVisualizerSupportedVisualization } from "metabase/visualizer/utils";
+import { getVisualizationRaw, isCartesianChart } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
@@ -38,7 +36,6 @@ import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButto
 import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
-import { trackVisualizeAnotherWayClicked } from "./analytics";
 
 interface Props {
   series: DashCardSeries;
@@ -65,7 +62,7 @@ interface Props {
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
   onAddParameter: (options: NewParameterOpts) => void;
-  onEditVisualization?: () => void;
+  onEditVisualization?: (mode: VisualizationEditorMode) => void;
 }
 
 function DashCardActionsPanelInner({
@@ -182,23 +179,36 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
+    const visualizationDisplay = isVisualizerDashboardCard(dashcard)
+      ? dashcard.visualization_settings.visualization.display
+      : dashcard?.card.display;
+
     if (
       (isVisualizerDashboardCard(dashcard) ||
         isVisualizerSupportedVisualization(dashcard?.card.display)) &&
       onEditVisualization
     ) {
-      const label = isVisualizerDashboardCard(dashcard)
-        ? t`Edit visualization`
-        : t`Visualize another way`;
+      if (visualizationDisplay && isCartesianChart(visualizationDisplay)) {
+        buttons.push(
+          <DashCardActionButton
+            key="visualization-series-button"
+            tooltip={t`Manage series`}
+            aria-label={t`Manage series`}
+            onClick={() => onEditVisualization("series")}
+          >
+            <DashCardActionButton.Icon name="add_data" />
+          </DashCardActionButton>,
+        );
+      }
 
       buttons.push(
         <DashCardActionButton
-          key="visualizer-button"
-          tooltip={label}
-          aria-label={label}
-          onClick={onEditVisualization}
+          key="visualization-appearance-button"
+          tooltip={t`Edit appearance`}
+          aria-label={t`Edit appearance`}
+          onClick={() => onEditVisualization("appearance")}
         >
-          <DashCardActionButton.Icon name="lineandbar" />
+          <DashCardActionButton.Icon name="palette" />
         </DashCardActionButton>,
       );
     }
@@ -217,29 +227,6 @@ function DashCardActionsPanelInner({
             handleOnReplaceAllVisualizationSettings
           }
         />,
-      );
-    }
-
-    if (
-      dashcard &&
-      !isVisualizerDashboardCard(dashcard) &&
-      !isVisualizerSupportedVisualization(dashcard?.card.display) &&
-      !isVirtualDashCard(dashcard) &&
-      !isDisabledForVisualizer(dashcard?.card.display) &&
-      onEditVisualization
-    ) {
-      buttons.push(
-        <DashCardActionButton
-          key="visualizer-button"
-          tooltip={t`Visualize another way`}
-          aria-label={t`Visualize another way`}
-          onClick={() => {
-            trackVisualizeAnotherWayClicked();
-            onEditVisualization();
-          }}
-        >
-          <DashCardActionButton.Icon name="lineandbar" />
-        </DashCardActionButton>,
       );
     }
 

@@ -1,5 +1,7 @@
 import type {
   Card,
+  CardDimensionOptions,
+  CardDimensionOptionsRequest,
   CardId,
   CardQueryMetadata,
   CardQueryRequest,
@@ -92,6 +94,16 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+      }),
+      getCardDimensionOptions: builder.query<
+        Record<string, CardDimensionOptions>,
+        CardDimensionOptionsRequest
+      >({
+        query: (body) => ({
+          method: "POST",
+          url: "/api/card/dimension-options",
+          body,
+        }),
       }),
       getCardQuery: builder.query<Dataset, CardQueryRequest & RtkCacheKeyed>({
         query: ({ cardId, dashboardId, ...body }) => ({
@@ -385,6 +397,7 @@ export const selectCard = cardApi.endpoints.getCard.select;
 
 export const {
   useListCardsQuery,
+  useGetCardDimensionOptionsQuery,
   useGetCardQuery,
   useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,

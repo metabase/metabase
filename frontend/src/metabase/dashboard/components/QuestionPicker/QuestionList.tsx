@@ -19,7 +19,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/utils/constants";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type {
@@ -30,7 +30,6 @@ import type {
 } from "metabase-types/api";
 
 import S from "./QuestionList.module.css";
-import { trackVisualizeAnotherWayClicked } from "./analytics";
 
 interface QuestionListProps {
   searchText: string;
@@ -157,20 +156,6 @@ export function QuestionList({
                 item.moderated_status ?? undefined,
               )}
             />
-            <Tooltip label={t`Visualize another way`}>
-              <ActionIcon
-                variant="filled"
-                className={S.VisualizerButton}
-                size="lg"
-                aria-label={t`Visualize another way`}
-                onClick={() => {
-                  trackVisualizeAnotherWayClicked();
-                  setVisualizerModalCardId(Number(item.id));
-                }}
-              >
-                <Icon name="lineandbar" />
-              </ActionIcon>
-            </Tooltip>
           </Flex>
         ))}
       </SelectList>

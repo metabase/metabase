@@ -32,6 +32,8 @@ import type {
   VisualizationSettings,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  VisualizerDimensionAxis,
+  VisualizerDimensionOverride,
 } from "metabase-types/api";
 
 import {
@@ -50,6 +52,7 @@ import {
   parseDataSourceId,
 } from "./utils";
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
+import { getVisualizationColumns } from "./utils/get-visualization-columns";
 import {
   addColumnToCartesianChart,
   attachRemappedDisplayColumn,
@@ -78,7 +81,16 @@ function getInitialVisualizerHistoryItem(): VisualizerVizDefinitionWithColumns {
     columns: [],
     columnValuesMapping: {},
     settings: {},
+    dimensionOverrides: {},
   };
+}
+
+type DimensionOverrides = Partial<
+  Record<VisualizerDataSourceId, VisualizerDimensionOverride>
+>;
+
+function getBreakoutColumn(dataset: Dataset | null | undefined) {
+  return dataset?.data?.cols.find((col) => col.source === "breakout");
 }
 
 function getInitialState(): VisualizerState {
@@ -147,6 +159,8 @@ const initializeFromState = async (
           fetchCardQuery({
             cardId,
             preloadedDatasets: initialState.preloadedDatasets,
+            dimensionOverride:
+              initialState.dimensionOverrides?.[`card:${cardId}`],
           }),
         ),
       ])
@@ -175,7 +189,19 @@ export const initializeFromCard = async (
 
 export const addDataSource = createAsyncThunk(
   "visualizer/dataImporter/addDataSource",
-  async (id: VisualizerDataSourceId, { dispatch, getState }) => {
+  async (
+    payload:
+      | VisualizerDataSourceId
+      | {
+          id: VisualizerDataSourceId;
+          dimensionOverride?: VisualizerDimensionOverride;
+        },
+    { dispatch, getState },
+  ) => {
+    const { id, dimensionOverride } =
+      typeof payload === "string"
+        ? { id: payload, dimensionOverride: undefined }
+        : payload;
     const { type, sourceId } = parseDataSourceId(id);
 
     const state = getCurrentVisualizerState(getState());
@@ -188,7 +214,7 @@ export const addDataSource = createAsyncThunk(
       // TODO handle rejected requests
       const cardAction = await dispatch(fetchCard(sourceId));
       const cardQueryAction = await dispatch(
-        fetchCardQuery({ cardId: sourceId }),
+        fetchCardQuery({ cardId: sourceId, dimensionOverride }),
       );
 
       // Unjustified type cast. FIXME
@@ -228,16 +254,195 @@ export const addDataSource = createAsyncThunk(
       ..._.pick(computedSettings, dataSettings),
     };
 
+    const dimensionOverrides: DimensionOverrides = {
+      ...state.dimensionOverrides,
+    };
+    if (dimensionOverride) {
+      dimensionOverrides[id] = dimensionOverride;
+    }
+
     return maybeCombineDataset(
       {
         ...clone(state),
         settings,
+        dimensionOverrides,
       },
       settings,
       dataSource,
       dataset,
       vizSettings,
     );
+  },
+);
+
+/**
+ * After the questions are regrouped, their datasets have new x-axis columns.
+ * Points the x-axis mapping of each question at its new column.
+ */
+function rebindDimensions(
+  state: VisualizerState,
+  dimensionOverrides: DimensionOverrides,
+) {
+  const columnValuesMapping = clone(state.columnValuesMapping);
+  const settings = clone(state.settings);
+  const dimensionNames: string[] = settings["graph.dimensions"] ?? [];
+  const reboundSourceIds = new Set<VisualizerDataSourceId>();
+  const emptyColumnNames: string[] = [];
+
+  dimensionNames.forEach((name) => {
+    const valueSources = (columnValuesMapping[name] ?? []).filter(
+      (valueSource) => {
+        if (typeof valueSource === "string") {
+          return true;
+        }
+        // A question gets one x-axis column, even if it was grouped by more.
+        if (reboundSourceIds.has(valueSource.sourceId)) {
+          return false;
+        }
+        reboundSourceIds.add(valueSource.sourceId);
+        const breakout = getBreakoutColumn(
+          state.datasets[valueSource.sourceId],
+        );
+        if (breakout) {
+          valueSource.originalName = breakout.name;
+        }
+        return true;
+      },
+    );
+    if (valueSources.length === 0) {
+      emptyColumnNames.push(name);
+      delete columnValuesMapping[name];
+    } else {
+      columnValuesMapping[name] = valueSources;
+    }
+  });
+  settings["graph.dimensions"] = dimensionNames.filter(
+    (name) => !emptyColumnNames.includes(name),
+  );
+
+  const dataSources = state.cards.map((card) =>
+    createDataSource("card", card.id, card.name),
+  );
+  const columns = getVisualizationColumns(
+    { display: state.display, columnValuesMapping, settings },
+    state.datasets,
+    dataSources,
+  );
+  return { columns, columnValuesMapping, settings, dimensionOverrides };
+}
+
+// Fetches the datasets of `cards` with `overrides`, and then changes the
+// datasets and the column mapping together. Otherwise the chart renders a
+// regrouped dataset with the old mapping for a moment.
+const applyDimensionOverrides = createAsyncThunk(
+  "visualizer/applyDimensionOverrides",
+  async (
+    { cards, overrides }: { cards: Card[]; overrides: DimensionOverrides },
+    { dispatch, getState },
+  ) => {
+    const datasets: Record<VisualizerDataSourceId, Dataset> = {};
+    await Promise.all(
+      cards.map(async (card) => {
+        const { data } = await dispatch(
+          cardApi.endpoints.getCardQuery.initiate({
+            cardId: card.id,
+            parameters: [],
+            dimension_override: overrides[`card:${card.id}`],
+          }),
+        );
+        if (data) {
+          datasets[`card:${card.id}`] = data;
+        }
+      }),
+    );
+    const state = getCurrentVisualizerState(getState());
+    dispatch(
+      _rebindDimensions({
+        ...rebindDimensions(
+          { ...state, datasets: { ...state.datasets, ...datasets } },
+          overrides,
+        ),
+        datasets,
+      }),
+    );
+  },
+);
+
+/**
+ * Makes `axis` the shared x-axis of the visualization. Each question uses a
+ * column of the axis category, with a dimension override when it is not its
+ * own group-by. A question keeps the column it uses when that column is in the
+ * category. The questions that have no column of the category are removed.
+ */
+export const setVisualizationAxis = createAsyncThunk(
+  "visualizer/setVisualizationAxis",
+  async (axis: VisualizerDimensionAxis, { dispatch, getState }) => {
+    const { cards, dimensionOverrides = {} } =
+      getCurrentVisualizerState(getState());
+    const preferred = cards.flatMap((card) => {
+      const override = dimensionOverrides[`card:${card.id}`];
+      return override ? [{ cardId: card.id, override }] : [];
+    });
+    const { data: options = {} } = await dispatch(
+      cardApi.endpoints.getCardDimensionOptions.initiate({
+        card_ids: cards.map((card) => card.id),
+        axis,
+        preferred,
+      }),
+    );
+
+    const overrides: DimensionOverrides = {};
+    const keptCards: Card[] = [];
+    cards.forEach((card) => {
+      const option = options[card.id];
+      const match = option?.supported ? option.axis : undefined;
+      if (match?.status === "regroup") {
+        overrides[`card:${card.id}`] = match.override;
+        keptCards.push(card);
+      } else if (match?.status === "match") {
+        keptCards.push(card);
+      } else {
+        dispatch(
+          removeDataSource({
+            source: createDataSource("card", card.id, card.name),
+          }),
+        );
+      }
+    });
+
+    await dispatch(applyDimensionOverrides({ cards: keptCards, overrides }));
+  },
+);
+
+/**
+ * Sets the column that one question uses for the shared x-axis. Without an
+ * override, the question uses its own group-by.
+ */
+export const setSeriesDimension = createAsyncThunk(
+  "visualizer/setSeriesDimension",
+  async (
+    {
+      sourceId,
+      override,
+    }: {
+      sourceId: VisualizerDataSourceId;
+      override: VisualizerDimensionOverride | undefined;
+    },
+    { dispatch, getState },
+  ) => {
+    const { cards, dimensionOverrides = {} } =
+      getCurrentVisualizerState(getState());
+    const card = cards.find((card) => `card:${card.id}` === sourceId);
+    if (!card) {
+      return;
+    }
+    const overrides: DimensionOverrides = { ...dimensionOverrides };
+    if (override) {
+      overrides[sourceId] = override;
+    } else {
+      delete overrides[sourceId];
+    }
+    await dispatch(applyDimensionOverrides({ cards: [card], overrides }));
   },
 );
 
@@ -289,16 +494,21 @@ const fetchCardQuery = createAsyncThunk<
   {
     cardId: CardId;
     preloadedDatasets?: Record<CardId, Dataset | null | undefined>;
+    dimensionOverride?: VisualizerDimensionOverride;
   }
 >(
   "visualizer/fetchCardQuery",
-  async ({ cardId, preloadedDatasets }, { dispatch }) => {
+  async ({ cardId, preloadedDatasets, dimensionOverride }, { dispatch }) => {
     const dataset = preloadedDatasets?.[cardId];
     if (dataset) {
       return dataset;
     }
     const result = await dispatch(
-      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+      cardApi.endpoints.getCardQuery.initiate({
+        cardId,
+        parameters: [],
+        dimension_override: dimensionOverride,
+      }),
     );
     if (result.data != null) {
       return result.data;
@@ -528,6 +738,9 @@ const visualizerSlice = createSlice({
       delete state.loadingDataSources[source.id];
       delete state.datasets[source.id];
       delete state.loadingDatasets[source.id];
+      if (state.dimensionOverrides) {
+        delete state.dimensionOverrides[source.id];
+      }
 
       const isLastDataSource = Object.keys(state.datasets).length === 0;
       if (isLastDataSource) {
@@ -573,6 +786,28 @@ const visualizerSlice = createSlice({
         });
       }
     },
+    _rebindDimensions: (
+      state,
+      action: PayloadAction<
+        Pick<
+          VisualizerVizDefinitionWithColumns,
+          "columns" | "columnValuesMapping" | "settings" | "dimensionOverrides"
+        > & { datasets: Record<VisualizerDataSourceId, Dataset> }
+      >,
+    ) => {
+      const {
+        columns,
+        columnValuesMapping,
+        settings,
+        dimensionOverrides,
+        datasets,
+      } = action.payload;
+      Object.assign(state.datasets, datasets);
+      state.columns = columns;
+      state.columnValuesMapping = columnValuesMapping;
+      state.settings = settings;
+      state.dimensionOverrides = dimensionOverrides;
+    },
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
@@ -602,6 +837,7 @@ const visualizerSlice = createSlice({
           state.columns = clone(nextState.columns);
           state.columnValuesMapping = clone(nextState.columnValuesMapping);
           state.settings = clone(nextState.settings);
+          state.dimensionOverrides = clone(nextState.dimensionOverrides ?? {});
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
@@ -693,8 +929,13 @@ function maybeCombineDataset(
   return state;
 }
 
-const { _addColumn, _handleDrop, _removeColumn, _resetVisualizer } =
-  visualizerSlice.actions;
+const {
+  _addColumn,
+  _handleDrop,
+  _removeColumn,
+  _resetVisualizer,
+  _rebindDimensions,
+} = visualizerSlice.actions;
 
 export const {
   setTitle,
@@ -717,6 +958,7 @@ export const reducer = undoable(visualizerSlice.reducer, {
       _handleDrop.type,
       removeDataSource.type,
       addDataSource.fulfilled.type,
+      _rebindDimensions.type,
     ]),
     (action, nextState, { present }) => {
       const payload = action.payload;

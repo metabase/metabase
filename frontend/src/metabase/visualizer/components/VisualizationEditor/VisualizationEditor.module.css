@@ -1,0 +1,79 @@
+.Root {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 85vh;
+}
+
+.Header {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.SeriesLayout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  grid-template-areas: "chart panel";
+  min-height: 0;
+}
+
+.AppearanceLayout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    "chart sidebar"
+    "footer sidebar";
+  min-height: 0;
+}
+
+.Chart {
+  grid-area: chart;
+  min-height: 0;
+  padding: var(--mantine-spacing-xl);
+}
+
+.Footer {
+  grid-area: footer;
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+.SettingsSidebar {
+  grid-area: sidebar;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.Panel {
+  grid-area: panel;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.SourceRow {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-primary);
+}
+
+.Picker {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-primary);
+}
+
+.PickerItem {
+  display: block;
+  width: 100%;
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.PickerItem:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.PickerItemDisabled {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}

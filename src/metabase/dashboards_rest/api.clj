@@ -1483,14 +1483,16 @@
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id      ms/PositiveInt]]
    _query-params
-   {:keys [dashboard_load_id], :as body} :- [:map {:closed true}
-                                             [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+   {:keys [dashboard_load_id dimension_override], :as body} :- [:map {:closed true}
+                                                                [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
+                                                                [:dimension_override {:optional true} [:maybe qp.dashboard/DimensionOverride]]
+                                                                [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
-               (dissoc body :dashboard_load_id)
-               {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
+               (dissoc body :dashboard_load_id :dimension_override)
+               {:dimension-override dimension_override
+                :dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
                 :card      (api/check-404 (dashboards-rest.db/card card-id))
                 :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))
 

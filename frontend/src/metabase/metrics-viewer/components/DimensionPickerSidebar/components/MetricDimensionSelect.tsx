@@ -10,7 +10,15 @@ export function MetricDimensionSelect({
   row,
   onChange,
 }: {
-  row: DimensionPickerSidebarCategorySelectRow;
+  row: Pick<
+    DimensionPickerSidebarCategorySelectRow,
+    | "metricName"
+    | "occurrenceCount"
+    | "colors"
+    | "isExpressionToken"
+    | "value"
+    | "options"
+  >;
   onChange: (dimensionId: string) => void;
 }) {
   const showOccurrenceCount =
