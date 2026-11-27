@@ -27,7 +27,7 @@ A new table fails the test until it lands in one of these, so decide in the same
 
 ## Adding the column
 
-Follow `resources/migrations/2026/20261126_remote_sync_worktrees.yaml`, which works on every app DB:
+Follow `resources/migrations/2026/20261128_remote_sync_worktrees.yaml`, which works on every app DB:
 
 - `worktree_id INTEGER DEFAULT 1 NOT NULL`;
 - `idx_<table>_worktree_id`, created before the foreign key so that MySQL makes no index of its own;
