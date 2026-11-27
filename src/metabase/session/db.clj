@@ -9,6 +9,7 @@
    [metabase.session.schema :as session.schema]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
