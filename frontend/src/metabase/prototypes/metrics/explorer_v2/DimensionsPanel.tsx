@@ -36,9 +36,7 @@ import {
   valueOverlap,
 } from "./panelModel";
 
-const SUGGESTION_LIMIT = 5;
-
-type Status = "mapped" | "suggested" | "removed" | "incomplete";
+type Status = "mapped" | "removed" | "incomplete";
 
 /**
  * Prototype: the metric's dimensions, next to the chart. Clicking one charts
@@ -70,9 +68,8 @@ export function DimensionsPanel({
     setIsExpanded(expand);
   };
   const [isAll, setIsAll] = useState(false);
-  const [showAllSuggested, setShowAllSuggested] = useState(false);
 
-  const { pills, mapped, suggested, removed, incomplete } = model;
+  const { pills, mapped, removed, incomplete } = model;
   const isMath = pills.length > 1;
 
   const fieldFor = (dimension: MetricDimension, sourceId: string) =>
@@ -85,7 +82,7 @@ export function DimensionsPanel({
         (active.dimensionMapping[slot.slotIndex] ?? null) ===
         fieldFor(dimension, slot.sourceId),
     );
-  const chartable = [...mapped, ...suggested, ...removed];
+  const chartable = [...mapped, ...removed];
   const current = [...chartable, ...incomplete].find(
     (dimension) => dimension.id === openId,
   );
@@ -189,15 +186,13 @@ export function DimensionsPanel({
     status: Status,
     shown: MetricDimension[],
   ) => {
-    const isCapped = status === "suggested" && !showAllSuggested;
-    const visible = isCapped ? shown.slice(0, SUGGESTION_LIMIT) : shown;
     if (shown.length === 0) {
       return null;
     }
     return (
       <Box>
         {title && <Text className={S.sectionTitle}>{title}</Text>}
-        {visible.map((dimension) => (
+        {shown.map((dimension) => (
           <DimensionRow
             key={dimension.id}
             dimension={dimension}
@@ -217,14 +212,6 @@ export function DimensionsPanel({
             }
           />
         ))}
-        {visible.length < shown.length && (
-          <UnstyledButton
-            className={S.more}
-            onClick={() => setShowAllSuggested(true)}
-          >
-            {`${shown.length - visible.length} more`}
-          </UnstyledButton>
-        )}
       </Box>
     );
   };
@@ -269,7 +256,6 @@ export function DimensionsPanel({
                       : "No dimensions in this metric."}
                   </Text>
                 )}
-                {section("Suggested", "suggested", suggested)}
                 {section("Incomplete", "incomplete", incomplete)}
                 {section("Removed", "removed", removed)}
               </>
@@ -359,9 +345,8 @@ function DimensionRow({
   const removeLabel =
     status === "mapped" ? "Remove from metric" : "Discard this dimension";
   const detailsLabel = isOpen ? "Hide fields" : "Show fields";
-  const addLabel =
-    status === "suggested" ? "Add to metric" : "Add back to metric";
-  const isOut = status === "suggested" || status === "removed";
+  const addLabel = "Add back to metric";
+  const isOut = status === "removed";
   // One measure has no fields to match, so nothing to fold out.
   const hasDetails = isMath;
   const showTools = hasDetails ? isOpen : isSelected;

@@ -436,7 +436,7 @@ export const EXAMPLES: MetricExample[] = [
     id: "average-order-value",
     name: "Average order value",
     hint: "A ratio of two measures.",
-    formula: ["Revenue", "÷", "Orders"],
+    formula: ["Revenue", "÷", "Orders count"],
     where: [],
   },
   {
@@ -444,9 +444,9 @@ export const EXAMPLES: MetricExample[] = [
     name: "Share of orders with a discount",
     hint: "The same measure twice, one filtered by a segment.",
     formula: [
-      { measure: "Orders", filters: ["segment:Discounted orders"] },
+      { measure: "Orders count", filters: ["segment:Discounted orders"] },
       "÷",
-      "Orders",
+      "Orders count",
     ],
     where: [],
   },
@@ -468,7 +468,7 @@ export const EXAMPLES: MetricExample[] = [
     formula: [
       { measure: "Revenue", filters: ["segment:Gizmo orders"] },
       "÷",
-      { measure: "Orders", filters: ["segment:Gizmo orders"] },
+      { measure: "Orders count", filters: ["segment:Gizmo orders"] },
     ],
     where: [],
   },
@@ -514,18 +514,36 @@ export const EXAMPLES: MetricExample[] = [
     where: [],
   },
   {
-    id: "payments-per-new-account",
-    name: "Business payments per new account",
-    hint: "A filter on the whole metric: Plan is a different column on each table, mapped in the Dimensions tab.",
-    formula: ["Payments", "÷", "New accounts"],
-    where: ["Plan = Business"],
-  },
-  {
     id: "revenue-per-new-account",
     name: "Revenue per new account",
     hint: "Two unrelated tables, Orders and Accounts: only time matches.",
     formula: ["Revenue", "÷", "New accounts"],
     where: [],
+  },
+  {
+    id: "review-rate",
+    name: "Review rate",
+    hint: "Reviews per order: two tables that meet only through Products, so Product category is a real shared dimension.",
+    formula: ["Reviews count", "÷", "Orders count"],
+    where: [],
+  },
+  {
+    id: "bad-reviews-per-order",
+    name: "Bad reviews per order",
+    hint: "Rating is only on Reviews, so the filter sits on the Reviews pill and Orders stays unfiltered.",
+    formula: [
+      { measure: "Reviews count", filters: ["Rating ≤ 2"] },
+      "÷",
+      "Orders count",
+    ],
+    where: [],
+  },
+  {
+    id: "gizmo-review-rate",
+    name: "Gizmo review rate",
+    hint: "A filter on the whole metric: Product category is the same column on both sides.",
+    formula: ["Reviews count", "÷", "Orders count"],
+    where: ["Product category = Gizmo"],
   },
 ];
 
@@ -533,7 +551,7 @@ export const EXAMPLES: MetricExample[] = [
 export const COMPOSITE_IDS = [
   "average-order-value",
   "revenue-per-new-customer",
-  "payments-per-new-account",
+  "review-rate",
 ];
 
 export const COMPOSITE_PREFIX = "composite:";

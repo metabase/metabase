@@ -58,7 +58,7 @@ export type PanelPill = {
 };
 
 /** How a dimension came to be: found by the editor, or put together by hand. */
-export type Origin = "time" | "field" | "name" | "semantic" | "custom";
+export type Origin = "time" | "field" | "custom";
 
 export type MetricDimension = {
   id: string;
@@ -78,7 +78,6 @@ export type MetricDimension = {
 /** The author's changes to the dimensions the editor found. */
 export type PanelMapping = {
   removed: string[];
-  confirmed: string[];
   /** Dimensions put together by hand. */
   added: string[];
   names: Record<string, string>;
@@ -88,7 +87,6 @@ export type PanelMapping = {
 
 export const EMPTY_PANEL: PanelMapping = {
   removed: [],
-  confirmed: [],
   added: [],
   names: {},
   picks: {},
@@ -98,16 +96,12 @@ export type PanelModel = {
   pills: PanelPill[];
   /** In the metric: filters and breakouts can use them. */
   mapped: MetricDimension[];
-  /** Every pill has a field, but the author hasn't said they match. */
-  suggested: MetricDimension[];
   /** Taken out by the author. */
   removed: MetricDimension[];
   /** Some pills still have no field. */
   incomplete: MetricDimension[];
   isLoading: boolean;
 };
-
-const KEYS = new Set(["type/PK", "type/FK"]);
 
 const label = (field: Pick<Field, "column" | "group">) =>
   field.group ? `${field.group} - ${field.column}` : field.column;
@@ -155,21 +149,9 @@ const shared = <T>(values: T[]): T | null =>
     ? values[0]
     : null;
 
-const MATCHES: Record<
-  "field" | "name" | "semantic",
-  (a: PillDimension, b: PillDimension) => boolean
-> = {
-  field: (a, b) => a.fieldKey != null && a.fieldKey === b.fieldKey,
-  name: (a, b) =>
-    a.type === b.type &&
-    a.isMain === b.isMain &&
-    a.name.toLowerCase() === b.name.toLowerCase(),
-  semantic: (a, b) =>
-    a.type === b.type &&
-    a.semantic != null &&
-    !KEYS.has(a.semantic) &&
-    a.semantic === b.semantic,
-};
+/** The very same column, however each pill reaches it. */
+const isSameField = (a: PillDimension, b: PillDimension) =>
+  a.fieldKey != null && a.fieldKey === b.fieldKey;
 
 const dates = (pill: PanelPill) =>
   pill.dimensions.filter((dimension) => dimension.type === "time");
@@ -189,10 +171,9 @@ const defaultDate = (pill: PanelPill) =>
   dates(pill)[0];
 
 /**
- * The metric's dimensions. Each needs a field in every pill: one "Time", then
- * the same column or one with the same name, are in the metric from the
- * start; columns that only hold the same kind of thing are suggested. The
- * author's own choices are laid over that.
+ * The metric's dimensions. Each needs a field in every pill: one "Time" over
+ * each pill's own date, then every column all pills reach. Columns that only
+ * share a name or a kind are not matched; the author can add those by hand.
  */
 export function combine(pills: PanelPill[], mapping: PanelMapping): PanelModel {
   const isLoading = pills.some((pill) => pill.isLoading);
@@ -201,20 +182,17 @@ export function combine(pills: PanelPill[], mapping: PanelMapping): PanelModel {
     return {
       pills,
       mapped: [],
-      suggested: [],
       removed: [],
       incomplete: [],
       isLoading,
     };
   }
 
-  const used = new Set<PillDimension>();
   const seen = new Set<string>();
   const keyOf = (picks: PillDimension[]) =>
     picks.map((pick) => pick.id).join("|");
   const found: { origin: Origin; picks: PillDimension[] }[] = [];
   const take = (origin: Origin, picks: PillDimension[]) => {
-    picks.forEach((pick) => used.add(pick));
     seen.add(keyOf(picks));
     found.push({ origin, picks });
   };
@@ -223,27 +201,16 @@ export function combine(pills: PanelPill[], mapping: PanelMapping): PanelModel {
   if (pills.length > 1 && defaults.length === pills.length) {
     take("time", defaults);
   }
-  for (const tier of ["field", "name", "semantic"] as const) {
-    // A field can sit in several dimensions: an account's plan is the same
-    // field as an invoice's account's plan, and has the same name as the
-    // invoice's own plan. Only the guesses stay off fields already placed.
-    const isGuess = tier === "semantic";
-    for (const dimension of first.dimensions) {
-      if (isGuess && used.has(dimension)) {
-        continue;
-      }
-      const partners = others.flatMap(
-        (pill) =>
-          pill.dimensions.find(
-            (candidate) =>
-              !(isGuess && used.has(candidate)) &&
-              MATCHES[tier](dimension, candidate),
-          ) ?? [],
-      );
-      const picks = [dimension, ...partners];
-      if (partners.length === others.length && !seen.has(keyOf(picks))) {
-        take(tier, picks);
-      }
+  for (const dimension of first.dimensions) {
+    const partners = others.flatMap(
+      (pill) =>
+        pill.dimensions.find((candidate) =>
+          isSameField(dimension, candidate),
+        ) ?? [],
+    );
+    const picks = [dimension, ...partners];
+    if (partners.length === others.length && !seen.has(keyOf(picks))) {
+      take("field", picks);
     }
   }
 
@@ -301,20 +268,12 @@ export function combine(pills: PanelPill[], mapping: PanelMapping): PanelModel {
     ...mapping.added.map((id) => build(id, "custom", {})),
   ];
   const complete = all.filter((dimension) => dimension.missing.length === 0);
-  const isIn = ({ id, origin }: MetricDimension) =>
-    origin === "semantic"
-      ? mapping.confirmed.includes(id)
-      : !mapping.removed.includes(id);
+  const isIn = ({ id }: MetricDimension) => !mapping.removed.includes(id);
 
   return {
     pills,
     mapped: complete.filter(isIn),
-    suggested: complete.filter(
-      (dimension) => !isIn(dimension) && dimension.origin === "semantic",
-    ),
-    removed: complete.filter(
-      (dimension) => !isIn(dimension) && dimension.origin !== "semantic",
-    ),
+    removed: complete.filter((dimension) => !isIn(dimension)),
     incomplete: all.filter((dimension) => dimension.missing.length > 0),
     isLoading,
   };
@@ -398,19 +357,14 @@ export function removeDimension(
     const { [id]: _name, ...names } = mapping.names;
     return { ...mapping, added: without(mapping.added, id), picks, names };
   }
-  return origin === "semantic"
-    ? { ...mapping, confirmed: without(mapping.confirmed, id) }
-    : { ...mapping, removed: [...mapping.removed, id] };
+  return { ...mapping, removed: [...mapping.removed, id] };
 }
 
-/** Puts a suggested or removed dimension in the metric. */
+/** Puts a removed dimension back in the metric. */
 export const mapDimension = (
   mapping: PanelMapping,
-  { id, origin }: MetricDimension,
-): PanelMapping =>
-  origin === "semantic"
-    ? { ...mapping, confirmed: [...mapping.confirmed, id] }
-    : { ...mapping, removed: without(mapping.removed, id) };
+  { id }: MetricDimension,
+): PanelMapping => ({ ...mapping, removed: without(mapping.removed, id) });
 
 export const renameDimension = (
   mapping: PanelMapping,
@@ -496,7 +450,6 @@ export function scriptedMapping(
     });
   const base = combineDimensions(pillsOf(draft, resolver), EMPTY_MAPPING);
   return {
-    confirmed: base.suggested.filter(isCovered).map(({ id }) => id),
     removed: base.mapped
       .filter((scripted) => !isCovered(scripted))
       .map(({ id }) => id),

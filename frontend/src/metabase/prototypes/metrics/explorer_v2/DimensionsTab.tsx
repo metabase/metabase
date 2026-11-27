@@ -26,8 +26,6 @@ import {
 const ORIGIN_LABELS: Record<Origin, string> = {
   time: "Each measure’s date",
   field: "Same field",
-  name: "Same name and type",
-  semantic: "Mapped by you",
   custom: "Made by you",
 };
 
@@ -44,7 +42,7 @@ export function DimensionsTab({
   mapping: PanelMapping;
   onChange: (mapping: PanelMapping) => void;
 }) {
-  const { pills, mapped, suggested, removed, incomplete } = model;
+  const { pills, mapped, removed, incomplete } = model;
   if (pills.length === 0) {
     return (
       <Text p="xl" c="text-secondary">
@@ -62,7 +60,7 @@ export function DimensionsTab({
   const isMath = pills.length > 1;
   const columns = `minmax(12rem, 1.2fr) repeat(${pills.length}, minmax(11rem, 1fr)) minmax(14rem, auto)`;
   // Fields no dimension reads, listed or not: only one measure has them.
-  const listed = [...mapped, ...suggested, ...removed, ...incomplete];
+  const listed = [...mapped, ...removed, ...incomplete];
   const unusedCount = pills.reduce(
     (count, pill) =>
       count +
@@ -157,22 +155,6 @@ export function DimensionsTab({
               </Text>
             )}
           </Section>
-
-          {suggested.length > 0 && (
-            <Section title="Suggested" count={suggested.length}>
-              {suggested.map((dimension) =>
-                row(
-                  dimension,
-                  <>
-                    <Text fz="sm" c="text-secondary">
-                      Different columns, same kind
-                    </Text>
-                    {addBack(dimension, "Add")}
-                  </>,
-                ),
-              )}
-            </Section>
-          )}
 
           {incomplete.length > 0 && (
             <Section title="Incomplete" count={incomplete.length}>

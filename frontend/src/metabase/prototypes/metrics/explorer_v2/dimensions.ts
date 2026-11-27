@@ -7,23 +7,19 @@ import {
 } from "./catalog";
 import type { FormulaProblem, FormulaToken, MetricDraft } from "./formula";
 
-/** Why the columns of a dimension belong together, strongest first. */
-export type Tier = "field" | "name" | "semantic";
-
 /** Something a pill can be filtered or broken out by: one column per table it reads. */
 export type Dimension = {
   id: string;
   label: string;
   kind: Kind;
   values?: string[];
-  tier: Tier;
   columns: ColumnSpec[];
 };
 
 /** The author's changes to the default mapping, by dimension id. */
-export type DimensionMapping = { confirmed: string[]; removed: string[] };
+export type DimensionMapping = { removed: string[] };
 
-export const EMPTY_MAPPING: DimensionMapping = { confirmed: [], removed: [] };
+export const EMPTY_MAPPING: DimensionMapping = { removed: [] };
 
 /** A measure or a metric in a formula, with the dimensions it offers. */
 export type Pill = { id: string; name: string; dimensions: Dimension[] };
@@ -31,8 +27,8 @@ export type Pill = { id: string; name: string; dimensions: Dimension[] };
 export type MetricDimensions = {
   /** In the metric: every pill has a column for each. */
   mapped: Dimension[];
-  /** Every pill has a column, but the author has to confirm they match. */
-  suggested: Dimension[];
+  /** Every pill has the column, but the author took it out. */
+  removed: Dimension[];
   /** Only some pills have it, so it only filters those pills. */
   unshared: { dimension: Dimension; pills: string[] }[];
 };
@@ -44,8 +40,6 @@ export type Resolver = {
   inner: (id: string) => MetricDraft | null;
   segment: (name: string) => SegmentSpec | null;
 };
-
-const TIERS: Tier[] = ["field", "name", "semantic"];
 
 const columnKey = (column: ColumnSpec) => `${column.table}/${column.label}`;
 
@@ -67,24 +61,11 @@ const shared = (
   return values.size === 1 ? value : undefined;
 };
 
-const MATCHES: Record<Tier, (a: Dimension, b: Dimension) => boolean> = {
-  field: (a, b) => {
-    const field = shared(a, (column) => column.field);
-    return field != null && field === shared(b, (column) => column.field);
-  },
-  name: (a, b) => a.label === b.label && a.kind === b.kind,
-  semantic: (a, b) => {
-    const semantic = shared(a, (column) => column.semantic);
-    return (
-      semantic != null &&
-      a.kind === b.kind &&
-      semantic === shared(b, (column) => column.semantic)
-    );
-  },
+/** The very same column, however each pill reaches it. */
+const isSameField = (a: Dimension, b: Dimension) => {
+  const field = shared(a, (column) => column.field);
+  return field != null && field === shared(b, (column) => column.field);
 };
-
-const weakest = (tiers: Tier[]) =>
-  TIERS[Math.max(...tiers.map((tier) => TIERS.indexOf(tier)))];
 
 export const tableDimensions = (table: string): Dimension[] =>
   COLUMNS.filter((column) => column.table === table).map((column) => ({
@@ -92,14 +73,12 @@ export const tableDimensions = (table: string): Dimension[] =>
     label: column.label,
     kind: column.kind,
     values: column.values,
-    tier: "field",
     columns: [column],
   }));
 
 /**
- * The dimensions of a metric built from these pills. A dimension needs a
- * column in every pill: the same column or one with the same name is mapped
- * by default, one that only holds the same kind of thing is suggested.
+ * The dimensions of a metric built from these pills: the columns every pill
+ * reaches. Columns that only share a name are not matched.
  */
 export function combineDimensions(
   pills: Pill[],
@@ -108,47 +87,39 @@ export function combineDimensions(
   const distinct = uniqueBy(pills, (pill) => pill.id);
   const [first, ...others] = distinct;
   if (!first) {
-    return { mapped: [], suggested: [], unshared: [] };
+    return { mapped: [], removed: [], unshared: [] };
   }
 
   const used = new Set<Dimension>();
   const combined: Dimension[] = [];
-  for (const tier of TIERS) {
-    for (const dimension of first.dimensions) {
-      if (used.has(dimension)) {
-        continue;
-      }
-      const partners = others.map((pill) =>
-        pill.dimensions.find(
-          (candidate) =>
-            !used.has(candidate) && MATCHES[tier](dimension, candidate),
-        ),
-      );
-      const found = partners.filter((partner) => partner != null);
-      if (found.length < others.length) {
-        continue;
-      }
-      const all = [dimension, ...found];
-      all.forEach((member) => used.add(member));
-      const columns = uniqueBy(
-        all.flatMap((member) => member.columns),
-        columnKey,
-      );
-      combined.push({
-        id: idOf(columns),
-        label: dimension.label,
-        kind: dimension.kind,
-        values: dimension.values,
-        tier: weakest([tier, ...all.map((member) => member.tier)]),
-        columns,
-      });
+  for (const dimension of first.dimensions) {
+    const partners = others.map((pill) =>
+      pill.dimensions.find(
+        (candidate) =>
+          !used.has(candidate) && isSameField(dimension, candidate),
+      ),
+    );
+    const found = partners.filter((partner) => partner != null);
+    if (found.length < others.length) {
+      continue;
     }
+    const all = [dimension, ...found];
+    all.forEach((member) => used.add(member));
+    const columns = uniqueBy(
+      all.flatMap((member) => member.columns),
+      columnKey,
+    );
+    combined.push({
+      id: idOf(columns),
+      label: dimension.label,
+      kind: dimension.kind,
+      values: dimension.values,
+      columns,
+    });
   }
 
   const isMapped = (dimension: Dimension) =>
-    dimension.tier === "semantic"
-      ? mapping.confirmed.includes(dimension.id)
-      : !mapping.removed.includes(dimension.id);
+    !mapping.removed.includes(dimension.id);
 
   const left = distinct.flatMap((pill) =>
     pill.dimensions
@@ -175,31 +146,10 @@ export function combineDimensions(
 
   return {
     mapped: combined.filter(isMapped),
-    suggested: combined.filter((dimension) => !isMapped(dimension)),
+    removed: combined.filter((dimension) => !isMapped(dimension)),
     unshared,
   };
 }
-
-/** Puts a suggested dimension in the metric. */
-export const mapDimension = (
-  mapping: DimensionMapping,
-  { id, tier }: Dimension,
-): DimensionMapping =>
-  tier === "semantic"
-    ? { ...mapping, confirmed: [...mapping.confirmed, id] }
-    : { ...mapping, removed: mapping.removed.filter((other) => other !== id) };
-
-/** Takes a dimension out of the metric; it stays suggested. */
-export const unmapDimension = (
-  mapping: DimensionMapping,
-  { id, tier }: Dimension,
-): DimensionMapping =>
-  tier === "semantic"
-    ? {
-        ...mapping,
-        confirmed: mapping.confirmed.filter((other) => other !== id),
-      }
-    : { ...mapping, removed: [...mapping.removed, id] };
 
 /** The pill's dimensions: its table's, or for math over pills, the mapped ones. */
 export function pillOf(id: string, resolver: Resolver): Pill | null {
@@ -361,7 +311,7 @@ export function findFilterProblem(
       };
     }
   }
-  const { mapped, suggested } = metricDimensions(draft, resolver);
+  const { mapped, removed } = metricDimensions(draft, resolver);
   const labels = labelsOf(mapped.filter(isFilterable));
   const where = draft.where.find(({ filter }) => !leadingLabel(filter, labels));
   const whereSegment = where && segmentNameOf(where.filter);
@@ -373,8 +323,8 @@ export function findFilterProblem(
   }
   if (where) {
     const label = dimensionLabelOf(where.filter) ?? where.filter;
-    const fix = leadingLabel(where.filter, labelsOf(suggested))
-      ? "Map it in the Dimensions tab."
+    const fix = leadingLabel(where.filter, labelsOf(removed))
+      ? "Add it back in the Dimensions tab."
       : "Not every measure has it, so filter the one that does.";
     return {
       message: `${label} isn’t a dimension of this metric. ${fix}`,

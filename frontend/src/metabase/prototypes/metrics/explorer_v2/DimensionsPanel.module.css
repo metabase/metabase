@@ -86,12 +86,6 @@
   color: var(--mb-color-feedback-warning-strong);
 }
 
-.more {
-  padding: 0.25rem 0.5rem;
-  color: var(--mb-color-text-brand);
-  font-size: 0.875rem;
-}
-
 .footer {
   margin-top: 0.5rem;
   padding-top: 0.5rem;

@@ -6,13 +6,13 @@ export const MEASURE_TABLES: Record<string, string> = {
   Revenue: "Orders",
   Discounts: "Orders",
   Tax: "Orders",
-  Orders: "Orders",
+  "Orders count": "Orders",
   "Units sold": "Orders",
   "New customers": "People",
   "New accounts": "Accounts",
   Seats: "Accounts",
   Payments: "Invoices",
-  Reviews: "Reviews",
+  "Reviews count": "Reviews",
 };
 
 export type Kind = "string" | "number" | "boolean" | "date";
