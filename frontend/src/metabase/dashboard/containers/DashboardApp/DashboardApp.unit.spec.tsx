@@ -18,6 +18,7 @@ import {
   setupUserEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import {
   setupNotificationChannelsEndpoints,
   setupSubscriptionsEndpoint,
@@ -47,7 +48,10 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Dashboard,
+  DashboardCard,
   DashboardId,
+  DashboardParameterMapping,
+  Parameter,
   Revision,
   User,
 } from "metabase-types/api";
@@ -70,6 +74,12 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 import { isObject } from "metabase-types/guards";
 
@@ -1362,6 +1372,394 @@ describe("DashboardApp", () => {
       expect(
         within(filters).queryByLabelText("Number"),
       ).not.toBeInTheDocument();
+    });
+  });
+  describe("filter settings sidebar", () => {
+    const SAMPLE_DATABASE = createSampleDatabase();
+    const PEOPLE_CARD = createMockCard({
+      id: 11,
+      name: "People",
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: PEOPLE_ID }, limit: 5 }],
+        }),
+      ),
+    });
+    const ORDERS_CARD = createMockCard({
+      id: 12,
+      name: "Orders",
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 5 }],
+        }),
+      ),
+    });
+    const LOCATION_PARAMETER = createMockParameter({
+      id: "5aefc725",
+      name: "Location",
+      slug: "location",
+      type: "string/=",
+      sectionId: "location",
+    });
+    const TEXT_PARAMETER = createMockParameter({
+      id: "5aefc726",
+      name: "Text",
+      slug: "string",
+      type: "string/=",
+      sectionId: "string",
+    });
+    // Comes first, so a test that edits Text does not pass when the code
+    // edits the first parameter, and stays mapped while Text changes
+    const CATEGORY_PARAMETER = createMockParameter({
+      id: "5aefc727",
+      name: "Category",
+      slug: "category",
+      type: "string/=",
+      sectionId: "string",
+    });
+
+    function createDashcard(
+      id: number,
+      card: typeof PEOPLE_CARD,
+      parameter_mappings: DashboardParameterMapping[],
+    ) {
+      return createMockDashboardCard({
+        id,
+        dashboard_id: 1,
+        card_id: card.id,
+        card,
+        col: id === 1 ? 0 : 12,
+        size_x: 12,
+        size_y: 6,
+        parameter_mappings,
+      });
+    }
+
+    function mapping(parameter: Parameter, cardId: number, fieldId: number) {
+      return createMockParameterMapping({
+        parameter_id: parameter.id,
+        card_id: cardId,
+        target: ["dimension", ["field", fieldId, null]],
+      });
+    }
+
+    // Like the backend, the GET after a PUT returns the saved parameters and
+    // mappings. The update has no `card`, so the dashcards keep theirs.
+    function setupStructuredDashboardEndpoints(dashboard: Dashboard) {
+      let persistedDashboard = dashboard;
+      fetchMock.get(
+        `path:/api/dashboard/${dashboard.id}`,
+        () => persistedDashboard,
+      );
+      fetchMock.put(`path:/api/dashboard/${dashboard.id}`, (call) => {
+        const body: unknown = JSON.parse(String(call.options.body));
+        if (
+          !isObject(body) ||
+          !Array.isArray(body.dashcards) ||
+          !Array.isArray(body.parameters)
+        ) {
+          throw new Error("Expected a dashboard update with dashcards");
+        }
+        const updates: unknown[] = body.dashcards;
+        persistedDashboard = {
+          ...persistedDashboard,
+          parameters: body.parameters,
+          dashcards: dashboard.dashcards.map((saved) => ({
+            ...saved,
+            ...updates.filter(isObject).find(({ id }) => id === saved.id),
+          })),
+        };
+        return persistedDashboard;
+      });
+    }
+
+    async function setupStructuredDashboard({
+      parameters,
+      dashcards,
+    }: {
+      parameters: Parameter[];
+      dashcards: DashboardCard[];
+    }) {
+      const dashboard = createMockDashboard({ id: 1, parameters, dashcards });
+      // Registered before `setup` so these routes win over its static mocks
+      fetchMock.get(
+        "path:/api/dashboard/1/query_metadata",
+        createMockDashboardQueryMetadata({ databases: [SAMPLE_DATABASE] }),
+      );
+      setupStructuredDashboardEndpoints(dashboard);
+      dashcards.forEach((dashcard) =>
+        setupDashcardQueryEndpoints(1, dashcard, createMockDataset()),
+      );
+      setupSubscriptionsEndpoint([]);
+      await setup({ dashboard });
+    }
+
+    function getDashcards() {
+      return screen.getAllByTestId("dashcard");
+    }
+
+    function getSidebar() {
+      return screen.getByTestId("dashboard-parameter-sidebar");
+    }
+
+    function getFilterWidgets() {
+      return screen.getByTestId("dashboard-parameters-widget-container");
+    }
+
+    async function editFilter(name: string) {
+      await userEvent.click(
+        within(
+          screen.getByTestId("edit-dashboard-parameters-widget-container"),
+        ).getByText(name),
+      );
+      return screen.findByTestId("dashboard-parameter-sidebar");
+    }
+
+    // The setting labels are not linked to their inputs, so find a setting by
+    // its value. The label, type and operator values differ in these tests.
+    function getSettingInput(value: string) {
+      return within(getSidebar()).getByDisplayValue(value);
+    }
+
+    async function changeSetting(value: string, option: string) {
+      await userEvent.click(getSettingInput(value));
+      await userEvent.click(
+        await screen.findByRole("option", { name: option }),
+      );
+    }
+
+    async function saveDashboard() {
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByLabelText("Edit dashboard");
+      const putCall = fetchMock.callHistory.lastCall("path:/api/dashboard/1", {
+        method: "PUT",
+      });
+      return JSON.parse(String(putCall?.options.body));
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should reset the mappings of a filter on 'Disconnect from cards', and keep the mappings of other filters", async () => {
+      await setupStructuredDashboard({
+        parameters: [LOCATION_PARAMETER, TEXT_PARAMETER],
+        dashcards: [
+          createDashcard(1, PEOPLE_CARD, [
+            mapping(LOCATION_PARAMETER, PEOPLE_CARD.id, PEOPLE.STATE),
+            mapping(TEXT_PARAMETER, PEOPLE_CARD.id, PEOPLE.NAME),
+          ]),
+          createDashcard(2, ORDERS_CARD, [
+            mapping(LOCATION_PARAMETER, ORDERS_CARD.id, PEOPLE.CITY),
+            mapping(TEXT_PARAMETER, ORDERS_CARD.id, PEOPLE.NAME),
+          ]),
+        ],
+      });
+
+      expect(
+        within(getFilterWidgets()).getByLabelText("Location"),
+      ).toBeInTheDocument();
+      expect(
+        within(getFilterWidgets()).getByLabelText("Text"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      const sidebar = await editFilter("Location");
+      const [peopleDashcard, ordersDashcard] = getDashcards();
+      expect(
+        await within(peopleDashcard).findByRole("button", {
+          name: /People\.State/,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(ordersDashcard).getByRole("button", { name: /User\.City/ }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        within(sidebar).getByRole("button", { name: "Disconnect from cards" }),
+      );
+      expect(peopleDashcard).not.toHaveTextContent("People.State");
+      expect(ordersDashcard).not.toHaveTextContent("User.City");
+      expect(
+        within(peopleDashcard).getAllByRole("button", { name: /Select…/ }),
+      ).toHaveLength(1);
+      expect(
+        within(ordersDashcard).getAllByRole("button", { name: /Select…/ }),
+      ).toHaveLength(1);
+
+      await editFilter("Text");
+      expect(
+        await within(peopleDashcard).findByRole("button", {
+          name: /People\.Name/,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(ordersDashcard).getByRole("button", { name: /User\.Name/ }),
+      ).toBeInTheDocument();
+
+      const body = await saveDashboard();
+      expect(body.dashcards).toEqual([
+        expect.objectContaining({
+          id: 1,
+          parameter_mappings: [
+            mapping(TEXT_PARAMETER, PEOPLE_CARD.id, PEOPLE.NAME),
+          ],
+        }),
+        expect.objectContaining({
+          id: 2,
+          parameter_mappings: [
+            mapping(TEXT_PARAMETER, ORDERS_CARD.id, PEOPLE.NAME),
+          ],
+        }),
+      ]);
+      expect(
+        within(getFilterWidgets()).getByLabelText("Text"),
+      ).toBeInTheDocument();
+      expect(
+        within(getFilterWidgets()).queryByLabelText("Location"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should reset the mappings and the default value on a type change, restore the saved operator and mappings for the saved type, and preselect the default operator of each type", async () => {
+      const textParameter = {
+        ...TEXT_PARAMETER,
+        type: "string/does-not-contain",
+        default: "value to check default",
+      };
+      const categoryMapping = mapping(
+        CATEGORY_PARAMETER,
+        PEOPLE_CARD.id,
+        PEOPLE.SOURCE,
+      );
+      await setupStructuredDashboard({
+        parameters: [CATEGORY_PARAMETER, textParameter],
+        dashcards: [
+          createDashcard(1, PEOPLE_CARD, [
+            categoryMapping,
+            mapping(textParameter, PEOPLE_CARD.id, PEOPLE.NAME),
+          ]),
+        ],
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      const sidebar = await editFilter("Text");
+      const [dashcard] = getDashcards();
+      expect(
+        await within(dashcard).findByRole("button", { name: /People\.Name/ }),
+      ).toBeInTheDocument();
+      expect(getSettingInput("Does not contain")).toBeInTheDocument();
+      expect(
+        within(sidebar).getByText("value to check default"),
+      ).toBeInTheDocument();
+
+      await changeSetting("Text or Category", "Number");
+      expect(within(sidebar).getByText("No default")).toBeInTheDocument();
+      expect(
+        within(sidebar).queryByText("value to check default"),
+      ).not.toBeInTheDocument();
+      expect(getSettingInput("Equal to")).toBeInTheDocument();
+      expect(dashcard).not.toHaveTextContent("People.Name");
+
+      await changeSetting("Number", "Text or Category");
+      expect(getSettingInput("Does not contain")).toBeInTheDocument();
+      expect(getSettingInput("Text or Category")).toBeInTheDocument();
+      expect(within(sidebar).getByLabelText("Label")).toHaveValue("Text");
+      expect(
+        await within(dashcard).findByRole("button", { name: /People\.Name/ }),
+      ).toBeInTheDocument();
+
+      await changeSetting("Text or Category", "Number");
+      await changeSetting("Number", "ID");
+      expect(getSettingInput("Numeric ID")).toBeInTheDocument();
+
+      await changeSetting("ID", "Date picker");
+      expect(getSettingInput("All Options")).toBeInTheDocument();
+
+      await changeSetting("Date picker", "Location");
+      expect(getSettingInput("Is")).toBeInTheDocument();
+
+      const body = await saveDashboard();
+      expect(body.parameters).toEqual([
+        CATEGORY_PARAMETER,
+        expect.objectContaining({
+          id: TEXT_PARAMETER.id,
+          type: "string/=",
+          sectionId: "location",
+        }),
+      ]);
+      expect(body.parameters[1]).not.toHaveProperty("default");
+      expect(body.dashcards).toEqual([
+        expect.objectContaining({
+          id: 1,
+          parameter_mappings: [categoryMapping],
+        }),
+      ]);
+      expect(
+        within(getFilterWidgets()).getByLabelText("Category"),
+      ).toBeInTheDocument();
+      expect(
+        within(getFilterWidgets()).queryByLabelText("Text"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should keep the mappings and reset the default value on an operator change", async () => {
+      const textParameter = {
+        ...TEXT_PARAMETER,
+        default: "value to check default",
+      };
+      const categoryMapping = mapping(
+        CATEGORY_PARAMETER,
+        PEOPLE_CARD.id,
+        PEOPLE.SOURCE,
+      );
+      const textMapping = mapping(textParameter, PEOPLE_CARD.id, PEOPLE.NAME);
+      await setupStructuredDashboard({
+        parameters: [CATEGORY_PARAMETER, textParameter],
+        dashcards: [
+          createDashcard(1, PEOPLE_CARD, [categoryMapping, textMapping]),
+        ],
+      });
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      const sidebar = await editFilter("Text");
+      const [dashcard] = getDashcards();
+      expect(
+        within(sidebar).getByText("value to check default"),
+      ).toBeInTheDocument();
+      expect(
+        await within(dashcard).findByRole("button", { name: /People\.Name/ }),
+      ).toBeInTheDocument();
+
+      await changeSetting("Is", "Contains");
+      expect(within(sidebar).getByText("No default")).toBeInTheDocument();
+      expect(
+        within(sidebar).queryByText("value to check default"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(dashcard).getByRole("button", { name: /People\.Name/ }),
+      ).toBeInTheDocument();
+
+      const body = await saveDashboard();
+      expect(body.parameters).toEqual([
+        CATEGORY_PARAMETER,
+        expect.objectContaining({
+          id: TEXT_PARAMETER.id,
+          type: "string/contains",
+          sectionId: "string",
+        }),
+      ]);
+      expect(body.parameters[1]).not.toHaveProperty("default");
+      expect(body.dashcards).toEqual([
+        expect.objectContaining({
+          id: 1,
+          parameter_mappings: [categoryMapping, textMapping],
+        }),
+      ]);
+      expect(
+        within(getFilterWidgets()).getByLabelText("Text"),
+      ).toBeInTheDocument();
     });
   });
 });
