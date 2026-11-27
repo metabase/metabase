@@ -9,6 +9,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { setupCreateNotificationEndpoint } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -18,10 +19,12 @@ import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
+  ChannelSpec,
   GoalValue,
   Notification,
   NotificationChannel,
   UserListResult,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -693,6 +696,330 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(requestBody).not.toHaveProperty("creator");
     expect(requestBody).toHaveProperty("handlers");
   });
+
+  describe("with no channel set up", () => {
+    it("should link admins to the email, Slack and webhook settings", async () => {
+      setup({
+        isAdmin: true,
+        isEmailSetup: false,
+        isSlackSetup: false,
+        isHttpSetup: false,
+      });
+
+      const setupModal = await screen.findByTestId(
+        "alerts-channel-setup-modal",
+      );
+      expect(
+        within(setupModal).getByText(
+          "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(setupModal).getByRole("link", { name: /Set up email/ }),
+      ).toHaveAttribute("href", "/admin/settings/email");
+      expect(
+        within(setupModal).getByRole("link", { name: /Set up Slack/ }),
+      ).toHaveAttribute("href", "/admin/settings/slack");
+      expect(
+        within(setupModal).getByRole("link", { name: /Add a webhook/ }),
+      ).toHaveAttribute("href", "/admin/settings/webhooks");
+      expect(screen.queryByTestId("alert-create")).not.toBeInTheDocument();
+    });
+
+    it("should tell non-admins to ask an admin, without setup links", async () => {
+      setup({
+        isAdmin: false,
+        userCanAccessSettings: false,
+        isEmailSetup: false,
+        isSlackSetup: false,
+        isHttpSetup: false,
+      });
+
+      const setupModal = await screen.findByTestId(
+        "alerts-channel-setup-modal",
+      );
+      expect(
+        within(setupModal).getByText(
+          "To get notified when something happens, or to send this chart on a schedule, ask your admin to set up email, Slack, or a webhook.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(setupModal).queryByText("Set up email"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(setupModal).queryByText("Set up Slack"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(setupModal).queryByText("Add a webhook"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("alert types", () => {
+    const CARD_ID = 7;
+
+    const getCreateRequestBody = async (): Promise<unknown> => {
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/notification", {
+            method: "POST",
+          }),
+        ).toHaveLength(1);
+      });
+      const [call] = fetchMock.callHistory.calls("path:/api/notification", {
+        method: "POST",
+      });
+      return JSON.parse(String(await call.options?.body));
+    };
+
+    const pickTimeAndSubmit = async () => {
+      await userEvent.click(screen.getByTestId("select-time"));
+      await userEvent.click(screen.getByRole("option", { name: "8:00" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    };
+
+    const expectRowsAlertOnly = async () => {
+      const goalSelect = screen.getByTestId("alert-goal-select");
+      expect(goalSelect).toHaveTextContent("When this question has results");
+      await userEvent.click(goalSelect);
+      expect(
+        screen.queryByRole("option", {
+          name: "When results go above the goal",
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("When results go above the goal"),
+      ).not.toBeInTheDocument();
+    };
+
+    it("should only offer a rows-based alert for a timeseries question without a goal", async () => {
+      setupCreateNotificationEndpoint();
+      setup({
+        isAdmin: true,
+        cardId: CARD_ID,
+        visualizationSettings: {
+          "graph.show_goal": false,
+          "graph.goal_value": 7000,
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count"],
+        },
+      });
+
+      expect(await screen.findByText("New alert")).toBeInTheDocument();
+      await expectRowsAlertOnly();
+
+      await pickTimeAndSubmit();
+
+      expect(await getCreateRequestBody()).toMatchObject({
+        payload: { card_id: CARD_ID, send_condition: "has_result" },
+      });
+    });
+
+    it("should create a goal-based alert for a timeseries question with a goal", async () => {
+      setupCreateNotificationEndpoint();
+      setup({
+        isAdmin: true,
+        cardId: CARD_ID,
+        visualizationSettings: {
+          "graph.show_goal": true,
+          "graph.goal_value": 7000,
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count"],
+        },
+      });
+
+      expect(await screen.findByText("New alert")).toBeInTheDocument();
+      const goalSelect = screen.getByTestId("alert-goal-select");
+      expect(goalSelect).toBeEnabled();
+      await userEvent.click(goalSelect);
+      expect(
+        await screen.findByRole("option", {
+          name: "When results go above the goal",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "When results go below the goal" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("option", { name: "When results go above the goal" }),
+      );
+
+      await userEvent.click(
+        screen.getByLabelText("Delete this Alert after it's triggered"),
+      );
+      await pickTimeAndSubmit();
+
+      expect(await getCreateRequestBody()).toMatchObject({
+        payload: {
+          card_id: CARD_ID,
+          send_condition: "goal_above",
+          send_once: true,
+        },
+      });
+    });
+
+    it("should fall back to a rows-based alert for a multi-series question with a goal", async () => {
+      setupCreateNotificationEndpoint();
+      setup({
+        isAdmin: true,
+        cardId: CARD_ID,
+        visualizationSettings: {
+          "graph.show_goal": true,
+          "graph.goal_value": 7000,
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count", "sum"],
+        },
+      });
+
+      expect(await screen.findByText("New alert")).toBeInTheDocument();
+      await expectRowsAlertOnly();
+
+      await pickTimeAndSubmit();
+
+      expect(await getCreateRequestBody()).toMatchObject({
+        payload: { card_id: CARD_ID, send_condition: "has_result" },
+      });
+    });
+  });
+
+  describe("channels", () => {
+    const CARD_ID = 7;
+
+    const getChannelBlock = (title: string) => {
+      const block = screen
+        .getAllByTestId("channel-block")
+        .find((element) => within(element).queryByText(title));
+      if (!block) {
+        throw new Error(`No channel block titled ${title}`);
+      }
+      return block;
+    };
+
+    const getCreateRequestBody = async (): Promise<unknown> => {
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/notification", {
+            method: "POST",
+          }),
+        ).toHaveLength(1);
+      });
+      const [call] = fetchMock.callHistory.calls("path:/api/notification", {
+        method: "POST",
+      });
+      return JSON.parse(String(await call.options?.body));
+    };
+
+    it("should set up an email alert and not show Slack when it is not configured (metabase#48407)", async () => {
+      setupCreateNotificationEndpoint();
+      setup({
+        isAdmin: true,
+        cardId: CARD_ID,
+        isEmailSetup: true,
+        isSlackSetup: false,
+        visualizationSettings: {},
+      });
+
+      expect(await screen.findByText("New alert")).toBeInTheDocument();
+      const configuredChannels = await configuredAlerts();
+      expect(within(configuredChannels).getByText("Email")).toBeInTheDocument();
+      expect(
+        within(configuredChannels).queryByTestId("loading-indicator"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(configuredChannels).queryByText("Slack"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Slack" })).toHaveAttribute(
+        "href",
+        "/admin/settings/slack",
+      );
+      expect(screen.getByTestId("alert-goal-select")).toHaveTextContent(
+        "When this question has results",
+      );
+
+      await userEvent.click(screen.getByTestId("select-time"));
+      await userEvent.click(screen.getByRole("option", { name: "8:00" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      const body = await getCreateRequestBody();
+      expect(body).toMatchObject({
+        payload: { card_id: CARD_ID, send_condition: "has_result" },
+        handlers: [{ channel_type: "channel/email" }],
+      });
+      expect(body).toHaveProperty("handlers.length", 1);
+    });
+
+    it("should respect email toggled off and save the Slack channel_id (metabase#12349)", async () => {
+      setupCreateNotificationEndpoint();
+      setup({
+        isAdmin: true,
+        cardId: CARD_ID,
+        isEmailSetup: true,
+        isSlackSetup: true,
+        isHttpSetup: true,
+        webhooksResult: [createMockChannel({ id: 3, name: "Webhook" })],
+        slackFields: [
+          {
+            name: "channel",
+            displayName: "Post to",
+            options: [
+              { displayName: "#work", id: "C001" },
+              { displayName: "#play", id: "C002" },
+            ],
+            required: true,
+          },
+        ],
+      });
+
+      expect(await screen.findByText("New alert")).toBeInTheDocument();
+      await expectConfigured("Email");
+
+      await userEvent.click(
+        within(getChannelBlock("Email")).getByRole("button", {
+          name: "Remove",
+        }),
+      );
+      await userEvent.click(screen.getByText("Add a destination"));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Slack" }),
+      );
+
+      await userEvent.click(
+        screen.getByPlaceholderText(/Pick a user or channel/),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "#play" }),
+      );
+
+      await userEvent.click(screen.getByText("Add another destination"));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Email" }),
+      );
+      await expectConfigured("Email");
+      await userEvent.click(
+        within(getChannelBlock("Email")).getByRole("button", {
+          name: "Remove",
+        }),
+      );
+      await expectNotConfigured("Email");
+
+      await userEvent.click(screen.getByTestId("select-time"));
+      await userEvent.click(screen.getByRole("option", { name: "8:00" }));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      const body = await getCreateRequestBody();
+      expect(body).toHaveProperty("handlers", [
+        {
+          channel_type: "channel/slack",
+          recipients: [
+            {
+              type: "notification-recipient/raw-value",
+              details: { value: "#play", channel_id: "C002" },
+            },
+          ],
+        },
+      ]);
+    });
+  });
 });
 
 function setup({
@@ -708,6 +1035,12 @@ function setup({
   cardType = "question",
   goalValue,
   users = [],
+  cardId = 1,
+  visualizationSettings = {
+    "graph.show_goal": true,
+    "graph.metrics": ["count"],
+  },
+  slackFields,
 }: {
   userCanAccessSettings?: boolean;
   isAdmin?: boolean;
@@ -721,6 +1054,9 @@ function setup({
   cardType?: "question" | "model" | "metric";
   goalValue?: GoalValue;
   users?: UserListResult[];
+  cardId?: number;
+  visualizationSettings?: VisualizationSettings;
+  slackFields?: ChannelSpec["fields"];
 }) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -732,18 +1068,18 @@ function setup({
   setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
+    id: cardId,
     dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     type: cardType,
     display: "line",
     visualization_settings: createMockVisualizationSettings({
-      "graph.show_goal": true,
-      "graph.metrics": ["count"],
-      "graph.goal_value": goalValue,
+      ...visualizationSettings,
+      ...(goalValue !== undefined && { "graph.goal_value": goalValue }),
     }),
   });
 
   setupNotificationChannelsEndpoints({
-    slack: { configured: isSlackSetup },
+    slack: { configured: isSlackSetup, fields: slackFields },
     email: { configured: isEmailSetup },
     http: { configured: isHttpSetup },
   });
