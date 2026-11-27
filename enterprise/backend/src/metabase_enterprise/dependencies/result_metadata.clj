@@ -152,16 +152,29 @@
         cards  (dependencies.db/cards ids)]
     (map (fn [id] [id {:state (get states id) :card (get cards id)}]) ids)))
 
+(mu/defn- record-failure! :- :nil
+  "Count a failure to re-derive the result metadata of the Card `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (when (models.result-metadata-status/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
+  nil)
+
 (mu/defn- handle-failure! :- :nil
   "Count the failure `e` to re-derive the result metadata of the Card `card-id`, rethrowing an Error."
   [card-id :- ::lib.schema.id/card
    e       :- (ms/InstanceOfClass Throwable)]
   (dependencies.db/throw-unless-app-db-reachable! e)
   (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
-  (when (models.result-metadata-status/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
-    (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
+  (record-failure! card-id)
   (when-not (instance? Exception e)
     (throw e)))
+
+(mu/defn- handle-unreadable! :- :nil
+  "Count the failure `e` to read the Card `card-id`."
+  [card-id :- ::lib.schema.id/card
+   e       :- (ms/InstanceOfClass Exception)]
+  (log/warnf "Failed to read card %s: %s" card-id (ex-message e))
+  (record-failure! card-id))
 
 (mu/defn update-result-metadata! :- nat-int?
   "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus
@@ -188,7 +201,7 @@
                                          nil))))
                              (dependencies.db/readable-entities cards-with-states
                                                                 (set (map :entity_id statuses))
-                                                                handle-failure!)))
+                                                                handle-unreadable!)))
             updates  (into {} (filter (comp (every-pred :state :metadata) val)) derived)
             stored   (if (seq updates)
                        (try
