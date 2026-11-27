@@ -141,8 +141,8 @@
 
 (deftest call-keywordizes-and-validates-answer-test
   (testing "nested keys come back as keywords"
-    (mut/with-fake-llm! [_ {"filters" [{"column" "Plan", "operator" "!=", "values" ["Pro"]}] "logic" "0"}]
-      (is (= {:filters [{:column "Plan", :operator "!=", :values ["Pro"]}] :logic "0"}
+    (mut/with-fake-llm! [_ {"filters" [{"column" "Plan", "operator" "!=", "values" ["Pro"]}], "logic" "0"}]
+      (is (= {:filters [{:column "Plan", :operator "!=", :values ["Pro"]}], :logic "0"}
              (metabot.ai/call-llm! :filters/ask-ai (opts))))))
   (testing "a text reply that matches the schema is used"
     (mut/with-fake-llm! [_ "{\"filters\": []}"]
@@ -231,7 +231,7 @@
              ["both :user and :messages"
               {:type :metabot/invalid-call, :reason "invalid options"}
               #(metabot.ai/call-llm! :filters/ask-ai
-                                     (opts :prompt {:system "s" :user "u" :messages [{:role "user", :content "m"}]}))]
+                                     (opts :prompt {:system "s", :user "u", :messages [{:role "user", :content "m"}]}))]
              ["permission"
               {:type :metabot/permission-denied, :status-code 403, :required-permission :permission/metabot-nlq}
               #(binding [scope/*current-user-metabot-permissions* (assoc scope/all-yes-permissions
