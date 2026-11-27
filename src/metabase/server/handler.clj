@@ -18,6 +18,7 @@
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
+   [metabase.server.middleware.preview :as mw.preview]
    [metabase.server.middleware.request-id :as mw.request-id]
    [metabase.server.middleware.route-template-carrier :as mw.route-template-carrier]
    [metabase.server.middleware.security :as mw.security]
@@ -88,6 +89,7 @@
   [{:keys [cors] :as options}]
   ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
   (->> [        ;; Inside of the middleware onion
+        #'mw.preview/refuse-unless-reading            ; refuses a bad preview token, and a write of a preview (403 `preview-read-only`)
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
         #(#'mw.exceptions/catch-api-exceptions % cors) ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.

@@ -199,6 +199,35 @@
        (filter #(str/starts-with? % (str directive " ")))
        first))
 
+(deftest permission-preview-content-headers-test
+  (let [uri "/embed/permission-preview-content/question/12"]
+    (testing "the content document is framable by the main origin only"
+      (is (= "frame-ancestors 'self'" (frame-ancestors-for uri)))
+      (is (= "SAMEORIGIN" (get (headers-for-uri uri) "X-Frame-Options"))))
+    (testing "images and nested frames are closed to the main origin and to `*`"
+      (doseq [directive ["img-src" "frame-src"]
+              :let      [sources (set (rest (str/split (csp-directive-for uri directive) #" ")))]]
+        (is (not (contains? sources "'self'")) directive)
+        (is (not (contains? sources "*")) directive)))
+    (testing "nested frames may load the allowed iframe hosts, and nothing else"
+      (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.youtube.com"]
+        (is (= "frame-src https://www.metabase.com/ https://metabase.com/ https://youtube.com https://*.youtube.com https://www.youtube.com"
+               (csp-directive-for uri "frame-src")))))
+    (testing "an image host the admin allows doesn't open images in the content document"
+      (mt/with-temporary-setting-values [csp-img-enabled true
+                                         csp-img-allowed-hosts "https://images.example.com"]
+        (is (not (str/includes? (csp-directive-for uri "img-src") "images.example.com")))))
+    (testing "the rule comes before the `/embed` one, whatever follows the prefix"
+      (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/permission-preview-content/dashboard/3/x"))))
+    (testing "guard: other pages keep master's headers"
+      (is (= "frame-ancestors *" (frame-ancestors-for "/embed/dashboard/abc")))
+      (is (nil? (get (headers-for-uri "/embed/dashboard/abc") "X-Frame-Options")))
+      (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales")))
+      (is (some #{"'self'"} (rest (str/split (csp-directive-for "/embed/dashboard/abc" "img-src") #" "))))
+      (mt/with-temporary-setting-values [enable-embedding-interactive false]
+        (is (= "frame-ancestors 'none'" (frame-ancestors-for "/collection/root")))
+        (is (= "DENY" (get (headers-for-uri "/collection/root") "X-Frame-Options")))))))
+
 (deftest data-app-cross-origin-csp-test
   (testing "when MB_ISOLATED_ORIGIN is set, data apps are served from a separate origin"
     (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly "https://apps.example.com")]

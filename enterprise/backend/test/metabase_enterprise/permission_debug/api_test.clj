@@ -106,8 +106,8 @@
   (testing "GET /api/ee/permission_debug for invalid scenarios"
     (testing "should handle unknown permission types"
       (is (= {:specific-errors
-              {:action_type ["should be either :card/read, :card/query or :card/download-data, received: :unknown/permission"]},
-              :errors {:action_type "enum of :card/read, :card/query, :card/download-data"}}
+              {:action_type ["should be either :card/read, :card/query, :card/download-data, :dashboard/read, :dashboard/query or :collection/read, received: :unknown/permission"]},
+              :errors {:action_type "enum of :card/read, :card/query, :card/download-data, :dashboard/read, :dashboard/query, :collection/read"}}
              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
                                    :user_id "1"
                                    :model_id "999"
@@ -157,3 +157,16 @@
         (testing "data and suggestions should be maps"
           (is (map? (:data response)))
           (is (map? (:suggestions response))))))))
+
+(deftest permission-debug-access-test
+  (testing "GET /api/ee/permission_debug/access"
+    (testing "should require superuser permissions"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/permission_debug/access"
+                                   :user-id (mt/user->id :rasta)))))
+    (testing "lists the collections and the tables a person can reach"
+      (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug/access"
+                                           :user-id (mt/user->id :rasta))]
+        (is (seq (:collections response)))
+        (is (seq (-> response :reasons :tables)))
+        (is (every? #(contains? % :value) (:collections response)))))))

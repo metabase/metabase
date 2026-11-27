@@ -1,0 +1,62 @@
+import type {
+  PermissionDebugAccess,
+  PermissionDebugAccessRequest,
+  PermissionDebugAnswer,
+  PermissionDebugRequest,
+  PermissionPreviewId,
+  PermissionPreviewSession,
+  StartPermissionPreviewRequest,
+} from "metabase-types/api";
+
+import { EnterpriseApi } from "./api";
+
+export const permissionPreviewApi = EnterpriseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    startPermissionPreview: builder.mutation<
+      PermissionPreviewSession,
+      StartPermissionPreviewRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/permission_debug/preview/session",
+        body,
+      }),
+    }),
+    getPermissionDebug: builder.query<
+      PermissionDebugAnswer,
+      PermissionDebugRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/permission_debug",
+        params,
+      }),
+      // A preview restarted with other attribute values asks the same question
+      keepUnusedDataFor: 0,
+    }),
+    getPermissionDebugAccess: builder.query<
+      PermissionDebugAccess,
+      PermissionDebugAccessRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/permission_debug/access",
+        params,
+      }),
+      keepUnusedDataFor: 0,
+    }),
+    endPermissionPreview: builder.mutation<void, PermissionPreviewId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/ee/permission_debug/preview/session/${id}`,
+      }),
+    }),
+  }),
+});
+
+export const {
+  useGetPermissionDebugQuery,
+  useGetPermissionDebugAccessQuery,
+  useStartPermissionPreviewMutation,
+  useEndPermissionPreviewMutation,
+} = permissionPreviewApi;

@@ -1,0 +1,5 @@
+.name {
+  color: var(--mb-color-text-primary);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}

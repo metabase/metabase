@@ -215,3 +215,74 @@
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+
+;;; ------------------------------------------------- Permission previews --------------------------------------------
+
+(mu/defn live-session-id
+  "The id of the live Session with `key-hashed`, or nil."
+  [key-hashed :- :string
+   liveness   :- ::session.schema/liveness-params]
+  (:id (t2/query-one (merge (session.query/session-from-and-joins)
+                            {:select [:session.id]
+                             :where  (into [:and [:= :session.key_hashed key-hashed]]
+                                           (session.query/live-session-conditions liveness))
+                             :limit  [:inline 1]}))))
+
+(mu/defn previewable-user
+  "The facts about the User with `user-id` that decide whether an admin may preview as them, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :id :is_active :is_superuser :type :tenant_id] :id user-id))
+
+(mu/defn tenant-active?
+  "Whether the Tenant with `tenant-id` is active."
+  [tenant-id :- ms/PositiveInt]
+  (boolean (t2/select-one-fn :is_active :tenant :id tenant-id)))
+
+(mu/defn insert-permission-preview-session! :- ms/PositiveInt
+  "Insert the row of a preview and return its id."
+  [row :- [:map {:closed true}
+           [:user_id          ::lib.schema.id/user]
+           [:token_hash       :string]
+           [:admin_user_id    ::lib.schema.id/user]
+           [:admin_session_id :string]
+           [:expires_at       ms/TemporalInstant]]]
+  (t2/insert-returning-pk! :model/PermissionPreviewSession row))
+
+(mu/defn delete-permission-preview-session! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the preview with `id` if the admin with `admin-user-id` started it, and return the number deleted."
+  [id            :- ms/PositiveInt
+   admin-user-id :- ::lib.schema.id/user]
+  (t2/delete! :model/PermissionPreviewSession :id id :admin_user_id admin-user-id))
+
+(mu/defn permission-preview-user-info
+  "The person and the admin of the preview with `token-hash`, or nil when there is none, it has expired, its person is
+  no longer an active non-admin user (a stand-in user is never active), its admin's Session is no longer live, or its
+  admin is no longer an admin. The person's fields are the ones a Session's lookup returns."
+  [token-hash :- :string
+   liveness   :- ::session.schema/liveness-params]
+  (let [now [:current-timestamp]]
+    (t2/query-one
+     {:select    [[:person.id :metabase-user-id]
+                  [:person.is_superuser :is-superuser?]
+                  [:person.is_data_analyst :is-data-analyst?]
+                  [:person.locale :user-locale]
+                  [:preview.admin_user_id :previewing-admin-id]
+                  [:pgm.is_group_manager :is-group-manager?]]
+      :from      [[:core_session :session]]
+      :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
+      :left-join (into (session.query/session-left-joins)
+                       [[:core_user :person] [:= :person.id :preview.user_id]
+                        [:permissions_group_membership :pgm] [:and
+                                                              [:= :pgm.user_id :person.id]
+                                                              [:is :pgm.is_group_manager true]]])
+      :where     (into [:and
+                        [:= :preview.token_hash token-hash]
+                        [:> :preview.expires_at now]
+                        ;; a stand-in user is inactive by design
+                        [:or
+                         [:= :person.is_active true]
+                         [:= :person.type "permission-preview"]]
+                        [:= :person.is_superuser false]
+                        [:= :user.is_superuser true]]
+                       (session.query/live-session-conditions liveness))
+      :limit     [:inline 1]})))

@@ -1,0 +1,21 @@
+.row {
+  color: var(--mb-color-text-secondary);
+}
+
+.row:hover {
+  background-color: var(--mb-color-navbar-admin-secondary);
+}
+
+.selected,
+.selected:hover {
+  color: var(--mb-color-core-white_constant);
+  background-color: var(--mb-color-navbar-admin);
+}
+
+.name {
+  color: var(--mb-color-text-primary);
+}
+
+.selected .name {
+  color: inherit;
+}

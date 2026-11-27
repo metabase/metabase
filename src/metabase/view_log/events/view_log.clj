@@ -120,7 +120,8 @@
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`. Views are batched
   and inserted asynchronously, so they may not be visible in the view log for up
   to [[record-view-interval-seconds]] (plus they are lost on non-graceful shutdown); we consider that an acceptable
-  trade for not paying for a synchronous INSERT on every read/query request."
+  trade for not paying for a synchronous INSERT on every read/query request. While an admin previews the app as
+  someone, the views are recorded as the admin's."
   [view-or-views :- [:or
                      ::view-log.schema/view-log.create
                      [:sequential ::view-log.schema/view-log.create]]]
@@ -129,6 +130,10 @@
     (when (premium-features/log-enabled?)
       (doseq [view (u/one-or-many view-or-views)]
         (grouper/submit! @record-view-queue (-> view
+                                                ;; an admin is never a tenant user
+                                                (cond-> api/*previewing-admin-id*
+                                                  (assoc :user_id   api/*previewing-admin-id*
+                                                         :tenant_id nil))
                                                 (assoc :timestamp (t/offset-date-time))
                                                 analytics/include-sdk-info))))))
 

@@ -92,7 +92,8 @@
       :details           (stringify-keys (merge {} (:details params)))})))
 
 (mu/defn audit-row :- [:maybe :map]
-  "The Audit Log row that [[create-audit-logs!]] inserts for `topic` and `params`, or nil when it would insert none."
+  "The Audit Log row that [[create-audit-logs!]] inserts for `topic` and `params`, or nil when it would insert none.
+  While an admin previews the app as someone, the row's user is the admin, whatever user `params` names."
   [topic :- :keyword
    params :- ::event-params]
   (when (premium-features/log-enabled?)
@@ -102,7 +103,7 @@
        :details  details
        :model    model-name
        :model_id model-id
-       :user_id  user-id})))
+       :user_id  (or api/*previewing-admin-id* user-id)})))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

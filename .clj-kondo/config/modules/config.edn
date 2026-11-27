@@ -4681,17 +4681,33 @@
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
            app-db
+           events
            lib
            lib.schema
            models
            permissions
+           premium-features
            query-processor
            request
+           session
+           settings
+           users
+           users.schema
            util}
    :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/DashboardCard
                     :model/Database
+                    :model/DatabaseRouter
+                    :model/Field
+                    :model/Permissions
                     :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Sandbox
                     :model/Table
+                    :model/Tenant
                     :model/User}}
 
   enterprise/permissions.impersonation

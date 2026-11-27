@@ -2,9 +2,15 @@
   "`/api/ee/permission_debug/` routes"
   (:require
    [metabase-enterprise.permission-debug.impl :as permission-debug.impl]
+   [metabase-enterprise.permission-debug.reasons :as permission-debug.reasons]
+   [metabase-enterprise.permission-debug.stand-in :as stand-in]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
+   [metabase.session.core :as session]
+   [metabase.users.schema :as users.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -76,6 +82,79 @@
    {:user-id user_id
     :model-id model_id
     :action-type action_type}))
+
+(api.macros/defendpoint :get "/access" :- [:map
+                                           [:collections [:sequential :map]]
+                                           [:reasons     :map]]
+  "Everything the user `user-id` can reach: `collections`, each with the access each of the user's groups gives, and
+  `reasons`, the same `tables`, `impersonations`, `routes` and `problems` as a query check gives, for every active
+  table."
+  [_route-params
+   {:keys [user-id]} :- [:map {:closed true}
+                         [:user-id ms/PositiveInt]]]
+  (permission-debug.reasons/access-reasons user-id))
+
+(defn- check-browser-session!
+  "Throw a 403 unless `request` is authenticated by a login session, not an API key, and not a full-app embedding
+  session."
+  [request]
+  (api/check (and (:metabase/authed-session-key-hash request)
+                  (not= :full-app-embed (:metabase-session-type request)))
+             403 {:message    (tru "A preview can only be started from a browser session.")
+                  :error-code "preview-requires-browser-session"}))
+
+(defn- check-preview-target!
+  "Throw a 400 unless `body` names exactly one target, a user or a group, and picks attribute values only for a group."
+  [{:keys [user_id group_id attributes]}]
+  (api/check (= 1 (count (filter some? [user_id group_id])))
+             400 {:message    (tru "Give either a user or a group to preview.")
+                  :error-code "preview-target-invalid"})
+  (api/check (or group_id (nil? attributes))
+             400 {:message    (tru "Attribute values can only be picked for a group.")
+                  :error-code "preview-attributes-need-group"}))
+
+(api.macros/defendpoint :post "/preview/session" :- [:map
+                                                     [:id         ms/PositiveInt]
+                                                     [:token      :string]
+                                                     [:expires_at :any]
+                                                     [:user_id    ms/PositiveInt]]
+  "Start a read-only preview as the user `user_id`, or as the group `group_id` with the attribute values `attributes`
+  that its rules read, through the group's stand-in user: the last preview of a group to start sets the values of
+  every open preview of it. Returns the preview's `id`, `token` and `user_id` (the person, or the group's stand-in),
+  the token being shown only here: send it as the
+  `X-Metabase-Preview-Token` header, and every request that carries it runs as that person. A preview lasts 10
+  minutes, is never renewed, and ends with the admin's session."
+  [_route-params
+   _query-params
+   {:keys [user_id group_id attributes] :as body} :- [:map {:closed true}
+                                                      [:user_id    {:optional true} ms/PositiveInt]
+                                                      [:group_id   {:optional true} ms/PositiveInt]
+                                                      [:attributes {:optional true} users.schema/LoginAttributes]]
+   request]
+  (check-browser-session! request)
+  (check-preview-target! body)
+  (let [admin-session-key-hash (:metabase/authed-session-key-hash request)
+        preview                (if group_id
+                                 (stand-in/start-group-preview! {:group-id               group_id
+                                                                 :attributes             attributes
+                                                                 :admin-user-id          api/*current-user-id*
+                                                                 :admin-session-key-hash admin-session-key-hash})
+                                 (assoc (session/start-preview! {:user-id                user_id
+                                                                 :admin-user-id          api/*current-user-id*
+                                                                 :admin-session-key-hash admin-session-key-hash})
+                                        :user_id user_id))]
+    (events/publish-event! :event/permission-preview-start
+                           {:user-id  api/*current-user-id*
+                            :model    (if group_id :model/PermissionsGroup :model/User)
+                            :model-id (or group_id user_id)})
+    preview))
+
+(api.macros/defendpoint :delete "/preview/session/:id" :- ::api/generic-204-no-content
+  "End the preview `id` that the current admin started."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-404 (pos? (session/end-preview! id api/*current-user-id*)))
+  api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/permission_debug` routes."

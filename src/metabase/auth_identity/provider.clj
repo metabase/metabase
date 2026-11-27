@@ -328,6 +328,22 @@
                :error    :non-personal-user
                :message  personal-only-message))))
 
+(mu/defn- apply-permission-preview-check
+  "Refuses a `request` for the stand-in user of a group preview, which nobody signs in as.
+
+  Remove the user from the request on refusal so the rest of the login cannot change their account."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
+  (cond-> request
+    (= :permission-preview (get-in request [:user :type]))
+    (-> (dissoc :user)
+        (assoc :success? false
+               :error    :account-disabled
+               :message  disabled-account-message))))
+
 (mu/defn- create-session!
   "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
   method set one, otherwise to that of `provider`. Updates the last_used_at timestamp on that AuthIdentity."
@@ -414,6 +430,7 @@
                  (when-let [email (get-in $ [:user-data :email])]
                    (auth-identity.db/user-login-columns-by-email email)))))
     (apply-personal-only-check $)
+    (apply-permission-preview-check $)
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))

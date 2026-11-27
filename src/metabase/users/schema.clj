@@ -25,7 +25,7 @@
 
 (mr/def ::user.type
   "The `:type` column of a User."
-  (ms/enum-keywords-and-strings :internal :personal :api-key))
+  (ms/enum-keywords-and-strings :internal :personal :api-key :permission-preview))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"

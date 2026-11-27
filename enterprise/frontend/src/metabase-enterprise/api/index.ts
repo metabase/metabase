@@ -19,6 +19,7 @@ export * from "./library";
 export * from "./metabot";
 export * from "./multi-factor-auth";
 export * from "./oidc";
+export * from "./permission-preview";
 export * from "./remote-sync";
 export * from "./replacement";
 export * from "./saml";
