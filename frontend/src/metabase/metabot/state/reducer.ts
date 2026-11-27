@@ -418,7 +418,11 @@ export const metabot = createSlice({
 
       convo.messages = castDraft(
         messages.map((message) =>
-          withServerErrorDisplay({ ...message, parts: [...message.parts] }),
+          withServerErrorDisplay({
+            ...message,
+            parts: [...message.parts],
+            fromSnapshot: true,
+          }),
         ),
       );
       convo.state = snapshotState ?? {};

@@ -93,7 +93,8 @@
    [:sandbox_details             {:optional true} [:maybe [:sequential :map]]]
    [:metabot_conversation_id     {:optional true} [:maybe :string]]
    [:metabot_message_id          {:optional true} [:maybe :int]]
-   [:metabot_tool_call_id        {:optional true} [:maybe :string]]])
+   [:metabot_tool_call_id        {:optional true} [:maybe :string]]
+   [:metabot_rerun               {:optional true} [:maybe :boolean]]])
 
 (def ^:private id+timestamp
   [:map {:closed true}

@@ -45,6 +45,7 @@
    [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
+   [metabase.metabot.core :as metabot]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -230,9 +231,12 @@
    ;; policy to stop a user denied `execute_sql`. The spec-generation
    ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
    ;; fails openapi.json generation for the whole /api tree.
+   ;; The query of a chart in a Metabot reply names its conversation and message in request headers;
+   ;; `+query-run-link` checks them for the run's QueryExecution.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
-                                    (partial agent-api.query-guards/+refuse-unscoped-native-sql
-                                             #'mcp/check-execute-sql-allowed!))
+                                    (comp (partial agent-api.query-guards/+refuse-unscoped-native-sql
+                                                   #'mcp/check-execute-sql-allowed!)
+                                          metabot/+query-run-link))
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)

@@ -126,15 +126,17 @@
                        :info {:context                 :metabot
                               :metabot-conversation-id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
                               :metabot-message-id      42
-                              :metabot-tool-call-id    "call-7"})]
+                              :metabot-tool-call-id    "call-7"
+                              :metabot-rerun?          false})]
       (with-query-execution! [qe query]
         (testing "the response does not hold the link"
-          (is (not-any? #{:metabot_conversation_id :metabot_message_id :metabot_tool_call_id}
+          (is (not-any? #{:metabot_conversation_id :metabot_message_id :metabot_tool_call_id :metabot_rerun}
                         (keys (process-userland-query query)))))
         (is (=? {:context                 :metabot
                  :metabot_conversation_id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
                  :metabot_message_id      42
-                 :metabot_tool_call_id    "call-7"}
+                 :metabot_tool_call_id    "call-7"
+                 :metabot_rerun           false}
                 (qe))))))
   (testing "any other query is saved with no link"
     (let [query (mt/mbql-query venues)]
@@ -160,10 +162,12 @@
            :error                   marker
            :metabot_conversation_id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
            :metabot_message_id      42
-           :metabot_tool_call_id    "call-7"}])
+           :metabot_tool_call_id    "call-7"
+           :metabot_rerun           true}])
         (is (=? [{:metabot_conversation_id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
                   :metabot_message_id      42
-                  :metabot_tool_call_id    "call-7"}]
+                  :metabot_tool_call_id    "call-7"
+                  :metabot_rerun           true}]
                 (t2/select :model/QueryExecution :error marker)))))))
 
 (deftest oversized-row-does-not-destroy-batch-test

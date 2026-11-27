@@ -143,7 +143,7 @@
        add-running-time
        (dissoc :error :hash :executor_id :action_id :is_sandboxed :is_impersonated :is_db_routed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
                :parameterized :parameters :sandbox_details
-               :metabot_conversation_id :metabot_message_id :metabot_tool_call_id))
+               :metabot_conversation_id :metabot_message_id :metabot_tool_call_id :metabot_rerun))
    ;; `[:data :sandbox_details]` exists only to be recorded in the QueryExecution row (see
    ;; [[save-successful-execution-metadata!]]) — it has no business going back to the client
    (-> (dissoc result :cache/details)
@@ -188,7 +188,7 @@
   Mirrored by `execution-row` in `metabase.actions.audit`; keep the two in step."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id
-                  metabot-conversation-id metabot-message-id metabot-tool-call-id]
+                  metabot-conversation-id metabot-message-id metabot-tool-call-id metabot-rerun?]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
@@ -215,6 +215,7 @@
        :metabot_conversation_id metabot-conversation-id
        :metabot_message_id      metabot-message-id
        :metabot_tool_call_id    metabot-tool-call-id
+       :metabot_rerun           metabot-rerun?
        :context           context
        :hash              query-hash
        :parameterized     (and (boolean (seq parameters))

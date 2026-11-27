@@ -354,7 +354,11 @@
                                    (when on-data
                                      (on-data (vswap! data-idx inc)
                                               {:type  (:data-type part)
-                                               :value (:data part)}))
+                                               :value (:data part)
+                                               ;; A chart that this reply draws runs its query for this reply.
+                                               :link  {:metabot-conversation-id conversation-id
+                                                       :metabot-message-id      assistant-msg-id
+                                                       :metabot-rerun?          false}}))
 
                                    :error
                                    (when on-text
@@ -416,17 +420,17 @@
 
 (defn- generate-viz-output
   "Generate visualization output for a data-part. Called by the prefetch executor during streaming."
-  [{:keys [type value]}]
+  [{:keys [type value link]}]
   (case type
     "static_viz"
     (let [card-id (or (:entity_id value)
                       (throw (ex-info "static_viz missing entity_id" {:value value})))]
-      (slackbot.query/generate-card-output card-id))
+      (slackbot.query/generate-card-output card-id link))
     "adhoc_viz"
     (let [query   (or (:query value)
                       (throw (ex-info "adhoc_viz missing query" {:value value})))
           display (or (some-> (:display value) keyword) :table)]
-      (slackbot.query/generate-adhoc-output query :display display))))
+      (slackbot.query/generate-adhoc-output query :display display :link link))))
 
 (defn- viz-error-message
   "Classify a visualization exception into a user-friendly message."

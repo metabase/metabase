@@ -1,5 +1,5 @@
 ## Link a query execution to the Metabot reply that caused it: the conversation, the assistant message of the turn, and
-## the tool call that ran the query (BOT-2381).
+## the tool call that ran the query, and whether the run is a later run of a chart of the reply (BOT-2381).
 
 databaseChangeLog:
   - changeSet:
@@ -40,3 +40,16 @@ databaseChangeLog:
                   name: metabot_tool_call_id
                   type: varchar(255)
                   remarks: The LLM provider's id of the tool call that ran this query, as metabot_tool_call.tool_call_id holds it
+
+  - changeSet:
+      id: w8d5kr
+      author: lbrdnk
+      comment: Add query_execution.metabot_rerun
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: metabot_rerun
+                  type: ${boolean.type}
+                  remarks: For a query that draws a chart of a Metabot reply, false for the first run and true for a later run. NULL for any other query.

@@ -150,7 +150,8 @@
                     :sanitized_user_agent nil
                     :metabot_conversation_id nil
                     :metabot_message_id nil
-                    :metabot_tool_call_id nil}
+                    :metabot_tool_call_id nil
+                    :metabot_rerun    nil}
                    (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test

@@ -167,6 +167,7 @@
         image-calls                 (atom [])
         generate-card-output-calls  (atom [])
         generate-adhoc-output-calls (atom [])
+        viz-links                   (atom [])
         ephemeral-calls             (atom [])
         ai-request-calls            (atom [])
         stream-calls                (atom [])
@@ -246,10 +247,12 @@
                                           :data-type (:type dp)
                                           :data      (:value dp dp)}))
                                r data-parts))))))
-       slackbot.query/generate-card-output (fn [card-id]
+       slackbot.query/generate-card-output (fn [card-id & [link]]
+                                             (swap! viz-links conj link)
                                              (swap! generate-card-output-calls conj {:card-id card-id})
                                              {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
-       slackbot.query/generate-adhoc-output (fn [query & {:keys [display]}]
+       slackbot.query/generate-adhoc-output (fn [query & {:keys [display link]}]
+                                              (swap! viz-links conj link)
                                               (swap! generate-adhoc-output-calls conj {:query query :display display})
                                               (if (#{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map}
                                                    display)
@@ -261,6 +264,7 @@
                 :image-calls                 image-calls
                 :generate-card-output-calls  generate-card-output-calls
                 :generate-adhoc-output-calls generate-adhoc-output-calls
+                :viz-links                   viz-links
                 :ephemeral-calls             ephemeral-calls
                 :ai-request-calls            ai-request-calls
                 :stream-calls                stream-calls

@@ -1257,7 +1257,7 @@
           {:ai-text "Here's your chart" :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
           (fn [{:keys [post-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
-              [slackbot.query/generate-card-output (fn [_card-id]
+              [slackbot.query/generate-card-output (fn [_card-id & _]
                                                      (throw (ex-info "Unexpected render error" {})))]
               (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
               (let [error-msg "Query execution failed, please try again."]
@@ -1280,7 +1280,7 @@
                         {:type "static_viz" :value {:entity_id 123}}]}
           (fn [{:keys [post-calls image-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
-              [slackbot.query/generate-card-output (fn [card-id]
+              [slackbot.query/generate-card-output (fn [card-id & _]
                                                      (if (= card-id 999999)
                                                        (throw (ex-info "Unexpected render error" {}))
                                                        {:type :image :content fake-png :card-name (str "Card " card-id)}))]
@@ -1317,6 +1317,29 @@
                   (is (str/includes? caption-text "/question/101"))))
               (testing "image block references the uploaded Slack file"
                 (is (= (:file-id img) (get-in blocks [1 :slack_file :id])))))))))))
+
+(deftest ^:synchronized viz-query-run-names-its-reply-test
+  (testing "the query run of a chart in a Slack reply names the conversation and the assistant message (BOT-2381)"
+    (tu/with-slackbot-setup
+      (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
+            mock-data-parts [{:type "adhoc_viz" :value {:query mock-query :title "Sales Data" :link "/question#abc123"}}]
+            event-body      (update tu/base-dm-event :event merge
+                                    {:text "Show sales" :ts "1234567890.000031" :event_ts "1234567890.000031"
+                                     :thread_ts "1234567890.000030"})]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (tu/with-slackbot-mocks
+            {:ai-text "Here's your table" :data-parts mock-data-parts}
+            (fn [{:keys [stop-stream-calls viz-links ai-request-calls]}]
+              (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event-body) event-body)
+              (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1) (>= (count @viz-links) 1))
+                       :done? true? :timeout-ms 5000})
+              (let [{:keys [conversation-id]} (last @ai-request-calls)]
+                (is (= [{:metabot-conversation-id conversation-id
+                         :metabot-message-id      (t2/select-one-pk :model/MetabotMessage
+                                                                    :conversation_id conversation-id
+                                                                    :role "assistant")
+                         :metabot-rerun?          false}]
+                       @viz-links))))))))))
 
 (deftest ^:synchronized table-viz-with-caption-test
   (testing "table viz posts include caption block with link"

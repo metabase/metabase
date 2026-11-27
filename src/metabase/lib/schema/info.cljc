@@ -82,6 +82,8 @@
    [:metabot-conversation-id {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:metabot-message-id      {:optional true} [:maybe pos-int?]]
    [:metabot-tool-call-id    {:optional true} [:maybe :string]]
+   ;; For a query that draws a chart of a Metabot reply: whether this is a later run of the chart, not its first.
+   [:metabot-rerun?          {:optional true} [:maybe :boolean]]
    [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.visualization/visualization-settings]]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.

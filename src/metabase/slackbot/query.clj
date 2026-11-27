@@ -47,14 +47,23 @@
     (throw (ex-info (or (:error results) "Query execution failed")
                     (select-keys results [:error :status])))))
 
+(def ^:private link-keys
+  "The `:info` keys that name the Metabot reply a chart's query run belongs to."
+  [:metabot-conversation-id :metabot-message-id :metabot-rerun?])
+
 (defn execute-adhoc-query
-  "Execute an ad-hoc MBQL query in the context of Slackbot and return results."
-  [query]
-  (qp/process-query
-   (-> query
-       qp/userland-query-with-default-constraints
-       (update :info merge {:executed-by api/*current-user-id*
-                            :context     :slackbot}))))
+  "Execute an ad-hoc MBQL query in the context of Slackbot and return results. `link` names the Metabot reply that
+  the run belongs to, as `:info` keys."
+  ([query]
+   (execute-adhoc-query query nil))
+  ([query link]
+   (qp/process-query
+    (-> query
+        qp/userland-query-with-default-constraints
+        (update :info merge
+                (select-keys link link-keys)
+                {:executed-by api/*current-user-id*
+                 :context     :slackbot})))))
 
 (defn- generate-adhoc-png
   "Render query results to PNG."
@@ -215,10 +224,10 @@
 
    - Chart display types (bar, line, pie, etc.) render as PNG
    - Table display (or nil) renders as native Slack table blocks"
-  [query & {:keys [display]
+  [query & {:keys [display link]
             :or   {display :table}}]
   (let [display (keyword display)
-        results (execute-adhoc-query query)]
+        results (execute-adhoc-query query link)]
     (throw-on-failed-query! results)
     (if (and (contains? supported-png-display-types display)
              (seq (get-in results [:data :rows])))
@@ -230,19 +239,23 @@
 ;;; ------------------------------------------ Saved Card Visualization ----------------------------------------------------
 
 (defn pulse-card-query-results
-  "Execute a query for a saved card, returning results suitable for rendering."
-  {:arglists '([card])}
-  [{query :dataset_query, card-id :id}]
-  ;; Use the same approach as pulse API - this works for accessible cards
-  (binding [qp.perms/*card-id* card-id]
-    (qp/process-query
-     (qp/userland-query
-      (assoc query
-             :middleware {:process-viz-settings? true
-                          :js-int-to-string?     false})
-      {:executed-by api/*current-user-id*
-       :context     :pulse
-       :card-id     card-id}))))
+  "Execute a query for a saved card, returning results suitable for rendering. `link` names the Metabot reply that
+  the run belongs to, as `:info` keys."
+  {:arglists '([card] [card link])}
+  ([card]
+   (pulse-card-query-results card nil))
+  ([{query :dataset_query, card-id :id} link]
+   ;; Use the same approach as pulse API - this works for accessible cards
+   (binding [qp.perms/*card-id* card-id]
+     (qp/process-query
+      (qp/userland-query
+       (assoc query
+              :middleware {:process-viz-settings? true
+                           :js-int-to-string?     false})
+       (merge (select-keys link link-keys)
+              {:executed-by api/*current-user-id*
+               :context     :pulse
+               :card-id     card-id}))))))
 
 (defn- render-saved-card-png
   "Render a saved card (already fetched from DB) and pre-fetched results to PNG bytes."
@@ -263,13 +276,15 @@
    Returns a map with :type (:table or :image), :content, and :card-name.
 
    - `table` and display types not supported by static viz render as native Slack table blocks
-   - static viz chart types render as PNG"
-  [card-id]
+   - static viz chart types render as PNG
+
+   `link` names the Metabot reply that the run belongs to, as `:info` keys."
+  [card-id & [link]]
   (let [card      (slackbot.db/card card-id)
         _         (when-not card
                     (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
         card-name (:name card)
-        results   (pulse-card-query-results card)]
+        results   (pulse-card-query-results card link)]
     (throw-on-failed-query! results)
     (if (and (-> card :display keyword supported-png-display-types)
              (seq (get-in results [:data :rows])))

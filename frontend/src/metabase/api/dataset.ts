@@ -21,6 +21,38 @@ interface IgnorableError {
   ignore_error?: boolean;
 }
 
+/**
+ * Names the Metabot reply that a chart's query run belongs to. It goes to the
+ * server in request headers, for the record of the run, not in the query.
+ */
+export type MetabotChartRun = {
+  conversation_id: string;
+  /** The external id of the assistant message that holds the chart. */
+  message_id?: string;
+  /** Whether this is a later run of the chart, not its first. */
+  rerun: boolean;
+};
+
+interface MetabotChartRunArg {
+  metabot_run?: MetabotChartRun;
+}
+
+/* eslint-disable metabase/no-literal-metabase-strings -- request header names */
+const METABOT_CONVERSATION_ID_HEADER = "X-Metabase-Metabot-Conversation-Id";
+const METABOT_MESSAGE_ID_HEADER = "X-Metabase-Metabot-Message-Id";
+const METABOT_RERUN_HEADER = "X-Metabase-Metabot-Rerun";
+/* eslint-enable metabase/no-literal-metabase-strings */
+
+const getMetabotChartRunHeaders = ({
+  conversation_id,
+  message_id,
+  rerun,
+}: MetabotChartRun): Record<string, string> => ({
+  [METABOT_CONVERSATION_ID_HEADER]: conversation_id,
+  ...(message_id ? { [METABOT_MESSAGE_ID_HEADER]: message_id } : {}),
+  [METABOT_RERUN_HEADER]: String(rerun),
+});
+
 export type DownloadDatasetArgs = {
   method: "GET" | "POST";
   url: string;
@@ -55,12 +87,18 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocQuery: builder.query<
       Dataset,
-      (JsonQuery | InternalDatasetQuery) & RtkCacheKeyed & IgnorableError
+      (JsonQuery | InternalDatasetQuery) &
+        RtkCacheKeyed &
+        IgnorableError &
+        MetabotChartRunArg
     >({
-      query: ({ ignore_error, ...body }) => ({
+      query: ({ ignore_error, metabot_run, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
+        headers: metabot_run
+          ? getMetabotChartRunHeaders(metabot_run)
+          : undefined,
         noEvent: ignore_error,
       }),
       serializeQueryArgs: ({ queryArgs }) =>

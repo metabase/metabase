@@ -209,6 +209,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
 type AgentPartProps = {
   part: MetabotMessagePart;
   externalId?: string;
+  fromSnapshot?: boolean;
   debug: boolean;
   readonly: boolean;
   conversationId: string;
@@ -223,6 +224,7 @@ type AgentPartProps = {
 const AgentPart = ({
   part,
   externalId,
+  fromSnapshot,
   debug,
   readonly,
   conversationId,
@@ -248,6 +250,7 @@ const AgentPart = ({
       <AgentDataPart
         dataPart={p}
         externalId={externalId}
+        fromSnapshot={fromSnapshot}
         debug={debug}
         readonly={readonly}
         conversationId={conversationId}
@@ -471,6 +474,7 @@ export const AgentMessage = ({
           <AgentPart
             part={part}
             externalId={message.externalId}
+            fromSnapshot={message.fromSnapshot}
             debug={debug}
             readonly={readonly}
             conversationId={conversationId}
