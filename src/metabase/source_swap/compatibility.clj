@@ -28,10 +28,12 @@
     (conj :missing-primary-key)
 
     (and (lib.types.isa/foreign-key? old-column)
+         (:fk-target-field-id old-column)
          (not (lib.types.isa/foreign-key? new-column)))
     (conj :missing-foreign-key)
 
     (and (lib.types.isa/foreign-key? old-column)
+         (:fk-target-field-id old-column)
          (lib.types.isa/foreign-key? new-column)
          (not= (:fk-target-field-id old-column) (:fk-target-field-id new-column)))
     (conj :foreign-key-mismatch)))

@@ -74,6 +74,27 @@
       (is (= [:foreign-key-mismatch]
              (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
 
+(deftest ^:parallel column-errors-foreign-key-without-target-test
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "db" :engine :h2}
+             :tables [{:id 100 :name "orders" :db-id 1}
+                      {:id 200 :name "transactions" :db-id 1}
+                      {:id 300 :name "invoices" :db-id 1}]
+             :fields [{:id 1 :table-id 100 :name "user_id"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK}
+                      {:id 2 :table-id 200 :name "user_id"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK :fk-target-field-id 888}
+                      {:id 3 :table-id 300 :name "user_id"
+                       :base-type :type/Integer :effective-type :type/Integer}]})]
+    (testing "foreign key without target needs no foreign key in replacement"
+      (is (= []
+             (source-swap.compatibility/column-errors (field mp 1) (field mp 3) :card :table))))
+    (testing "foreign key without target accepts any foreign key target in replacement"
+      (is (= []
+             (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :card :table))))))
+
 (deftest ^:parallel column-errors-nil-effective-type-test
   (let [mp (lib.tu/mock-metadata-provider
             {:database {:id 1 :name "db" :engine :h2}
