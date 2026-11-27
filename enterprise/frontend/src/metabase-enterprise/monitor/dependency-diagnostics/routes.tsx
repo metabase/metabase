@@ -7,6 +7,7 @@ import {
   outletRoute,
   redirectRoute,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import { Route } from "metabase/router";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
@@ -27,7 +28,7 @@ const unreferencedPage = () =>
     Component: UnreferencedDependencyDiagnosticsPage,
   }));
 
-const gated = (enabled: Parameters<typeof featureGatedRoute>[1]) =>
+const gated = (enabled: PluginRoute) =>
   featureGatedRoute("dependencies", enabled, dependencyDiagnosticsUpsellPage);
 
 export function getDependencyDiagnosticsRoutes() {

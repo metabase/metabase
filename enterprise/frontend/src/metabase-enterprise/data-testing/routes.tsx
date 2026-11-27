@@ -1,4 +1,3 @@
-import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
 import type { PluginRoute } from "metabase/plugins/types";
 import { Route } from "metabase/router";
 import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
@@ -25,7 +24,7 @@ const testRunsPage = () =>
   }));
 
 const gated = (enabled: PluginRoute) =>
-  featureGatedRoute("transforms-testing", enabled, notFoundRoute);
+  featureGatedRoute("transforms-testing", enabled);
 
 export function getTransformTestRoutes() {
   return (

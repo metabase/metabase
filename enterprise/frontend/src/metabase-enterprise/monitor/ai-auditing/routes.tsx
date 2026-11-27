@@ -208,11 +208,7 @@ export function getAiAuditingRoutes() {
       {getCliAnalyticsRoutes()}
       <Route
         path="data-apps"
-        lazy={featureGatedRoute(
-          "data-apps",
-          dataAppsAnalyticsPage,
-          notFoundRoute,
-        )}
+        lazy={featureGatedRoute("data-apps", dataAppsAnalyticsPage)}
       />
     </Route>
   );
