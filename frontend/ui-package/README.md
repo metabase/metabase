@@ -1,6 +1,6 @@
 # @metabase/ui
 
-Metabase's UI components, theme, colors and icons, built from [`frontend/src/metabase/ui`](../src/metabase/ui). For Metabase's own products; it isn't supported for other use. The license is in `LICENSE.txt`.
+Metabase's UI components, theme, colors and icons, built from [`frontend/src/metabase/ui`](../src/metabase/ui). For Metabase's own products; it isn't supported for other use. Licensed under AGPL-3.0-or-later. The full license text is included in `LICENSE.txt`.
 
 ## Install
 
