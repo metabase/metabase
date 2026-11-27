@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DependencyNode } from "metabase-types/api";
 import {
@@ -126,5 +128,23 @@ describe("ErrorsSection", () => {
     expect(
       screen.queryByRole("region", { name: "Missing columns" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should show a single tooltip when copying a missing column from the copy button", async () => {
+    setup({
+      node: createMockCardDependencyNode({
+        dependents_errors: [
+          createMockAnalysisFindingError({
+            error_type: "missing-column",
+            error_detail: "COLUMN_A",
+          }),
+        ],
+      }),
+    });
+
+    await userEvent.hover(screen.getByText("COLUMN_A"));
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    expect(await screen.findAllByRole("tooltip")).toHaveLength(1);
   });
 });
