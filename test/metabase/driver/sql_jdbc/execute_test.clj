@@ -490,3 +490,22 @@
   (let [classify (get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc)]
     (doseq [^String state ["21000" "22012" "23505" "42S22"]]
       (is (true? (classify nil (SQLException. "Query error" state)))))))
+
+(deftest notification-queries-stream-results-test
+  (mt/test-driver :h2
+    (testing "alert and dashboard subscription queries open their connection with the options of a download (#74447)"
+      (let [mp      (mt/metadata-provider)
+            options (atom [])
+            orig    sql-jdbc.execute/do-with-connection-with-options]
+        (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [driver db opts f]
+                                                                         (swap! options conj opts)
+                                                                         (orig driver db opts f))]
+          (doseq [context [:pulse :dashboard-subscription]]
+            (testing context
+              (reset! options [])
+              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                  (lib/limit 1)
+                  (assoc :info {:context context})
+                  qp/process-query)
+              (is (=? [{:download? true, :stream? true}]
+                      @options)))))))))
