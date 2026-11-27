@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
 import { createElement, useEffect, useReducer } from "react";
 
-// Not the barrel: it pulls the diagnostic modal, which closes an import cycle
-// back onto the plugin slots this module helps build.
+// Not the barrel: through the diagnostic modal and the whitelabel selectors
+// it closes an import cycle back onto the plugin slots this module helps
+// build.
 import { NotFound } from "metabase/common/components/ErrorPages/NotFound";
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature/use-has-token-feature";
 import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
@@ -35,8 +36,8 @@ type Branch = "enabled" | "disabled";
  * keeps `lazy`'s contract of not committing to a blank frame. The other page
  * is only fetched when the feature changes under an open session.
  *
- * Routes must mount unconditionally; this is the supported way for one of them
- * to depend on a feature.
+ * Routes must mount unconditionally; a gate like this is how one of them
+ * depends on a feature.
  */
 export function featureGatedRoute(
   feature: TokenFeature,
@@ -82,8 +83,9 @@ export function isFeatureGatedRoute(
 
 /**
  * A component that follows a premium feature, for route leaves that hold their
- * component eagerly, such as modal routes. Without the feature the route still
- * mounts and renders what an unknown URL gets.
+ * component eagerly, such as modal routes and guard wrappers. Without the
+ * feature it renders `Disabled`: by default the page an unknown URL gets, and
+ * at some sites an `Outlet` or a modal placeholder instead.
  */
 export function featureGatedComponent<Props extends object>(
   feature: TokenFeature,

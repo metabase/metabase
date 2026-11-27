@@ -13,8 +13,8 @@ import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellMod
  * merges the two module sets, which copies whatever they shared into every
  * other chunk that needs it.
  *
- * The upsell modal stays eager: `modalRoute` takes a component rather than a
- * loader.
+ * The upsell modal stays eager: a modal opens over a page that is already on
+ * screen, so there is nothing to gain from a chunk of its own.
  */
 const pythonLibraryEditorPage = () =>
   import(

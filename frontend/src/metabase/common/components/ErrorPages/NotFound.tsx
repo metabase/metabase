@@ -8,8 +8,8 @@ import S from "./ErrorPages.module.css";
 
 /**
  * Lives apart from the other error pages so that a module can show it without
- * importing the diagnostic modal, which reaches the plugin slots through the
- * app selectors.
+ * the rest of the barrel, whose diagnostic modal and whitelabel selectors
+ * reach back to the plugin slots.
  */
 export const NotFound = ({
   title = t`We're a little lost...`,
