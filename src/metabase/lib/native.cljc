@@ -464,8 +464,9 @@
           (lib.walk.util/all-template-tags query)))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
-  [query _card-type]
+  [query card-type]
   (and
+   (not= card-type :metric)
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))

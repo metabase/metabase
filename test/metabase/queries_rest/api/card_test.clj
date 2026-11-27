@@ -1133,6 +1133,13 @@
                                                   invalid-card))]
               (is (= "Card of type metric is invalid, cannot be saved." response)))))))))
 
+(deftest update-native-card-to-metric-is-refused-test
+  (testing "PUT /api/card/:id refuses turning native question into metric (#82218)"
+    (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider) "SELECT count(*) AS c FROM orders")}]
+      (is (= "Card of type metric is invalid, cannot be saved."
+             (mt/user-http-request :crowberto :put 400 (str "card/" (:id card)) {:type :metric})))
+      (is (= :question (t2/select-one-fn :type :model/Card :id (:id card)))))))
+
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"

@@ -197,6 +197,7 @@
       false :question (assoc (lib.tu/venues-query) :database nil) ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
       false :question (lib/native-query meta/metadata-provider "")
+      false :metric   (lib/native-query meta/metadata-provider "SELECT")
       false :metric   (lib.tu/venues-query)
       true  :metric   (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count)))
@@ -238,6 +239,7 @@
       false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
       false :question (lib/native-query meta/metadata-provider "")
+      false :metric   (lib/native-query meta/metadata-provider "SELECT")
       false :metric   (lib.tu/venues-query)
       true  :metric   (-> (lib.tu/venues-query)
                           (lib/aggregate (lib/count)))
