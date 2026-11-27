@@ -26,7 +26,10 @@ export function SlimMetabaseUIProvider({
   components,
   ...props
 }: SlimMetabaseUIProviderProps) {
-  const theme = useMemo(() => ({ components }), [components]);
+  const theme = useMemo(
+    () => (components ? { components } : undefined),
+    [components],
+  );
   return (
     <StandaloneUIProvider
       {...props}

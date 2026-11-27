@@ -53,7 +53,7 @@ export const App = () => {
     return (
       <SlimMetabaseUIProvider
         colorScheme={colorScheme}
-        components={buttonOverrides}
+        components={params.has("no-overrides") ? undefined : buttonOverrides}
       >
         <Button variant="filled" data-testid="button-filled">
           Filled

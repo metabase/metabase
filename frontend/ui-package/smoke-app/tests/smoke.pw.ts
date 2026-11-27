@@ -261,6 +261,13 @@ test("the slim provider applies opted-in Button styles in both schemes", async (
   }
 });
 
+test("the slim provider can render a Button without component overrides", async ({
+  page,
+}) => {
+  await page.goto("/?slim&no-overrides");
+  await expect(page.getByRole("button", { name: "Filled" })).toBeVisible();
+});
+
 test("a portalled Select can be used inside a custom modal layer", async ({
   page,
 }) => {
