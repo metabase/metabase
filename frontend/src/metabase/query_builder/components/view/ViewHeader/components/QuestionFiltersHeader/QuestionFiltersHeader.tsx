@@ -1,5 +1,6 @@
-import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
+import { QueryFilterBar } from "metabase/querying/filters/components/QueryFilterBar";
 import type { QueryBuilderMode } from "metabase/redux/store";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -19,7 +20,7 @@ export function QuestionFiltersHeader({
   const query = question.query();
 
   const handleChange = (query: Lib.Query) => {
-    updateQuestion(question.setQuery(query), { run: true });
+    updateQuestion(question.setQuery(query), { run: false });
   };
 
   if (!expanded) {
@@ -27,11 +28,12 @@ export function QuestionFiltersHeader({
   }
 
   return (
-    <FilterPanel
-      query={query}
-      onChange={handleChange}
+    <Box
       className={ViewTitleHeaderS.FilterPanel}
-    />
+      data-testid="qb-filters-panel"
+    >
+      <QueryFilterBar query={query} onChange={handleChange} />
+    </Box>
   );
 }
 

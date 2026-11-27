@@ -1,8 +1,13 @@
 import userEvent from "@testing-library/user-event";
-import { Editor } from "@tiptap/core";
-import type { EditorProps } from "@tiptap/pm/view";
 import { type Ref, createRef, useImperativeHandle, useState } from "react";
 
+import {
+  focusBar,
+  getEditor,
+  getPillTexts,
+  getTiptapEditor,
+  typeText,
+} from "__support__/filter-bar";
 import {
   act,
   renderWithProviders,
@@ -108,53 +113,14 @@ const setup = async ({ value = [], autoFocus }: SetupOpts = {}) => {
   return { onChange, sendValue };
 };
 
-const getEditor = () =>
-  screen.getByText(
-    (_, element) => element?.getAttribute("contenteditable") === "true",
-  );
-
 const getErrorElements = () =>
   screen.queryAllByText(
     (_, element) => element?.hasAttribute("data-error") === true,
   );
 
-const getTiptapEditor = () => {
-  const element = getEditor();
-  return "editor" in element && element.editor instanceof Editor
-    ? element.editor
-    : null;
-};
-
-const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-
-const typeText = async (text: string) => {
-  act(() => {
-    const editor = getTiptapEditor();
-    if (!editor) {
-      return;
-    }
-    const { view } = editor;
-    const { from, to } = view.state.selection;
-    const isHandled = view.someProp(
-      "handleTextInput",
-      (handle: NonNullable<EditorProps["handleTextInput"]>) =>
-        handle(view, from, to, text, () => view.state.tr),
-    );
-    if (!isHandled) {
-      view.dispatch(view.state.tr.insertText(text, from, to));
-    }
-  });
-  await flush();
-};
-
 const click = (element: Element) => userEvent.click(element);
 
-const focusBar = () => click(getEditor());
-
 const blur = () => click(document.body);
-
-const getPillTexts = () =>
-  screen.queryAllByTestId("filter-pill").map((pill) => pill.textContent);
 
 describe("FilterBar", () => {
   describe("pills", () => {

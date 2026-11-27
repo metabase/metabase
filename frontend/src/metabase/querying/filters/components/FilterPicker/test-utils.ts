@@ -145,6 +145,23 @@ export function createQuery() {
   return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 }
 
+export const createSummarizedQuery = () =>
+  Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        breakouts: [
+          {
+            type: "column",
+            name: "CATEGORY",
+            sourceFieldId: ORDERS.PRODUCT_ID,
+          },
+        ],
+      },
+    ],
+  });
+
 export function createFilteredQuery(
   initialQuery: Lib.Query,
   clause: Lib.ExpressionClause | Lib.SegmentMetadata,
