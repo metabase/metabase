@@ -139,6 +139,21 @@
                       :perms/manage-database       :no}}}
                    (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))))))
 
+(deftest permissions-graph-after-blocked-table-becomes-inactive-test
+  (testing "Database view-data is not granular once the only table with a different value is inactive (#83913)"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                     :model/Database         {db-id :id}      {}
+                     :model/Table            _                {:db_id db-id :schema "inventory"}
+                     :model/Table            {hr-id :id}      {:db_id db-id :schema "hr"}]
+        (data-perms/set-table-permission! group-id hr-id :perms/view-data :blocked)
+        (is (map? (get-in (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)
+                          [group-id db-id :perms/view-data])))
+        (t2/update! :model/Table :id hr-id {:active false})
+        (is (= :unrestricted
+               (get-in (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)
+                       [group-id db-id :perms/view-data])))))))
+
 (deftest cleanup-permissions-after-delete-table-test
   (mt/with-temp
     [:model/Database {db-id :id}      {}
