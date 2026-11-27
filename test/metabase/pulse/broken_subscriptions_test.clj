@@ -1,6 +1,7 @@
 (ns metabase.pulse.broken-subscriptions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.email.messages :as messages]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.util :as perms-util]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
@@ -321,3 +322,40 @@
                       (by-id id))))
             (is (= (repeat (count unreadable) {:readable? false})
                    (remove :readable? archived)))))))))
+
+(deftest notification-waits-for-commit-test
+  (testing "handle-broken-subscriptions! sends its notifications only once the surrounding transaction commits"
+    (let [param {:id "_SOURCE_PARAM_ID_" :name "Source" :slug "source" :type :string/=}]
+      ;; with-temp's own transaction would never commit, so nothing would ever be sent
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card          {card-id :id}     {}
+           :model/Dashboard     {dash-id :id}     {:parameters [param]}
+           :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id}
+           :model/Pulse         {pulse-id :id}    {:dashboard_id dash-id
+                                                   :creator_id   (mt/user->id :trashbird)
+                                                   :parameters   [(assoc param :value ["Twitter"])]}
+           :model/PulseCard     _                 {:pulse_id pulse-id :card_id card-id :dashboard_card_id dashcard-id}]
+          (let [sent   (atom [])
+                break! (fn []
+                         (t2/update! :model/Dashboard :id dash-id {:parameters []})
+                         (mt/with-current-user (mt/user->id :rasta)
+                           (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {(:id param) param})))]
+            ;; Sending at the point it is scheduled shows a send made too early, which a background thread could
+            ;; deliver after any check.
+            (mt/with-dynamic-fn-redefs [pulse.broken-subscriptions/send-in-background!      (fn [f] (f))
+                                        messages/send-broken-subscription-notification! (fn [{:keys [pulse-id]}]
+                                                                                          (swap! sent conj pulse-id))]
+              (testing "rolled back: the subscription stays active and nobody is notified"
+                (is (thrown-with-msg? Exception #"later step failed"
+                                      (t2/with-transaction [_conn]
+                                        (break!)
+                                        (throw (ex-info "later step failed" {})))))
+                (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+                (is (= [] @sent)))
+              (testing "committed: the subscription is archived and its creators are notified after the commit"
+                (t2/with-transaction [_conn]
+                  (break!)
+                  (is (= [] @sent)))
+                (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
+                (is (= [pulse-id] @sent))))))))))
