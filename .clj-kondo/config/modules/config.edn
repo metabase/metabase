@@ -484,8 +484,7 @@
    :uses #{premium-features}}
 
   batch-processing
-  {:team "Data Apps"
-   :codeowners true
+  {:team "UX West"
    :api  #{metabase.batch-processing.core
            metabase.batch-processing.init}
    :uses #{app-db

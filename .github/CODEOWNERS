@@ -188,12 +188,6 @@ src/metabase/analyze.* @metabase/data-apps
 test/metabase/analyze @metabase/data-apps
 test/metabase/analyze_test.* @metabase/data-apps
 
-# batch-processing (Data Apps)
-src/metabase/batch_processing @metabase/data-apps
-src/metabase/batch_processing.* @metabase/data-apps
-test/metabase/batch_processing @metabase/data-apps
-test/metabase/batch_processing_test.* @metabase/data-apps
-
 # data-apps (Data Apps)
 src/metabase/data_apps @metabase/data-apps
 src/metabase/data_apps.* @metabase/data-apps
