@@ -84,3 +84,27 @@
   color: var(--mb-color-text-secondary);
   font-size: 0.875rem;
 }
+
+/* Pele sets its --_* palette in an inline style="" on the <svg>, which the
+   CSP (style-src-attr) blocks, so it is declared here instead. */
+.notes :global(.diagram) {
+  margin: 0 0 0.875rem;
+}
+
+.notes :global(.diagram svg) {
+  --_bg: var(--mb-color-background_page-primary);
+  --_fg: var(--mb-color-text-primary);
+  --_m: var(--mb-color-text-secondary);
+  --_l: var(--mb-color-text-secondary);
+  --_s: var(--mb-color-background_surface-secondary);
+  --_a: var(--mb-color-background_surface-secondary);
+  --_b: var(--mb-color-border-neutral);
+  --_c: var(--mb-color-core-brand);
+  --_r: 4px;
+
+  max-width: 100%;
+  height: auto;
+  color: var(--_fg);
+  font-family: inherit;
+  font-size: 16px;
+}

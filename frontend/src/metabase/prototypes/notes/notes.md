@@ -7,10 +7,11 @@ same filter pill can look identical in both places.
 Take **Reviews count ÷ Orders count**: reviews written per order placed, a review rate. In
 the Sample Database the two tables meet only through Products:
 
-```
-Orders  ──Product ID──►  Products  ◄──Product ID──  Reviews
-   │
-   └──User ID──► People
+```mermaid
+flowchart LR
+  Orders -- Product ID --> Products
+  Reviews -- Product ID --> Products
+  Orders -- User ID --> People
 ```
 
 A review has no link to an order or to a customer. So the metric can be sliced

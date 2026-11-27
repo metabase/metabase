@@ -123,6 +123,7 @@
     "normalizr": "^3.0.2",
     "ora": "^8.0.1",
     "oxlint": "1.85.0",
+    "pele": "1.13.0",
     "prettier": "^3.3.3",
     "process": "^0.11.10",
     "prosemirror-dropcursor": "1.8.2",

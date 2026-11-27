@@ -1,27 +1,31 @@
 /* eslint-disable boundaries/element-types -- throwaway prototype: drives the Metric Explorer's chart. */
 import cx from "classnames";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
-import { skipToken, useGetFieldQuery } from "metabase/api";
+import { MetricDimensionSelect } from "metabase/metrics-viewer/components/DimensionPickerSidebar/components/MetricDimensionSelect";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { getDimensionBreakoutConfig } from "metabase/metrics-viewer/utils";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   Flex,
+  Group,
+  HoverCard,
   Icon,
+  Input,
   Loader,
-  Select,
   Stack,
   Text,
+  TextInput,
+  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
 import S from "./DimensionsPanel.module.css";
 import {
-  type Field,
   type MetricDimension,
   type PanelMapping,
   type PanelModel,
@@ -30,6 +34,7 @@ import {
   addDimension,
   isUsed,
   mapDimension,
+  moveDimension,
   pickField,
   removeDimension,
   renameDimension,
@@ -37,6 +42,25 @@ import {
 } from "./panelModel";
 
 type Status = "mapped" | "removed" | "incomplete";
+
+const PILL_COLORS = [
+  "var(--mb-color-accent0)",
+  "var(--mb-color-accent1)",
+  "var(--mb-color-accent2)",
+  "var(--mb-color-accent3)",
+];
+
+/** "Orders → User → Source"; a metric's own dimension keeps its name. */
+const optionLabel = (option: PillDimension) => {
+  const fields = Object.values(option.targets);
+  if (fields.length !== 1) {
+    return option.name;
+  }
+  const [field] = fields;
+  return [field.table, field.group, field.column]
+    .filter((part) => part != null)
+    .join(" → ");
+};
 
 /**
  * Prototype: the metric's dimensions, next to the chart. Clicking one charts
@@ -58,16 +82,41 @@ export function DimensionsPanel({
     selectDimensionBreakout,
     updateActiveDimensionBreakout,
   } = useMetricsViewerContext();
-  const [openId, setOpenIdOnly] = useState<string | null>(null);
-  // The selected dimension stays the chart's when its row is folded away.
-  // Folded until its name is clicked: a dimension picked for the author, like
-  // Time at the start, only marks what the chart shows.
-  const [isExpanded, setIsExpanded] = useState(false);
-  const setOpenId = (id: string | null, expand = true) => {
-    setOpenIdOnly(id);
-    setIsExpanded(expand);
-  };
+  /** The dimension the chart is split by. */
+  const [openId, setOpenId] = useState<string | null>(null);
+  /** The dimension open in the whole panel, from its pencil. */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isAll, setIsAll] = useState(false);
+  const [search, setSearch] = useState("");
+  /** The dimension being dragged, and where it would land. */
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [drop, setDrop] = useState<{
+    id: string;
+    position: "before" | "after";
+  } | null>(null);
+  const endDrag = () => {
+    setDragId(null);
+    setDrop(null);
+  };
+  // Search only once the list scrolls; it stays while it has text.
+  const [list, setList] = useState<HTMLDivElement | null>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  useEffect(() => {
+    if (list == null) {
+      return;
+    }
+    const check = () =>
+      setIsOverflowing(list.scrollHeight > list.clientHeight + 1);
+    const observer = new ResizeObserver(check);
+    observer.observe(list);
+    Array.from(list.children).forEach((child) => observer.observe(child));
+    check();
+    return () => observer.disconnect();
+    // The list's content is swapped once the measures load.
+  }, [list, model.isLoading]);
+  const showSearch = isOverflowing || search !== "";
+  const matches = (dimension: MetricDimension) =>
+    dimension.name.toLowerCase().includes(search.trim().toLowerCase());
 
   const { pills, mapped, removed, incomplete } = model;
   const isMath = pills.length > 1;
@@ -98,7 +147,7 @@ export function DimensionsPanel({
     current == null && fallbackId != null && active != null && !model.isLoading;
   useEffect(() => {
     if (needsFallback) {
-      setOpenId(fallbackId, false);
+      setOpenId(fallbackId);
     }
   }, [needsFallback, fallbackId]);
 
@@ -155,13 +204,13 @@ export function DimensionsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the open row's fields
   }, [chartKey, isShown]);
 
-  /** A click on a name charts by it, and folds the fields away if they show. */
-  const select = (dimension: MetricDimension) => setOpenId(dimension.id, false);
-  /** The chevron shows which field each measure reads; most need no look. */
-  const toggleDetails = (dimension: MetricDimension) =>
-    dimension.id === currentId
-      ? setIsExpanded((value) => !value)
-      : setOpenId(dimension.id);
+  /** A click on a name charts by it. */
+  const select = (dimension: MetricDimension) => setOpenId(dimension.id);
+  /** The pencil opens the dimension in the whole panel, and charts by it. */
+  const edit = (id: string) => {
+    setOpenId(id);
+    setEditingId(id);
+  };
 
   const handleRemove = (dimension: MetricDimension) => {
     onChange(removeDimension(mapping, dimension));
@@ -170,94 +219,175 @@ export function DimensionsPanel({
         mapped.find(
           (other) => other.origin === "time" && other !== dimension,
         ) ?? mapped.find((other) => other !== dimension);
-      setOpenId(fallback?.id ?? null, false);
+      setOpenId(fallback?.id ?? null);
     }
+    setEditingId(null);
   };
 
   const handleAdd = (seed?: { pillId: string; pillDimensionId: string }) => {
     const next = addDimension(mapping, seed);
     onChange(next.mapping);
-    setOpenId(next.id);
+    edit(next.id);
     setIsAll(false);
   };
 
   const section = (
-    title: string | null,
+    title: string,
     status: Status,
-    shown: MetricDimension[],
+    all: MetricDimension[],
+    action?: ReactNode,
   ) => {
+    const shown = all.filter(matches);
     if (shown.length === 0) {
       return null;
     }
     return (
-      <Box>
-        {title && <Text className={S.sectionTitle}>{title}</Text>}
+      <Section title={title} count={all.length} action={action}>
         {shown.map((dimension) => (
           <DimensionRow
             key={dimension.id}
             dimension={dimension}
             status={status}
-            pills={pills}
+            drag={
+              status === "mapped" && search === ""
+                ? {
+                    isDragging: dimension.id === dragId,
+                    dropAt:
+                      dragId != null && drop?.id === dimension.id
+                        ? drop.position
+                        : null,
+                    onStart: () => setDragId(dimension.id),
+                    onOver: (position) =>
+                      setDrop({ id: dimension.id, position }),
+                    onDrop: () => {
+                      if (dragId != null && drop != null) {
+                        onChange(
+                          moveDimension(
+                            mapping,
+                            mapped,
+                            dragId,
+                            drop.id,
+                            drop.position,
+                          ),
+                        );
+                      }
+                      endDrag();
+                    },
+                    onEnd: endDrag,
+                  }
+                : undefined
+            }
             isSelected={dimension.id === currentId}
-            isOpen={dimension.id === currentId && isExpanded}
             onSelect={() => select(dimension)}
-            onToggleDetails={() => toggleDetails(dimension)}
+            onEdit={() => edit(dimension.id)}
             onRemove={() => handleRemove(dimension)}
             onMap={() => onChange(mapDimension(mapping, dimension))}
-            onRename={(name) =>
-              onChange(renameDimension(mapping, dimension.id, name))
-            }
-            onPick={(pillId, pillDimensionId) =>
-              onChange(pickField(mapping, dimension, pillId, pillDimensionId))
-            }
           />
         ))}
-      </Box>
+      </Section>
     );
   };
 
   const showFields = isMath && isAll;
-  // With one measure there is nothing to match: they are just its dimensions.
-  const title = isMath ? "Matched dimensions" : "Dimensions";
+  const info = (
+    <HoverCard position="bottom-end" withArrow>
+      <HoverCard.Target>
+        <Icon name="info" size={14} c="text-secondary" />
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Text maw={280} p="md">
+          {isMath
+            ? "What the whole metric can be filtered and broken out by. Each one reads a field from every measure, even across tables."
+            : "What this metric can be filtered and broken out by."}
+        </Text>
+      </HoverCard.Dropdown>
+    </HoverCard>
+  );
+
+  const statusOf = (dimension: MetricDimension): Status =>
+    removed.includes(dimension)
+      ? "removed"
+      : incomplete.includes(dimension)
+        ? "incomplete"
+        : "mapped";
+  const editing = [...chartable, ...incomplete].find(
+    (dimension) => dimension.id === editingId,
+  );
+  if (editing && !model.isLoading) {
+    return (
+      <Box className={S.root} component="aside">
+        <Box className={S.scroll}>
+          <DimensionForm
+            key={editing.id}
+            dimension={editing}
+            status={statusOf(editing)}
+            pills={pills}
+            onBack={() => setEditingId(null)}
+            onRename={(name) =>
+              onChange(renameDimension(mapping, editing.id, name))
+            }
+            onPick={(pillId, pillDimensionId) =>
+              onChange(pickField(mapping, editing, pillId, pillDimensionId))
+            }
+            onRemove={() => handleRemove(editing)}
+            onMap={() => onChange(mapDimension(mapping, editing))}
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box className={S.root} component="aside">
-      <Flex align="center" justify="space-between" pb="md">
-        <Flex align="center" gap="sm" miw={0}>
-          {isAll && (
-            <ActionIcon
-              variant="subtle"
-              c="text-secondary"
-              aria-label="Back"
-              onClick={() => setIsAll(false)}
-            >
-              <Icon name="chevronleft" />
-            </ActionIcon>
-          )}
-          <Text fw={700} fz="lg">
-            {isAll ? "All fields" : title}
-          </Text>
-        </Flex>
-      </Flex>
-      <Box className={S.scroll}>
+      {isAll ? (
+        <Group gap="xs" wrap="nowrap" pb="md">
+          <ActionIcon
+            variant="subtle"
+            c="text-secondary"
+            aria-label="Back"
+            onClick={() => setIsAll(false)}
+          >
+            <Icon name="chevronleft" />
+          </ActionIcon>
+          <Title order={4}>All fields</Title>
+        </Group>
+      ) : (
+        showSearch && (
+          <TextInput
+            mb="lg"
+            leftSection={<Icon name="search" />}
+            placeholder="Search dimensions…"
+            value={search}
+            onChange={(event) => setSearch(event.currentTarget.value)}
+          />
+        )
+      )}
+      <Box ref={setList} className={S.scroll}>
         {model.isLoading ? (
           <Flex justify="center" p="lg">
             <Loader size="sm" />
           </Flex>
         ) : (
-          <Stack gap="md">
+          <Stack gap="lg">
             {!isAll && (
               <>
-                {section(null, "mapped", mapped)}
-                {mapped.length === 0 && (
-                  <Text className={S.empty}>
-                    {isMath
-                      ? "Nothing yet: the measures have no field in common."
-                      : "No dimensions in this metric."}
-                  </Text>
+                {mapped.length === 0 ? (
+                  <Section
+                    title="Dimensions in this metric"
+                    count={0}
+                    action={info}
+                  >
+                    <Text className={S.empty}>
+                      {isMath
+                        ? "Nothing yet: the measures have no field in common."
+                        : "No dimensions in this metric."}
+                    </Text>
+                  </Section>
+                ) : (
+                  section("Dimensions in this metric", "mapped", mapped, info)
                 )}
                 {section("Incomplete", "incomplete", incomplete)}
-                {section("Removed", "removed", removed)}
+                {section("Dimensions not in this metric", "removed", removed)}
               </>
             )}
             {showFields &&
@@ -268,7 +398,7 @@ export function DimensionsPanel({
                   model={model}
                   onOpen={(dimension) => {
                     setIsAll(false);
-                    setOpenId(dimension.id, false);
+                    setOpenId(dimension.id);
                   }}
                   onMap={(pillDimensionId) =>
                     handleAdd({ pillId: pill.id, pillDimensionId })
@@ -279,22 +409,48 @@ export function DimensionsPanel({
         )}
       </Box>
       {isMath && !isAll && !model.isLoading && (
-        <Flex className={S.footer} justify="space-between" align="center">
-          <UnstyledButton
-            className={S.footerButton}
+        <Flex justify="space-between" align="center" pt="md">
+          <Button
+            variant="subtle"
+            leftSection={<Icon name="add" />}
             onClick={() => handleAdd()}
           >
-            <Icon name="add" size={12} />
-            Add dimension
-          </UnstyledButton>
-          <UnstyledButton
-            className={S.footerButton}
+            New dimension
+          </Button>
+          <Button
+            variant="subtle"
+            c="text-secondary"
             onClick={() => setIsAll(true)}
           >
             See all
-          </UnstyledButton>
+          </Button>
         </Flex>
       )}
+    </Box>
+  );
+}
+
+function Section({
+  title,
+  count,
+  action,
+  children,
+}: {
+  title: string;
+  count: number;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Box>
+      <Group gap="xs" mb="sm">
+        <Title order={5}>{title}</Title>
+        <Text c="text-secondary" size="sm" flex={1}>
+          {count}
+        </Text>
+        {action}
+      </Group>
+      <Stack gap="sm">{children}</Stack>
     </Box>
   );
 }
@@ -302,31 +458,169 @@ export function DimensionsPanel({
 function DimensionRow({
   dimension,
   status,
-  pills,
   isSelected,
-  isOpen,
   onSelect,
-  onToggleDetails,
+  onEdit,
   onRemove,
   onMap,
+  drag,
+}: {
+  dimension: MetricDimension;
+  status: Status;
+  /** Dimensions of the metric are dragged into order. */
+  drag?: {
+    isDragging: boolean;
+    dropAt: "before" | "after" | null;
+    onStart: () => void;
+    onOver: (position: "before" | "after") => void;
+    onDrop: () => void;
+    onEnd: () => void;
+  };
+  /** The chart is split by it. */
+  isSelected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+  onMap: () => void;
+}) {
+  const isOut = status === "removed";
+  const addLabel = "Add back to metric";
+  const removeLabel =
+    status === "mapped" ? "Remove from metric" : "Discard this dimension";
+  return (
+    <Box
+      className={cx(S.row, {
+        [S.open]: isSelected,
+        [S.available]: isOut,
+        [S.incomplete]: status === "incomplete",
+        [S.draggable]: drag != null,
+        [S.dragging]: drag?.isDragging,
+        [S.dropBefore]: drag?.dropAt === "before",
+        [S.dropAfter]: drag?.dropAt === "after",
+      })}
+      draggable={drag != null}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        drag?.onStart();
+      }}
+      onDragOver={(event) => {
+        if (drag == null) {
+          return;
+        }
+        event.preventDefault();
+        const { top, height } = event.currentTarget.getBoundingClientRect();
+        drag.onOver(event.clientY < top + height / 2 ? "before" : "after");
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        drag?.onDrop();
+      }}
+      onDragEnd={drag?.onEnd}
+    >
+      <Flex align="center" gap="xs" pos="relative">
+        <UnstyledButton
+          className={cx(S.rowButton, { [S.wide]: isOut })}
+          onClick={onSelect}
+        >
+          <Icon name={dimension.icon} className={S.rowIcon} />
+          <Text className={S.rowName} truncate>
+            {dimension.name}
+          </Text>
+          {isSelected && !isOut && (
+            <Badge
+              variant="light"
+              color="brand"
+              flex="none"
+              leftSection={<Icon name="arrow_split" size={12} />}
+            >
+              Breakout
+            </Badge>
+          )}
+          {dimension.differs && (
+            <Tooltip label="The measures read different columns for this">
+              <Icon name="link" size={12} className={S.marker} />
+            </Tooltip>
+          )}
+        </UnstyledButton>
+        {/* Laid over the end of the bar, so it keeps its width. */}
+        <Flex
+          className={cx(S.rowActions, S.hoverActions)}
+          align="center"
+          gap="xs"
+        >
+          {isOut && (
+            <Tooltip label={addLabel}>
+              <ActionIcon
+                variant="subtle"
+                c="core-brand"
+                size="sm"
+                aria-label={addLabel}
+                onClick={onMap}
+              >
+                <Icon name="add" size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          <Tooltip label="Edit dimension">
+            <ActionIcon
+              variant="subtle"
+              c="core-brand"
+              size="sm"
+              aria-label="Edit dimension"
+              onClick={onEdit}
+            >
+              <Icon name="pencil" size={16} />
+            </ActionIcon>
+          </Tooltip>
+          {!isOut && (
+            <Tooltip label={removeLabel}>
+              <ActionIcon
+                variant="subtle"
+                c="core-brand"
+                size="sm"
+                aria-label={removeLabel}
+                onClick={onRemove}
+              >
+                <Icon name="trash" size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {drag && <Icon name="grabber" size={16} className={S.grabber} />}
+        </Flex>
+      </Flex>
+    </Box>
+  );
+}
+
+/** One dimension, in the whole panel: its name and the field each measure reads. */
+function DimensionForm({
+  dimension,
+  status,
+  pills,
+  onBack,
   onRename,
   onPick,
+  onRemove,
+  onMap,
 }: {
   dimension: MetricDimension;
   status: Status;
   pills: PanelPill[];
-  /** The chart is split by it. */
-  isSelected: boolean;
-  /** Its fields show under its name. */
-  isOpen: boolean;
-  onSelect: () => void;
-  onToggleDetails: () => void;
-  onRemove: () => void;
-  onMap: () => void;
+  onBack: () => void;
   onRename: (name: string) => void;
   onPick: (pillId: string, pillDimensionId: string) => void;
+  onRemove: () => void;
+  onMap: () => void;
 }) {
-  const isMath = pills.length > 1;
+  const [name, setName] = useState(dimension.name);
+  const commitName = () => {
+    const trimmed = name.trim();
+    if (trimmed !== "" && trimmed !== dimension.name) {
+      onRename(trimmed);
+    } else {
+      setName(dimension.name);
+    }
+  };
   const overlap = valueOverlap(dimension);
   const hasFewInCommon = overlap != null && overlap.common * 2 < overlap.total;
   // Once one measure has a field, the others take the same kind of field.
@@ -334,239 +628,97 @@ function DimensionRow({
     pills.flatMap((pill) =>
       pill.id === pillId ? [] : (dimension.picks[pill.id]?.type ?? []),
     )[0];
-  // A row opened from elsewhere, like a new dimension, may be out of sight.
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (isOpen) {
-      root.current?.scrollIntoView({ block: "nearest" });
-    }
-  }, [isOpen]);
-
+  const isOut = status === "removed";
   const removeLabel =
     status === "mapped" ? "Remove from metric" : "Discard this dimension";
-  const detailsLabel = isOpen ? "Hide fields" : "Show fields";
-  const addLabel = "Add back to metric";
-  const isOut = status === "removed";
-  // One measure has no fields to match, so nothing to fold out.
-  const hasDetails = isMath;
-  const showTools = hasDetails ? isOpen : isSelected;
-
-  // Renamed in place: the name turns into an input until Enter or Escape.
-  const [isRenaming, setIsRenaming] = useState(false);
-  const isCancelled = useRef(false);
-  const finishRename = (value: string) => {
-    const name = value.trim();
-    if (!isCancelled.current && name !== "" && name !== dimension.name) {
-      onRename(name);
-    }
-    isCancelled.current = false;
-    setIsRenaming(false);
-  };
 
   return (
-    <Box ref={root} className={cx(S.row, { [S.open]: isSelected })}>
-      <Flex align="center" gap="xs" pos="relative">
-        {isRenaming ? (
-          <Box className={cx(S.rowButton, S.renaming)}>
-            <Icon name={dimension.icon} className={S.rowIcon} />
-            <input
-              className={S.rename}
-              aria-label="Name"
-              autoFocus
-              defaultValue={dimension.name}
-              onFocus={(event) => event.target.select()}
-              onBlur={(event) => finishRename(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === "Escape") {
-                  isCancelled.current = event.key === "Escape";
-                  event.currentTarget.blur();
-                }
-              }}
-            />
-          </Box>
-        ) : (
-          <UnstyledButton
-            className={cx(S.rowButton, {
-              [S.wide]: isOut,
-              [S.tools]: showTools,
-            })}
-            onClick={onSelect}
-          >
-            <Icon name={dimension.icon} className={S.rowIcon} />
-            <Text className={S.rowName} truncate>
-              {dimension.name}
-            </Text>
-            {dimension.differs && (
-              <Tooltip label="The measures read different columns for this">
-                <Icon name="link" size={12} className={S.marker} />
-              </Tooltip>
-            )}
-          </UnstyledButton>
-        )}
-        {/* Laid over the end of the bar, so it keeps its width. */}
-        {!isRenaming && (
-          <Flex className={S.rowActions} align="center">
-            {isOut && (
-              <Tooltip label={addLabel}>
-                <ActionIcon
-                  variant="subtle"
-                  c="text-secondary"
-                  aria-label={addLabel}
-                  onClick={onMap}
-                >
-                  <Icon name="add" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-            {showTools && (
-              <Tooltip label="Rename">
-                <ActionIcon
-                  variant="subtle"
-                  c="text-secondary"
-                  aria-label="Rename"
-                  onClick={() => setIsRenaming(true)}
-                >
-                  <Icon name="pencil" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-            {showTools && !isOut && (
-              <Tooltip label={removeLabel}>
-                <ActionIcon
-                  variant="subtle"
-                  c="text-secondary"
-                  aria-label={removeLabel}
-                  onClick={onRemove}
-                >
-                  <Icon name="trash" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-            {hasDetails && (
-              <Tooltip label={detailsLabel}>
-                <ActionIcon
-                  className={S.rowChevron}
-                  variant="subtle"
-                  c="text-secondary"
-                  aria-label={detailsLabel}
-                  aria-expanded={isOpen}
-                  onClick={onToggleDetails}
-                >
-                  <Icon name={isOpen ? "chevronup" : "chevrondown"} />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </Flex>
-        )}
-      </Flex>
-      {isOpen && hasDetails && (
-        <Stack gap="sm" className={S.details}>
-          {isMath &&
-            pills.map((pill) => (
-              <Select
-                key={pill.id}
-                label={
-                  <Flex component="span" align="center" gap="xs">
-                    {pill.name}
-                    {dimension.picks[pill.id] && (
-                      <FieldSource
-                        fields={Object.values(dimension.picks[pill.id].targets)}
-                      />
-                    )}
-                  </Flex>
-                }
-                size="sm"
-                searchable
-                placeholder="Pick a field"
-                nothingFoundMessage="No fields found"
-                value={dimension.picks[pill.id]?.id ?? null}
-                data={pill.dimensions
+    <Stack gap="lg">
+      <Group gap="xs" wrap="nowrap">
+        <ActionIcon
+          aria-label="Back to dimensions"
+          variant="subtle"
+          c="text-secondary"
+          onClick={onBack}
+        >
+          <Icon name="chevronleft" />
+        </ActionIcon>
+        <Title order={4} miw={0} flex={1}>
+          {dimension.name}
+        </Title>
+      </Group>
+      <TextInput
+        label="Display name"
+        value={name}
+        onChange={(event) => setName(event.currentTarget.value)}
+        onBlur={commitName}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            commitName();
+          }
+        }}
+      />
+      <Input.Wrapper label={pills.length > 1 ? "Columns" : "Column"}>
+        <Stack gap="xxs">
+          {pills.map((pill, slotIndex) => (
+            <MetricDimensionSelect
+              key={pill.id}
+              row={{
+                slotIndex,
+                sourceId: `metric:${slotIndex}`,
+                metricName: pill.name,
+                colors: [PILL_COLORS[slotIndex % PILL_COLORS.length]],
+                isExpressionToken: false,
+                value: dimension.picks[pill.id]?.id ?? null,
+                options: pill.dimensions
                   .filter(
                     (option) =>
                       kindFor(pill.id) == null ||
                       option.type === kindFor(pill.id),
                   )
-                  .map((option) => ({ value: option.id, label: option.name }))}
-                onChange={(value) => {
-                  if (value) {
-                    onPick(pill.id, value);
-                  }
-                }}
-              />
-            ))}
-          {status === "incomplete" && (
-            <Text className={S.note}>
-              {`No chart yet: ${dimension.missing.join(" and ")} ${
-                dimension.missing.length > 1 ? "have" : "has"
-              } no field for it.`}
-            </Text>
-          )}
-          {hasFewInCommon && (
-            <Flex gap="xs" align="flex-start" className={S.warning}>
-              <Icon name="warning" size={12} />
-              <Text fz="sm" c="inherit">
-                {`${overlap.common} of ${overlap.total} values in common. Check these are the same thing.`}
-              </Text>
-            </Flex>
-          )}
-        </Stack>
-      )}
-    </Box>
-  );
-}
-
-/**
- * A small table icon: hovering it says where the measure's field lives, as
- * database, table and column. A metric that is math over measures has one
- * line per measure.
- */
-function FieldSource({ fields }: { fields: Field[] }) {
-  return (
-    <Tooltip
-      label={
-        <Stack gap={4}>
-          {fields.map((field) => (
-            <FieldSourceLine
-              key={`${field.sourceId}/${field.id}`}
-              field={field}
+                  .map((option) => ({
+                    value: option.id,
+                    label: optionLabel(option),
+                    icon: option.icon,
+                  })),
+              }}
+              onChange={(id) => onPick(pill.id, id)}
             />
           ))}
         </Stack>
-      }
-    >
-      <Box
-        component="span"
-        className={S.source}
-        aria-label="Where this field is"
-      >
-        <Icon name="table" size={12} />
-      </Box>
-    </Tooltip>
-  );
-}
-
-/** Looked up when the tooltip opens, not for every field in the list. */
-function FieldSourceLine({ field }: { field: Field }) {
-  const { data, isLoading } = useGetFieldQuery(
-    field.fieldId == null ? skipToken : { id: field.fieldId },
-  );
-  const via = field.group ? ` (through ${field.group})` : "";
-  if (isLoading) {
-    return (
-      <Text fz="sm" c="inherit">
-        Loading…
-      </Text>
-    );
-  }
-  const parts = [
-    data?.table?.db?.name,
-    data?.table?.display_name,
-    data?.display_name ?? field.column,
-  ].filter((part) => part != null);
-  return (
-    <Text fz="sm" c="inherit">
-      {`${parts.join(" › ")}${via}`}
-    </Text>
+      </Input.Wrapper>
+      {status === "incomplete" && (
+        <Text className={S.note}>
+          {`No chart yet: ${dimension.missing.join(" and ")} ${
+            dimension.missing.length > 1 ? "have" : "has"
+          } no field for it.`}
+        </Text>
+      )}
+      {hasFewInCommon && (
+        <Flex gap="xs" align="flex-start" className={S.warning}>
+          <Icon name="warning" size={12} />
+          <Text fz="sm" c="inherit">
+            {`${overlap.common} of ${overlap.total} values in common. Check these are the same thing.`}
+          </Text>
+        </Flex>
+      )}
+      <Group justify="flex-start">
+        {isOut ? (
+          <Button leftSection={<Icon name="add" />} onClick={onMap}>
+            Add back to metric
+          </Button>
+        ) : (
+          <Button
+            variant="subtle"
+            c="text-secondary"
+            leftSection={<Icon name="trash" />}
+            onClick={onRemove}
+          >
+            {removeLabel}
+          </Button>
+        )}
+      </Group>
+    </Stack>
   );
 }
 
@@ -598,8 +750,7 @@ function PillFields({
     }
   };
   return (
-    <Box>
-      <Text className={S.sectionTitle}>{pill.name}</Text>
+    <Section title={pill.name} count={fields.length}>
       {fields.map((field) => (
         <Box
           key={field.id}
@@ -637,6 +788,6 @@ function PillFields({
           )}
         </Box>
       ))}
-    </Box>
+    </Section>
   );
 }

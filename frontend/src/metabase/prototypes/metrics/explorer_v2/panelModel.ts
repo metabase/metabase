@@ -26,6 +26,8 @@ export type Field = {
   column: string;
   /** The foreign key it is reached through, like "User". */
   group?: string;
+  /** The measure's own table, like "Orders". */
+  table?: string;
   type: FieldType;
   icon: IconName;
   semantic: string | null;
@@ -83,6 +85,8 @@ export type PanelMapping = {
   names: Record<string, string>;
   /** A field chosen by hand: dimension id, then pill id, to the pill's dimension. */
   picks: Record<string, Record<string, string>>;
+  /** The metric's dimensions in the author's order, by id. */
+  order?: string[];
 };
 
 export const EMPTY_PANEL: PanelMapping = {
@@ -111,7 +115,11 @@ function fieldsOf(
   definition: LibMetric.MetricDefinition,
   sourceId: string,
 ): PillDimension[] {
-  return [...getDimensionsByType(definition).values()].map((descriptor) => {
+  const descriptors = [...getDimensionsByType(definition).values()];
+  const table = descriptors.find(
+    (descriptor) => descriptor.group?.type === "main",
+  )?.group?.displayName;
+  return descriptors.map((descriptor) => {
     const info = LibMetric.toMetricDimension(descriptor.dimensionMetadata);
     const group =
       descriptor.group?.type === "connection"
@@ -122,6 +130,7 @@ function fieldsOf(
       sourceId,
       column: descriptor.displayName,
       group,
+      table,
       type: descriptor.dimensionType,
       icon: descriptor.icon,
       semantic: info.semantic_type,
@@ -270,9 +279,20 @@ export function combine(pills: PanelPill[], mapping: PanelMapping): PanelModel {
   const complete = all.filter((dimension) => dimension.missing.length === 0);
   const isIn = ({ id }: MetricDimension) => !mapping.removed.includes(id);
 
+  // Dragged into order; any not placed yet keep their place after those.
+  const rank = (dimension: MetricDimension) => {
+    const index = mapping.order?.indexOf(dimension.id) ?? -1;
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  const mapped = complete
+    .filter(isIn)
+    .map((dimension, index) => ({ dimension, index }))
+    .sort((a, b) => rank(a.dimension) - rank(b.dimension) || a.index - b.index)
+    .map(({ dimension }) => dimension);
+
   return {
     pills,
-    mapped: complete.filter(isIn),
+    mapped,
     removed: complete.filter((dimension) => !isIn(dimension)),
     incomplete: all.filter((dimension) => dimension.missing.length > 0),
     isLoading,
@@ -358,6 +378,25 @@ export function removeDimension(
     return { ...mapping, added: without(mapping.added, id), picks, names };
   }
   return { ...mapping, removed: [...mapping.removed, id] };
+}
+
+/** Moves a dimension of the metric before or after another one. */
+export function moveDimension(
+  mapping: PanelMapping,
+  mapped: MetricDimension[],
+  id: string,
+  targetId: string,
+  position: "before" | "after",
+): PanelMapping {
+  const ids = mapped
+    .map((dimension) => dimension.id)
+    .filter((other) => other !== id);
+  const index = ids.indexOf(targetId);
+  if (index === -1 || id === targetId) {
+    return mapping;
+  }
+  ids.splice(position === "before" ? index : index + 1, 0, id);
+  return { ...mapping, order: ids };
 }
 
 /** Puts a removed dimension back in the metric. */

@@ -1,4 +1,5 @@
-import { marked } from "marked";
+import { Marked } from "marked";
+import { render as renderDiagram } from "pele";
 
 import { Box } from "metabase/ui";
 
@@ -7,7 +8,20 @@ import notes from "./notes.md";
 
 // Markdown with raw HTML mixed in: marked passes HTML blocks and inline tags
 // through, so the notes can use classes the stylesheet knows (callout, note).
-const NOTES_HTML = marked.parse(notes, { async: false, gfm: true });
+// ```mermaid fences become SVG diagrams, themed through --pele-* variables.
+const NOTES_HTML = new Marked({
+  async: false,
+  gfm: true,
+  renderer: {
+    code({ text, lang }) {
+      if (lang !== "mermaid") {
+        return false;
+      }
+      const { svg } = renderDiagram(text, { fontFamily: "Lato, sans-serif" });
+      return `<div class="diagram">${svg}</div>`;
+    },
+  },
+}).parse(notes, { async: false });
 
 /** Design notes behind the prototypes, written in notes.md. */
 export function NotesPrototype() {

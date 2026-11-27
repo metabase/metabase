@@ -114,6 +114,7 @@
         "normalizr": "^3.0.2",
         "ora": "^8.0.1",
         "oxlint": "1.85.0",
+        "pele": "1.13.0",
         "prettier": "^3.3.3",
         "process": "^0.11.10",
         "prosemirror-dropcursor": "1.8.2",
@@ -4278,6 +4279,8 @@
     "pcg": ["pcg@1.1.0", "", { "dependencies": { "long": "5.2.3", "ramda": "0.29.1" } }, "sha512-S+bYs8CV6l2lj01PRN4g9EiHDktcXJKD9FdE/FqpdXSuy1zImsRq8A8T5UK6gkXdI9O5YFdAgH40uPoR8Bk8aQ=="],
 
     "peek-readable": ["peek-readable@5.0.0", "", {}, "sha512-YtCKvLUOvwtMGmrniQPdO7MwPjgkFBtFIrmfSbYmYuq3tKDV/mcfAhBth1+C3ru7uXIZasc/pHnb+YDYNkkj4A=="],
+
+    "pele": ["pele@1.13.0", "", {}, "sha512-Ie8UKY9x00MsuR3jO6AzUwzK2Z6MIV3Tf4EDdITiuk8Uaz8K7g0R082WqsqNaSU8DdgkrRvZThzhit83mi/uiw=="],
 
     "pend": ["pend@1.2.0", "", {}, "sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg=="],
 
