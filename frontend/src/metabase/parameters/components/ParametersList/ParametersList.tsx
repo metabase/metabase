@@ -15,6 +15,8 @@ import type { Parameter, ParameterId } from "metabase-types/api";
 
 import { ParameterWidget } from "../ParameterWidget";
 
+import S from "./ParametersList.module.css";
+
 const getId = (valuePopulatedParameter: Parameter) =>
   valuePopulatedParameter.id;
 
@@ -45,6 +47,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
       widgetsPopoverPosition,
 
       hasTestIdProps = true,
+      hiddenParameterIds,
     },
     ref,
   ) {
@@ -74,7 +77,12 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         fullWidth={vertical}
         withinPortal={widgetsWithinPortal}
         popoverPosition={widgetsPopoverPosition}
-        className={cx({ [CS.mb2]: vertical })}
+        className={cx({
+          [CS.mb2]: vertical,
+          [S.hiddenItem]: hiddenParameterIds?.includes(
+            valuePopulatedParameter.id,
+          ),
+        })}
         isEditing={isEditing}
         isFullscreen={isFullscreen}
         parameter={valuePopulatedParameter}
@@ -117,6 +125,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         align="end"
         wrap="wrap"
         gap="sm"
+        pos={hiddenParameterIds?.length ? "relative" : undefined}
         className={className}
         ref={ref}
         onMouseDown={(e) => {

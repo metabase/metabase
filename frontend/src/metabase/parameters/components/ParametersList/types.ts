@@ -34,4 +34,6 @@ export type ParametersListProps = {
   isFullscreen: boolean;
   /** Comma-separated list of parameter slugs to hide (embed display option) */
   hideParameters: string | null;
+  /** These widgets stay mounted, keeping their state and size, but are hidden */
+  hiddenParameterIds: ParameterId[];
 }>;
