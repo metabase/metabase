@@ -70,8 +70,8 @@ export const findPageBreakCandidates = (
 
   const possibleBreaks = new Set(
     cards
-      .filter((card) => card.bottom < maxBottom)
-      .flatMap((card) => [card.bottom, ...card.allowedBreaks]),
+      .flatMap((card) => [card.bottom, ...card.allowedBreaks])
+      .filter((pageBreak) => pageBreak < maxBottom),
   );
 
   for (const card of cards) {
