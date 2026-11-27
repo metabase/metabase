@@ -1725,6 +1725,14 @@ describe("SettingsJWTForm", () => {
       await waitFor(() =>
         expect(screen.getByRole("radio", { name: "Off" })).toBeChecked(),
       );
+      // the cascade runs after the mapping write, so wait for its requests before reading them
+      await waitFor(async () =>
+        expect(
+          (await findRequests("PUT")).filter(({ url }) =>
+            url.includes("/clear"),
+          ),
+        ).toHaveLength(2),
+      );
       await act(() => fetchMock.callHistory.flush(true));
       const clears = (await findRequests("PUT")).filter(({ url }) =>
         url.includes("/clear"),
