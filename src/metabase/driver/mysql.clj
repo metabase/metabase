@@ -10,7 +10,6 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.util :as mut]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -46,7 +45,8 @@
    (java.net MalformedURLException URL URLDecoder)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
-   (java.time.format DateTimeFormatter)))
+   (java.time.format DateTimeFormatter)
+   (java.util.regex Pattern)))
 
 (set! *warn-on-reflection* true)
 
@@ -1240,13 +1240,27 @@
         privilege-grants)
       privilege-grants)))
 
+(mu/defn- database-grant-matches? :- :boolean
+  "Whether a database grant object such as `` `test\\_db%`.* `` matches a database name, with MySQL's `%` and `_` wildcards."
+  [object        :- :string
+   database-name :- :string]
+  (boolean
+   (when-let [[_ name-pattern] (re-matches #"`(.+)`\.\*" object)]
+     (re-matches (re-pattern (str/join (map (fn [token]
+                                              (case token
+                                                "%" ".*"
+                                                "_" "."
+                                                (Pattern/quote (str/replace token #"^\\" ""))))
+                                            (re-seq #"\\.|%|_|[^\\%_]+" name-pattern))))
+                 database-name))))
+
 (defn- table-names->privileges
   "Given a set of parsed grants for a user, a database name, and a list of table names in the database,
    return a map with table names as keys, and the set of privilege types that the user has on the table as values.
 
    The rules are:
    - global grants apply to all tables
-   - database grants apply to all tables in the database
+   - database grants apply to all tables in the databases their name pattern matches
    - table grants apply to the table"
   [privilege-grants database-name table-names]
   (let [{global-grants   :global
@@ -1254,8 +1268,10 @@
          table-grants    :table} (group-by :level privilege-grants)
         lower-database-name  (u/lower-case-en database-name)
         all-table-privileges (set/union (:privilege-types (first global-grants))
-                                        (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
-                                                                        database-grants)))
+                                        (into #{}
+                                              (comp (filter #(database-grant-matches? (:object %) lower-database-name))
+                                                    (mapcat :privilege-types))
+                                              database-grants))
         table-privileges (into {}
                                (keep (fn [grant]
                                        (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object grant))]

@@ -1066,6 +1066,18 @@
                                             "test-data"
                                             ["foo" "bar"])))))
 
+(deftest ^:parallel table-names->privileges-wildcard-database-grants-test
+  (testing "database grants match database names with MySQL wildcards and escapes (#38701)"
+    (let [privileges (fn [grants database-name]
+                       (#'mysql/table-names->privileges (map #'mysql/parse-grant grants) database-name ["foo"]))]
+      (is (= {"foo" #{:select}} (privileges ["GRANT SELECT ON `%`.* TO 'u'@'%'"] "testdb")))
+      (is (= {"foo" #{:select}} (privileges ["GRANT SELECT ON `test%`.* TO 'u'@'%'"] "testdb")))
+      (is (= {"foo" #{:select}} (privileges ["GRANT SELECT ON `my\\_db`.* TO 'u'@'%'"] "my_db")))
+      (is (= {"foo" #{:select}} (privileges ["GRANT SELECT ON `my_db`.* TO 'u'@'%'"] "myxdb")))
+      (is (= {} (privileges ["GRANT SELECT ON `my\\_db`.* TO 'u'@'%'"] "myxdb")))
+      (is (= {} (privileges ["GRANT SELECT ON `prod%`.* TO 'u'@'%'"] "testdb")))
+      (is (= {} (privileges ["GRANT SELECT ON `test.b`.* TO 'u'@'%'"] "testdb"))))))
+
 (deftest table-privileges-test
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
