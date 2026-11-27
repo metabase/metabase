@@ -361,7 +361,8 @@
    :uses #{util}}
 
   api.eid-translation
-  {:team "UX West"
+  {:team "Data Apps"
+   :codeowners true
    :ns-prefix "metabase.eid-translation"
    :api #{metabase.eid-translation.api
           metabase.eid-translation.core
@@ -968,6 +969,7 @@
 
   data-studio
   {:team "Data Apps"
+   :codeowners true
    :api  #{metabase.data-studio.api}
    :uses #{api
            app-db
@@ -993,6 +995,7 @@
 
   dependencies
   {:team "Data Apps"
+   :codeowners true
    :api  #{metabase.dependencies.core}
    :uses #{lib
            lib.schema
@@ -1119,6 +1122,7 @@
 
   embedding
   {:team "Embedding"
+   :codeowners true
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.sdk-react-18
@@ -1142,6 +1146,7 @@
 
   embedding-hub
   {:team "Embedding"
+   :codeowners true
    :api  #{metabase.embedding-hub.api}
    :uses #{api
            appearance
@@ -1165,6 +1170,7 @@
 
   embedding.rest
   {:team "Embedding"
+   :codeowners true
    :ns-prefix "metabase.embedding-rest"
    :api  #{metabase.embedding-rest.api}
    :uses #{api
@@ -1521,6 +1527,7 @@
 
   lib.source-swap
   {:team "Data Apps"
+   :codeowners true
    :ns-prefix "metabase.source-swap"
    :api  #{metabase.source-swap.core
            metabase.source-swap.schema
@@ -2257,7 +2264,8 @@
                     :model/User}}
 
   public-sharing
-  {:team "UX West"
+  {:team "Embedding"
+   :codeowners true
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
@@ -2275,7 +2283,8 @@
                     :model/Document}}
 
   public-sharing.rest
-  {:team "UX West"
+  {:team "Embedding"
+   :codeowners true
    :ns-prefix "metabase.public-sharing-rest"
    :api  #{metabase.public-sharing-rest.api}
    :uses #{actions
@@ -2642,6 +2651,7 @@
 
   replacement
   {:team "Data Apps"
+   :codeowners true
    :api  #{metabase.replacement.core metabase.replacement.spec metabase.replacement.walk}
    :uses #{lib lib.schema lib.source-swap parameters.schema util}}
 
@@ -2878,6 +2888,7 @@
 
   serialization
   {:team "Data Apps"
+   :codeowners true
    :api  #{metabase.serialization.core metabase.serialization.protocol.mp metabase.serialization.resolve}
    :uses #{app-db
            lib
@@ -3141,7 +3152,8 @@
    :uses #{settings util.config}}
 
   sync
-  {:team "Querying"
+  {:team "Data Apps"
+   :codeowners true
    :module-exports #{sync.analyze}
    :api  #{metabase.sync.api
            metabase.sync.core
@@ -3182,7 +3194,8 @@
                     :model/TableUserSettings}}
 
   sync.analyze
-  {:team "Querying"
+  {:team "Data Apps"
+   :codeowners true
    :ns-prefix "metabase.analyze"
    :api #{metabase.analyze.core}
    :uses #{app-db
@@ -3634,6 +3647,7 @@
 
   users.tenants
   {:team "Embedding"
+   :codeowners true
    :ns-prefix "metabase.tenants"
    :api #{metabase.tenants.core}
    :uses #{premium-features util}}
@@ -3660,6 +3674,7 @@
 
   util.graph
   {:team "Data Apps"
+   :codeowners true
    :ns-prefix "metabase.graph"
    :api #{metabase.graph.core}
    :uses #{util}}
@@ -4273,6 +4288,7 @@
 
   enterprise/data-studio
   {:team "Data Apps"
+   :codeowners true
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
            app-db
@@ -4416,6 +4432,7 @@
 
   enterprise/dependencies.replacement
   {:team "Data Apps"
+   :codeowners true
    :ns-prefix "metabase-enterprise.replacement"
    :api #{metabase-enterprise.replacement.api metabase-enterprise.replacement.init}
    :uses #{analytics
@@ -4456,6 +4473,7 @@
 
   enterprise/embedding
   {:team "Embedding"
+   :codeowners true
    :ns-prefix "metabase-enterprise.embedding-hub"
    :api #{}
    :uses #{premium-features enterprise/sso}}
@@ -5038,6 +5056,7 @@
 
   enterprise/tenants
   {:team "Embedding"
+   :codeowners true
    :api  #{metabase-enterprise.tenants.api metabase-enterprise.tenants.init}
    :uses #{api
            app-db
