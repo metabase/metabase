@@ -3,8 +3,9 @@
    filter values on the user's screen, and show the model a bounded page of its rows.
 
    The dashboard's own runner, [[metabase.query-processor.dashboard/process-query-for-dashcard]], applies the values
-   through the card's filter mappings, so the rows are the ones the card shows, up to data that changed since the
-   user loaded it.
+   through the card's filter mappings, so the rows are those the card shows, up to data that changed since the user
+   loaded it.
+   A card that combines several questions runs only its main question, and a pivot card runs without its totals.
    The values come from the viewing context the frontend sent this turn, never from the model."
   (:require
    [clojure.string :as str]
@@ -92,7 +93,8 @@
 
 (defn- runnable-dashcard
   "The map `{:dashboard :dashcard :card}` for `dashcard-id` on the dashboard with `dashboard-id`.
-   Refuses a dashcard the user can't see, one with no question, and one whose question reads SQL that Metabot saved."
+   Refuses a dashcard the user can't see, and one with no question.
+   Refuses a question that reads a question the user can't read, or that holds or reads SQL that Metabot saved."
   [dashboard-id dashcard-id]
   (let [dashboard (metabot.db/dashboard dashboard-id)
         ;; `mi/can-read?` reads the answer hydrated as `:can_read`
