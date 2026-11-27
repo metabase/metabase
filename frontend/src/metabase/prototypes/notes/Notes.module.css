@@ -8,19 +8,31 @@
   font-size: 1.375rem;
 }
 
+.notes :global(h2:not(:first-child)) {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
 .notes :global(h3) {
   margin: 1.75rem 0 0.5rem;
   font-size: 1.0625rem;
 }
 
 .notes :global(p),
-.notes :global(ul) {
+.notes :global(ul),
+.notes :global(ol) {
   margin: 0 0 0.875rem;
 }
 
-.notes :global(ul) {
+.notes :global(ul),
+.notes :global(ol) {
   padding-left: 1.25rem;
   list-style: disc;
+}
+
+.notes :global(ol) {
+  list-style: decimal;
 }
 
 .notes :global(li) {
