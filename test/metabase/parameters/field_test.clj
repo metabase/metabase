@@ -106,3 +106,16 @@
                                        {:query/query-canceled? true})))))
       (is (= [:error]
              (search (ex-info "Error executing query: Code: 47. DB::Exception: Identifier cannot be resolved" {})))))))
+
+(deftest search-values-from-field-id-reports-more-values-at-cap-test
+  (mt/test-driver :h2
+    (testing "fetch without query that fills field-search cap reports more values (#76143)"
+      (mt/with-test-user :rasta
+        (let [{:keys [values has_more_values]} (parameters.field/search-values-from-field-id (mt/id :people :name) nil)]
+          (is (= 1000 (count values)))
+          (is (true? has_more_values)))))
+    (testing "fetch without query below field-search cap reports no more values"
+      (mt/with-test-user :rasta
+        (let [{:keys [values has_more_values]} (parameters.field/search-values-from-field-id (mt/id :categories :name) nil)]
+          (is (< (count values) 1000))
+          (is (false? has_more_values)))))))

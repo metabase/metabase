@@ -111,17 +111,16 @@
 (mu/defn search-values-from-field-id :- ms/FieldValuesResult
   "Search for values of a field given by `field-id` that contain `query`.
 
-  `:has_more_values` is a heuristic here, not a measurement: `true` whenever a `query-string` narrowed the search,
-  `false` otherwise. A no-query fetch that fills the underlying `default-max-field-search-limit` cap is still reported
-  `false`. Callers that must not present a capped list as complete -- e.g. so an agent isn't handed a truncated value
-  set believing it is the whole column -- should use [[search-values-from-field-id-strict]], which reports a truthful
-  floor when the cap is hit and surfaces fetch errors rather than swallowing them to `[]`."
+  `:has_more_values` is `true` whenever a `query-string` narrowed the search or the values fill the underlying
+  `default-max-field-search-limit` cap. Callers that must not claim more values for a search that returned everything,
+  or that need fetch errors rather than `[]`, should use [[search-values-from-field-id-strict]]."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
-  (let [[field search-field] (resolve-search-fields field-id)]
-    {:values          (search-values field search-field query-string)
-     ;; assume there are more if doing a search, otherwise there are no more values
-     :has_more_values (not (str/blank? query-string))
+  (let [[field search-field] (resolve-search-fields field-id)
+        values               (search-values field search-field query-string)]
+    {:values          values
+     :has_more_values (or (not (str/blank? query-string))
+                          (>= (count values) default-max-field-search-limit))
      :field_id        field-id}))
 
 (mu/defn search-values-from-field-id-strict :- ms/FieldValuesResult
