@@ -27,9 +27,10 @@ export function DataTestOverview<K extends DataTestType>({
     readOnly,
     isLoading: isLoadingReadOnly,
     error: readOnlyError,
-  } = definition.useReadOnly(
-    test != null ? definition.getSubjectId(test) : skipToken,
-  );
+  } = definition.useReadOnly({
+    subjectId: test != null ? definition.getSubjectId(test) : skipToken,
+    tests: test != null ? [test] : [],
+  });
 
   const { getTestRunsUrl } = definition.useTestUrls();
 

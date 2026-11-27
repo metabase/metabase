@@ -40,7 +40,7 @@
                                           [:include-archived {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-data-studio-access)
   (-> (mi/readable (data-testing.db/card-tests {:card-id card-id :include-archived? include-archived}))
-      (t2/hydrate :last_run)))
+      (t2/hydrate :last_run :can_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/card-test.response
   "Get a card test with its newest run.
@@ -49,7 +49,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (api/read-check :model/CardTest id)
-      (t2/hydrate :last_run)))
+      (t2/hydrate :last_run :can_run)))
 
 (mr/def ::create-request
   "What a client sends to create a test."

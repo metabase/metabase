@@ -4,7 +4,6 @@ import fetchMock from "fetch-mock";
 import {
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
-  setupDatabasesEndpoints,
   setupGetCardTestEndpoint,
   setupListDataTestRunsEndpoint,
 } from "__support__/server-mocks";
@@ -22,7 +21,6 @@ import {
   createMockCollection,
   createMockDataTestRunUser,
   createMockDataTestRunWithUser,
-  createMockDatabase,
   createMockListDataTestRunsResponse,
 } from "metabase-types/api/mocks";
 
@@ -30,9 +28,6 @@ import { CardTestRunsPage } from "./CardTestRunsPage";
 
 function setup() {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
-  setupDatabasesEndpoints([
-    createMockDatabase({ id: 1, native_permissions: "write" }),
-  ]);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });

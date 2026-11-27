@@ -47,7 +47,6 @@ const DATA_MODEL_PARAMS = {
 
 type SetupOpts = {
   test?: SegmentTest;
-  canRunNativeQueries?: boolean;
   location?: "published-table" | "data-model";
 };
 
@@ -57,14 +56,12 @@ function setup({
     segment_id: SEGMENT_ID,
     name: "Refunds are excluded",
   }),
-  canRunNativeQueries = true,
   location = "published-table",
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   const database = createMockDatabase({
     id: DATABASE_ID,
     name: "Warehouse",
-    native_permissions: canRunNativeQueries ? "write" : "none",
   });
   setupDatabasesEndpoints([database]);
   setupCollectionByIdEndpoint({
@@ -224,8 +221,14 @@ describe("SegmentTestOverviewPage", () => {
     });
   });
 
-  it("disables running for users who can't run native queries on the database", async () => {
-    setup({ canRunNativeQueries: false });
+  it("disables running for users who can't run the test", async () => {
+    setup({
+      test: createMockSegmentTest({
+        id: TEST_ID,
+        segment_id: SEGMENT_ID,
+        can_run: false,
+      }),
+    });
 
     expect(
       await screen.findByRole("button", { name: /Run now/ }),

@@ -71,13 +71,24 @@
          :subject-k     :can_write
          :subject-check mi/can-write?})))
 
+(defn- assoc-can-query
+  "Each of the card tests, nil ones left nil, with under `k` whether the current user reads it and may run its card,
+  as the card's `:can_query` says, loading the cards at once."
+  [card-tests k]
+  (vec (data-testing.models/assoc-can-query
+        card-tests k :card_id
+        (data-testing.db/cards-by-ids (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :can_query]
   "Add whether the current user may run each card test: they read it and may run its card, as its `:can_query`
   says, loading the cards at once."
   [_model k card-tests]
-  (vec (data-testing.models/assoc-can-query
-        card-tests k :card_id
-        (data-testing.db/cards-by-ids (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests)))))
+  (assoc-can-query card-tests k))
+
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_run]
+  "Add whether the current user may run each card test, as its `:can_query` says, loading the cards at once."
+  [_model k card-tests]
+  (assoc-can-query card-tests k))
 
 (defmethod mi/can-create? :model/CardTest
   [_model instance]

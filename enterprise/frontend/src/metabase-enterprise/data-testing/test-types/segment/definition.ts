@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetSegmentQuery, useGetTableQuery } from "metabase/api";
-import { useListDatabasesQuery } from "metabase/api/database";
-import { hasNativeWritePermissions } from "metabase/common/utils/database";
+import { skipToken } from "metabase/api";
 import {
   useGetSegmentTestQuery,
   useListSegmentTestsQuery,
@@ -29,33 +27,12 @@ function useListSegmentTestsBySubjectQuery(
   );
 }
 
-function useSegmentReadOnly(
-  segmentId: SegmentId | typeof skipToken,
-): DataTestReadOnlyResult {
-  const {
-    data: segment,
-    isLoading: isLoadingSegment,
-    error: segmentError,
-  } = useGetSegmentQuery(segmentId);
-  const {
-    data: table,
-    isLoading: isLoadingTable,
-    error: tableError,
-  } = useGetTableQuery(segment != null ? { id: segment.table_id } : skipToken);
-  const {
-    data: databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useListDatabasesQuery();
-  const database = databases?.data.find(
-    (database) => database.id === table?.db_id,
-  );
-
-  return {
-    readOnly: database == null || !hasNativeWritePermissions(database),
-    isLoading: isLoadingSegment || isLoadingTable || isLoadingDatabases,
-    error: segmentError ?? tableError ?? databasesError,
-  };
+function useSegmentReadOnly({
+  tests,
+}: {
+  tests: readonly SegmentTest[];
+}): DataTestReadOnlyResult {
+  return { readOnly: !tests.some((test) => test.can_run) };
 }
 
 const UNROUTED_SEGMENT_TEST_URLS: DataTestUrls<SegmentTest> = {
