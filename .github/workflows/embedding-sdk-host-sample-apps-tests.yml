@@ -296,6 +296,8 @@ jobs:
       - uses: ./.github/actions/resolve-job-id
 
       - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js snapshot \
             --spec "e2e/snapshot-creators/default.cy.snap.js"
