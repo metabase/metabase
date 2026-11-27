@@ -74,8 +74,8 @@
             calls         (atom [])]
         (with-backfill-ready
           (mt/with-dynamic-fn-redefs [conversation-title/ensure-title!
-                                      (fn [id profile-id prompt]
-                                        (swap! calls conj [id profile-id prompt])
+                                      (fn [id audience prompt]
+                                        (swap! calls conj [id audience prompt])
                                         (pending-result "Generated title"))]
             (let [result (run-backfill-page! (conversation-id 0))]
               (is (= {:status :more
@@ -86,7 +86,7 @@
                       :skipped 0}
                      result))
               (is (= (take 10 titleless-ids) (map first @calls)))
-              (is (every? #(= ["internal" "question"] (subvec (vec %) 1)) @calls))
+              (is (every? #(= [:any "question"] (subvec (vec %) 1)) @calls))
               (is (not-any? #(= titled-id (first %)) @calls)))))))))
 
 (deftest backfill-page-skips-invalid-and-isolates-failures-test
@@ -98,7 +98,7 @@
             calls      (atom [])]
         (with-backfill-ready
           (mt/with-dynamic-fn-redefs [conversation-title/ensure-title!
-                                      (fn [id _profile-id _prompt]
+                                      (fn [id _audience _prompt]
                                         (swap! calls conj id)
                                         (pending-result (when (= id good-id) "Generated title")))]
             (is (= {:status :complete
@@ -111,18 +111,18 @@
             (is (= [failed-id good-id] @calls))
             (is (not-any? #{errored-id} @calls))))))))
 
-(deftest backfill-page-drops-stale-usage-profile-test
-  (testing "a stale historical profile does not make enterprise usage logging reject title generation"
+(deftest backfill-page-titles-for-any-audience-test
+  (testing "the backfill serves no one audience, and a stale historical profile doesn't reach title generation"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
       (let [stale-conversation-id (insert-conversation! 150 :profile-id "metabot-1")
             calls                 (atom [])]
         (with-backfill-ready
           (mt/with-dynamic-fn-redefs [conversation-title/ensure-title!
-                                      (fn [id profile-id _prompt]
-                                        (swap! calls conj [id profile-id])
+                                      (fn [id audience _prompt]
+                                        (swap! calls conj [id audience])
                                         (pending-result "Generated title"))]
             (is (= :complete (:status (run-backfill-page! (conversation-id 0)))))
-            (is (= [[stale-conversation-id nil]] @calls))))))))
+            (is (= [[stale-conversation-id :any]] @calls))))))))
 
 (deftest backfill-page-provider-readiness-test
   (testing "an unconfigured provider pauses before scanning the database"
@@ -152,7 +152,7 @@
                                     metabot.settings/llm-metabot-configured? (fn []
                                                                                (< (swap! readiness-checks inc) 3))
                                     metabot.usage/managed-free-limit-reached? (constantly false)
-                                    conversation-title/ensure-title!          (fn [id _profile-id _prompt]
+                                    conversation-title/ensure-title!          (fn [id _audience _prompt]
                                                                                 (swap! calls conj id)
                                                                                 (pending-result "Generated title"))]
           (is (= {:status :paused

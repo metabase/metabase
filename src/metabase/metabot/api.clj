@@ -363,7 +363,7 @@
                         (:content message))
           title-job (conversation-title/ensure-title!
                      conversation_id
-                     (metabot.usage/valid-usage-profile-id profile-id)
+                     (metabot.config/metabot-audience metabot)
                      first-msg)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request

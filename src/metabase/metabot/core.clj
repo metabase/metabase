@@ -2,6 +2,7 @@
   "API namespace for the `metabase.metabot` module."
   (:require
    [metabase.metabot.ai-features]
+   [metabase.metabot.config]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
    [metabase.metabot.self]
@@ -53,9 +54,11 @@
 (p/import-vars
  [metabase.metabot.ai-features
   call!
+  new-boundary
   render-untrusted])
 
 (p/import-fn metabase.metabot.ai-features/available? ai-feature-available?)
+(p/import-fn metabase.metabot.config/request-audience ai-feature-request-audience)
 (p/import-fn metabase.metabot.ai-features/unavailable-reason ai-feature-unavailable-reason)
 (p/import-fn metabase.metabot.ai-features/message-feature-ids message-ai-feature-ids)
 (p/import-def metabase.metabot.ai-features/registry ai-feature-registry)

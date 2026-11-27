@@ -74,11 +74,12 @@
    (metabot.persistence/opening-messages conversation-id)))
 
 (defn- generate-title!
-  [conversation-id {:keys [content profile-id]}]
+  [conversation-id {:keys [content]}]
   (try
     (let [{:keys [status future]} (conversation-title/ensure-title!
                                    conversation-id
-                                   (metabot.usage/valid-usage-profile-id profile-id)
+                                   ;; the backfill serves no one audience, so either Metabot setting will do
+                                   :any
                                    content)]
       (case status
         :ready   :already-titled

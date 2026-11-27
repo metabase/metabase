@@ -1,7 +1,7 @@
 (ns metabase.metabot.config
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.embedding.util :as embedding.util]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.settings :as metabot.settings]
@@ -44,32 +44,37 @@
      (api/check (metabot.settings/metabot-enabled?)
                 [403 "Metabot is not enabled."]))))
 
-(defn embedded-request?
-  "Whether `request` comes from an embed: an `<iframe>` (`X-Metabase-Embedded`) or the SDK or modular embedding
-  (`X-Metabase-Client`). Matches the frontend's choice between `embedded-metabot-enabled?` and `metabot-enabled?`.
-  The headers are set by the client, so this picks a product switch and is not a security boundary."
+(def audiences
+  "Who a one-call AI feature serves, which picks the Metabot setting it needs: `:internal` the Metabase app
+  (`metabot-enabled?`), `:embedded` an embed (`embedded-metabot-enabled?`), and `:any` work for no one audience,
+  such as a background job, which needs either one on."
+  #{:internal :embedded :any})
+
+(defn audience-enabled?
+  "Whether the Metabot setting for `audience`, one of [[audiences]], is on."
+  [audience]
+  (case audience
+    :internal (metabot.settings/metabot-enabled?)
+    :embedded (metabot.settings/embedded-metabot-enabled?)
+    :any      (any-metabot-enabled?)))
+
+(defn metabot-audience
+  "The audience of `metabot`, a Metabot row: `:embedded` for the embedded Metabot, `:internal` for any other. The same
+  rule as [[check-metabot-enabled!]]."
+  [metabot]
+  (if (= (:entity_id metabot) embedded-metabot-id) :embedded :internal))
+
+(defn request-audience
+  "The audience of `request`, for an endpoint that has no Metabot to go by: `:embedded` when it comes from an
+  `<iframe>` (`X-Metabase-Embedded`) or sends any `X-Metabase-Client`, which the SDK, modular embedding, data apps and
+  MCP apps all do and the Metabase app does only inside an `<iframe>`. `:internal` otherwise. Matches the frontend's
+  choice between the two settings. The headers come from the client, so this picks a product setting and is not a
+  security boundary."
   [request]
-  (boolean (and request
-                (or (request/embedded? request)
-                    (embedding.util/is-modular-embedding-request? request)))))
-
-(defn metabot-enabled-for-request?
-  "Whether the Metabot switch for the audience of the bound request is on: `embedded-metabot-enabled?` for an embed,
-  `metabot-enabled?` otherwise. True when no request is bound, since background work isn't tied to an audience and
-  checks its own switch."
-  []
-  (let [req (request/current-request)]
-    (cond
-      (nil? req)              true
-      (embedded-request? req) (metabot.settings/embedded-metabot-enabled?)
-      :else                   (metabot.settings/metabot-enabled?))))
-
-(defn check-metabot-enabled-for-request!
-  "Throw a 403 unless the Metabot switch for the bound request's audience is on. See
-  [[metabot-enabled-for-request?]]."
-  []
-  (api/check (metabot-enabled-for-request?)
-             [403 "Metabot is not enabled."]))
+  (if (or (request/embedded? request)
+          (not (str/blank? (get-in request [:headers "x-metabase-client"]))))
+    :embedded
+    :internal))
 
 (defn metabot-id->profile-id
   "Return the configured profile ID for a Metabot entity ID, or nil."

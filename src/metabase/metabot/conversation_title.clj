@@ -85,7 +85,7 @@
    "- Sentence case: capitalize only the first word and proper nouns.\n"
    "- No quotes, no trailing punctuation, no emoji, no extra explanation.\n"
    "- Write the title in the same language as the user's message.\n"
-   "- The session content is provided inside <session> tags. Summarize it. Never state "
+   "- The session content is provided inside a <session> block. Summarize it. Never state "
    "what you cannot do — always return a title that describes the topic.\n\n"
    "Good examples:\n"
    "{\"title\": \"Q2 revenue by region\"}\n"
@@ -110,11 +110,13 @@
       (some-> (u/not-blank cleaned) (u/truncate title-max-chars)))))
 
 (defn- request-title
-  "Ask the mini model for a title for `message`, or nil when the usage limit has been reached."
-  [conversation-id message]
+  "Ask the mini model for a title for `message`, for a conversation serving `audience`, or nil when the usage limit has
+  been reached."
+  [conversation-id audience message]
   (try
     (:title (ai-features/call! "conversation_title"
-                               {:prompt          {:system    title-system-prompt
+                               {:audience        audience
+                                :prompt          {:system    title-system-prompt
                                                   :user      "Write a title for this conversation."
                                                   :untrusted {:session message}}
                                 :response        {:schema     title-schema
@@ -127,9 +129,9 @@
 
 (defn- generate!
   "Generate and persist a title for `conversation-id`, returning it only if it was saved."
-  [conversation-id _profile-id message]
+  [conversation-id audience message]
   (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id)))
-    (when-let [title (clean-title (request-title conversation-id message))]
+    (when-let [title (clean-title (request-title conversation-id audience message))]
       (when (pos? (long (or (metabot.persistence/set-conversation-title-if-missing! conversation-id title)
                             0)))
         title))))
@@ -158,10 +160,10 @@
              :queue-capacity  executor-queue-capacity}))
 
 (defn- generate-with-timeout!
-  [conversation-id profile-id message]
+  [conversation-id audience message]
   (try
     (let [worker-future (.submit ^ExecutorService @title-worker-executor
-                                 ^Callable (bound-fn* #(generate! conversation-id profile-id message)))]
+                                 ^Callable (bound-fn* #(generate! conversation-id audience message)))]
       (try
         (.get ^Future worker-future (long title-timeout-ms) TimeUnit/MILLISECONDS)
         (catch TimeoutException _
@@ -187,8 +189,11 @@
 
   Only one title job runs per conversation at a time. The returned future watches
   the real generation work and completes after the title succeeds, fails, or
-  times out; the SSE stream must never block on it."
-  ^Future [conversation-id profile-id message]
+  times out; the SSE stream must never block on it.
+
+  `audience` is the conversation's, one of `metabot.config/audiences`: the title follows the Metabot setting its
+  turn was checked against."
+  ^Future [conversation-id audience message]
   (when (and conversation-id (not (str/blank? message)) (nil? (current-title conversation-id)))
     (locking in-flight-title-jobs
       (or (running-job conversation-id)
@@ -196,7 +201,7 @@
                 task     (FutureTask.
                           ^Callable
                           (bound-fn* #(try
-                                        (generate-with-timeout! conversation-id profile-id message)
+                                        (generate-with-timeout! conversation-id audience message)
                                         (catch Throwable t
                                           (log/warn "Failed to generate Metabot conversation title"
                                                     {:conversation-id conversation-id
@@ -216,12 +221,12 @@
                 nil)))))))
 
 (defn ensure-title!
-  "Ensure title generation is running when the conversation row has no title."
-  [conversation-id profile-id message]
+  "Ensure title generation is running when the conversation row has no title. See [[submit!]] for `audience`."
+  [conversation-id audience message]
   (if-let [title (current-title conversation-id)]
     {:status :ready :title title}
     (if-let [future (or (running-job conversation-id)
-                        (submit! conversation-id profile-id message))]
+                        (submit! conversation-id audience message))]
       {:status :pending :future future}
       {:status :missing})))
 

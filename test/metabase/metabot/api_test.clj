@@ -422,7 +422,7 @@
 
 (deftest conversation-title-generation-persists-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
-    (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
+    (let [generate-title! #(#'conversation-title/generate! conversation-id :internal "Show orders by month")
           stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
       (mt/with-dynamic-fn-redefs [ai-features/call! (constantly {:title "\"Orders by Month!\""})]
         (is (= "Orders by Month" (generate-title!)))
@@ -438,7 +438,7 @@
       [ai-features/call! (fn [& _]
                            (throw (ex-info "should not generate" {})))]
       (is (= {:status :ready :title "Existing Title"}
-             (conversation-title/ensure-title! conversation-id "default" "Show orders by month")))
+             (conversation-title/ensure-title! conversation-id :internal "Show orders by month")))
       (is (= {:status "ready" :title "Existing Title"}
              (conversation-title/title-status conversation-id))))))
 
@@ -451,8 +451,8 @@
                              (swap! call-count inc)
                              @gate
                              {:title "Recovered Title"})]
-        (let [future-1 (conversation-title/submit! conversation-id "default" "Show orders by month")
-              future-2 (conversation-title/submit! conversation-id "default" "Use a different prompt")]
+        (let [future-1 (conversation-title/submit! conversation-id :internal "Show orders by month")
+              future-2 (conversation-title/submit! conversation-id :internal "Use a different prompt")]
           (is (some? future-1))
           (is (identical? future-1 future-2))
           (is (= {:status "pending" :title nil}
@@ -1260,7 +1260,7 @@
                                                    :parent_message_id parent-id))
               (is (= [[conversation-id "first prompt"]
                       [conversation-id "first prompt"]]
-                     (mapv (fn [[conversation-id _profile-id message]]
+                     (mapv (fn [[conversation-id _audience message]]
                              [conversation-id message])
                            @title-requests))))))))))
 
