@@ -15,6 +15,7 @@ import {
   SegmentsPrototype,
 } from "./explorer_v3/MetricEditorPrototype";
 import { InvestigationModePrototype } from "./investigation/InvestigationModePrototype";
+import { InvestigationModePrototype as InvestigationModePrototypeV2 } from "./investigation_v2/InvestigationModePrototype";
 import { MetricDependencyTreePrototype } from "./tree/MetricDependencyTreePrototype";
 import { MetricTreeHiFiPrototype } from "./tree/MetricTreeHiFiPrototype";
 import { MetricTreePrototype } from "./tree/MetricTreePrototype";
@@ -102,6 +103,14 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
       "The Dependencies tab as a left-to-right walk from the metric into its parts, to find which branch caused a change. Select a node to break it out by its dimensions and segments; anything beyond the walk opens in the Metric Explorer.",
     group: "Iteration 2",
     Component: InvestigationModePrototype,
+  },
+  {
+    id: "investigation-mode-v2",
+    name: "Investigation mode: what moved",
+    description:
+      "Investigation mode with one ranked list in the side panel: every region, plan, channel and segment against everyone outside it, biggest impact first. Hover a row to compare the two on the trend chart.",
+    group: "Iteration 2",
+    Component: InvestigationModePrototypeV2,
   },
   {
     id: "metrics-map-v2",

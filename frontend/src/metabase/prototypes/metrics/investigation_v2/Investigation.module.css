@@ -1,0 +1,94 @@
+.canvas {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.truncate {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.handle {
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  opacity: 0;
+}
+
+.panel {
+  width: 25rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--mb-color-border-neutral);
+  background: var(--mb-color-core-white);
+}
+
+.panelSection {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.breakoutRow {
+  width: 100%;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.breakoutRow.active {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.barTrack {
+  position: relative;
+  height: 0.5rem;
+  flex: 1;
+}
+
+.barTrack.thin {
+  height: 0.25rem;
+}
+
+.barAxis {
+  position: absolute;
+  top: -0.25rem;
+  bottom: -0.25rem;
+  left: 50%;
+  width: 1px;
+  background: var(--mb-color-border-neutral-strong);
+}
+
+.bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 0.125rem;
+}
+
+/* Legend for the two lines a hovered row adds to the trend chart. */
+.sliceSwatch,
+.restSwatch {
+  width: 0.75rem;
+  flex-shrink: 0;
+}
+
+.sliceSwatch {
+  border-top: 2px solid var(--mb-color-accent2);
+}
+
+.restSwatch {
+  border-top: 2px dashed var(--mb-color-text-secondary);
+}
+
+.panelFooter {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
