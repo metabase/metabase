@@ -507,6 +507,7 @@ export function DefinitionEditor({
                 onNameFilter &&
                 canNameFilter?.(token.measureId) && (
                   <NameFilter
+                    filter={filterLabel(filter)}
                     defaultOpen={
                       naming?.key === token.key && naming.filter === filter
                     }
@@ -787,10 +788,13 @@ export function DefinitionEditor({
  * table, and the pill reads "Revenue | Large orders".
  */
 function NameFilter({
+  filter,
   defaultOpen,
   onClose,
   onSave,
 }: {
+  /** The typed-out filter, as the pill shows it. */
+  filter: string;
   /** Open from the start, for a filter that was just typed. */
   defaultOpen: boolean;
   onClose: () => void;
@@ -803,7 +807,8 @@ function NameFilter({
       onSave={onSave}
       label="Name this filter"
       icon="label"
-      placeholder="Like Large orders"
+      inputIcon="segment"
+      placeholder={filter}
       actionLabel="Save segment"
     />
   );
@@ -831,6 +836,7 @@ function SaveAsMeasure({
       onSave={onSave}
       label="Save as measure"
       icon="bookmark"
+      inputIcon="sum"
       placeholder="Like Revenue"
       actionLabel="Save measure"
       note={
@@ -863,6 +869,7 @@ function NamePopover({
   onSave,
   label,
   icon,
+  inputIcon,
   placeholder,
   actionLabel,
   note,
@@ -872,6 +879,7 @@ function NamePopover({
   onSave: (name: string) => void;
   label: string;
   icon: IconName;
+  inputIcon: IconName;
   placeholder: string;
   actionLabel: string;
   note?: ReactNode;
@@ -914,6 +922,8 @@ function NamePopover({
           {note}
           <TextInput
             data-autofocus
+            aria-label={label}
+            leftSection={<Icon name={inputIcon} c="text-brand" />}
             placeholder={placeholder}
             value={name}
             onChange={(event) => setName(event.target.value)}
