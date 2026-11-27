@@ -361,3 +361,31 @@
                     (is (str/includes? (compiled-sql query) persisted-schema))
                     (is (not (str/includes? (compiled-sql query) venues-table)))
                     (is (= expected (rows query)))))))))))))
+
+(deftest persisted-model-joined-twice-reads-cache-test
+  (testing "Every join of a persisted model reads the cache (#60505)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (let [mp (mt/metadata-provider)]
+            (mt/with-temp [:model/Card model {:name          "Cached model"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
+              (persist-models!)
+              (let [card-mp          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    model-meta       (lib.metadata/card card-mp (:id model))
+                    base-query       (lib/query card-mp (lib.metadata/table card-mp (mt/id :categories)))
+                    join-on-price    (fn [query]
+                                       (lib/join query
+                                                 (lib/join-clause
+                                                  model-meta
+                                                  [(lib/= (lib.metadata/field card-mp (mt/id :categories :id))
+                                                          (m/find-first (comp #{"price"} :name)
+                                                                        (lib/join-condition-rhs-columns query model-meta nil nil)))])))
+                    query            (-> base-query join-on-price join-on-price)
+                    sql              (:query (qp.compile/compile query))
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))
+                    venues-table     (:name (lib.metadata/table card-mp (mt/id :venues)))]
+                (is (= 2 (count (re-seq (re-pattern (str/re-quote-replacement persisted-schema)) sql))))
+                (is (not (str/includes? sql venues-table)))))))))))
