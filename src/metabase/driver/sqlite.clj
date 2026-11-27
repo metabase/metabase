@@ -474,8 +474,11 @@
                                    :week    [7 "days"]
                                    :month   [1 "months"]
                                    :quarter [3 "months"]
-                                   :year    [1 "years"])]
-    (->datetime hsql-form (h2x/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
+                                   :year    [1 "years"])
+        modifier                 (h2x/literal (format "%+d %s" (* amount multiplier) sqlite-unit))]
+    (if (#{:month :quarter :year} unit)
+      (->datetime hsql-form modifier (h2x/literal "floor"))
+      (->datetime hsql-form modifier))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_driver _precision expr]

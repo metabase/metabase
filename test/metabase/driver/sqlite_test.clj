@@ -802,6 +802,25 @@
           (is (isa? (:base_type col) :type/Temporal))
           (is (isa? (:effective_type col) :type/Temporal)))))))
 
+(deftest ^:parallel month-arithmetic-clamps-to-month-end-test
+  (mt/test-driver :sqlite
+    (let [mp    (mt/metadata-provider)
+          cases [["2025-05-31T12:58:08" 1 :month "2025-06-30 12:58:08"]
+                 ["2025-05-31T12:58:08" -1 :month "2025-04-30 12:58:08"]
+                 ["2025-07-31T12:58:08" 1 :month "2025-08-31 12:58:08"]
+                 ["2025-08-31T12:58:08" 1 :quarter "2025-11-30 12:58:08"]
+                 ["2024-02-29T12:58:08" 1 :year "2025-02-28 12:58:08"]
+                 ["2025-05-15T12:58:08" 1 :month "2025-06-15 12:58:08"]
+                 ["2025-05-31T12:58:08" 1 :day "2025-06-01 12:58:08"]]
+          query (reduce (fn [query [i [date amount unit _]]]
+                          (lib/expression query (str "shifted-" i) (lib/datetime-add date amount unit)))
+                        (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                        (map-indexed vector cases))
+          query (-> (lib/with-fields query (lib/expressions-metadata query))
+                    (lib/limit 1))]
+      (is (= (mapv peek cases)
+             (first (mt/rows (qp/process-query query))))))))
+
 (deftest ^:parallel query-error-evidence-test
   (mt/test-driver :sqlite
     (doseq [code [1 19 20]]
