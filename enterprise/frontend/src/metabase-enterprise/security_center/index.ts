@@ -1,5 +1,6 @@
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { featureGatedRoute } from "metabase-enterprise/settings/feature-gated-route";
 
 import { SecurityCenterBanner } from "./components/SecurityCenterBanner/SecurityCenterBanner";
 import { SecurityCenterMobileNavItem } from "./components/SecurityCenterNavItem/SecurityCenterMobileNavItem";
@@ -22,13 +23,21 @@ const securityCenterHealthChecksPage = () =>
   ).then(({ HealthChecksPage }) => ({ Component: HealthChecksPage }));
 
 export function initializePlugin() {
+  PLUGIN_SECURITY_CENTER.securityCenterPage = featureGatedRoute(
+    "admin_security_center",
+    securityCenterPage,
+  );
+  PLUGIN_SECURITY_CENTER.securityCenterAdvisoriesPage = featureGatedRoute(
+    "admin_security_center",
+    securityCenterAdvisoriesPage,
+  );
+  PLUGIN_SECURITY_CENTER.securityCenterHealthChecksPage = featureGatedRoute(
+    "admin_security_center",
+    securityCenterHealthChecksPage,
+  );
+
   if (hasPremiumFeature("admin_security_center")) {
     PLUGIN_SECURITY_CENTER.isEnabled = true;
-    PLUGIN_SECURITY_CENTER.securityCenterPage = securityCenterPage;
-    PLUGIN_SECURITY_CENTER.securityCenterAdvisoriesPage =
-      securityCenterAdvisoriesPage;
-    PLUGIN_SECURITY_CENTER.securityCenterHealthChecksPage =
-      securityCenterHealthChecksPage;
     PLUGIN_SECURITY_CENTER.SecurityCenterBanner = SecurityCenterBanner;
     PLUGIN_SECURITY_CENTER.SecurityCenterPromoCard = SecurityCenterPromoCard;
     PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = SecurityCenterNavItem;
