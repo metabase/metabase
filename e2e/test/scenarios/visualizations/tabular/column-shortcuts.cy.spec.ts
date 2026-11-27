@@ -4,9 +4,9 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("extract shortcut", () => {
+describe("column header extraction", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -33,12 +33,13 @@ describe("extract shortcut", () => {
 
     extractColumnAndCheck({
       column: "Email",
+      extraction: "Extract domain, host…",
       option: "Domain",
       value: "yahoo",
       example: "example, online",
     });
     H.expectUnstructuredSnowplowEvent({
-      event: "column_extract_via_plus_modal",
+      event: "column_extract_via_column_header",
       custom_expressions_used: ["domain"],
       database_id: SAMPLE_DB_ID,
     });
@@ -105,12 +106,14 @@ describe("extract shortcut", () => {
 
 function extractColumnAndCheck({
   column,
+  extraction = "Extract day, month…",
   option,
   newColumn = option,
   value,
   example,
 }: {
   column: string;
+  extraction?: string;
   option: string;
   value?: string;
   example?: string;
@@ -118,10 +121,8 @@ function extractColumnAndCheck({
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  cy.findByLabelText("Add column").click();
-
-  H.popover().findByText("Extract part of column").click();
-  H.popover().findAllByText(column).first().click();
+  H.tableHeaderClick(column);
+  H.popover().findByText(extraction).click();
 
   if (example) {
     H.popover().findByText(option).parent().should("contain", example);
@@ -235,24 +236,24 @@ function extractColumnFromHeaderAndCheck({
   cy.findByRole("gridcell", { name: value }).should("be.visible");
 }
 
-describe("scenarios > visualizations > combine shortcut", () => {
+describe("scenarios > visualizations > column header combination", () => {
   function combineColumns({
     columns,
     example,
     newColumn,
     newValue,
   }: {
-    columns: string[];
+    columns: [string, ...string[]];
     example: string;
     newColumn: string;
     newValue?: string;
   }) {
     const requestAlias = _.uniqueId("dataset");
     cy.intercept("POST", "/api/dataset").as(requestAlias);
-    cy.findByLabelText("Add column").click();
+    H.tableHeaderClick(columns[0]);
 
     H.popover().findByText("Combine columns").click();
-    for (const [index, column] of columns.entries()) {
+    for (const [index, column] of columns.slice(1).entries()) {
       selectColumn(index, column);
     }
 
@@ -336,12 +337,10 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.createQuestion(
       {
         query: {
-          "source-table": ORDERS_ID,
+          "source-table": PRODUCTS_ID,
           limit: 1,
           aggregation: [["count"]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
-          ],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
         },
       },
       {
@@ -349,12 +348,12 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    H.tableInteractive().should("exist");
+    H.tableInteractive().should("be.visible");
     combineColumns({
-      columns: ["Created At: Hour of day", "Count"],
-      newColumn: "Combined Created At: Hour of day, Count",
-      example: "2042-01-01 12:34:56.789 123",
-      newValue: "0 766",
+      columns: ["Category", "Count"],
+      newColumn: "Combined Category, Count",
+      example: "text 123",
+      newValue: "Doohickey 42",
     });
   });
 
@@ -379,12 +378,12 @@ describe("scenarios > visualizations > combine shortcut", () => {
       },
     );
 
-    H.tableInteractive().should("exist");
+    H.tableInteractive().should("be.visible");
     combineColumns({
-      columns: ["Created At: Hour of day", "Product → Category"],
-      newColumn: "Combined Created At: Hour of day, Product → Category",
-      example: "2042-01-01 12:34:56.789 text",
-      newValue: "0 Doohickey",
+      columns: ["Product → Category", "Created At: Hour of day"],
+      newColumn: "Combined Product → Category, Created At: Hour of day",
+      example: "text 2042-01-01 12:34:56.789",
+      newValue: "Doohickey 0",
     });
   });
 });

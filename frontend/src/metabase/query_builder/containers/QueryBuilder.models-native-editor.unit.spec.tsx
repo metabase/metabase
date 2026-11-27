@@ -237,10 +237,10 @@ describe("QueryBuilder > native models", () => {
       ]);
 
       await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
-      const sidebar = await screen.findByTestId("sidebar-right");
-      expect(within(sidebar).getByText("ID")).toBeInTheDocument();
-      expect(within(sidebar).getByText("FOO")).toBeInTheDocument();
-      expect(within(sidebar).getByText("BAR")).toBeInTheDocument();
+      const fieldList = await screen.findByTestId("summary-field-list");
+      expect(within(fieldList).getByText("ID")).toBeInTheDocument();
+      expect(within(fieldList).getByText("FOO")).toBeInTheDocument();
+      expect(within(fieldList).getByText("BAR")).toBeInTheDocument();
     });
 
     it("saves the model metadata of a changed query and shows all its columns (metabase#35039, metabase#37009)", async () => {

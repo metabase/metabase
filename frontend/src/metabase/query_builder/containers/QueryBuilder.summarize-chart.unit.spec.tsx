@@ -3,6 +3,7 @@ import fetchMock, { type CallLog } from "fetch-mock";
 
 import {
   act,
+  fireEvent,
   mockGetBoundingClientRect,
   screen,
   waitFor,
@@ -184,13 +185,12 @@ async function waitForDatasetRequest(previousCount: number) {
   return getRequestBody(calls[calls.length - 1]);
 }
 
-async function addBreakout(columnName: string) {
-  const sidebar = screen.getByTestId("sidebar-right");
-  const item = await within(sidebar).findByRole("listitem", {
-    name: columnName,
-  });
+/** Alt+click adds the column as another grouping instead of replacing the groupings. */
+async function addBreakout(columnName: string, { add = false } = {}) {
+  const section = await screen.findByRole("region", { name: "Products" });
+  const button = within(section).getByRole("button", { name: columnName });
   const previousCount = getDatasetCalls().length;
-  await userEvent.click(within(item).getByLabelText("Add dimension"));
+  fireEvent.click(button, { altKey: add });
   return waitForDatasetRequest(previousCount);
 }
 
@@ -258,7 +258,7 @@ describe("QueryBuilder > summarize sidebar > chart", () => {
     );
     await assertChartByCategory();
 
-    const createdAtBody = await addBreakout("Created At");
+    const createdAtBody = await addBreakout("Created At", { add: true });
     expect(createdAtBody).toEqual(
       expect.objectContaining({
         stages: [expect.objectContaining(CATEGORY_AND_CREATED_AT_STAGE)],
@@ -266,16 +266,9 @@ describe("QueryBuilder > summarize sidebar > chart", () => {
     );
     await assertChartByCreatedAtAndCategory();
 
-    const previousCount = getDatasetCalls().length;
     await userEvent.click(
-      within(screen.getByTestId("sidebar-right")).getByRole("button", {
-        name: "Done",
-      }),
-    );
-    const doneBody = await waitForDatasetRequest(previousCount);
-    expect(doneBody).toEqual(
-      expect.objectContaining({
-        stages: [expect.objectContaining(CATEGORY_AND_CREATED_AT_STAGE)],
+      within(screen.getByTestId("qb-header")).getByRole("button", {
+        name: /Summarize/,
       }),
     );
     await waitFor(() =>

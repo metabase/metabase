@@ -45,13 +45,8 @@ describe("scenarios > question > nested", () => {
 
     H.summarize();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Group by")
-      .parent()
-      .within(() => {
-        cy.log("Regression that worked on 0.37.9");
-        isSelected("Products → Category");
-      });
+    cy.log("Regression that worked on 0.37.9");
+    H.summaryWellItem("columns", "Products → Category").should("be.visible");
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
@@ -127,12 +122,9 @@ describe("scenarios > question > nested", () => {
       H.visualize();
 
       H.summarize();
-      cy.findByTestId("add-aggregation-button").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/^Sum of/).click();
-      H.popover().findByText("VAL").click();
+      H.addSummaryValue("VAL");
       cy.wait("@dataset");
-      H.rightSidebar().button("Done").click();
+      H.summaryWellItem("values", "Sum of VAL").should("be.visible");
 
       assertCountAndSumByCategory();
     });

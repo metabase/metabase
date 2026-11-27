@@ -236,9 +236,26 @@ const uiControls = createReducer<QueryBuilderUIControls>(
         highlightedNativeQueryLineNumbers:
           DEFAULT_UI_CONTROLS.highlightedNativeQueryLineNumbers,
       }))
-      .addCase(CANCEL_QUERY, (state) => ({ ...state, isRunning: false }))
-      .addCase(QUERY_COMPLETED, (state) => ({ ...state, isRunning: false }))
-      .addCase(QUERY_ERRORED, (state) => ({ ...state, isRunning: false }))
+      .addCase(CANCEL_QUERY, (state) => ({
+        ...state,
+        isRunning: false,
+        scrollToLastColumn: false,
+      }))
+      .addCase<string, { type: string; payload: { queryResults: Dataset[] } }>(
+        QUERY_COMPLETED,
+        (state, action) => ({
+          ...state,
+          isRunning: false,
+          scrollToLastColumn:
+            state.scrollToLastColumn &&
+            !action.payload.queryResults.some((result) => result.error),
+        }),
+      )
+      .addCase(QUERY_ERRORED, (state) => ({
+        ...state,
+        isRunning: false,
+        scrollToLastColumn: false,
+      }))
       .addCase<string, { type: string; payload: InitialChartSettingState }>(
         SHOW_CHART_SETTINGS,
         (state, action) => ({

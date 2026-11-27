@@ -845,6 +845,12 @@
    (prometheus/counter :metabase-metabot/turn-started
                        {:description "A metabot turn was started (user row + assistant placeholder inserted)"
                         :labels [:profile-id]})
+   (prometheus/counter :metabase-metabot/custom-expression-generate-requests
+                       {:description "Custom expression generation requests"
+                        :labels [:mode]})
+   (prometheus/counter :metabase-metabot/custom-expression-generate-errors
+                       {:description "Custom expression generation requests that returned an error"
+                        :labels [:mode :reason]})
    (prometheus/counter :metabase-metabot/used-tables-extraction-total
                        {:description "Number of used-tables extractions attempted."})
    (prometheus/counter :metabase-metabot/used-tables-extraction-errors

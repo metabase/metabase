@@ -12,6 +12,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingNewbModal: false,
   isRunning: false,
   isShowingSummarySidebar: false,
+  summaryGeneratedExpressions: [],
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,

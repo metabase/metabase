@@ -16,6 +16,7 @@ import type { ParentedMessage } from "metabase/metabot/utils/message-tree";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type {
+  GenerateCustomExpressionResponse,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
@@ -645,4 +646,19 @@ export function setupUserMetabotPermissionsEndpoint(
     response ?? createMockUserMetabotPermissions(),
     { name: USER_METABOT_PERMISSIONS_ROUTE_NAME },
   );
+}
+
+const GENERATE_CUSTOM_EXPRESSION_ROUTE_NAME =
+  "metabot-generate-custom-expression";
+
+export function setupGenerateCustomExpressionEndpoint(
+  response: RouteResponse = {
+    expression: "Average([Total])",
+    name: "Average total",
+  } satisfies GenerateCustomExpressionResponse,
+) {
+  fetchMock.removeRoute(GENERATE_CUSTOM_EXPRESSION_ROUTE_NAME);
+  fetchMock.post("path:/api/metabot/custom-expression/generate", response, {
+    name: GENERATE_CUSTOM_EXPRESSION_ROUTE_NAME,
+  });
 }

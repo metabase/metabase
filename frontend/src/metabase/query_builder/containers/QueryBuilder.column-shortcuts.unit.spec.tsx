@@ -371,28 +371,6 @@ function getCellText(columnName: string) {
   return cells[headers.indexOf(columnName)];
 }
 
-/**
- * The column list renders group headers and items as siblings, so find the
- * item that follows the header of its group.
- */
-function getColumnOption(groupName: string, columnName: string) {
-  const rows = within(screen.getByRole("dialog")).getAllByTestId(
-    /^(list-section-header|dimension-list-item)$/,
-  );
-  let currentGroup: string | null = null;
-  for (const row of rows) {
-    if (row.dataset.testid === "list-section-header") {
-      currentGroup = row.textContent;
-    } else if (
-      currentGroup === groupName &&
-      row.getAttribute("aria-label") === columnName
-    ) {
-      return row;
-    }
-  }
-  throw new Error(`Could not find ${groupName} → ${columnName}`);
-}
-
 function expectLastEvent(event: string, customExpressionsUsed: string[]) {
   expect(trackSchemaEvent).toHaveBeenLastCalledWith("question", {
     event,
@@ -409,27 +387,26 @@ describe("QueryBuilder > column shortcuts", () => {
     jest.mocked(trackSchemaEvent).mockClear();
   });
 
-  describe("extract via the add column button", () => {
+  describe("extract via the column header", () => {
     interface ExtractOpts {
-      group: string;
       column: string;
+      extraction: string;
       option: string;
       example?: string;
       newColumn?: string;
     }
 
-    async function extractColumn({
-      group,
+    async function extractFromHeader({
       column,
+      extraction,
       option,
       example,
       newColumn = option,
     }: ExtractOpts) {
-      await userEvent.click(screen.getByRole("button", { name: "Add column" }));
-      await userEvent.click(await screen.findByText("Extract part of column"));
-      await userEvent.click(
-        within(getColumnOption(group, column)).getByText(column),
-      );
+      const runCount = getRunBodies().length;
+      const header = await screen.findByRole("columnheader", { name: column });
+      await userEvent.click(within(header).getByText(column));
+      await userEvent.click(await screen.findByText(extraction));
       const optionButton = within(screen.getByRole("dialog")).getByRole(
         "button",
         { name: new RegExp(`^${option}`) },
@@ -441,6 +418,8 @@ describe("QueryBuilder > column shortcuts", () => {
       expect(
         await screen.findByRole("columnheader", { name: newColumn }),
       ).toBeInTheDocument();
+      expect(getRunBodies()).toHaveLength(runCount + 1);
+      expect(getColumnHeaderNames().at(-1)).toBe(newColumn);
     }
 
     interface ExtractCase {
@@ -452,32 +431,29 @@ describe("QueryBuilder > column shortcuts", () => {
     }
 
     async function expectExtractionOfEachOption({
-      group,
       column,
+      extraction,
       cases,
     }: {
-      group: string;
       column: string;
+      extraction: string;
       cases: ExtractCase[];
     }) {
-      const runCount = getRunBodies().length;
       const expectedExpressions: Record<string, string> = {};
       for (const [index, testCase] of cases.entries()) {
-        await extractColumn({
-          group,
+        await extractFromHeader({
           column,
+          extraction,
           option: testCase.option,
           example: testCase.example,
         });
         expectedExpressions[testCase.option] = testCase.expression;
-        expect(getRunBodies()).toHaveLength(runCount + index + 1);
         expect(getExpressionKeys(getLastRunBody())).toEqual(
           expectedExpressions,
         );
-        expect(getColumnHeaderNames().at(-1)).toBe(testCase.option);
         expect(getCellText(testCase.option)).toBe(testCase.value);
         expect(trackSchemaEvent).toHaveBeenCalledTimes(index + 1);
-        expectLastEvent("column_extract_via_plus_modal", testCase.functions);
+        expectLastEvent("column_extract_via_column_header", testCase.functions);
       }
     }
 
@@ -488,8 +464,8 @@ describe("QueryBuilder > column shortcuts", () => {
       });
 
       await expectExtractionOfEachOption({
-        group: "Orders",
         column: "Created At",
+        extraction: "Extract day, month…",
         cases: [
           {
             option: "Hour of day",
@@ -543,14 +519,14 @@ describe("QueryBuilder > column shortcuts", () => {
         row: ORDERS_ROW,
       });
 
-      await extractColumn({
-        group: "Orders",
+      await extractFromHeader({
         column: "Created At",
+        extraction: "Extract day, month…",
         option: "Hour of day",
       });
-      await extractColumn({
-        group: "Orders",
+      await extractFromHeader({
         column: "Created At",
+        extraction: "Extract day, month…",
         option: "Hour of day",
         newColumn: "Hour of day_2",
       });
@@ -573,8 +549,8 @@ describe("QueryBuilder > column shortcuts", () => {
       });
 
       await expectExtractionOfEachOption({
-        group: "People",
         column: "Email",
+        extraction: "Extract domain, subdomain…",
         cases: [
           {
             option: "Domain",
@@ -608,8 +584,8 @@ describe("QueryBuilder > column shortcuts", () => {
       });
 
       await expectExtractionOfEachOption({
-        group: "People",
         column: "Email",
+        extraction: "Extract domain, host…",
         cases: [
           {
             option: "Domain",
@@ -628,42 +604,6 @@ describe("QueryBuilder > column shortcuts", () => {
         ],
       });
     });
-  });
-
-  describe("extract via the column header", () => {
-    interface ExtractOpts {
-      column: string;
-      extraction: string;
-      option: string;
-      example?: string;
-      newColumn?: string;
-    }
-
-    async function extractFromHeader({
-      column,
-      extraction,
-      option,
-      example,
-      newColumn = option,
-    }: ExtractOpts) {
-      const runCount = getRunBodies().length;
-      const header = await screen.findByRole("columnheader", { name: column });
-      await userEvent.click(within(header).getByText(column));
-      await userEvent.click(await screen.findByText(extraction));
-      const optionButton = within(screen.getByRole("dialog")).getByRole(
-        "button",
-        { name: new RegExp(`^${option}`) },
-      );
-      if (example) {
-        expect(optionButton).toHaveTextContent(example);
-      }
-      await userEvent.click(optionButton);
-      expect(
-        await screen.findByRole("columnheader", { name: newColumn }),
-      ).toBeInTheDocument();
-      expect(getRunBodies()).toHaveLength(runCount + 1);
-      expect(getColumnHeaderNames().at(-1)).toBe(newColumn);
-    }
 
     const ORDERS_QUESTION = createMockCard({
       id: 1,
@@ -880,16 +820,13 @@ describe("QueryBuilder > column shortcuts", () => {
       await userEvent.click(await screen.findByText("Combine columns"));
     }
 
-    it("should combine columns via the plus modal and the column header and handle duplicate column names", async () => {
+    it("should combine columns from the column header and handle duplicate column names", async () => {
       await setupShortcuts({
         card: createAdhocCard(PEOPLE_ID, [PEOPLE.ID, PEOPLE.EMAIL]),
         row: PEOPLE_ROW,
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Add column" }));
-      await userEvent.click(await screen.findByText("Combine columns"));
-      await selectColumn("First column", "Email");
-      await selectColumn("Second column", "ID");
+      await openHeaderCombine("Email");
       expect(getExample()).toHaveTextContent(/^email@example\.com12345$/);
       await submit("Combined Email, ID");
 
@@ -903,7 +840,7 @@ describe("QueryBuilder > column shortcuts", () => {
       ]);
       expect(getCellText("Combined Email, ID")).toBe("borer-hudson@yahoo.com1");
       expect(trackSchemaEvent).toHaveBeenCalledTimes(1);
-      expectLastEvent("column_combine_via_plus_modal", ["concat"]);
+      expectLastEvent("column_combine_via_column_header", ["concat"]);
 
       await openHeaderCombine("Email");
       expect(getExample()).toHaveTextContent("email@example.com12345");

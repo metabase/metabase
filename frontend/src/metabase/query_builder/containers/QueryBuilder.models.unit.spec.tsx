@@ -780,13 +780,12 @@ describe("QueryBuilder > structured models", () => {
           name: /Summarize/,
         }),
       );
-      const sidebar = await screen.findByTestId("sidebar-right");
+      const fieldList = await screen.findByTestId("summary-field-list");
       // The model's own column, listed before "Product → Created At"
-      const [createdAt] = within(sidebar).getAllByText("Created At");
+      const [createdAt] = within(fieldList).getAllByRole("button", {
+        name: "Created At",
+      });
       await userEvent.click(createdAt);
-      await userEvent.click(
-        within(sidebar).getByRole("button", { name: "Done" }),
-      );
       await waitForBreakoutRunAfter(0);
       await expectSelectedDisplay({ selected: "Line", other: "Table" });
 
@@ -1499,14 +1498,11 @@ describe("QueryBuilder > questions based on a model", () => {
 
     const filteredRuns = getDatasetQueries().length;
     await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
-    const sidebar = await screen.findByTestId("sidebar-right");
-    const [createdAtItem] = within(sidebar)
-      .getAllByTestId("dimension-list-item")
-      .filter((item) => within(item).queryByText("Created At"));
-    await userEvent.click(within(createdAtItem).getByText("Created At"));
-    await userEvent.click(
-      within(sidebar).getByRole("button", { name: "Done" }),
-    );
+    const fieldList = await screen.findByTestId("summary-field-list");
+    const [createdAt] = within(fieldList).getAllByRole("button", {
+      name: "Created At",
+    });
+    await userEvent.click(createdAt);
 
     expect(
       await within(screen.getByTestId("qb-header")).findByText(

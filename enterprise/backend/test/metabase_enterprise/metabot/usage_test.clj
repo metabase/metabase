@@ -8,6 +8,8 @@
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
    [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.api.custom-expression :as custom-expression]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -15,6 +17,7 @@
    [metabase.metabot.usage :as usage]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -265,6 +268,31 @@
                    (t2/select-fn-vec :source :model/AiUsageLog :conversation_id conversation-id)))
             (finally
               (t2/delete! :model/AiUsageLog :conversation_id conversation-id))))))))
+
+(deftest generate-call-logs-its-own-source-test
+  (testing "generate logs its LLM calls under the custom_expression_generate source"
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (mut/mock-llm-response
+                                                                       [{:type :tool-input :id "call-1" :function "json"
+                                                                         :arguments {:expression "Average([Total])"
+                                                                                     :name       "Average total"}}
+                                                                        {:type :usage :id "msg-1"
+                                                                         :usage {:promptTokens     700
+                                                                                 :completionTokens 20}}]))]
+          (mt/with-model-cleanup [:model/AiUsageLog :model/User]
+            (let [[{user-id :id}] (user/create-users! [{:email (mt/random-email)}])]
+              (is (= {:expression "Average([Total])" :name "Average total"}
+                     (mt/with-current-user user-id
+                       (#'custom-expression/generate {:mode        "aggregation"
+                                                      :prompt      "average total"
+                                                      :columns     [{:name "[Total]" :type "number"}]
+                                                      :database_id (mt/id)
+                                                      :metabot_id  metabot.config/internal-metabot-id}))))
+              (is (= ["custom_expression_generate"]
+                     (t2/select-fn-vec :source :model/AiUsageLog :user_id user-id))))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
@@ -526,6 +554,9 @@
         (testing "a document generation counts as a message"
           (insert-llm-call! user-id "document_generate_content" "document-1")
           (is (= "test limit reached" (check-message-limit! 3 nil))))
+        (testing "a custom expression generation counts as a message"
+          (insert-llm-call! user-id "custom_expression_generate" "formula-1")
+          (is (= "test limit reached" (check-message-limit! 4 nil))))
         (finally
           (cleanup-llm-calls! user-id))))))
 
@@ -624,9 +655,11 @@
           sources  (disj @#'ee.usage/known-sources "user-intent-classification")
           profiles @#'ee.usage/known-profile-ids]
       (doseq [[view expected] {"ai_usage_log"          sources
-                               ;; v_metabot_conversations maps both the source and the profile id, and never takes
-                               ;; a conversation's source from its title call
-                               "metabot_conversations" (into (disj sources "conversation_title") profiles)}
+                               ;; v_metabot_conversations maps both the source and the profile id, never takes a
+                               ;; conversation's source from its title call, and never sees custom expression generation calls,
+                               ;; which belong to no conversation
+                               "metabot_conversations" (into (disj sources "conversation_title" "custom_expression_generate")
+                                                             profiles)}
               :let [dir       (latest-view-version-dir view)
                     sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")
                                       (.listFiles dir))]]

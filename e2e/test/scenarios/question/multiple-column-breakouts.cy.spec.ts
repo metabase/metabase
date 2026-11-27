@@ -435,45 +435,37 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should allow to change buckets for multiple breakouts of the same column", () => {
         function testChangeBreakoutBuckets({
           questionDetails,
-          columnPattern,
-          bucketLabel,
+          chip1Name,
           bucket1Name,
+          chip2Name,
           bucket2Name,
         }: {
           questionDetails: StructuredQuestionDetails;
-          columnPattern: RegExp;
-          bucketLabel: string;
+          chip1Name: string;
           bucket1Name: string;
+          chip2Name: string;
           bucket2Name: string;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
           H.summarize();
-          cy.findByTestId("pinned-dimensions")
-            .findAllByLabelText(columnPattern)
-            .should("have.length", 2)
-            .eq(0)
-            .findByLabelText(bucketLabel)
-            .realHover()
-            .click();
-          H.popover().findByText(bucket1Name).click();
+          H.summaryWell("columns")
+            .findAllByTestId("summary-well-item")
+            .should("have.length", 2);
+          H.changeSummaryGroupingBucket(chip1Name, bucket1Name);
           cy.wait("@dataset");
-          cy.findByTestId("pinned-dimensions")
-            .findAllByLabelText(columnPattern)
-            .should("have.length", 2)
-            .eq(1)
-            .findByLabelText(bucketLabel)
-            .realHover()
-            .click();
-          H.popover().findByText(bucket2Name).click();
+          H.changeSummaryGroupingBucket(chip2Name, bucket2Name);
           cy.wait("@dataset");
+          H.summaryWell("columns")
+            .findAllByTestId("summary-well-item")
+            .should("have.length", 2);
         }
 
         cy.log("temporal breakouts");
         testChangeBreakoutBuckets({
           questionDetails: questionWith2TemporalBreakoutsDetails,
-          columnPattern: /Created At/,
-          bucketLabel: "Temporal bucket",
+          chip1Name: "Created At: Year",
           bucket1Name: "Quarter",
+          chip2Name: "Created At: Month",
           bucket2Name: "Week",
         });
         H.assertTableData({
@@ -484,23 +476,23 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("'num-bin' breakouts");
         testChangeBreakoutBuckets({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
-          columnPattern: /Total/,
-          bucketLabel: "Binning strategy",
-          bucket1Name: "10 bins",
-          bucket2Name: "50 bins",
+          chip1Name: "Total: 10 bins",
+          bucket1Name: "100 bins",
+          chip2Name: "Total: 50 bins",
+          bucket2Name: "10 bins",
         });
 
         H.assertTableData({
-          columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
-          firstRows: [["-60  –  -40", "-50  –  -45", "1"]],
+          columns: ["Total: 100 bins", "Total: 10 bins", "Count"],
+          firstRows: [["-46  –  -44", "-60  –  -40", "1"]],
         });
 
         cy.log("'bin-width' breakouts");
         testChangeBreakoutBuckets({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
-          columnPattern: /Latitude/,
-          bucketLabel: "Binning strategy",
+          chip1Name: "Latitude: 20°",
           bucket1Name: "Bin every 1 degree",
+          chip2Name: "Latitude: 10°",
           bucket2Name: "Bin every 0.1 degrees",
         });
         H.assertTableData({
