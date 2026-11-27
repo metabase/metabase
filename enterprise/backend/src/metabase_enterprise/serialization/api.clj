@@ -122,7 +122,8 @@
     (try
       (v2.protocols/store-log! writer (.toByteArray log-output))
       (v2.protocols/finish! writer)
-      (catch Exception _))
+      (catch Exception e
+        (log/error e "Error finishing serialization export archive")))
     {:report        report
      :success       (nil? @error)
      :error-message (when @error
