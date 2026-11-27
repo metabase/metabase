@@ -286,7 +286,8 @@
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
-  {:scope api-scope/data-app}
+  {:paging [:limit]
+   :scope api-scope/data-app}
   [{:keys [id search-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]

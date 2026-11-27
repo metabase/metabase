@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.params :as params]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -188,7 +189,7 @@
 (deftest ^:parallel decode-strips-undeclared-keys-test
   (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"
     (are [schema value expected] (= expected
-                                    ((#'api.macros/decoder schema) value))
+                                    ((params/decoder schema) value))
       [:map [:a {:optional true} :int]]
       {:a 1, :b 2}
       {:a 1}

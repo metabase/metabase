@@ -45,6 +45,7 @@
   - ticket-number: Filter by ticket number
   - user-id: Filter by user who created the grant
   - include-revoked: Include revoked grants (default false)"
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [ticket-number
            user-id

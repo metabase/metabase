@@ -69,6 +69,7 @@
 
   Returns metrics (Cards with type='metric') that the current user has read access to,
   filtered by collection visibility permissions."
+  {:paging [:limit :offset]}
   []
   (let [limit   (or (request/limit) 500)
         offset  (or (request/offset) 0)

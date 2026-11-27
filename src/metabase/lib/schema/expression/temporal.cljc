@@ -183,8 +183,7 @@
                      :error/fn      (fn [{:keys [value]} _]
                                       (str "invalid timezone ID: " (pr-str value)))
                      :description   "A valid timezone ID like: \"Asia/Aden\", \"America/Cuiaba\"."
-                     ;; The timezone list is dynamic which make the .github/workflows/openapi-check.yml flaky on CI
-                     ;; so we need to hack this to write a static schema
+                     ;; The available timezone IDs depend on the JVM timezone database.
                      :json-schema   {:type "string"}}]
                    (sort (ZoneId/getAvailableZoneIds)))
        :cljs [:fn

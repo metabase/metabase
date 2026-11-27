@@ -9,13 +9,15 @@
    [metabase.api.open-api :as open-api]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match])
+  (:import
+   (java.nio.file CopyOption Files StandardCopyOption)))
 
 (set! *warn-on-reflection* true)
 
 (def openapi-file-path
   "Path to the local OpenAPI specification file."
-  "resources/openapi/openapi.json")
+  ".tmp/openapi/openapi.json")
 
 (defn- sort-keys
   "Sort maps and sets alphabetically to reduce diff noise on openapi.json"
@@ -24,23 +26,28 @@
     #'map? (into (sorted-map) &match)
     #'set? (into (sorted-set) &match)))
 
-(defn write-openapi-spec-to-file!
-  "Generate and write the OpenAPI specification to a local file.
-  Takes the root handler and generates the complete OpenAPI spec, writing it to [[openapi-file-path]]."
+(defn open-api-object
+  "The complete API document for the routes mounted on `root-handler`."
   [root-handler]
-  (try
-    (let [spec (merge
-                (open-api/root-open-api-object root-handler)
-                {:servers [{:url         ""
-                            :description "Metabase API"}]})
-          file (io/file openapi-file-path)]
-      ;; Create parent directory if it doesn't exist
-      (when-let [parent-dir (.getParentFile file)]
-        (.mkdirs parent-dir))
-      (json/encode-to (sort-keys spec) (io/writer file) {:pretty true})
-      (log/info "OpenAPI specification written to" openapi-file-path))
-    (catch Throwable e
-      (log/errorf "Failed to write OpenAPI specification to file: %s" (ex-message e)))))
+  (assoc (open-api/root-open-api-object root-handler) :servers [{:url "" :description "Metabase API"}]))
+
+(defn write-openapi-spec-to-file!
+  "Write the complete spec to `output-path`, defaulting to [[openapi-file-path]] for local regeneration."
+  ([root-handler]
+   (write-openapi-spec-to-file! root-handler openapi-file-path))
+  ([root-handler output-path]
+   (let [spec (sort-keys (open-api-object root-handler))
+         file (.getAbsoluteFile (io/file output-path))]
+     (io/make-parents file)
+     (let [temp (java.io.File/createTempFile ".openapi-" ".json" (.getParentFile file))]
+       (try
+         (with-open [writer (io/writer temp)]
+           (json/encode-to spec writer {:pretty true}))
+         (Files/move (.toPath temp) (.toPath file)
+                     (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE StandardCopyOption/REPLACE_EXISTING]))
+         (finally
+           (Files/deleteIfExists (.toPath temp)))))
+     (log/info "OpenAPI specification written to" output-path))))
 
 (defonce ^:private openapi-regen-state
   (atom {:executing? false
@@ -54,23 +61,16 @@
   "Request OpenAPI spec regeneration. Multiple rapid requests are coalesced into one execution.
   Uses a debounce delay to batch requests that arrive in quick succession (e.g., when re-evaling a file with multiple endpoints)."
   [routes]
-  (swap! openapi-regen-state assoc :needs-regen? true)
-
-  (when-not (:executing? @openapi-regen-state)
-    (swap! openapi-regen-state assoc :executing? true)
-    (future
-      (try
-        ;; Wait for debounce period to let multiple requests coalesce
+  (let [[before] (swap-vals! openapi-regen-state assoc :executing? true :needs-regen? true)]
+    (when-not (:executing? before)
+      (future
         (Thread/sleep ^Long debounce-delay-ms)
         (loop []
-          (when (:needs-regen? @openapi-regen-state)
-            (swap! openapi-regen-state assoc :needs-regen? false)
-            (log/info "Regenerating OpenAPI specification...")
+          (swap! openapi-regen-state assoc :needs-regen? false)
+          (try
             (write-openapi-spec-to-file! routes)
-            (log/info "OpenAPI specification regenerated successfully")
-            ;; Check if more requests came in while we were working
-            (recur)))
-        (catch Throwable e
-          (log/errorf "Error regenerating OpenAPI specification: %s" (ex-message e)))
-        (finally
-          (swap! openapi-regen-state assoc :executing? false))))))
+            (catch Throwable e
+              (log/error e "Error regenerating OpenAPI specification")))
+          ;; Release the worker only if nobody queued another generation during the write.
+          (when (:executing? (swap! openapi-regen-state #(assoc % :executing? (:needs-regen? %))))
+            (recur)))))))

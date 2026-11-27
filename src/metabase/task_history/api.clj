@@ -21,6 +21,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
+  {:paging [:limit :offset]}
   [_
    params :- [:maybe task-history/FilterAndSortParams]]
   (perms/check-has-application-permission :monitoring)
@@ -195,6 +196,7 @@
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
+  {:paging [:limit :offset]}
   [_
    {:keys [sort-column sort-direction] :as params} :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
   (perms/check-has-application-permission :monitoring)

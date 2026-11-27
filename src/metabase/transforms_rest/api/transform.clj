@@ -214,6 +214,7 @@
                                         [:offset :int]
                                         [:total :int]]
   "Get transform runs based on a set of filter params."
+  {:paging [:limit :offset]}
   [_route-params
    query-params :-
    [:map {:closed true}
@@ -264,6 +265,7 @@
 
   `types` selects which kinds to include (all by default); `transform-ids` narrows to runs that ran
   any of the given transforms. The remaining filters work as in `GET /run`."
+  {:paging [:limit :offset]}
   [_route-params
    query-params :-
    [:map {:closed true}

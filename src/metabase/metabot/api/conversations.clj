@@ -127,6 +127,7 @@
   message); legacy conversations created before message authors were stamped
   fall back to the conversation originator. Optionally filter by the last live
   message's `profile_id`."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [profile_id]} :- ListConversationsQueryParams]
   (let [user-id (api/check-404 api/*current-user-id*)

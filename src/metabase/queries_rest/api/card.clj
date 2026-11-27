@@ -400,6 +400,7 @@
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
   - `exclude_ids` to filter out a list of card ids"
+  {:paging [:limit]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id int?]]
    {:keys [last_cursor query exclude_ids]}

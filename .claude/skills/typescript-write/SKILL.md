@@ -36,6 +36,8 @@ Before frontend edits, including test-only changes, read `frontend/AGENTS.md`, `
 
 ## Type modeling
 
+Before adding or changing an RTK Query endpoint or editing request or response types in `metabase-types/api`, read [fix-api-contract](../fix-api-contract/SKILL.md). It explains how to check the request sent by the client and trace disagreements through the frontend types, backend schema, and handler.
+
 - **Reuse existing types; don't re-declare them.** Use canonical IDs and domain entity types from `metabase-types/api` (`FieldId`, `TableId`, `ConcreteTableId`, `SchemaName`, …) and key data structures by them (`new Map<ConcreteTableId, …>()`). Don't duplicate generated/API types — compose or derive (`Pick`, `Omit`, indexed access `SomeType["field"]`, `ReturnType`). Search for the canonical declaration before introducing a local domain shape. If a type isn't exported directly, derive it from the owning function, endpoint, or hook rather than recreating its shape.
 - **Generics must make promises the implementation can keep.** A caller-selected `get<T>(): T` must not disguise an unchecked assertion about external data. Return `unknown` and validate, or accept a validator that establishes `T`. A factory such as `function empty<T>(): T[] { return []; }` is valid; judge the implementation, not how often `T` appears in the signature.
 - **Prefer an honest type over false precision.** Use generics when they express a real relationship. If a complex type cannot model the behaviour accurately, choose a simpler type or `unknown` with narrowing instead of asserting an unsupported guarantee.
@@ -121,4 +123,5 @@ For new or edited tests, including Jest and Cypress:
 ## Verify before done
 
 - **Run the project type-check** when finished (see the shared TypeScript commands above).
+- Run `bun run api-contract-check` after API-related changes.
 - **Review the finished changes.** Use `typescript-review` to check the full diff and new files, including tests and helpers, against the applicable guidelines. Passing tests, lint, and type-checking don't establish guideline compliance.

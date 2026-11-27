@@ -751,6 +751,7 @@
    - `total`: Total count of matched items
    - `offset`: Applied offset
    - `limit`: Applied limit"
+  {:paging [:limit :offset]}
   [_route-params
    params :- dependency-items-args
    _body _request]
@@ -785,6 +786,7 @@
    - `total`: Total count of matched items
    - `offset`: Applied offset
    - `limit`: Applied limit"
+  {:paging [:limit :offset]}
   [_route-params
    params :- dependency-items-args
    _body _request]

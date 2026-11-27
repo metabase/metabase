@@ -136,6 +136,7 @@
 
 (mr/def ::path-item.request-body
   [:map {:closed true}
+   [:required {:optional true} :boolean]
    [:content [:map-of
               [:enum "application/json" "multipart/form-data"]
               [:map {:closed true}

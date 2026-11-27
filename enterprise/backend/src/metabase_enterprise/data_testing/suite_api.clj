@@ -112,6 +112,7 @@
   "List the runs of a test suite, newest first. A member's outcome has no `test_id`, `name`, or `result`. It has an
   `error` only when the member's test exists and the caller may run it. Every member's `status` is shown, even to a
   caller who cannot read the member's test."
+  {:paging [:limit :offset]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check (data-testing.db/test-suite id))

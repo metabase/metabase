@@ -369,6 +369,7 @@
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
   `last-active-at`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is
   the stable tiebreak."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days query]
     :or   {include-personal-collections false
@@ -413,6 +414,7 @@
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
   `duration-ms`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the
   stable tiebreak."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types min-duration-ms query]
     :or   {include-personal-collections false
@@ -452,6 +454,7 @@
   `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid
   `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.
   `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false
@@ -499,6 +502,7 @@
   (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|`duplicate-count`,
   default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable
   tiebreak."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types
            min-duplicate-count query]

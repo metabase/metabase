@@ -183,7 +183,26 @@
 
 (deftest ^:parallel openapi-all-routes
   (testing "Make sure we can successfully generate an OpenAPI spec for the entire API"
-    (is (open-api/root-open-api-object #'routes/routes))))
+    (let [paths (:paths (open-api/root-open-api-object #'routes/routes))]
+      (is (get-in paths ["/api/testing/restore/{name}" :post]))
+      (is (true? (get-in paths ["/api/measure" :post :requestBody :required])))
+      (is (not (get-in paths ["/api/action/{id}/execute" :post :requestBody :required])))
+      (testing "Offset paging is documented on endpoints that use it"
+        (doseq [[path method expected] [["/api/cache" :get #{"limit" "offset"}]
+                                        ["/api/collection/root/items" :get #{"limit" "offset"}]
+                                        ["/api/card/{id}/series" :get #{"limit"}]
+                                        ["/api/cache" :put #{}]
+                                        ["/api/dashboard/save" :post #{}]
+                                        ["/api/collection/root/items/metadata" :get #{}]]]
+          (testing (str method " " path)
+            (let [operation (get-in paths [path method])
+                  paging    (filter #(and (= :query (:in %)) (#{"limit" "offset"} (:name %)))
+                                    (:parameters operation))]
+              (is (some? operation))
+              (is (= expected (set (map :name paging))))
+              (is (every? #(and (= :integer (get-in % [:schema :type]))
+                                (false? (:required %)))
+                          paging)))))))))
 
 (defn- undeclared-empty-schemas
   "The malli forms that make generating the OpenAPI spec of `routes` fail for compiling to a JSON Schema that accepts

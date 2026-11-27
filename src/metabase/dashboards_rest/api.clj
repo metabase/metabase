@@ -482,6 +482,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/items"
   "Get Dashboard with ID."
+  {:paging [:limit :offset]}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains

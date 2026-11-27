@@ -151,6 +151,7 @@
 
 (api.macros/defendpoint :get "/conversations" :- ListConversationsResponse
   "Return paginated list of AI conversations with summary statistics."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [sort_by sort_dir user_id group_id tenant_id date]} :- ListConversationsQueryParams]
   (api/check-superuser)

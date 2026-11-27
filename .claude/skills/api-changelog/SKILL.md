@@ -1,6 +1,6 @@
 ---
 name: api-changelog
-description: Draft or audit the REST API changelog (docs/developers-guide/api-changelog.md) by semantically diffing the checked-in OpenAPI spec between two git refs. Use when asked "has the API changelog been updated", "what are the breaking API changes in vNN", when cutting a release branch, or when reviewing whether a PR needs a changelog entry.
+description: Draft or audit the REST API changelog (docs/developers-guide/api-changelog.md) by semantically diffing generated OpenAPI specs between two git refs. Use when asked "has the API changelog been updated", "what are the breaking API changes in vNN", when cutting a release branch, or when reviewing whether a PR needs a changelog entry.
 ---
 
 # API changelog
@@ -10,39 +10,14 @@ honest about it?"
 
 ## Ground truth
 
-`resources/openapi/openapi.json` is generated from the Malli endpoint schemas, so
-the spec at any git ref is what the API actually was at that ref. Diff the spec,
-do not read endpoint source or boot a server.
+Generate each revision’s spec from its Malli endpoint schemas with `./bin/mage openapi-diff --refs`. For the current checkout, `bun run generate-openapi` writes `.tmp/openapi/openapi.json`.
 
 Response coverage is partial: about 199 response entries declare a real schema
 and are compared, but roughly 1,700 are description-only `2XX/4XX/5XX` stubs. For
 an endpoint with no declared response schema, a response-shape change is
 invisible here. Say so rather than implying the diff is complete.
 
-### Check the spec is fresh first - it usually is not
-
-The self-healing CI job (`.github/workflows/openapi-check.yml`) only runs on PRs
-labelled `openapi-self-healing`, so the committed spec drifts behind master by
-default. Verify before trusting a diff:
-
-```bash
-./bin/mage openapi-staleness
-```
-
-If the source is newer, regenerate before diffing the new ref:
-
-```bash
-bun run generate-openapi   # rewrites resources/openapi/openapi.json in place
-```
-
-This staleness check only matters when you are diffing the committed spec.
-`--refs` (below) generates each ref's spec from its own source, so it is not
-subject to this drift at all - prefer it.
-
-When you do read a committed spec, a change present in source but absent from
-that spec is a **false negative**: the diff will not report it, and an empty
-result is indistinguishable from an API that did not change. Confirm suspected
-gaps with `grep -rn "defendpoint" src/.../api.clj`.
+Older releases may have a committed spec in `resources/openapi/openapi.json`. The legacy CI job refreshed it only on labelled PRs, so it may omit changes already present in the source. Use `--committed` only when both revisions contain that file.
 
 ## Steps
 
@@ -162,9 +137,7 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
 
 ## Attribution
 
-Find who to ask about an unclear change. Search the endpoint SOURCE, not `openapi.json`: the committed spec only changes on
-PRs carrying the `openapi-self-healing` label, which is usually a later, unrelated
-PR, so its history names the wrong author.
+Find who to ask about an unclear change. Search the endpoint SOURCE, not `openapi.json`: the generated spec has no per-field history.
 
 ```bash
 git log <old-ref>..<new-ref> --oneline -- \

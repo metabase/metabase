@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
-   [metabase.api.docs.regenerate]
+   [metabase.api.docs.regenerate :as regenerate]
    [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
    [metabase.config.core :as config]
@@ -18,7 +18,7 @@
 
 ;; kept on this namespace so existing callers (metabase.api-routes.cmd) are unaffected by the split
 (p/import-vars
- [metabase.api.docs.regenerate
+ [regenerate
   openapi-file-path
   request-spec-regeneration!
   write-openapi-spec-to-file!])
@@ -58,7 +58,8 @@
 
 (defn- json-handler
   "Given the [[metabase.api-routes.core/routes]] handler, return a Ring handler that returns `openapi.json`.
-  Attempts to read from the local file first; if not available, generates on-the-fly."
+  When `mb-enable-openapi-auto-regen` is set, it serves the spec written to [[openapi-file-path]] if that file exists.
+  Otherwise it generates the spec from `root-handler` on each request."
   [root-handler]
   (fn handler*
     ([_request]
@@ -66,10 +67,7 @@
                       (read-openapi-spec-from-file))
                     (do
                       (log/warn "OpenAPI spec file not found, generating on-the-fly")
-                      (merge
-                       (open-api/root-open-api-object root-handler)
-                       {:servers [{:url         ""
-                                   :description "Metabase API"}]})))]
+                      (regenerate/open-api-object root-handler)))]
        {:status 200
         :body   spec}))
 

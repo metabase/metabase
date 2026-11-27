@@ -30,6 +30,7 @@
    [metabase.api.docs.regenerate :as docs.regenerate]
    [metabase.api.macros.defendpoint.closed-schemas :as closed-schemas]
    [metabase.api.macros.defendpoint.open-api]
+   [metabase.api.macros.defendpoint.params :as params]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
@@ -420,29 +421,10 @@
        (str/replace #" " "-")
        (str/replace #":" ""))))
 
-(def ^:private decode-transformer
-  (mtx/transformer
-   (mtx/string-transformer)
-   (mtx/json-transformer)
-   (mtx/default-value-transformer)
-   {:name :api}
-   {:name :normalize}
-   ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
-   ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
-   ;; at every level of nesting. A `{:closed false}` map opts out, for values we deliberately
-   ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
-   ;;
-   ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
-   ;; them before they are recognized.
-   (mtx/strip-extra-keys-transformer)))
-
 (def ^:private encode-transformer
   (mtx/transformer
    (mtx/default-value-transformer)
    {:name :api}))
-
-(defn- decoder [schema]
-  (mr/cached ::decoder schema #(mc/decoder schema decode-transformer)))
 
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
@@ -529,7 +511,7 @@
    schema      :- ::schema-form-or-instance
    params      :- ::decode-params-input]
   (let [params  (or params {})
-        decoded ((decoder schema) params)]
+        decoded ((params/decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (let [explanation (mr/explain schema decoded)]
         (throw (ex-info (format "Invalid %s" (case params-type
@@ -664,7 +646,7 @@
            ...))))
 
   Note that the schema functions are generated only once and reused for better performance.
-  See: [[mr/validator]], [[mr/expaliner]], [[decoder]], and [[encoder]].
+  See: [[mr/validator]], [[mr/expaliner]], [[params/decoder]], and [[encoder]].
 
   This is a drop-in wrapper for a form like
 
@@ -857,6 +839,8 @@
                                                  [:max-file-size  {:optional true} [:or :int symbol? seq?]]
                                                  [:max-file-count {:optional true} [:or :int symbol? seq?]]]]]
    [:deprecated  {:optional true} [:or :boolean :string]]
+   ;; The offset-paging middleware parses these arguments before the endpoint's query schema.
+   [:paging      {:optional true} [:enum [:limit] [:limit :offset]]]
    [:tool        {:optional true} [:map {:closed true}
                                    [:name         :string]
                                    [:title        {:optional true} :string]

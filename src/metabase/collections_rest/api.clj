@@ -310,6 +310,7 @@
 
   To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
   dashboard question."
+  {:paging [:limit :offset]}
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
@@ -318,6 +319,7 @@
 (api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above
   endpoint, but for the root collection)"
+  {:paging [:limit :offset]}
   []
   (present-dashboard-question-candidates
    (dashboard-question-candidates nil)))
@@ -397,7 +399,8 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  {:scope api-scope/data-app}
+  {:paging [:limit :offset]
+   :scope api-scope/data-app}
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
@@ -649,7 +652,8 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  {:scope api-scope/data-app}
+  {:paging [:limit :offset]
+   :scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first

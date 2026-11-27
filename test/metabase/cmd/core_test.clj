@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.api-routes.cmd :as api-routes.cmd]
    [metabase.cmd.core :as cmd]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
@@ -21,6 +22,14 @@
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))
   (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
+
+(deftest generate-openapi-spec-test
+  (dynamic-redefs/with-dynamic-fn-redefs [api-routes.cmd/generate-openapi-spec! identity]
+    (is (= "resources/openapi/openapi.json" (cmd/generate-openapi-spec)))
+    (is (= "custom.json" (cmd/generate-openapi-spec "custom.json"))))
+  (is (nil? (#'cmd/validate "generate-openapi-spec" [])))
+  (is (nil? (#'cmd/validate "generate-openapi-spec" ["custom.json"])))
+  (is (seq (#'cmd/validate "generate-openapi-spec" ["a" "b"]))))
 
 (deftest import-command-test
   (do-with-captured-call-enterprise-calls!

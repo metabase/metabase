@@ -66,6 +66,7 @@
       [:limit  :int]
       [:offset :int]]
   "Get all ai_context entries, paginated."
+  {:paging [:limit :offset]}
   [_route-params
    _query-params]
   (api/check-superuser)

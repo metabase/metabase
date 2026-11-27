@@ -297,7 +297,7 @@
    :examples [["./bin/mage openapi-diff old.json new.json" "Full diff, breaking changes first"]
               ["./bin/mage openapi-diff old.json new.json --severity breaking" "Only what needs a changelog entry"]
               ["./bin/mage openapi-diff --refs release-x.63.x release-x.64.x --severity breaking" "Generate both specs from source, then diff"]
-              ["./bin/mage openapi-diff --refs --committed release-x.63.x master" "Use each ref's committed spec (fast, may be stale)"]
+              ["./bin/mage openapi-diff --refs --committed release-x.63.x release-x.64.x" "Use each ref's committed spec (fast, may be stale)"]
               ["./bin/mage openapi-diff --refs --grouped release-x.63.x master --severity breaking" "One line per distinct change, widest blast radius first"]]
    :arg-schema [:tuple
                 [:string {:name "old" :description "Path to the older openapi.json, or a git ref with --refs"}]
@@ -325,14 +325,6 @@
                     "\n    need no changelog entry. Decide per finding."))
    :requires [[mage.openapi-diff]]
    :task (task! (mage.openapi-diff/cli-diff parsed))}
-
-  openapi-staleness
-  {:group "Tests & checks"
-   :doc "Is the committed OpenAPI spec current relative to the API source? (a stale spec under-reports)"
-   :examples [["./bin/mage openapi-staleness"]]
-   :arg-schema [:tuple]
-   :requires [[mage.openapi-diff]]
-   :task (task! (mage.openapi-diff/cli-staleness parsed))}
 
   affected-modules
   {:group "Modules"

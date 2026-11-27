@@ -180,6 +180,7 @@
   Also takes `group_id`, which filters on group id.
 
   If the user is a sandboxed user, only return themselves regardless of the query parameters."
+  {:paging [:limit :offset]}
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map {:closed true}
@@ -248,6 +249,7 @@
    - If user-visibility is :all or the user is an admin, include all users.
    - If user-visibility is :group, include only users in the same group (excluding the all users group).
    - If user-visibility is :none or the user is sandboxed, include only themselves."
+  {:paging [:limit :offset]}
   []
   ;; defining these functions so the branching logic below can be as clear as possible
   (letfn [(recipient-tenant-filter [] (cond

@@ -1,7 +1,7 @@
 (ns mage.openapi-diff
   "Semantic diff of two OpenAPI specs, for drafting the REST API changelog.
 
-  `resources/openapi/openapi.json` is generated from the Malli endpoint schemas, so the spec at any
+  The OpenAPI spec is generated from the Malli endpoint schemas, so the spec at any
   git ref is what the API was at that ref. Diffing two specs answers \"what changed for a client?\"
   without reading endpoint source or booting a server.
 
@@ -884,13 +884,8 @@
 (defn- generated-spec!
   "Generate `ref`'s spec from source in a throwaway worktree and copy it to `out-path`.
 
-  Generating beats reading the committed blob because the committed spec only updates on PRs
-  labelled `openapi-self-healing`, so it lags the source it claims to describe. Costs a JVM boot.
-
-  Runs the ref's OWN `generate-openapi-spec` command, which writes to the worktree's copy of
-  `resources/openapi/openapi.json`; the worktree is then discarded, so no checkout is modified and
-  no support is needed from the ref beyond that command already existing. Returns nil when the ref
-  cannot be built."
+  Each ref runs its own generator with the documented default output path.
+  Returns nil when the ref cannot be built."
   [ref out-path]
   (let [worktree (str "/tmp/openapi-diff-" (str/replace ref #"[^A-Za-z0-9]" "_") "-" (System/currentTimeMillis))]
     (println (str "  generating " ref " from source (JVM boot, ~2 min)..."))
@@ -907,7 +902,7 @@
                                  (catch clojure.lang.ExceptionInfo e
                                    {:exit 1 :err [(ex-message e)]}))
             generated (io/file worktree spec-path)]
-        (if (and (zero? exit) (.exists generated))
+        (if (and (zero? exit) (.isFile generated))
           (do (io/copy generated (io/file out-path)) out-path)
           (do (println (str "  Could not generate a spec at " ref
                             " (old refs may not build with the current toolchain)."))
@@ -932,80 +927,6 @@
         (do (println (str "  Falling back to " ref "'s committed spec."))
             [(committed-spec! ref out-path) true])
         (u/exit (str "Could not generate a spec at " ref ", and it has no committed spec.") 1)))))
-
-(def ^:private api-source-pathspecs
-  "Everything that can declare an endpoint.
-
-  `src/metabase/**/api.clj` alone matches 65 files while 160 contain `defendpoint`: endpoints also
-  live under `src/metabase/*/api/*.clj` and throughout `enterprise/backend/src`, and the spec
-  carries 106 `/api/ee/` paths. Watching only the narrow pathspec lets the check report
-  `OK: spec is current` while dozens of newer endpoint files sit on disk, which is the exact
-  failure it exists to prevent."
-  ["src/metabase/**/api.clj"
-   "src/metabase/**/api/*.clj"
-   "src/metabase/**/routes.clj"
-   "enterprise/backend/src/**/api.clj"
-   "enterprise/backend/src/**/api/*.clj"
-   "enterprise/backend/src/**/routes.clj"])
-
-(defn- last-commit-epoch
-  "Unix timestamp of the last commit touching `paths`, or nil when none.
-
-  Epoch seconds rather than `%cI`: this history carries both `+08:00` and `Z` offsets, so two
-  same-day commits in different zones sort wrong when ISO strings are compared lexically."
-  [paths]
-  (let [{:keys [out]} (apply shell/sh* {:quiet? true} "git" "log" "-1" "--format=%ct" "--" paths)]
-    (some-> (not-empty (str/trim (str/join out))) parse-long)))
-
-(defn- format-epoch
-  "`epoch` seconds as a local `YYYY-MM-DD` date.
-
-  `java.time` rather than `date -r`: only BSD/macOS reads `-r` as epoch seconds, so on GNU
-  coreutils it means \"the mtime of this file\" and silently prints nothing."
-  [epoch]
-  (str (java.time.LocalDate/ofInstant (java.time.Instant/ofEpochSecond epoch)
-                                      (java.time.ZoneId/systemDefault))))
-
-(defn cli-staleness
-  "Entry point for `./bin/mage openapi-staleness`.
-
-  The self-healing CI job only runs on PRs labelled `openapi-self-healing`, so the committed spec
-  drifts behind master by default. A stale spec makes a diff produce FALSE NEGATIVES: changes that
-  landed in source but were never regenerated are simply not reported."
-  [_]
-  (let [spec-epoch (last-commit-epoch [spec-path])
-        src-epoch  (last-commit-epoch api-source-pathspecs)]
-    (println (str "spec last changed: " (if spec-epoch (format-epoch spec-epoch) "never")))
-    (println (str "API source last changed: " (if src-epoch (format-epoch src-epoch) "never")))
-    (cond
-      (not (and spec-epoch src-epoch))
-      (u/exit "\nCould not determine both dates; verify by hand." 1)
-
-      (< spec-epoch src-epoch)
-      (do
-        (println "\nSTALE: the committed OpenAPI spec predates the newest API source change.")
-        (println "A diff against this spec under-reports. Either regenerate it for the current")
-        (println "working tree with `bun run generate-openapi`, or confirm suspected gaps directly")
-        (println "in source with `grep -rn defendpoint src/metabase/<module>/api.clj`.")
-        (println "\nCommits that touched API source since the spec was last updated:")
-        ;; A commit range, not `--since`: the commit that last updated the spec often touched API
-        ;; source too, and `--since` includes it.
-        (let [spec-sha (first (:out (shell/sh* {:quiet? true} "git" "log" "-1" "--format=%H" "--" spec-path)))
-              {:keys [out]} (apply shell/sh* {:quiet? true}
-                                   "git" "log" "--format=  %h %ad %an | %s" "--date=short"
-                                   (str spec-sha "..HEAD") "--"
-                                   api-source-pathspecs)]
-          (doseq [line (take 20 out)] (println line)))
-        (u/exit 1))
-
-      :else
-      (do (println "\nOK: no endpoint file is newer than the committed spec.")
-          ;; Deliberately narrower than "the spec is current": 661 of the 763 component schemas
-          ;; live outside `.api` namespaces (`metabase.lib.schema.*` and friends, often `.cljc`),
-          ;; so a shared-schema change moves the generated spec without touching any endpoint file.
-          (println "This reads endpoint files only - a change to a shared schema such as")
-          (println "metabase.lib.schema.* will not show up here. `openapi-diff --refs` generates")
-          (println "both specs from source and is the reliable path.")))))
 
 (defn cli-diff
   "Entry point for `./bin/mage openapi-diff`.

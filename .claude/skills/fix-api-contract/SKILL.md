@@ -1,0 +1,107 @@
+---
+name: fix-api-contract
+description: Investigate and fix API contract checker diagnostics, or bring a selected Metabase RTK endpoint under enforcement.
+---
+
+# Fix an API contract
+
+Start from an endpoint name, route, or pasted checker diagnostic. Keep the work scoped to the selected
+contract and affected consumers. Generated declarations are verification inputs under `.tmp/openapi`;
+application code keeps its handwritten types.
+
+## Establish the current contract
+
+Unless this session already generated a snapshot from the current backend source, run:
+
+```sh
+bun run api-contract-check
+```
+
+This generates the Enterprise spec and TypeScript declarations, then checks the frontend contracts.
+It requires the backend JDK/Clojure environment and built CLJS dependencies. Run
+`bun run build-pure:cljs` if those dependencies are missing. If generation fails, resolve that failure
+before interpreting an existing report. Run one generation command at a time per worktree.
+
+Inspect the selected checks, including existing exemptions:
+
+```sh
+bun run api-contract-check-pure --explain <endpointName>
+```
+
+The JSON report is `.tmp/openapi/contracts-report.json`. Use its full check IDs when endpoint names
+are ambiguous. `--explain` filters the displayed results but still runs the complete baseline gate.
+The `-pure` command reuses the snapshot; regenerate after backend edits or switching branches.
+Ordinary `type-check` does not generate or check backend contracts.
+
+## Find which layer is wrong
+
+When `--explain` reports `$: backend type unknown` for a **response**, start at the route's
+`defendpoint` and the matching success status in `.tmp/openapi/openapi.json`.
+
+- If the endpoint has no response schema, use its handler and tests to establish what it returns,
+  then add the Malli response schema following [add-malli-schemas](../add-malli-schemas/SKILL.md).
+- If a schema exists, trace its conversion to the response body in OpenAPI. For a custom Malli
+  predicate whose shape is lost, see `empty-schema-test` for examples of describing its JSON
+  representation with `:json-schema`. Keep an intentionally unconstrained response open when that
+  is the API contract. [Malli conversion examples](../../../test/metabase/util/malli/json_schema_test.clj)
+
+After a backend fix, run `bun run api-contract-check` to regenerate from source, then rerun
+`--explain` for the endpoint before deciding whether its handwritten frontend type needs to change.
+
+Follow the diagnostic's field path through the RTK definition, its handwritten types, the Malli schema,
+handler, hydration and serialization, and relevant endpoint tests. Neither declaration is automatically
+correct. Existing behaviour is evidence but may itself contain a bug.
+
+- Response values must be assignable from backend to frontend. Every frontend response field,
+  including optional nested fields, must be supported by the backend schema; omitting backend fields is allowed.
+- Requests compare the expressions actually sent in URL parameters, `params` and `body`.
+  The RTK argument type may differ from the wire request because the query function transforms it.
+- For a pagination mismatch, trace `limit` and `offset` through the handler and its helpers. The
+  middleware parses both globally. Declare the ones the endpoint uses in its `defendpoint` metadata
+  with `{:paging [:limit :offset]}` or `{:paging [:limit]}`. Remove a parameter from the caller if
+  the endpoint ignores it.
+- A JavaScript `number` in a JSON body can serialize to `null` for `NaN` or infinity. Check the caller and the API’s intended numeric domain before widening a backend schema.
+- Distinguish absent keys from nullable values. A key always emitted with a possible null value
+  is required and nullable, not optional. Check conditional responses and error variants too.
+- An `unverified` result can mean a missing or loose schema, an unresolved frontend type, or an
+  unsupported mapping such as `transformResponse` or `queryFn`. It does not establish a type mismatch.
+
+## Fix the contract
+
+Before editing Malli schemas, read [add-malli-schemas](../add-malli-schemas/SKILL.md).
+Response validation sees Clojure values before JSON serialization. Choose a schema that accepts the
+handler's value and describes its serialized form.
+
+Correct inaccurate schemas or handwritten declarations based on the intended API behaviour, then fix
+affected consumers. TypeScript follows aliases structurally, so keep compatible existing names and
+compositions. A nested mismatch does not require copying the generated entity graph.
+
+Fields added by frontend normalization or store hydration belong to frontend models, not invented
+backend response fields. Separate the raw response contract from that model where necessary.
+Do not silence diagnostics with casts, `any`, unconstrained types, or application imports of generated
+declarations. Do not edit generated output. If the checker cannot represent a valid mapping, fix it with
+a regression test when in scope, or report the unsupported case as remaining work.
+
+## Remove exemptions and verify
+
+`frontend/build/openapi/baseline.json` is an array of `apiName:endpointName` IDs.
+Use the enclosing API or factory declaration name and the endpoint name. An exemption covers
+every request and response check on that endpoint, regardless of its current failures or statuses.
+The checker still reports all results for exempt endpoints. Unexempted endpoints fail the gate for
+any mismatch or unverified check.
+
+A zero exit status can mean the endpoint is still exempted. To adopt an endpoint, resolve all of its
+mismatches and unverified checks, remove its endpoint ID from the baseline, and rerun the gate.
+Intentionally ignored responses remain visible as coverage limitations. Do not bulk-refresh the
+baseline or add exemptions to claim a contract fix.
+
+Fixed or removed endpoints may leave stale exemptions; these are informational and never fail the
+gate. They appear in `staleExemptions` in the report. Remove them when reviewing adoption or cleanup.
+`bun run api-contract-check-pure --update-baseline` replaces the list with all currently failing
+endpoint IDs, removing stale entries and accepting existing failures. Use it for an intentional
+baseline refresh and review the diff; it does not fix the underlying contracts.
+
+Run the full contract command after backend changes, or `api-contract-check-pure` after frontend-only
+changes against the current snapshot. Run `bun run type-check-pure` for affected frontend code and the
+relevant backend tests for schema or handler changes. Regenerate after the final backend edit.
+Report the checks fixed, exemptions removed, validation results, and any remaining failures separately.

@@ -300,6 +300,7 @@
                                                  [:offset :int]
                                                  [:total :int]]
   "Get paginated run history for a transform job."
+  {:paging [:limit :offset]}
   [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]
    query-params :- [:map {:closed true}
                     [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]

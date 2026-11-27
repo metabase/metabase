@@ -138,7 +138,6 @@ dev/serialization_deltas/
 *.tsbuildinfo
 /trace-output/
 /temp-types/
-/frontend/src/metabase-types/openapi
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
@@ -214,6 +213,11 @@ __pycache__/
 # dependency-cruiser output
 dependency-graph.json
 .playwright-cli/
+
+# Default output of the shipped generate-openapi-spec command.
+/resources/openapi/openapi.json
+
+/.tmp/
 
 # mage modules-tree --html output
 /modules.html

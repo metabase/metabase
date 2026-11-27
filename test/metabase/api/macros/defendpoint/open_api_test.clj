@@ -80,6 +80,21 @@
         (testing "the default value is still rendered in the param schema"
           (is (= :api (get-in by-name ["defaulted-param" :schema :default]))))))))
 
+(mr/def ::named-query-params
+  [:map
+   [:database-id ms/PositiveInt]
+   [:table-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+
+(deftest ^:parallel named-params-schema-test
+  (testing "a registry-reference (mr/def) params schema contributes its parameters, same as an inline [:map ...]"
+    (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+      (let [params (#'defendpoint.open-api/schema->params* ::named-query-params (constantly :query) {})]
+        (is (= ["database-id" "table-ids"]
+               (map :name params)))
+        (is (=? [{:in :query, :required true}
+                 {:in :query, :required false}]
+                params))))))
+
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
     (is (=? {:properties {"value" {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
@@ -195,3 +210,15 @@
                                       :docstr "Get it."
                                       :params {}
                                       :body   []})))))))))
+
+(deftest ^:parallel request-body-presence-test
+  (doseq [[schema required?] [[[:map [:name :string]] true]
+                              [[:map [:name {:optional true} :string]] false]
+                              [[:map [:name {:default "untitled"} :string]] false]]]
+    (let [form {:method :post :route {:path "/body"} :docstr "Create." :params {:body {:binding 'body :schema schema}} :body []}]
+      (is (= required? (true? (get-in (#'defendpoint.open-api/path-item "/api/body" form) [:requestBody :required])))
+          (pr-str schema)))))
+
+(deftest ^:parallel nullable-query-schema-test
+  (is (=? [{:name "search" :required false}]
+          (#'defendpoint.open-api/schema->params* [:maybe [:map [:search {:optional true} :string]]] (constantly :query) nil))))
