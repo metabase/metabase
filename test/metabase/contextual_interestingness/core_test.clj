@@ -103,7 +103,7 @@
   (testing "returns nil (never throws) when a pre-flight gate dependency itself throws"
     (doseq [[label redefs]
             [["check-usage-limits! throws"     {#'usage/check-usage-limits!
-                                                (fn [] (throw (ex-info "boom in usage check" {})))}]
+                                                (fn [& _] (throw (ex-info "boom in usage check" {})))}]
              ["resolve-user-permissions throws" {#'scope/resolve-user-permissions
                                                  (fn [_] (throw (ex-info "boom in perms" {})))}]]]
       (testing label

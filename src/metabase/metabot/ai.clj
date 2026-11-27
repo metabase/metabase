@@ -344,6 +344,10 @@
 
 ;;; ------------------------------------------------- Response -------------------------------------------------------
 
+(defn- keyword->name
+  [v]
+  (cond-> v (keyword? v) u/qualified-name))
+
 (defn response-json-schema
   "The JSON Schema the provider gets for the Malli `schema`, as agent tools convert theirs.
   Its `:required` names are strings, as the text fallback of the structured call reads them, a `:re` pattern is its
@@ -358,8 +362,8 @@
                      (map? node)
                      (cond-> node
                        (sequential? (:required node)) (update :required #(mapv name %))
-                       (keyword? (:const node))       (update :const u/qualified-name)
-                       (sequential? (:enum node))     (update :enum (partial mapv #(cond-> % (keyword? %) u/qualified-name))))
+                       (keyword? (:const node))       (update :const keyword->name)
+                       (sequential? (:enum node))     (update :enum (partial mapv keyword->name)))
 
                      :else
                      node))
@@ -523,10 +527,14 @@
     {:audience        :embedded  ; or :internal, or :any for work that serves no one audience
      :prompt          {:system \"…\", :user \"…\", :untrusted {:request user-text}}  ; or {:system, :messages}
      :response        {:schema ::answer, :max-tokens 800, :temperature 0.0}
-     :timeout-ms      4000      ; deadline for the whole call, including retries and backoff
+     :timeout-ms      4000      ; deadline from entry for the wait on the provider, retries and backoff included
      :max-attempts    2         ; attempts for transient failures, 3 by default
      :request-id      \"…\"       ; groups calls into one message; never taken from the client
      :conversation-id \"…\"}      ; links the call to a Metabot conversation in usage logs
+
+  The `:timeout-ms` deadline counts from entry, so the checks count towards it, and the call doesn't start once it has
+  passed.
+  A check blocked on the app DB is not interrupted, so it can hold the caller past the deadline.
 
   Throws `ex-info` with `:type`, `:status-code` and `:error-code`, whose message is translated and safe to show any
   user.
