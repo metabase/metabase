@@ -144,6 +144,20 @@
                        (filter (comp #{"fieldusersettings" "segment"} :model))
                        (sort-by :model)))))))))
 
+(deftest dirty-lists-trashed-sub-collection-by-name-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection folder {:name "Deleted folder" :is_remote_synced true :location (str "/" (:id synced) "/")}
+                     :model/Card       _      {:name "Card in folder" :collection_id (:id folder)}]
+        (push!)
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (:id folder)) {:archived true})
+        (let [dirty (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty"))]
+          (testing "the trashed sub-collection is listed under its own name, not as the root"
+            (is (=? [{:id (:id folder) :model "collection" :name "Deleted folder" :sync_status "removed"
+                      :data {:id (:id folder) :name "Deleted folder"}}]
+                    (filter #(= "collection" (:model %)) dirty)))))))))
+
 (deftest dimension-push-and-pull-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
