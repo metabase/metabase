@@ -32,6 +32,7 @@ const repoRoot = resolve(packageDir, "../..");
 const pkg = readPackageJson(resolve(packageDir, "package.json"));
 
 const uiDir = resolve(repoRoot, "frontend/src/metabase/ui");
+const ttagAdapter = resolve(packageDir, "src/ttag.ts");
 
 // Resolved from @svgr/webpack (a root dependency) so the root needs no @svgr/plugin-* entries.
 const svgrRequire = createRequire(require.resolve("@svgr/webpack"));
@@ -71,6 +72,18 @@ function dayjsPluginExtension(): Plugin {
     resolveId(id) {
       if (/^dayjs\/plugin\/\w+$/.test(id)) {
         return { id: `${id}.js`, external: true };
+      }
+    },
+  };
+}
+
+function ttagEsmInterop(): Plugin {
+  return {
+    name: "mbui-ttag-esm-interop",
+    enforce: "pre",
+    resolveId(id, importer) {
+      if (id === "ttag") {
+        return importer === ttagAdapter ? { id, external: true } : ttagAdapter;
       }
     },
   };
@@ -266,6 +279,7 @@ export default defineConfig({
     }),
     rejectUndeclaredBareImports(),
     dayjsPluginExtension(),
+    ttagEsmInterop(),
     stylesAndFonts(),
   ],
   resolve: {
@@ -305,7 +319,9 @@ export default defineConfig({
     },
     rolldownOptions: {
       external: (id) =>
-        !id.startsWith("dayjs/plugin/") && externalPattern.test(id),
+        id !== "ttag" &&
+        !id.startsWith("dayjs/plugin/") &&
+        externalPattern.test(id),
       output: {
         preserveModules: true,
         preserveModulesRoot: resolve(repoRoot, "frontend"),
