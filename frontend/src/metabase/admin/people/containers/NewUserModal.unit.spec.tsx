@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   findRequestBodies,
-  setupGroupsEndpoint,
+  findRequests,
   setupTenantEntpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -22,6 +22,13 @@ import { NewUserModal } from "./NewUserModal";
 
 const NEW_USER_ID = 42;
 
+const INTERNAL_GROUP = createMockGroup({
+  id: 3,
+  name: "Engineering",
+  magic_group_type: null,
+  is_tenant_group: false,
+});
+
 const ALL_TENANT_USERS = createMockGroup({
   id: 10,
   name: "All tenant users",
@@ -38,6 +45,17 @@ const TENANT_GROUP = createMockGroup({
 
 const TENANT = createMockTenant({ id: 5, name: "Gizmos", slug: "gizmo" });
 
+// The backend filters the group list by the `tenancy` query parameter.
+const setupFilteredGroupsEndpoint = () => {
+  fetchMock.get("path:/api/permissions/group", (call) => {
+    const tenancy = new URL(call.url).searchParams.get("tenancy");
+
+    return tenancy === "external"
+      ? [ALL_TENANT_USERS, TENANT_GROUP]
+      : [INTERNAL_GROUP];
+  });
+};
+
 beforeAll(() => {
   mockSettings({
     "token-features": createMockTokenFeatures({
@@ -49,7 +67,7 @@ beforeAll(() => {
 });
 
 const setup = ({ emailConfigured }: { emailConfigured: boolean }) => {
-  setupGroupsEndpoint([ALL_TENANT_USERS, TENANT_GROUP]);
+  setupFilteredGroupsEndpoint();
   setupTenantEntpoints([TENANT]);
   fetchMock.post(
     "path:/api/user",
@@ -114,6 +132,18 @@ describe("NewUserModal", () => {
     expect(
       await screen.findByRole("dialog", { name: "Create tenant user" }),
     ).toBeInTheDocument();
+  });
+
+  it("asks for tenant groups rather than internal ones", async () => {
+    setup({ emailConfigured: true });
+
+    await screen.findByRole("dialog", { name: "Create tenant user" });
+
+    const groupRequests = (await findRequests("GET")).filter(({ url }) =>
+      url.includes("/api/permissions/group"),
+    );
+    expect(groupRequests).toHaveLength(1);
+    expect(groupRequests[0].url).toContain("tenancy=external");
   });
 
   it("leaves the password to the invite email when SMTP is configured", async () => {

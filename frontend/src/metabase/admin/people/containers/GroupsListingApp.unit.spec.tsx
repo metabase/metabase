@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -9,7 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -72,6 +73,8 @@ const createGroup = async (name: string) => {
       screen.queryByPlaceholderText(/something like/i),
     ).not.toBeInTheDocument(),
   );
+  // The create refetches the group list, so let that response land first.
+  await act(() => fetchMock.callHistory.flush(true));
 
   const [body] = await findRequestBodies({
     method: "POST",
