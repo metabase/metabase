@@ -6,7 +6,6 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
-import { upsellTenants } from "metabase/admin/routes";
 import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
@@ -133,6 +132,16 @@ const tenantUsersPersonalCollectionList = () =>
     Component: TenantUsersPersonalCollectionList,
   }));
 
+/**
+ * A loader of its own rather than the admin routes' copy: importing that module
+ * from a plugin pulls the whole admin route tree into every bundle that loads
+ * the plugins, the embedding SDK among them.
+ */
+const tenantsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/upsells/UpsellTenants"
+  ).then(({ UpsellTenants }) => ({ Component: UpsellTenants }));
+
 export function initializePlugin() {
   PLUGIN_TENANTS.userStrategyRoute = modalRoute(
     "user-strategy",
@@ -144,7 +153,7 @@ export function initializePlugin() {
   );
 
   PLUGIN_TENANTS.tenantsRoutes = (
-    <Route lazy={featureGatedRoute("tenants", outletRoute, upsellTenants)}>
+    <Route lazy={featureGatedRoute("tenants", outletRoute, tenantsUpsellPage)}>
       <Route index element={<TenantsListingApp />} />
       <Route path="" element={<TenantsListingApp />}>
         {modalRoute("new", NewTenantModal)}
