@@ -192,12 +192,15 @@
 (defn- pivot-note
   "The line saying that `card`, when `dashcard` shows it as a pivot table, ran as its plain query, or nil."
   [dashcard card]
-  ;; Its own runner would replace the row limit with the pivot cap. A visualizer dashcard shows its own display, as
-  ;; `process-query-for-card` reads it.
-  (when (= "pivot" (some-> (or (get-in dashcard [:visualization_settings :visualization :display]) (:display card))
-                           name))
-    (str "This card is a pivot table, and these rows are those of its query: any subtotal or total rows on the"
-         " user's screen are not among them.")))
+  ;; Its own runner would replace the row limit with the pivot cap. A visualizer dashcard shows its own display, and
+  ;; the frontend draws one that sets none as a bar chart.
+  (let [settings (:visualization_settings dashcard)
+        shown    (if (contains? settings :visualization)
+                   (or (get-in settings [:visualization :display]) "bar")
+                   (:display card))]
+    (when (= "pivot" (some-> shown name))
+      (str "This card is a pivot table, and these rows are those of its query: any subtotal or total rows on the"
+           " user's screen are not among them."))))
 
 (defn- run-dashboard-card
   "Run the dashcard `dashcard_id` on the dashboard the user is viewing, with the filter values on their screen, for at
