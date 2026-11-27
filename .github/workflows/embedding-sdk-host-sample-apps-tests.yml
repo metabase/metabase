@@ -449,6 +449,8 @@ jobs:
       # which is what creates the `postgres-writable` snapshot the data-app
       # action tests restore.
       - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           if [ "${{ matrix.test_suite }}" = "vite-6-data-app-host-app-e2e" ]; then
             node e2e/runner/run_cypress_ci.js snapshot
