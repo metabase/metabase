@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -16,7 +17,9 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -304,6 +307,20 @@
                (strip
                 (substitute {"price" (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (lib/parsed-param "price") "}]"]))))))))
+
+(deftest ^:parallel field-filter-object-id-test
+  (testing "ObjectId field filter values are substituted as ObjectIds (#38288)"
+    (letfn [(match-value [value]
+              (-> (substitute {"id" (field-filter "_id" :type/MongoBSONID :id value)}
+                              ["[{$match: " (lib/parsed-param "id") "}]"])
+                  mongo.qp/parse-query-string
+                  first
+                  (get "$match")
+                  (get "_id")))]
+      (is (= (ObjectId. "65b7a0aac98b5a9cbac6226e")
+             (match-value "65b7a0aac98b5a9cbac6226e")))
+      (is (= {"$in" [(ObjectId. "65b7a0aac98b5a9cbac6226e") (ObjectId. "65b7a0aac98b5a9cbac6226f")]}
+             (match-value ["65b7a0aac98b5a9cbac6226e" "65b7a0aac98b5a9cbac6226f"]))))))
 
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"

@@ -19,7 +19,8 @@
    [metabase.util.performance :refer [get-in]])
   (:import
    (java.time ZoneOffset)
-   (java.time.temporal Temporal)))
+   (java.time.temporal Temporal)
+   (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +32,7 @@
      t)))
 
 (defn- param-value->str
-  [{coercion :coercion-strategy, :as field} x]
+  [{coercion :coercion-strategy, base-type :base-type, :as field} x]
   (cond
     ;; #30136: Provide a way of using dashboard filter as a variable.
     (and (sequential? x) (= (count x) 1))
@@ -57,6 +58,9 @@
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
     (instance? Temporal x)
     (format "ISODate(\"%s\")" (u.date/format x))
+
+    (isa? base-type :type/MongoBSONID)
+    (format "ObjectId(\"%s\")" (ObjectId. (str x)))
 
     ;; for everything else, splice it in as its string representation
     :else
