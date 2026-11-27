@@ -88,7 +88,7 @@ const TableSectionBase = ({
               <Tooltip label={t`Go to this table`} position="top">
                 <ActionIcon
                   component={Link}
-                  to={Urls.queryBuilderTable(table.id, table.db_id)}
+                  to={Urls.table({ id: table.id, name: table.display_name })}
                   variant="subtle"
                   size="sm"
                   mr="sm"
