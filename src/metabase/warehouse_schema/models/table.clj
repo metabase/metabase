@@ -641,14 +641,15 @@
         (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
 (defn retired-data-authority?
-  "Whether `data-authority`, a string or keyword, is the retired `authoritative`, which older exports can hold."
+  "Whether `data-authority`, a string or keyword, is the retired `authoritative`.
+  Older exports can hold it."
   [data-authority]
   (= "authoritative" (some-> data-authority name)))
 
 (defn- import-data-authorities
   "A transform fn importing data authorities.
-  Older exports can hold the retired `authoritative`, which becomes `ingested` for an upload and `unconfigured`
-  otherwise, as in the app DB migration that retired it."
+  Older exports can hold the retired `authoritative`.
+  It imports as `ingested` for an upload and `unconfigured` otherwise, as the app DB migration that retired it does."
   [_store entities values _opts]
   (mapv (fn [{:keys [is_upload]} v]
           (if (retired-data-authority? v)
@@ -658,15 +659,16 @@
         values))
 
 (defn- keep-configured-data-authorities
-  "The load `items` of Tables, keeping the data authority of a stored Table that has one configured where the entity
-  holds the retired `authoritative`, as the app DB migration that retired it did.
+  "The load `items` of Tables, where an entity holding the retired `authoritative` keeps the stored Table's
+  configured data authority.
   A configured data authority can't go back to `unconfigured`, which an authoritative non-upload imports as."
   [items]
   (mapv (fn [{:keys [entity local] :as item}]
-          (cond-> item
-            (and (retired-data-authority? (:data_authority entity))
-                 (not= :unconfigured (keyword (:data_authority local :unconfigured))))
-            (assoc-in [:row :data_authority] (keyword (:data_authority local)))))
+          (let [stored (keyword (:data_authority local :unconfigured))]
+            (cond-> item
+              (and (retired-data-authority? (:data_authority entity))
+                   (not= :unconfigured stored))
+              (assoc-in [:row :data_authority] stored))))
         items))
 
 (defn- storage-paths

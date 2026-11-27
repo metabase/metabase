@@ -416,8 +416,9 @@
 
 (defn- import-data-authorities
   "A transform fn importing data authorities.
-  Older exports can hold the retired `authoritative`, which imports as not set by a user, so the Table keeps its own
-  value: `ingested` for an upload, `unconfigured` otherwise."
+  Older exports can hold the retired `authoritative`.
+  It imports as not set by a user, so the Table keeps its own value: `ingested` for an upload, `unconfigured`
+  otherwise."
   [_store _entities values _opts]
   (mapv #(when-not (table/retired-data-authority? %) (some-> % keyword)) values))
 

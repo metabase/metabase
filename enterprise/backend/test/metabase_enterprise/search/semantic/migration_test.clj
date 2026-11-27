@@ -552,8 +552,8 @@
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {pub :id} {:db_id db-id :active true :data_layer :final}
                        :model/TableUserSettings _ {:table_id pub :is_published true}
-                       :model/Table {pub-plain :id} {:db_id db-id :active true :data_layer :final}
-                       :model/TableUserSettings _ {:table_id pub-plain :is_published true}]
+                       :model/Table {pub-other :id} {:db_id db-id :active true :data_layer :final}
+                       :model/TableUserSettings _ {:table_id pub-other :is_published true}]
           (let [pgvector       (semantic.env/get-pgvector-datasource!)
                 index-metadata (semantic.env/get-index-metadata)
                 meta-tbl       (keyword (:metadata-table-name index-metadata))
@@ -566,7 +566,7 @@
                                                {:builder-fn jdbc.rs/as-unqualified-maps})]
             ;; the last flag stores legacy_input double-encoded, as a JSON string, which some older rows hold
             (doseq [[model model-id authority double-encoded?] [["table" (str pub)       "authoritative" false]
-                                                                ["table" (str pub-plain) "unconfigured"  false]
+                                                                ["table" (str pub-other) "unconfigured"  false]
                                                                 ["table" "999999"        "authoritative" false]
                                                                 ["table" "999997"        "authoritative" true]
                                                                 ["table" "999998"        "ingested"      false]
@@ -583,7 +583,7 @@
             (let [by-id (u/index-by :model_id #(update % :legacy_input (comp json/decode+kw str)) (rows))]
               (testing "in the curated column and in legacy_input, which results are rebuilt from"
                 (is (= {(str pub)       [true true]
-                        (str pub-plain) [true true]
+                        (str pub-other) [true true]
                         "999999"        [false false]
                         "999997"        [false false]
                         "999998"        [true true]
@@ -594,7 +594,7 @@
                               (vals by-id))))
               (testing "but rows that weren't authoritative are left as they were"
                 (is (=? {:data_authority "unconfigured" :legacy_input {:data_authority "unconfigured"}}
-                        (get by-id (str pub-plain))))))))))))
+                        (get by-id (str pub-other))))))))))))
 
 (deftest official-collection-dashboard-ids-test
   (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so

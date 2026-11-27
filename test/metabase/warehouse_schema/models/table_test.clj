@@ -760,20 +760,20 @@
 (deftest retired-authoritative-data-authority-serdes-import-test
   (testing "Importing an export holding the retired authoritative data_authority maps it as the app DB migration did
             (BOT-2735)"
-    (mt/with-temp [:model/Database {db-id :id}    {}
-                   :model/Table    {upload :id}   {:db_id db-id :is_upload true}
-                   :model/Table    {regular :id}  {:db_id db-id}
-                   :model/Table    {computed :id} {:db_id db-id}
-                   :model/Table    {kept :id}     {:db_id db-id :data_authority :computed}]
-      (doseq [[table-id authority] [[upload   "authoritative"]
-                                    [regular  "authoritative"]
-                                    [computed "computed"]
-                                    [kept     "authoritative"]]]
+    (mt/with-temp [:model/Database {db-id :id}   {}
+                   :model/Table    {upload :id}  {:db_id db-id :is_upload true}
+                   :model/Table    {regular :id} {:db_id db-id}
+                   :model/Table    {other :id}   {:db_id db-id}
+                   :model/Table    {kept :id}    {:db_id db-id :data_authority :computed}]
+      (doseq [[table-id authority] [[upload  "authoritative"]
+                                    [regular "authoritative"]
+                                    [other   "computed"]
+                                    [kept    "authoritative"]]]
         (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id table-id)]))]
           (serialization/load :model/Table [(assoc extracted :data_authority authority)])))
       (testing "imports any other value as it is, and keeps a Table's configured value over the retired one"
-        (is (= {upload :ingested regular :unconfigured computed :computed kept :computed}
-               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular computed kept]])))))))
+        (is (= {upload :ingested regular :unconfigured other :computed kept :computed}
+               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular other kept]])))))))
 
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
