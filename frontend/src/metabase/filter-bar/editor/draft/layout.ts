@@ -62,7 +62,7 @@ const buildValuesPart = ({
     ? {
         type: "values",
         parts: { column: column.column, operator: operator.operator, values },
-        stage: column.stage,
+        targetStage: column.targetStage,
       }
     : null;
 
@@ -167,7 +167,7 @@ export const placeDraftInput = (
 export const insertPillDraft = <F>(
   editor: Editor,
   range: Range,
-  pill: { token: PillToken<F>; stage: number },
+  pill: PillToken<F>,
   parts: DraftParts,
   step: DraftStep,
 ) => {
@@ -175,7 +175,7 @@ export const insertPillDraft = <F>(
   const { content, caretIndex } = layoutDraft(parts, step);
   const node = state.schema.nodeFromJSON({
     type: "draft",
-    attrs: { pill: pill.token, pillStage: pill.stage },
+    attrs: { pill },
     content,
   });
   const children = Array.from({ length: node.childCount }, (_, index) =>

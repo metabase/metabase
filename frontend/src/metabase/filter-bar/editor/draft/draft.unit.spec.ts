@@ -24,7 +24,11 @@ const BETWEEN: FilterOperator = {
   label: "is between",
   valueKind: "range",
 };
-const COLUMN_PART: ColumnPart = { type: "column", column: COLUMN, stage: 0 };
+const COLUMN_PART: ColumnPart = {
+  type: "column",
+  column: COLUMN,
+  targetStage: 0,
+};
 const toOperatorPart = (operator: FilterOperator): OperatorPart => ({
   type: "operator",
   operator,
@@ -52,7 +56,7 @@ const setupPillDraft = (
   insertPillDraft(
     editor,
     { from: 2, to: 2 },
-    { token: pill("C"), stage: 0 },
+    pill("C"),
     { column: COLUMN_PART, operator: operatorPart, values },
     "value",
   );
@@ -452,7 +456,7 @@ describe("draft", () => {
       insertPillDraft(
         testEditor.editor,
         { from: 1, to: 2 },
-        { token: A, stage: 0 },
+        A,
         { column: COLUMN_PART, operator: toOperatorPart(LIST), values: [] },
         "value",
       );

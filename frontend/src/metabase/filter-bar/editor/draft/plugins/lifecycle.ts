@@ -24,9 +24,7 @@ export const removeDraft = (
     ? transaction.replaceWith(
         range.from,
         range.to,
-        transaction.doc.type.schema.nodeFromJSON(
-          pillContent(pill.token, pill.stage),
-        ),
+        transaction.doc.type.schema.nodeFromJSON(pillContent(pill)),
       )
     : transaction.delete(range.from, range.to);
 };

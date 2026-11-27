@@ -8,17 +8,21 @@ export type Draft = { node: DraftNode; pos: number };
 export type FilterEditorRequest<F> = (
   | { type: "edit"; filter: F; pos: number }
   | { type: "new"; column: FilterColumn | null; pos: number }
-) & { stage: number };
+) & { targetStage: number };
 
 export type DraftStep = "column" | "operator" | "value";
 
 export type ColumnPart = {
   type: "column";
   column: FilterColumn;
-  stage: number;
+  targetStage: number;
 };
 export type OperatorPart = { type: "operator"; operator: FilterOperator };
-export type ValuesPart = { type: "values"; parts: FilterParts; stage: number };
+export type ValuesPart = {
+  type: "values";
+  parts: FilterParts;
+  targetStage: number;
+};
 export type DraftPart = ColumnPart | OperatorPart | ValuesPart;
 
 export type DraftState = {

@@ -181,7 +181,11 @@ const getMockColumnGroups = (stage: number): ColumnGroup<MockFilter>[] => [
       {
         items: MOCK_COLUMNS.filter(
           (mockColumn) => mockColumn.stage === stage + 1,
-        ).map(({ column }) => ({ type: "column", column, stage: stage + 1 })),
+        ).map(({ column }) => ({
+          type: "column",
+          column,
+          targetStage: stage + 1,
+        })),
       },
     ],
   },

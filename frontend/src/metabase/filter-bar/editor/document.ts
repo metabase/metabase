@@ -6,6 +6,7 @@ import {
 } from "@tiptap/core";
 import type { Node as PmNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
+import type { NodeViewProps } from "@tiptap/react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -25,7 +26,6 @@ import {
   getConnectorToken,
   getEditedPill,
   getPillToken,
-  getStage,
   pillContent,
   thenContent,
 } from "./nodes/nodes";
@@ -37,9 +37,9 @@ import {
 } from "./nodes/types";
 type DocumentToken<F> = { token: Token<F>; pos: number };
 
-const tokenToNode = <F>(token: Token<F>, stage: number): JSONContent =>
+const tokenToNode = <F>(token: Token<F>): JSONContent =>
   match(token)
-    .with(P.when(isPillToken), (pill) => pillContent(pill, stage))
+    .with(P.when(isPillToken), pillContent)
     .with(P.when(isConnectorToken), connectorContent)
     .exhaustive();
 
@@ -49,9 +49,7 @@ export const tokensToContent = <F>(stages: TokenStages<F>): JSONContent => ({
     {
       type: "paragraph",
       content: join(
-        stages.map((tokens, stage) =>
-          tokens.map((token) => tokenToNode(token, stage)),
-        ),
+        stages.map((tokens) => tokens.map(tokenToNode)),
         thenContent,
       ),
     },
@@ -61,7 +59,7 @@ export const tokensToContent = <F>(stages: TokenStages<F>): JSONContent => ({
 const nodeToToken = <F>(node: PmNode): Token<F> | null =>
   match(node)
     .with(P.when(isPillNode), () => getPillToken<F>(node))
-    .with(P.when(isDraftNode), () => getEditedPill<F>(node)?.token ?? null)
+    .with(P.when(isDraftNode), () => getEditedPill<F>(node))
     .with(P.when(isConnectorNode), () => getConnectorToken(node))
     .otherwise(() => null);
 
@@ -88,39 +86,35 @@ export const documentToTokens = <F>(doc: PmNode): TokenStages<F> =>
 export const getStageAt = (doc: PmNode, pos: number) =>
   findChildren(doc, isThenNode).filter((then) => then.pos < pos).length;
 
+export const getNodeViewStage = ({
+  editor,
+  getPos,
+}: Pick<NodeViewProps, "editor" | "getPos">) =>
+  getStageAt(editor.state.doc, getPos() ?? 0);
+
 const findStageEnd = (doc: PmNode, stage: number) => {
-  const thens = findChildren(doc, isThenNode).map(({ node, pos }) => ({
-    stage: getStage(node),
-    pos,
-  }));
-  const next = thens.find((then) => then.stage > stage);
-  const lastStage = thens.at(-1)?.stage ?? 0;
-  const missingStages = Array.from(
-    { length: Math.max(0, stage - lastStage) },
-    (_, index) => lastStage + 1 + index,
-  );
-  return {
-    pos: next ? next.pos : doc.content.size - 1,
-    missingStages: next ? [] : missingStages,
-  };
+  const thens = findChildren(doc, isThenNode);
+  const next = thens.at(stage);
+  return next
+    ? { pos: next.pos, missingThens: 0 }
+    : { pos: doc.content.size - 1, missingThens: stage - thens.length };
 };
 
 export const placePill = <F>(
   editor: Editor,
   range: { from: number; to: number },
   token: PillToken<F>,
-  stage: number,
+  targetStage: number,
 ) => {
   const { state } = editor;
-  const pill = pillContent(token, stage);
+  const pill = pillContent(token);
   const transaction = state.tr.delete(range.from, range.to);
-  const isCaretStage = getStageAt(transaction.doc, range.from) === stage;
+  const isCaretStage = getStageAt(transaction.doc, range.from) === targetStage;
   const target = isCaretStage
-    ? { pos: range.from, missingStages: [] }
-    : findStageEnd(transaction.doc, stage);
-  const nodes = [...target.missingStages.map(thenContent), pill].map((json) =>
-    state.schema.nodeFromJSON(json),
-  );
+    ? { pos: range.from, missingThens: 0 }
+    : findStageEnd(transaction.doc, targetStage);
+  const thens = Array.from({ length: target.missingThens }, thenContent);
+  const nodes = [...thens, pill].map((json) => state.schema.nodeFromJSON(json));
   transaction.insert(target.pos, nodes);
   const size = nodes.reduce((total, node) => total + node.nodeSize, 0);
   editor.view.dispatch(
@@ -200,5 +194,5 @@ export const placePillAt = <F>(
   editor: Editor,
   pos: number,
   token: PillToken<F>,
-  stage: number,
-) => placePill(editor, getPillRangeAt(editor, pos), token, stage);
+  targetStage: number,
+) => placePill(editor, getPillRangeAt(editor, pos), token, targetStage);

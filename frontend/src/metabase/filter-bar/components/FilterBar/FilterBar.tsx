@@ -8,6 +8,7 @@ import type { FilterBarProps } from "../../types";
 import { FilterPopover } from "../FilterPopover/FilterPopover";
 
 import S from "./FilterBar.module.css";
+import { FilterBarContext } from "./FilterBarContext";
 import { useFilterBarEditor } from "./use-filter-bar-editor";
 
 export const FilterBar = <F,>(props: FilterBarProps<F>) => {
@@ -18,23 +19,18 @@ export const FilterBar = <F,>(props: FilterBarProps<F>) => {
     clear,
     suggestion,
     listKeysRef,
-    filterEditorRequest,
     getFilterEditorRect,
-    applyFilter,
-    closeFilterEditor,
     dismissPopover,
+    filterEditor,
+    context,
   } = useFilterBarEditor(props);
-  const filterEditorContent =
-    filterEditorRequest &&
-    props.adapter.stage(filterEditorRequest.stage).renderFilterEditor?.({
-      ...filterEditorRequest,
-      onChange: applyFilter,
-      onClose: closeFilterEditor,
-    });
+  const { adapter } = props;
 
   return (
     <Flex align="center" gap="sm" pr="xxl" bg="background_page-secondary">
-      <EditorContent className={S.editor} editor={editor} />
+      <FilterBarContext.Provider value={context}>
+        <EditorContent className={S.editor} editor={editor} />
+      </FilterBarContext.Provider>
       {error && (
         <Text size="sm" c="feedback-negative" lh={1}>
           {match(error.code)
@@ -52,9 +48,9 @@ export const FilterBar = <F,>(props: FilterBarProps<F>) => {
         </Text>
       )}
       <FilterPopover
-        adapter={props.adapter}
+        adapter={adapter}
         suggestion={suggestion}
-        filterEditor={filterEditorContent}
+        filterEditor={filterEditor}
         getFilterEditorRect={getFilterEditorRect}
         listKeys={listKeysRef}
         onDismiss={dismissPopover}

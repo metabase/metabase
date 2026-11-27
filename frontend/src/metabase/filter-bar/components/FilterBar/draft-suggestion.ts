@@ -40,8 +40,8 @@ export const createDraftSuggestion = <F>({
   const pick = (editor: Editor, range: Range, item: DraftPick<F>) => {
     const stage = getStageAt(editor.state.doc, range.from);
     match(item)
-      .with({ type: "column" }, ({ column, stage: columnStage }) =>
-        actions.pickColumn(editor, range, column, columnStage ?? stage),
+      .with({ type: "column" }, ({ column, targetStage }) =>
+        actions.pickColumn(editor, range, column, targetStage ?? stage),
       )
       .with({ type: "filter" }, ({ filter }) =>
         actions.commitFilter(editor, range, filter, stage),

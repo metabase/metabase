@@ -23,7 +23,7 @@ import {
   tokensToTrees,
   treesToTokens,
 } from "../../model";
-import type { FilterBarProps } from "../../types";
+import type { FilterBarProps, FilterParts } from "../../types";
 import type { ListKeys } from "../SuggestionList/SuggestionList";
 
 import type { DraftSuggestion } from "./draft-suggestion";
@@ -119,6 +119,14 @@ export const useFilterBarEditor = <F>({
     showError(editor);
   }, [editor, value, adapter, showError]);
 
+  const context = useMemo(
+    () => ({
+      formatValues: (stage: number, parts: FilterParts) =>
+        adapter.stage(stage).formatValues(parts),
+    }),
+    [adapter],
+  );
+
   const hasFilters = value.some((tree) => !isEmptyTree(tree));
   const clear = () => {
     onChange([]);
@@ -142,12 +150,23 @@ export const useFilterBarEditor = <F>({
 
   const applyFilter = (filter: F) => {
     if (editor && filterEditorRequest) {
-      const { pos, stage } = filterEditorRequest;
-      const token = pillToken(filter, adapter.stage(stage).toPill(filter));
-      placePillAt(editor, pos, token, stage);
+      const { pos, targetStage } = filterEditorRequest;
+      const token = pillToken(
+        filter,
+        adapter.stage(targetStage).toPill(filter),
+      );
+      placePillAt(editor, pos, token, targetStage);
     }
     closeFilterEditor();
   };
+
+  const filterEditor =
+    filterEditorRequest &&
+    adapter.stage(filterEditorRequest.targetStage).renderFilterEditor?.({
+      ...filterEditorRequest,
+      onChange: applyFilter,
+      onClose: closeFilterEditor,
+    });
 
   return {
     editor,
@@ -156,10 +175,9 @@ export const useFilterBarEditor = <F>({
     clear,
     suggestion,
     listKeysRef,
-    filterEditorRequest,
     getFilterEditorRect,
-    applyFilter,
-    closeFilterEditor,
     dismissPopover,
+    filterEditor,
+    context,
   };
 };

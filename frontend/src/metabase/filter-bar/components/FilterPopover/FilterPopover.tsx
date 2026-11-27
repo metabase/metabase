@@ -65,8 +65,8 @@ const getDraftListView = <F,>(
     })
     .with(
       { step: "operator", column: P.nonNullable },
-      ({ column: { column, stage } }): DraftListView<F> => {
-        const operators = adapter.stage(stage).operators(column) ?? [];
+      ({ column: { column, targetStage } }): DraftListView<F> => {
+        const operators = adapter.stage(targetStage).operators(column) ?? [];
         const exact = findExactOperator(operators.flat(), query);
         return {
           step: "operator",

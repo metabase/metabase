@@ -29,7 +29,6 @@ export const createPillNode = () =>
   createAtom("pill", {
     addAttributes: () => ({
       token: { default: null, rendered: false },
-      stage: {},
     }),
   });
 
@@ -40,11 +39,7 @@ export const createConnectorNode = () =>
     }),
   });
 
-export const createThenNode = () =>
-  createAtom("then", {
-    selectable: false,
-    addAttributes: () => ({ stage: {} }),
-  });
+export const createThenNode = () => createAtom("then", { selectable: false });
 
 export const createDraftNode = () =>
   Node.create({
@@ -55,7 +50,6 @@ export const createDraftNode = () =>
     selectable: false,
     addAttributes: () => ({
       pill: { default: null, rendered: false },
-      pillStage: { default: null },
     }),
     renderHTML: () => ["span", 0],
   });
@@ -111,12 +105,9 @@ export const operatorContent = (part: OperatorPart): JSONContent => ({
   attrs: { part },
 });
 
-export const pillContent = <F>(
-  token: PillToken<F>,
-  stage: number,
-): JSONContent => ({
+export const pillContent = <F>(token: PillToken<F>): JSONContent => ({
   type: "pill",
-  attrs: { token, stage },
+  attrs: { token },
 });
 
 export const connectorContent = (token: ConnectorToken): JSONContent => ({
@@ -124,15 +115,7 @@ export const connectorContent = (token: ConnectorToken): JSONContent => ({
   attrs: { token },
 });
 
-export const thenContent = (stage: number): JSONContent => ({
-  type: "then",
-  attrs: { stage },
-});
-
-export const getStage = (node: PmNode) => {
-  const value: unknown = node.attrs.stage;
-  return typeof value === "number" ? value : 0;
-};
+export const thenContent = (): JSONContent => ({ type: "then" });
 
 const DRAFT_PART_TYPES = ["column", "operator", "values"];
 
@@ -171,10 +154,7 @@ export const getPillToken = <F>(pill: PmNode): PillToken<F> | null => {
   return isPillTokenValue<F>(value) ? value : null;
 };
 
-export const getEditedPill = <F>(draft: PmNode) => {
-  const token: unknown = draft.attrs.pill;
-  const stage: unknown = draft.attrs.pillStage;
-  return isPillTokenValue<F>(token) && typeof stage === "number"
-    ? { token, stage }
-    : null;
+export const getEditedPill = <F>(draft: PmNode): PillToken<F> | null => {
+  const value: unknown = draft.attrs.pill;
+  return isPillTokenValue<F>(value) ? value : null;
 };

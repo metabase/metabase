@@ -8,8 +8,8 @@ import type {
   FilterColumn,
   FilterOperator,
 } from "../../types";
-import { placePill } from "../document";
-import { getPillToken, getStage } from "../nodes/nodes";
+import { getStageAt, placePill } from "../document";
+import { getPillToken } from "../nodes/nodes";
 import { isPillNode } from "../nodes/types";
 
 import {
@@ -69,10 +69,13 @@ export const createDraftActions = <F>({
     editor: Editor,
     range: Range,
     filter: F,
-    stage: number,
+    targetStage: number,
   ) => {
-    const token = pillToken(filter, getAdapter().stage(stage).toPill(filter));
-    placePill(editor, range, token, stage);
+    const token = pillToken(
+      filter,
+      getAdapter().stage(targetStage).toPill(filter),
+    );
+    placePill(editor, range, token, targetStage);
     return true;
   };
 
@@ -87,7 +90,7 @@ export const createDraftActions = <F>({
     const values = readValues(draft);
     return {
       column: columnPart.column,
-      stage: columnPart.stage,
+      targetStage: columnPart.targetStage,
       operator,
       values:
         operator.valueKind === "multi" ? addListValues(values, text) : values,
@@ -99,7 +102,7 @@ export const createDraftActions = <F>({
     draft: Draft,
     {
       column,
-      stage,
+      targetStage,
       operator,
       values,
     }: NonNullable<ReturnType<typeof getValueStep>>,
@@ -112,12 +115,12 @@ export const createDraftActions = <F>({
       )
       .otherwise(() => values.length > 0);
     const filter = hasValues
-      ? getAdapter().stage(stage).toFilter({ column, operator, values })
+      ? getAdapter().stage(targetStage).toFilter({ column, operator, values })
       : null;
     if (filter === null) {
       return true;
     }
-    return commitFilter(editor, getDraftRange(draft), filter, stage);
+    return commitFilter(editor, getDraftRange(draft), filter, targetStage);
   };
 
   const commitDraft = (editor: Editor, draft: Draft) => {
@@ -187,15 +190,15 @@ export const createDraftActions = <F>({
     editor: Editor,
     range: Range,
     column: FilterColumn,
-    stage: number,
+    targetStage: number,
   ) => {
-    const operators = getAdapter().stage(stage).operators(column);
+    const operators = getAdapter().stage(targetStage).operators(column);
     if (operators === null) {
       editor.commands.deleteRange(range);
-      openFilterEditor({ type: "new", column, pos: range.from, stage });
+      openFilterEditor({ type: "new", column, pos: range.from, targetStage });
       return;
     }
-    const columnPart: ColumnPart = { type: "column", column, stage };
+    const columnPart: ColumnPart = { type: "column", column, targetStage };
     const draft = findDraftStartingAt(editor.state.doc, range.from);
     const parts = draft ? readDraft(draft) : null;
     if (!draft || !parts || !parts.edited) {
@@ -248,18 +251,23 @@ export const createDraftActions = <F>({
     if (!node || !token) {
       return false;
     }
-    const stage = getStage(node);
+    const targetStage = getStageAt(editor.state.doc, pos);
     if (token.content.type !== "parts") {
-      openFilterEditor({ type: "edit", filter: token.filter, pos, stage });
+      openFilterEditor({
+        type: "edit",
+        filter: token.filter,
+        pos,
+        targetStage,
+      });
       return true;
     }
     const { column, operator, values } = token.content.parts;
     return insertPillDraft(
       editor,
       { from: pos, to: pos + node.nodeSize },
-      { token, stage },
+      token,
       {
-        column: { type: "column", column, stage },
+        column: { type: "column", column, targetStage },
         operator: { type: "operator", operator },
         values,
       },

@@ -2,7 +2,7 @@ import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import { UndoRedo } from "@tiptap/extensions";
-import { type NodeViewProps, ReactNodeViewRenderer } from "@tiptap/react";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import {
   type DraftActionsOptions,
@@ -51,7 +51,6 @@ export const createExtensions = <F,>({
   onSuggestionKeyDown,
   ...options
 }: ExtensionsOptions<F>) => {
-  const { getAdapter } = options;
   const actions = createDraftActions(options);
   const withDecorations = {
     update: ({ updateProps }: { updateProps: () => void }) => {
@@ -60,26 +59,13 @@ export const createExtensions = <F,>({
     },
   };
 
-  const PillView = (props: NodeViewProps) => (
-    <PillNodeView {...props} adapter={getAdapter()} />
-  );
-
-  const PartView = (props: NodeViewProps) => (
-    <DraftPartNodeView
-      {...props}
-      formatValues={(stage, parts) =>
-        getAdapter().stage(stage).formatValues(parts)
-      }
-    />
-  );
-
   return [
     Document,
     Paragraph,
     Text,
     UndoRedo,
     createPillNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(PillView, withDecorations),
+      addNodeView: () => ReactNodeViewRenderer(PillNodeView, withDecorations),
     }),
     createConnectorNode().extend({
       addNodeView: () =>
@@ -92,16 +78,16 @@ export const createExtensions = <F,>({
       renderHTML: () => ["span", { class: DraftS.input }, 0],
     }),
     createColumnNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(PartView),
+      addNodeView: () => ReactNodeViewRenderer(DraftPartNodeView),
     }),
     createOperatorNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(PartView),
+      addNodeView: () => ReactNodeViewRenderer(DraftPartNodeView),
     }),
     createRangeAndNode().extend({
       addNodeView: () => ReactNodeViewRenderer(RangeAndNodeView),
     }),
     createValueNode().extend({
-      addNodeView: () => ReactNodeViewRenderer(PartView),
+      addNodeView: () => ReactNodeViewRenderer(DraftPartNodeView),
     }),
     createThenNode().extend({
       addNodeView: () => ReactNodeViewRenderer(ThenNodeView),

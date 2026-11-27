@@ -52,7 +52,7 @@ describe("error highlight", () => {
   it("moves the highlight with the document edits", () => {
     const { editor } = setup([A, AND]);
     highlightErrors(editor);
-    editor.commands.insertContentAt(1, pillContent(B, 0));
+    editor.commands.insertContentAt(1, pillContent(B));
     expect(getErrorPositions(editor)).toEqual([3]);
   });
 

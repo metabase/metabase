@@ -8,22 +8,14 @@ import {
   getDraftPart,
   placeCaretInField,
 } from "../../editor";
-import type { FilterParts } from "../../types";
 import DraftS from "../DraftNodeView/DraftNodeView.module.css";
+import { useFilterBarContext } from "../FilterBar/FilterBarContext";
 import { OperatorPart } from "../OperatorPart/OperatorPart";
 import { PillPart } from "../PillPart/PillPart";
 import { PillRange } from "../PillRange/PillRange";
 
-type DraftPartNodeViewProps = NodeViewProps & {
-  formatValues: (stage: number, parts: FilterParts) => string;
-};
-
-export const DraftPartNodeView = ({
-  editor,
-  node,
-  getPos,
-  formatValues,
-}: DraftPartNodeViewProps) => {
+export const DraftPartNodeView = ({ editor, node, getPos }: NodeViewProps) => {
+  const { formatValues } = useFilterBarContext();
   const part = getDraftPart(node);
 
   const handleClick = (event: MouseEvent<HTMLElement>) => {
@@ -50,23 +42,23 @@ export const DraftPartNodeView = ({
         .with({ type: "operator" }, ({ operator }) => (
           <OperatorPart operator={operator} />
         ))
-        .with({ type: "values" }, ({ parts, stage }) =>
+        .with({ type: "values" }, ({ parts, targetStage }) =>
           match(parts.operator.valueKind)
             .with("range", () => (
               <PillRange
                 parts={parts}
-                formatValues={(range) => formatValues(stage, range)}
+                formatValues={(range) => formatValues(targetStage, range)}
               />
             ))
             .with("multi", () => (
               <PillPart variant="value" part="value" isTruncated={false}>
-                {formatValues(stage, parts)}
+                {formatValues(targetStage, parts)}
                 <span className={DraftS.comma}>{", "}</span>
               </PillPart>
             ))
             .otherwise(() => (
               <PillPart variant="value" part="value" isTruncated={false}>
-                {formatValues(stage, parts)}
+                {formatValues(targetStage, parts)}
               </PillPart>
             )),
         )

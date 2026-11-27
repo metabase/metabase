@@ -19,10 +19,10 @@ import { type BoolOp, PRECEDENCE, isEmptyTree } from "./tree";
 
 export const join = <T>(
   parts: readonly (readonly T[])[],
-  createSeparator: (index: number) => T,
+  createSeparator: () => T,
 ): T[] =>
   parts.flatMap((part, index) =>
-    index === 0 ? [...part] : [createSeparator(index), ...part],
+    index === 0 ? [...part] : [createSeparator(), ...part],
   );
 
 const treeToTokens = <F>(

@@ -1,6 +1,7 @@
 export { insertBoolOp } from "./commands";
 export {
   getPillRectAt,
+  getNodeViewStage,
   getStageAt,
   normalizeDocument,
   placePillAt,
@@ -36,7 +37,6 @@ export {
   getConnectorToken,
   getDraftPart,
   getPillToken,
-  getStage,
 } from "./nodes/nodes";
 export { createBlankClick } from "./plugins/blank-click";
 export { createCaret } from "./plugins/caret";

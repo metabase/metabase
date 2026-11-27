@@ -112,9 +112,9 @@ export const createTestEditorWith = <F = string>(
     insertPillDraft(
       editor,
       { from: pos, to: pos + 1 },
-      { token, stage },
+      token,
       {
-        column: { type: "column", column: EDIT_COLUMN, stage },
+        column: { type: "column", column: EDIT_COLUMN, targetStage: stage },
         operator: { type: "operator", operator: EDIT_OPERATOR },
         values: [],
       },

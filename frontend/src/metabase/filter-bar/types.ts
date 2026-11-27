@@ -47,7 +47,7 @@ export type PillContent =
   | ExpressionPillContent;
 
 export type ColumnItem<F> =
-  | { type: "column"; column: FilterColumn; stage?: number }
+  | { type: "column"; column: FilterColumn; targetStage?: number }
   | { type: "filter"; filter: F; label: string; icon: IconName };
 
 export type ColumnSection<F> = {

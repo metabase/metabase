@@ -1,32 +1,29 @@
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 
-import { getPillToken, getStage, hasErrorDecoration } from "../../editor";
-import type { FilterBarAdapter } from "../../types";
+import {
+  getNodeViewStage,
+  getPillToken,
+  hasErrorDecoration,
+} from "../../editor";
+import { useFilterBarContext } from "../FilterBar/FilterBarContext";
 import { FilterPill } from "../FilterPill/FilterPill";
 
-type PillNodeViewProps<F> = NodeViewProps & {
-  adapter: FilterBarAdapter<F>;
-};
-
-export const PillNodeView = <F,>({
-  node,
-  selected,
-  decorations,
-  deleteNode,
-  adapter,
-}: PillNodeViewProps<F>) => {
-  const token = getPillToken<F>(node);
-  const stageAdapter = adapter.stage(getStage(node));
+export const PillNodeView = (props: NodeViewProps) => {
+  const { node, selected, decorations, deleteNode } = props;
+  const { formatValues } = useFilterBarContext();
+  const token = getPillToken(node);
 
   if (!token) {
     return null;
   }
 
+  const stage = getNodeViewStage(props);
+
   return (
     <NodeViewWrapper as="span">
       <FilterPill
         content={token.content}
-        formatValues={stageAdapter.formatValues}
+        formatValues={(parts) => formatValues(stage, parts)}
         isSelected={selected}
         hasError={hasErrorDecoration(decorations)}
         onRemove={deleteNode}

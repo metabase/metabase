@@ -254,7 +254,7 @@ describe("createDraftActions", () => {
         type: "new",
         column: CREATED_AT,
         pos: 1,
-        stage: 0,
+        targetStage: 0,
       });
     });
 
@@ -320,7 +320,7 @@ describe("createDraftActions", () => {
         type: "edit",
         filter,
         pos: 1,
-        stage: 0,
+        targetStage: 0,
       });
     });
 
