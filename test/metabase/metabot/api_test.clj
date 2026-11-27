@@ -1122,6 +1122,29 @@
             (is (= (streamed-message-id third-response)
                    (metabot.persistence/leaf-external-id conversation-id)))))))))
 
+(deftest agent-streaming-replaces-trailing-aborted-turn-test
+  (testing "resubmit whose parent points before an aborted turn replaces the aborted pair"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"))
+              parent-1        (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                (agent-request conversation-id "second (aborted)"
+                                               :parent_message_id parent-1))
+          (t2/update! :model/MetabotMessage
+                      :id (:id (last (filter #(= :assistant (:role %)) (conversation-rows conversation-id))))
+                      {:finished false})
+          (let [third-response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     (agent-request conversation-id "third"
+                                                                    :parent_message_id parent-1))
+                rows           (conversation-rows conversation-id)]
+            (is (= [:user :assistant] (map :role (filter :deleted_at rows))))
+            (is (= [:user :assistant :user :assistant] (map :role (remove :deleted_at rows))))
+            (is (= (streamed-message-id third-response)
+                   (metabot.persistence/leaf-external-id conversation-id)))))))))
+
 (deftest agent-streaming-retry-test
   (testing "retry_message_id regenerates the response without inserting a new user row"
     (with-mock-streaming-provider!

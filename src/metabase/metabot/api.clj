@@ -94,6 +94,12 @@
                     {:conversation-id (:conversation_id retry-msg) :message-ids delete-ids}))
         {:action :retry :message-ids delete-ids}))))
 
+(defn- failed-assistant-row?
+  "Did the assistant `row`'s turn end with an error or an abort?"
+  [row]
+  (or (some? (:error row))
+      (false? (:finished row))))
+
 (defn- check-parent-msg!
   [messages parent-message-id out-of-sync!]
   (let [parent-msg (when parent-message-id
@@ -107,7 +113,7 @@
                          messages)
             assistants (filter #(= :assistant (:role %)) tail)]
         (cond
-          (and (seq assistants) (every? #(some? (:error %)) assistants))
+          (and (seq assistants) (every? failed-assistant-row? assistants))
           {:action :replace-failed-turn :message-ids (mapv :id tail)}
 
           (nil? parent-message-id) (out-of-sync! :parent-message-missing)
@@ -124,7 +130,7 @@
 
   A retry must target the last live user message. A plain request must either point
   `parent-message-id` at the leaf, or at the assistant message right before trailing
-  turns that all failed (assistant rows with a recorded error) — the failed rows are
+  turns that all failed (assistant rows with a recorded error or an abort) — the failed rows are
   then handed back for replacement."
   [messages parent-message-id retry-message-id out-of-sync!]
   (let [leaf-id (:external_id (u/seek #(= :assistant (:role %)) (rseq messages)))]
