@@ -41,18 +41,25 @@
           (is (=? {:model :model :prompt "How many now?"}
                   (t2/select-one :model/MetabotPrompt :id id))))))))
 
-(deftest update-batch-that-returns-to-the-stored-card-test
-  (testing "a batch that moves a prompt to another Card and back keeps the stored Card and model"
-    (mt/with-temp [:model/Card    {metric-id :id}  {:type :metric}
-                   :model/Card    {model-id :id}   {:type :model}
-                   :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
-      (mt/with-model-cleanup [:model/MetabotPrompt]
-        (let [id (:id (first (metabot-prompt/create-metabot-prompts!
-                              [{:metabot_id metabot-id :card_id metric-id :prompt "How many?"}])))]
-          (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}
-                                                   {:id id :card_id metric-id}])
-          (is (=? {:card_id metric-id :model :metric}
-                  (t2/select-one :model/MetabotPrompt :id id))))))))
+(deftest update-batch-naming-a-prompt-twice-test
+  (mt/with-temp [:model/Card    {metric-id :id}  {:type :metric}
+                 :model/Card    {model-id :id}   {:type :model}
+                 :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
+    (mt/with-model-cleanup [:model/MetabotPrompt]
+      (let [create! #(:id (first (metabot-prompt/create-metabot-prompts!
+                                  [{:metabot_id metabot-id :card_id metric-id :prompt "How many?"}])))]
+        (testing "a batch that moves a prompt to another Card and back keeps the stored Card and model"
+          (let [id (create!)]
+            (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}
+                                                     {:id id :card_id metric-id}])
+            (is (=? {:card_id metric-id :model :metric}
+                    (t2/select-one :model/MetabotPrompt :id id)))))
+        (testing "a batch that moves a prompt to another Card and then edits its text gives it the new Card's model"
+          (let [id (create!)]
+            (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}
+                                                     {:id id :prompt "How many now?"}])
+            (is (=? {:card_id model-id :model :model :prompt "How many now?"}
+                    (t2/select-one :model/MetabotPrompt :id id)))))))))
 
 (deftest listing-reads-the-current-card-type-test
   (testing "the listing gives a prompt the current type of its Card, not the stored model"

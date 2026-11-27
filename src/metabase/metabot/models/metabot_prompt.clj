@@ -54,20 +54,25 @@
 
 (defn- prepare-prompt-updates
   "The `rows` of the prompts of `id->stored`, the id of a MetabotPrompt and the columns to set, each with the model
-  of its prompt: the type of the new Card when the Card changes, and the stored model otherwise."
+  its prompt ends the batch with: the type of the last Card the batch gives the prompt when that Card is new, and the
+  stored model otherwise."
   [rows id->stored]
   ;; The write function is the only author of the model, as on create, so a `:model` in a row is ignored. A SerDes
   ;; import sends the changed columns only, and its exported model can differ from the one create derived here; taking
-  ;; it would change the model without the Card, which the before-update hook refuses. Every row carries a model, so
-  ;; the last row for a prompt stays consistent when a batch names the prompt twice.
-  (let [rows         (filterv (comp id->stored :id) rows)
-        card-change? (fn [{:keys [id] :as row}]
-                       (and (contains? row :card_id)
-                            (not= (:card_id row) (:card_id (id->stored id)))))
-        card-types   (card-types-of (filter card-change? rows))]
-    (mapv (fn [{:keys [id card_id] :as row}]
-            (assoc row :model (if (card-change? row)
-                                (card-types card_id)
+  ;; it would change the model without the Card, which the before-update hook refuses. The rows of one prompt are
+  ;; merged with the last value winning, so each of them carries the model of the Card the prompt ends with.
+  (let [rows          (filterv (comp id->stored :id) rows)
+        id->last-card (reduce (fn [m {:keys [id] :as row}]
+                                (cond-> m (contains? row :card_id) (assoc id (:card_id row))))
+                              {}
+                              rows)
+        id->new-card  (into {}
+                            (remove (fn [[id card-id]] (= card-id (:card_id (id->stored id)))))
+                            id->last-card)
+        card-types    (card-types-of (map (fn [[_ card-id]] {:card_id card-id}) id->new-card))]
+    (mapv (fn [{:keys [id] :as row}]
+            (assoc row :model (if-let [card-id (id->new-card id)]
+                                (card-types card-id)
                                 (:model (id->stored id)))))
           rows)))
 
