@@ -53,20 +53,33 @@
   (mdb/create-batched! :model/MetabotPrompt rows {:before-create add-prompt-models}))
 
 (defn- prepare-prompt-updates
-  "The `rows` of the prompts of `id->stored`, the id of a MetabotPrompt and the columns to set, the model of a prompt
-  whose Card changes set to the type of the new Card."
+  "The `rows` of the prompts of `id->stored`, the id of a MetabotPrompt and the columns to set, each with the model
+  its prompt ends the batch with: the type of the last Card the batch gives the prompt when that Card is new, and the
+  stored model otherwise."
   [rows id->stored]
-  (let [card-types (card-types-of (filter #(contains? % :card_id) rows))]
-    (into []
-          (comp (filter (comp id->stored :id))
-                (map (fn [{:keys [card_id] :as row}]
-                       (cond-> row
-                         (contains? row :card_id) (assoc :model (card-types card_id))))))
+  ;; The write function is the only author of the model, as on create, so a `:model` in a row is ignored. A SerDes
+  ;; import sends the changed columns only, and its exported model can differ from the one create derived here; taking
+  ;; it would change the model without the Card, which the before-update hook refuses. The rows of one prompt are
+  ;; merged with the last value winning, so each of them carries the model of the Card the prompt ends with.
+  (let [rows          (filterv (comp id->stored :id) rows)
+        id->last-card (reduce (fn [m {:keys [id] :as row}]
+                                (cond-> m (contains? row :card_id) (assoc id (:card_id row))))
+                              {}
+                              rows)
+        id->new-card  (into {}
+                            (remove (fn [[id card-id]] (= card-id (:card_id (id->stored id)))))
+                            id->last-card)
+        card-types    (card-types-of (map (fn [[_ card-id]] {:card_id card-id}) id->new-card))]
+    (mapv (fn [{:keys [id] :as row}]
+            (assoc row :model (if-let [card-id (id->new-card id)]
+                                (card-types card-id)
+                                (:model (id->stored id)))))
           rows)))
 
 (mu/defn update-metabot-prompts! :- :nil
   "Apply the changes in each of `rows`, the id of a MetabotPrompt and the columns to set, in one transaction, setting
-  the model of a prompt whose Card changes to the type of the new Card, a missing Card failing on the foreign key."
+  the model of a prompt whose Card changes to the type of the new Card, a missing Card failing on the foreign key.
+  A `:model` in a row is ignored."
   [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
   (mdb/update-batched! :model/MetabotPrompt rows {:before-update prepare-prompt-updates}))
 
@@ -96,6 +109,6 @@
    :transform           {:metabot_id serialization/import-only-transform
                          :card_id (serialization/fk-transform :model/Card)}
    :insert!             create-metabot-prompts!
-   :update!             update-metabot-prompts!
+   :update!             #(do (update-metabot-prompts! %) %)
    :delete!             delete-metabot-prompts!
    :import-dependencies import-dependencies})

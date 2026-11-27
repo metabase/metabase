@@ -80,9 +80,9 @@
        :rand)]]])
 
 (mu/defn prompts
-  "The prompt, model, and Card columns of the MetabotPrompts of the Metabot with `metabot-id` whose Card is within
-  scope, optionally restricted to Cards of `card-type` or the Card with `card-id`, ordered randomly if `sample?` else
-  by Card name, and limited/offset by `limit`/`offset`."
+  "The prompt and Card columns of the MetabotPrompts of the Metabot with `metabot-id` whose Card is within scope, the
+  model being the Card's current type, optionally restricted to Cards of `card-type` or the Card with `card-id`,
+  ordered randomly if `sample?` else by Card name, and limited/offset by `limit`/`offset`."
   [metabot-id :- ms/PositiveInt
    card-type :- [:maybe [:enum "metric" "model"]]
    card-id :- [:maybe ::lib.schema.id/card]
@@ -92,7 +92,7 @@
   (t2/select [:model/MetabotPrompt
               :id
               :prompt
-              :model
+              [:card.type :model]
               [:card_id :model_id]
               [:card.name :model_name]
               :created_at
@@ -246,6 +246,15 @@
   [conversation-id :- :string
    changes         :- :map]
   (t2/update! :model/MetabotConversation :id conversation-id changes))
+
+(mu/defn set-title-of-titleless-conversation! :- :int
+  "Set `title` on the MetabotConversation with `conversation-id` if it still has none, returning the number of rows
+  updated."
+  ;; Toucan selects the matching row for the before-update hook, then keeps this condition map in the UPDATE's WHERE,
+  ;; so a title another writer set since that read makes the update match no row. Keep the conditions a map.
+  [conversation-id :- :string
+   title           :- :string]
+  (t2/update! :model/MetabotConversation {:id conversation-id :title nil} {:title title}))
 
 (mu/defn titleless-conversation
   "The MetabotConversation with `conversation-id` if it has no title, or nil."

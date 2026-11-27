@@ -2,9 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.test-util :as events.tu]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest originator-is-frozen-test
@@ -14,6 +16,17 @@
                  (catch clojure.lang.ExceptionInfo e (ex-data e)))))
     (is (= (mt/user->id :rasta) (t2/select-one-fn :user_id :model/MetabotConversation :id id)))
     (is (pos? (t2/update! :model/MetabotConversation :id id {:title "Renamed"})))))
+
+(deftest set-title-if-missing-keeps-a-concurrent-title-test
+  (testing "a title set by another writer after the read is kept"
+    (mt/with-temp [:model/MetabotConversation {id :id} {:user_id (mt/user->id :rasta)}]
+      ;; The stub reads the row as the real function does, then lets another writer set a title before returning.
+      (mt/with-dynamic-fn-redefs [metabot.db/titleless-conversation
+                                  (fn [conversation-id]
+                                    (u/prog1 (t2/select-one :model/MetabotConversation :id conversation-id :title nil)
+                                      (t2/update! :model/MetabotConversation :id conversation-id {:title "First"})))]
+        (is (= 0 (metabot-conversation/set-metabot-conversation-title-if-missing! id "Second"))))
+      (is (= "First" (t2/select-one-fn :title :model/MetabotConversation :id id))))))
 
 (deftest can-read-and-can-write-test
   (let [rasta-id (mt/user->id :rasta)

@@ -91,16 +91,19 @@
 
 (mu/defn set-metabot-conversation-title-if-missing! :- :int
   "Set the title of the MetabotConversation with `conversation-id` when it has none, returning the number of rows
-  updated."
+  updated.
+  It returns 0 when the conversation has a title, including one another writer set since the read."
   [conversation-id :- :string
    title           :- :string]
   (t2/with-transaction [_conn]
     (if-let [previous (metabot.db/titleless-conversation conversation-id)]
-      (let [changes {:title title}]
-        (metabot.db/update-conversation! conversation-id changes)
-        (events/publish-event! :event/metabot-conversation-update
-                               (events/update-event {(:id previous) previous} [(assoc changes :id (:id previous))]))
-        1)
+      ;; The read does not lock the row, so the update repeats the missing-title condition: the title job of a turn
+      ;; and the backfill task can run on different nodes, and the first title written must win.
+      (let [updated (metabot.db/set-title-of-titleless-conversation! conversation-id title)]
+        (when (pos? updated)
+          (events/publish-event! :event/metabot-conversation-update
+                                 (events/update-event {(:id previous) previous} [{:id (:id previous) :title title}])))
+        updated)
       0)))
 
 (mu/defn seed-metabot-conversation!
