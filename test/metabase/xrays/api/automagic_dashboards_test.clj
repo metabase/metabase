@@ -14,6 +14,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.test :as qp]
+   [metabase.sample-data.core :as sample-data]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -739,3 +740,19 @@
             "decoded adhoc query is a valid MBQL query")
         (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages dq))
             "internal keys are stripped from every stage")))))
+
+(deftest sample-database-number-field-xray-cards-run-test
+  (testing "cards of x-ray for numeric field of sample database only use aggregations its driver supports (#78686)"
+    (mt/with-sample-h2-app-db!
+      (sample-data/extract-and-sync-sample-database!)
+      (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
+        (mt/with-current-user user-id
+          (let [table-id (t2/select-one-pk :model/Table :name "ANALYTIC_EVENTS")
+                field-id (t2/select-one-pk :model/Field :table_id table-id :name "ID")
+                result   (api.magic/get-automagic-dashboard :field (str field-id) nil)]
+            (is (seq (:dashcards result)))
+            (doseq [dashcard (:dashcards result)
+                    :let     [query (get-in dashcard [:card :dataset_query])]
+                    :when    query]
+              (is (not= :failed (:status (qp/process-query (assoc-in query [:info :context] :ad-hoc))))
+                  (str "card failed: " (get-in dashcard [:card :name]))))))))))
