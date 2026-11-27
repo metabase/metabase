@@ -293,7 +293,7 @@ export function Results({
                 !disabled && (
                   <TableVisibilityToggle
                     className={cx(S.visibilityToggle, {
-                      [S.hidden]: item.table.visibility_type == null,
+                      [S.hidden]: item.table.data_layer !== "hidden",
                     })}
                     table={item.table}
                     onUpdate={() => reload?.(value)}
@@ -328,7 +328,7 @@ function ItemLabel({ item, isActive }: { item: FlatItem; isActive: boolean }) {
   const isMutedTable =
     item.type === "table" &&
     item.table != null &&
-    item.table.visibility_type != null &&
+    item.table.data_layer === "hidden" &&
     !isActive;
 
   return (

@@ -23,7 +23,7 @@ function setup({ table }: { table: Table }) {
 describe("TableVisibilityToggle", () => {
   describe("visible table", () => {
     const VISIBLE_TABLE = createMockTable({
-      visibility_type: null,
+      data_layer: "internal",
     });
 
     it("should have a tooltip that says 'Hide table' when a visible table is hovered", async () => {
@@ -62,7 +62,7 @@ describe("TableVisibilityToggle", () => {
       // Unjustified type cast. FIXME
       const body = await (call.options?.body as unknown as Promise<string>);
 
-      expect(JSON.parse(body)).toEqual({ visibility_type: "hidden" });
+      expect(JSON.parse(body)).toEqual({ data_layer: "hidden" });
 
       await waitFor(() => {
         const undo = screen.getByTestId("undo-list");
@@ -100,7 +100,7 @@ describe("TableVisibilityToggle", () => {
 
   describe("hidden table", () => {
     const HIDDEN_TABLE = createMockTable({
-      visibility_type: "hidden",
+      data_layer: "hidden",
     });
 
     it("should have a tooltip that says 'Unhide table' when a visible table is hovered", async () => {
@@ -139,7 +139,7 @@ describe("TableVisibilityToggle", () => {
       // Unjustified type cast. FIXME
       const body = await (call.options?.body as unknown as Promise<string>);
 
-      expect(JSON.parse(body)).toEqual({ visibility_type: null });
+      expect(JSON.parse(body)).toEqual({ data_layer: "internal" });
 
       await waitFor(() => {
         const undo = screen.getByTestId("undo-list");

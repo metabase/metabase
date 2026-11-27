@@ -21,16 +21,16 @@ export function BulkTableVisibilityToggle({
   const [updateTables, { isLoading }] = useUpdateTableListMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const areAllHidden = tables.every((table) => table.visibility_type != null);
+  const areAllHidden = tables.every((table) => table.data_layer === "hidden");
   const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
     const ids = tables
-      .filter((table) => table.visibility_type == null)
+      .filter((table) => table.data_layer !== "hidden")
       .map((table) => table.id);
     const { error } = await updateTables({
       ids,
-      visibility_type: "hidden",
+      data_layer: "hidden",
     });
 
     onUpdateRef.current();
@@ -41,7 +41,7 @@ export function BulkTableVisibilityToggle({
       sendSuccessToast(t`Tables hidden`, async () => {
         const { error } = await updateTables({
           ids,
-          visibility_type: null,
+          data_layer: "internal",
         });
 
         onUpdateRef.current();
@@ -54,7 +54,7 @@ export function BulkTableVisibilityToggle({
     const ids = tables.map((table) => table.id);
     const { error } = await updateTables({
       ids,
-      visibility_type: null,
+      data_layer: "internal",
     });
 
     onUpdateRef.current();
@@ -65,7 +65,7 @@ export function BulkTableVisibilityToggle({
       sendSuccessToast(t`Tables unhidden`, async () => {
         const { error } = await updateTables({
           ids,
-          visibility_type: "hidden",
+          data_layer: "hidden",
         });
 
         onUpdateRef.current();

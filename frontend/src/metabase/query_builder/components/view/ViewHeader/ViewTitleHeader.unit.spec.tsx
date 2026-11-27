@@ -60,6 +60,7 @@ const ORDERS_TABLE = createOrdersTable();
 const PRODUCTS_TABLE = createProductsTable();
 const HIDDEN_ORDERS_TABLE = createOrdersTable({
   visibility_type: "hidden",
+  data_layer: "hidden",
 });
 
 const ORDERS_QUERY = Lib.toJsQuery(

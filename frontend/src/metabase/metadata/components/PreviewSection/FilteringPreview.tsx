@@ -66,6 +66,7 @@ function getPreviewQuery(
             // When table is hidden metabase-lib will give an empty list of columns for it.
             // We need to pretend it is visible so that FilterPickerBody can know about it.
             visibility_type: null,
+            data_layer: "internal",
           },
         ]
       : [],

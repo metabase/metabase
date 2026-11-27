@@ -241,7 +241,7 @@ describe("ViewOnlyTag", () => {
         setup({
           card: createCardFromQuery({ query: ORDERS_JOIN_PRODUCTS_QUERY }),
           tables: [
-            createOrdersTable({ visibility_type }),
+            createOrdersTable({ visibility_type, data_layer: "hidden" }),
             createProductsTable({ visibility_type: null }),
           ],
         });
@@ -257,7 +257,7 @@ describe("ViewOnlyTag", () => {
           card: createCardFromQuery({ query: ORDERS_JOIN_PRODUCTS_QUERY }),
           tables: [
             createOrdersTable({ visibility_type: null }),
-            createProductsTable({ visibility_type }),
+            createProductsTable({ visibility_type, data_layer: "hidden" }),
           ],
         });
 
@@ -276,7 +276,7 @@ describe("ViewOnlyTag", () => {
           card: createCardFromQuery({ query: ORDERS_QUERY }),
           tables: [
             createOrdersTable({ visibility_type: null }),
-            createProductsTable({ visibility_type }),
+            createProductsTable({ visibility_type, data_layer: "hidden" }),
           ],
         });
 

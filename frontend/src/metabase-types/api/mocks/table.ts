@@ -25,7 +25,7 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     created_at: "2021-05-01T00:00:00",
     updated_at: "2021-05-01T00:00:00",
     data_source: null,
-    data_layer: null,
+    data_layer: "internal",
     owner_email: null,
     owner_user_id: null,
     view_count: 0,

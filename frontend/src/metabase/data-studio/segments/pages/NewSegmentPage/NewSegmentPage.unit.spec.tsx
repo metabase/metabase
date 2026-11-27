@@ -293,6 +293,7 @@ describe("NewSegmentPage", () => {
       table: {
         ...TEST_TABLE,
         visibility_type: "hidden",
+        data_layer: "hidden",
       },
     });
     expect(

@@ -92,6 +92,7 @@ const ORDERS_TABLE = createOrdersTable({
     ORDERS_QUANTITY_FIELD,
   ],
   visibility_type: "technical",
+  data_layer: "hidden",
 });
 
 const PRODUCTS_ID_FIELD = createProductsIdField();

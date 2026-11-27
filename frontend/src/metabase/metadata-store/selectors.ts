@@ -58,7 +58,7 @@ const getNormalizedTables = createSelector(
       ? tables
       : Object.fromEntries(
           Object.entries(tables).filter(
-            ([, table]) => table.visibility_type == null,
+            ([, table]) => table.data_layer !== "hidden",
           ),
         ),
 );
@@ -83,7 +83,7 @@ const getNormalizedFields = createSelector(
         const table = tables[field.table_id];
 
         const shouldIncludeTable =
-          !table || table.visibility_type == null || includeHiddenTables;
+          !table || table.data_layer !== "hidden" || includeHiddenTables;
 
         const shouldIncludeField =
           field.visibility_type !== "sensitive" || includeSensitiveFields;
