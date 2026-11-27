@@ -755,13 +755,19 @@
 
 (defn- convert-content-block
   "Convert a single v2 part from `:data` into a frontend message part.
-   Returns nil for parts that should be skipped (unknown types).
+   Returns nil for parts that should be skipped: unknown types, and what only the model
+   read (the `<context>` block and the SQL dialect preload).
 
    `row-role` decides whether text parts render as user or agent parts — v2
    text parts carry no role of their own. The owning message carries the row's
    `external_id`; the per-block `:id` stays unique."
   [row-role part]
   (cond
+    ;; the SQL dialect preload is what the model read, not a call it made; it is a tool part, so this
+    ;; branch comes before the tool branch
+    (preload-part? part)
+    nil
+
     (schema.v2/text-part? part)
     {:id      (str (random-uuid))
      :role    (if (= :user row-role) "user" "agent")

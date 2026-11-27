@@ -102,6 +102,25 @@
                                                    :data {:block "<context>\nCurrent date: x\n</context>\n" :full true}}
                                                   {:type "text" :text "hi there"}]}))))))
 
+(deftest ^:parallel messages->client-messages-dialect-preload-part-test
+  (let [row      {:role :assistant
+                  :data [{:type "tool-load_skill" :toolCallId "skill_preload_sql-dialect-sqlite"
+                          :state "output-available" :input {:ids ["sql-dialect-sqlite"]}
+                          :output {:output "SQL rules for the **sqlite** SQL dialect."}}
+                         {:type "step-start"}
+                         {:type "tool-load_skill" :toolCallId "call-1"
+                          :state "output-available" :input {:ids ["create-sql-query"]}
+                          :output {:output "skill body"}}
+                         {:type "text" :text "hi there"}]}
+        tool-ids (fn [message] (keep #(when (= "tool_call" (:type %)) (:id %)) (:parts message)))]
+    (testing "the stored SQL dialect preload is what the model read, so the chat does not show it"
+      (is (= ["call-1"] (tool-ids (client-message row)))))
+    (testing "the admin conversation page does not show it either"
+      (is (= [[] ["call-1"]]
+             (mapv tool-ids (metabot-persistence/messages->threaded-client-messages
+                             [{:id 1 :external_id "u1" :role :user :data [{:type "text" :text "q"}]}
+                              (merge {:id 2 :external_id "a1"} row)])))))))
+
 (deftest ^:parallel messages->client-messages-resolved-tool-part-test
   (testing "resolved tool part carries args and result"
     (let [[part] (:parts (client-message
@@ -1499,7 +1518,15 @@
                                :arguments (json/encode {:ids ["sql-dialect-postgresql"]})}]}
                 {:role :tool :tool_call_id preload-call-id :content "SQL rules for the **postgres** engine."}
                 {:role :assistant :content "There are 5."}]
-               (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))
+               (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+      (testing "a reloaded conversation does not show the preload, and the next turn still knows it is replayed"
+        (is (= [[{:type "text" :message "How many orders?"}]
+                [{:type "text" :message "There are 5."}]]
+               (mapv #(mapv (fn [part] (select-keys part [:type :message])) (:parts %))
+                     (:messages (metabot-persistence/conversation-detail conversation-id)))))
+        (is (= #{"sql-dialect-postgresql"}
+               (metabot-persistence/replayed-skill-preloads
+                (metabot-persistence/live-messages conversation-id))))))))
 
 (defn- replayed-skill-preloads
   "Calls [[metabase.metabot.persistence/replayed-skill-preloads]], or returns `::undefined` when that var is missing.
