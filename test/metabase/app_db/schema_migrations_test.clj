@@ -5691,7 +5691,7 @@
                 computed  "computed"
                 ingested  "ingested"
                 plain     "unconfigured"}
-               (t2/select-pk->fn :data_authority :metabase_table :id [:in ids])))
-        (testing "and the retired value in settings is cleared, as not set by a user"
-          (is (= {upload nil, admin-set nil, computed "computed"}
-                 (t2/select-fn->fn :table_id :data_authority :metabase_table_user_settings :table_id [:in ids]))))))))
+               (t2/select-pk->fn :data_authority :metabase_table :id [:in ids]))))
+      (testing "the retired value in settings is cleared, as not set by a user, and other values are kept"
+        (is (= {upload nil, admin-set nil, computed "computed"}
+               (t2/select-fn->fn :table_id :data_authority :metabase_table_user_settings :table_id [:in ids])))))))

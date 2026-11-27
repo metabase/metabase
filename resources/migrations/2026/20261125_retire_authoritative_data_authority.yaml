@@ -1,7 +1,8 @@
 ## Retire the `authoritative` Table data authority, which made every uploaded CSV count as curated.
 ## Uploaded tables become `ingested`; any other table an admin marked `authoritative` becomes `unconfigured`.
-## Tables with any other data authority keep it. In Table user settings, where a value means a user set it, the
-## retired value is cleared, as a serialization import of it is.
+## Tables with any other data authority keep it.
+## In Table user settings, where a value means a user set it, the retired value is cleared, as a serialization
+## import of it is.
 
 databaseChangeLog:
   - changeSet:
