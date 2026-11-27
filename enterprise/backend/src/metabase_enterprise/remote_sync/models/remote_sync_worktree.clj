@@ -83,31 +83,27 @@
 ;;; ------------------------------------------------------ Reads -------------------------------------------------------
 
 (defenterprise non-default-worktrees
-  "Every worktree but the default one, with the `:remote-sync` feature or without it, so that a lost feature keeps every
-  request in the default worktree."
+  "Every worktree but the default one."
   :feature :none
   []
   (remote-sync.db/worktrees))
 
 (defenterprise non-default-worktree
-  "The worktree other than the default one with `worktree-id`, or nil, which no request can choose without the
-  `:remote-sync` feature."
-  :feature :remote-sync
+  "The worktree other than the default one with `worktree-id`, or nil."
+  :feature :none
   [worktree-id]
   (remote-sync.db/non-default-worktree worktree-id))
 
 (defenterprise user-non-default-worktree-id
-  "The id of the worktree other than the default one the user with `user-id` checked out, or nil, which no request works
-  in without the `:remote-sync` feature."
-  :feature :remote-sync
+  "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
+  :feature :none
   [user-id]
   (remote-sync.db/checkout-worktree-id user-id))
 
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 
 (defenterprise delete-checkouts!
-  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree, with the `:remote-sync`
-  feature or without it."
+  "Delete the checkouts of the users with `user-ids`, who then work in the default worktree."
   :feature :none
   [user-ids]
   (remote-sync.db/delete-checkouts! user-ids))
