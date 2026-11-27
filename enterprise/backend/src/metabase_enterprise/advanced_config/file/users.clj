@@ -58,7 +58,8 @@
                        (log/info (u/colorize :green "Creating new User"))
                        (u/the-id (first (user/create-users! [user])))))]
       ;; passwords live in the AuthIdentity, not on the User row
-      (auth-identity/set-password! user-id password))))
+      (when-not (auth-identity/current-password? user-id password)
+        (auth-identity/set-password! user-id password)))))
 
 (defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]

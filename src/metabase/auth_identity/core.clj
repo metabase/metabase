@@ -14,6 +14,7 @@
 ;; Import model query functions
 (p/import-vars
  [auth-identity
+  current-password?
   hash-password-credentials
   set-password!
   reset-token-hash])
