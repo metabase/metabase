@@ -11120,9 +11120,14 @@ databaseChangeLog:
   - changeSet:
       id: tgq14z
       author: ranquild
-      comment: Add v_worktree_field, a row of metabase_field for each worktree with the values set in its metabase_field_user_settings, and its worktree_id
+      comment: Add v_worktree_field, a row of metabase_field for each worktree with the values set in its metabase_field_user_settings, and its worktree_id; on Postgres and H2 a union of the rows whose fk_target_field_id is stored and those whose user set it, so that both use an index on it, which MySQL cannot since it materializes a view with a union
       changes:
         - sqlFile:
+            dbms: postgresql,h2
+            path: ../worktree_views/field/v1/worktree_field_postgres_h2.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
             path: ../worktree_views/field/v1/worktree_field.sql
             relativeToChangelogFile: true
       rollback:
