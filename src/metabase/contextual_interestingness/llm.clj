@@ -17,8 +17,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- response-schema
-  "The Malli schema of the answer. `metric_description` is required iff the caller signals the chart has no authored
-  description (so we ask the LLM to produce one), and optional otherwise, so an answer that adds one anyway is kept.
+  "The Malli schema of the answer.
+  The `metric_description` is required iff the caller signals the chart has no authored description (so we ask the
+  LLM to produce one), and optional otherwise, so an answer that adds one anyway is kept.
   Only the chart description and the score must be there: [[parse-response]] decides what else is usable."
   [generate-metric?]
   [:map {:closed true}
@@ -96,14 +97,16 @@ Always return a single object matching the supplied schema. Do not respond with 
     :timeline-events (:timeline_events chart-config)}))
 
 (def ^:private user-request
-  "The `:user` half of the prompt: the request alone. Everything variable goes in `:untrusted`."
+  "The `:user` half of the prompt: the request alone.
+  Everything variable goes in `:untrusted`."
   "Score and describe the chart in the <chart> block for the question in the <user_question> block.")
 
 (defn- build-prompt
-  "The [[metabase.metabot.core/call-llm!]] prompt. Instructions live in [[rubric-preamble]] and [[user-request]]; every
-  variable part is an `:untrusted` block, which the call fences with a boundary no value can forge. Everything
-  variable here is attacker-reachable: card descriptions and chart titles are user-authored, series names and
-  sample values come straight out of the warehouse, and the compiled SQL has parameter values inlined.
+  "The [[metabase.metabot.core/call-llm!]] prompt.
+  Instructions live in [[rubric-preamble]] and [[user-request]], and every variable part is an `:untrusted` block,
+  which the call delimits with a boundary no value can forge.
+  Everything variable here is attacker-reachable: card descriptions and chart titles are user-authored, series names
+  and sample values come straight out of the warehouse, and the compiled SQL has parameter values inlined.
 
   The blocks keep the order the rubric describes: an array map of five or fewer keys keeps its insertion order."
   [{:keys [chart-config card-description chart-slicing sql context-string stats]}]
@@ -135,8 +138,8 @@ Always return a single object matching the supplied schema. Do not respond with 
          :reasoning          (some-> (:reasoning response) str/trim not-empty)}))))
 
 (def feature-id
-  "The [[metabase.metabot.core/call-llm!]] feature id of the scorer. Explorations run in the Metabase app, so its calls
-  serve the `:internal` audience."
+  "The [[metabase.metabot.core/call-llm!]] feature id of the scorer.
+  Explorations run in the Metabase app, so its calls serve the `:internal` audience."
   :contextual-interestingness/score)
 
 (defn llm-call!

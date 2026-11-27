@@ -45,9 +45,9 @@
                 [403 "Metabot is not enabled."]))))
 
 (def audiences
-  "Who a one-call AI feature serves, which picks the Metabot setting it needs: `:internal` the Metabase app
-  (`metabot-enabled?`), `:embedded` an embed (`embedded-metabot-enabled?`), and `:any` work for no one audience,
-  such as a background job, which needs either one on."
+  "Who a one-call AI feature serves, which picks the Metabot setting it needs.
+  The `:internal` audience is the Metabase app (`metabot-enabled?`), `:embedded` an embed (`embedded-metabot-enabled?`),
+  and `:any` work for no one audience, such as a background job, which needs either setting on."
   #{:internal :embedded :any})
 
 (defn audience-enabled?
@@ -59,17 +59,18 @@
     :any      (any-metabot-enabled?)))
 
 (defn metabot-audience
-  "The audience of `metabot`, a Metabot row: `:embedded` for the embedded Metabot, `:internal` for any other. The same
-  rule as [[check-metabot-enabled!]]."
+  "The audience of `metabot`, a Metabot row: `:embedded` for the embedded Metabot, `:internal` for any other.
+  The same rule as [[check-metabot-enabled!]]."
   [metabot]
   (if (= (:entity_id metabot) embedded-metabot-id) :embedded :internal))
 
 (defn request-audience
-  "The audience of `request`, for an endpoint that has no Metabot to go by: `:embedded` when it comes from an
-  `<iframe>` (`X-Metabase-Embedded`) or sends any `X-Metabase-Client`, which the SDK, modular embedding, data apps and
-  MCP apps all do and the Metabase app does only inside an `<iframe>`. `:internal` otherwise. Matches the frontend's
-  choice between the two settings. The headers come from the client, so this picks a product setting and is not a
-  security boundary."
+  "The audience of `request`, for an endpoint that has no Metabot to go by.
+  It is `:embedded` when the request comes from an `<iframe>` (`X-Metabase-Embedded`) or sends any
+  `X-Metabase-Client`, which the SDK, modular embedding, data apps and MCP apps all do and the Metabase app does only
+  inside an `<iframe>`, and `:internal` otherwise.
+  Matches the frontend's choice between the two settings.
+  The headers come from the client, so this picks a product setting and is not a security boundary."
   [request]
   (if (or (request/embedded? request)
           (not (str/blank? (get-in request [:headers "x-metabase-client"]))))

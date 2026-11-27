@@ -204,14 +204,15 @@
   "Run `body` with the LLM provider faked, so a test of a one-call feature runs the real checks, prompt rendering and
   answer validation of [[metabase.metabot.ai/call-llm!]].
 
-  `answer` is what the model sends back: a map is the arguments of its structured-output tool call, a string is a text
-  reply, and a Throwable is thrown by the provider, such as the ex-info of a provider API error. A function of the
-  request gives one of those per request. Both model roles resolve to [[fake-llm-model]], and the current user holds
-  every Metabot permission unless `scope/*current-user-metabot-permissions*` is bound already. Rasta is the current
-  user unless one is bound already, since a `:trigger :user` feature refuses to run without one.
+  The `answer` is what the model sends back: a map is the arguments of its structured-output tool call, a string is
+  a text reply, and a Throwable is thrown by the provider, such as the ex-info of a provider API error.
+  A function of the request gives one of those per request.
+  Both model roles resolve to [[fake-llm-model]].
+  The current user holds every Metabot permission unless `scope/*current-user-metabot-permissions*` is bound already.
+  Rasta is the current user unless one is bound already, since a `:trigger :user` feature refuses to run without one.
 
-  `sent` is bound to an atom of the requests the provider got, as the provider adapter sees them, so a test can
-  assert on the prompt.
+  The `sent` symbol is bound to an atom of the requests the provider got, as the provider adapter sees them, so a
+  test can assert on the prompt.
 
     (with-fake-llm! [sent {:title \"Orders by month\"}]
       (metabot.ai/call-llm! :metabot/conversation-title opts)
