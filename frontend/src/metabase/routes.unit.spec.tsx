@@ -157,7 +157,6 @@ describe("application routes", () => {
 
     it("applies the AI Auditing guard after redirecting", async () => {
       mockRenderMonitorOutlet = true;
-      PLUGIN_AUDIT.isAiAuditingEnabled = true;
       PLUGIN_AUDIT.getAiAuditingRoutes = () => (
         <Route path="usage" element={<div>AI Auditing</div>} />
       );

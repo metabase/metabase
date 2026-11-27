@@ -50,7 +50,6 @@ export function initializePlugin() {
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
     PLUGIN_AUDIT.AnalyticsExportStatus = AnalyticsExportStatus;
     PLUGIN_AUDIT.CollectionExportAnalytics = CollectionExportAnalytics;
-    PLUGIN_AUDIT.isAiAuditingEnabled = true;
     if (hasPremiumFeature("ai_controls")) {
       registerAiAuditingPagePrefetch();
     } else {

@@ -21,6 +21,8 @@ import {
   PLUGIN_MONITOR,
   PLUGIN_MONITOR_TOOLS,
 } from "metabase/plugins";
+import { notFoundRoute } from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Navigate, Route, redirect } from "metabase/router";
@@ -129,33 +131,16 @@ const logLevelsModal = () =>
     loadCodeEditor(),
   ]).then(([{ LogLevelsModal }]) => LogLevelsModal);
 
-const getDependencyDiagnosticsUpsellRoutes = () => (
-  <>
-    <Route index lazy={dependencyDiagnosticsUpsellPage} />
-    <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
-  </>
-);
-
-const getContentDiagnosticsUpsellRoutes = () => (
-  <>
-    <Route index lazy={contentDiagnosticsUpsellPage} />
-    <Route path="*" lazy={contentDiagnosticsUpsellPage} />
-  </>
-);
-
-const getSessionsUpsellRoutes = () => (
-  <>
-    <Route index lazy={sessionManagementUpsellPage} />
-    <Route path="*" lazy={sessionManagementUpsellPage} />
-  </>
-);
-
-const getApiKeyUsageUpsellRoutes = () => (
-  <>
-    <Route index lazy={apiKeyUsageUpsellPage} />
-    <Route path="*" lazy={apiKeyUsageUpsellPage} />
-  </>
-);
+/** What a section slot's whole URL space shows when no plugin fills it. */
+const sectionFallbackRoutes = (page: PluginRoute) =>
+  function getSectionFallbackRoutes() {
+    return (
+      <>
+        <Route index lazy={page} />
+        <Route path="*" lazy={page} />
+      </>
+    );
+  };
 
 export function getMonitorRoutes() {
   return (
@@ -166,7 +151,7 @@ export function getMonitorRoutes() {
           <Route path="dependency-diagnostics">
             {(
               PLUGIN_MONITOR.getDependencyDiagnosticsRoutes ??
-              getDependencyDiagnosticsUpsellRoutes
+              sectionFallbackRoutes(dependencyDiagnosticsUpsellPage)
             )()}
           </Route>
         </Route>
@@ -175,7 +160,7 @@ export function getMonitorRoutes() {
           <Route path="content-diagnostics">
             {(
               PLUGIN_MONITOR.getContentDiagnosticsRoutes ??
-              getContentDiagnosticsUpsellRoutes
+              sectionFallbackRoutes(contentDiagnosticsUpsellPage)
             )()}
           </Route>
         </Route>
@@ -205,7 +190,8 @@ export function getMonitorRoutes() {
         <Route element={<CanAccessApiKeyUsage />}>
           <Route path="api-key-usage">
             {(
-              PLUGIN_MONITOR.getApiKeyUsageRoutes ?? getApiKeyUsageUpsellRoutes
+              PLUGIN_MONITOR.getApiKeyUsageRoutes ??
+              sectionFallbackRoutes(apiKeyUsageUpsellPage)
             )()}
           </Route>
         </Route>
@@ -216,12 +202,20 @@ export function getMonitorRoutes() {
 
         <Route element={<CanAccessSessionManagement />}>
           <Route path="sessions">
-            {(PLUGIN_MONITOR.getSessionsRoutes ?? getSessionsUpsellRoutes)()}
+            {(
+              PLUGIN_MONITOR.getSessionsRoutes ??
+              sectionFallbackRoutes(sessionManagementUpsellPage)
+            )()}
           </Route>
         </Route>
 
         <Route element={<CanAccessAiAuditing />}>
-          <Route path="ai-auditing">{PLUGIN_AUDIT.getAiAuditingRoutes()}</Route>
+          <Route path="ai-auditing">
+            {(
+              PLUGIN_AUDIT.getAiAuditingRoutes ??
+              sectionFallbackRoutes(notFoundRoute)
+            )()}
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />
