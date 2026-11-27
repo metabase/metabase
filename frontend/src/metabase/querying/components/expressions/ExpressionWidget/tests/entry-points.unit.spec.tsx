@@ -32,7 +32,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
-  getCompletionLabels,
   getEditorValue,
   getEditorView,
   pressKey,
@@ -226,13 +225,16 @@ describe("ExpressionWidget > entry points > offset", () => {
     return { query, database };
   }
 
-  /** Types the start of offset() and resolves with the offered completions. */
-  async function typeOffsetPrefix() {
+  /**
+   * Types a fragment of `Offset` that also matches other functions and
+   * columns, and resolves with the labels of the completion list it opens.
+   */
+  async function typeOffsetFragment() {
     await findFocusedEditor();
     // the editor offers the functions that the database supports
     await act(() => fetchMock.callHistory.flush(true));
-    await typeText("Off");
-    return getCompletionLabels();
+    await typeText("set");
+    return waitForCompletions();
   }
 
   async function replaceFormula(formula: string) {
@@ -246,7 +248,9 @@ describe("ExpressionWidget > entry points > offset", () => {
     setupFilterPicker(createOffsetSetup());
     await userEvent.click(await screen.findByText("Custom Expression"));
 
-    expect(await typeOffsetPrefix()).not.toContain("Offset");
+    const labels = await typeOffsetFragment();
+    expect(labels).toContain("isEmpty");
+    expect(labels).not.toContain("Offset");
 
     await replaceFormula("Offset([Total], -1) > 0");
     expect(
@@ -267,7 +271,9 @@ describe("ExpressionWidget > entry points > offset", () => {
     setupExpressionStep(createOffsetSetup());
     await userEvent.click(screen.getByRole("img", { name: "add icon" }));
 
-    expect(await typeOffsetPrefix()).not.toContain("Offset");
+    const labels = await typeOffsetFragment();
+    expect(labels).toContain("isEmpty");
+    expect(labels).not.toContain("Offset");
 
     await replaceFormula("Offset([Total], -1)");
     expect(
@@ -287,8 +293,9 @@ describe("ExpressionWidget > entry points > offset", () => {
     setupAggregationPicker(createOffsetSetup());
     await userEvent.click(await screen.findByText("Custom Expression"));
 
-    await typeOffsetPrefix();
-    expect(await waitForCompletions()).toContain("Offset");
+    const labels = await typeOffsetFragment();
+    expect(labels).toContain("isEmpty");
+    expect(labels).toContain("Offset");
 
     await replaceFormula("Offset(Sum([Total]), -1)");
     const doneButton = screen.getByRole("button", { name: "Done" });
