@@ -59,7 +59,7 @@ export function FilterStep({
     sourceClause: Lib.FilterClause,
     targetClause: Lib.FilterClause,
   ) => {
-    const nextQuery = Lib.swapClauses(
+    const nextQuery = Lib.moveClause(
       query,
       stageIndex,
       sourceClause,

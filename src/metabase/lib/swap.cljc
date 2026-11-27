@@ -46,3 +46,27 @@
       (let [swapped (lib.util/update-query-stage query stage-number do-swap source-path target-path source-clause target-clause)]
         (lib.remove-replace/update-stale-references swapped stage-number query))
       query)))
+
+(defn- move-in-list [clauses from-index to-index]
+  (let [clause    (nth clauses from-index)
+        remaining (into (subvec clauses 0 from-index) (subvec clauses (inc from-index)))]
+    (into (conj (subvec remaining 0 to-index) clause) (subvec remaining to-index))))
+
+(defn- do-move [stage [source-root source-index] [_target-root target-index]]
+  (update stage source-root #(move-in-list (vec %) source-index target-index)))
+
+(defn move-clause
+  "Given a `query` and `stage-number`, and two clauses of the same list on this stage, moves `source-clause` to the
+  position of `target-clause`, shifting the clauses in between by one. Can be used to reorder clauses in the UI.
+
+  Returns the query with the clause moved.
+
+  If either clause is not found inside the same list, emits a warning and returns the query unchanged."
+  [query stage-number source-clause target-clause]
+  (let [stage       (lib.util/query-stage query stage-number)
+        source-path (uuid-match stage source-clause)
+        target-path (uuid-match stage target-clause)]
+    (if (and source-path target-path (= (first source-path) (first target-path)))
+      (let [moved (lib.util/update-query-stage query stage-number do-move source-path target-path)]
+        (lib.remove-replace/update-stale-references moved stage-number query))
+      query)))

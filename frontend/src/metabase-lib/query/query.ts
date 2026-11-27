@@ -111,13 +111,13 @@ export function isSameClause(clause: Clause, otherClause: Clause): boolean {
   return ML.same_clause_QMARK_(clause, otherClause);
 }
 
-export function swapClauses(
+export function moveClause(
   query: Query,
   stageIndex: number,
   sourceClause: Clause,
   targetClause: Clause,
 ): Query {
-  return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
+  return ML.move_clause(query, stageIndex, sourceClause, targetClause);
 }
 
 export function primarySourceTableId(query: Query): TableId | null {

@@ -193,3 +193,53 @@
           (is (=? days-after (lib/find-matching-column days-ref cols-after))))
         (let [[_= _opts months-ref _value] (first (lib/filters after))]
           (is (=? months-after (lib/find-matching-column months-ref cols-after))))))))
+
+(deftest ^:parallel move-clause-inserts-at-target-position-test
+  (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count))
+                       (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                       (lib/aggregate (lib/min (meta/field-metadata :orders :total))))
+        [a1 a2 a3] (lib/aggregations query)]
+    (testing "moving last clause onto first one shifts others right"
+      (is (= [a3 a1 a2] (lib/aggregations (lib/move-clause query -1 a3 a1)))))
+    (testing "moving first clause onto last one shifts others left"
+      (is (= [a2 a3 a1] (lib/aggregations (lib/move-clause query -1 a1 a3)))))
+    (testing "moving clause onto its neighbour exchanges them"
+      (is (= [a2 a1 a3] (lib/aggregations (lib/move-clause query -1 a1 a2)))))))
+
+(deftest ^:parallel move-clause-keeps-other-lists-test
+  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/filter (lib/= (meta/field-metadata :products :category) "Doohickey"))
+                    (lib/filter (lib/is-null (meta/field-metadata :orders :discount)))
+                    (lib/filter (lib/!= (meta/field-metadata :people :source) "Facebook"))
+                    (lib/aggregate (lib/count)))
+        [f1 f2 f3] (lib/filters query)
+        [agg]      (lib/aggregations query)
+        moved      (lib/move-clause query -1 f3 f1)]
+    (testing "only moved list changes"
+      (is (= [f3 f1 f2] (lib/filters moved)))
+      (is (= (m/dissoc-in query [:stages 0 :filters])
+             (m/dissoc-in moved [:stages 0 :filters]))))
+    (testing "clauses of different lists are not moved"
+      (is (= query (lib/move-clause query -1 agg f1))))))
+
+(deftest ^:parallel move-clause-breakouts-with-downstream-refs-test
+  (testing "moving breakout keeps downstream refs aimed at same columns"
+    (let [base            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                              (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                              (lib/breakout (meta/field-metadata :products :category))
+                              (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :day))
+                              lib/append-stage)
+          [months _ days] (lib/visible-columns base)
+          before          (-> base
+                              (lib/filter (lib/= months 4))
+                              (lib/expression "days-ago" (lib/- (lib/now) days)))
+          [brk1 brk2 brk3] (lib/breakouts before 0)
+          after           (lib/move-clause before 0 brk3 brk1)
+          cols-after      (lib/visible-columns after)
+          source-uuid     (fn [col-ref] (:lib/source-uuid (lib/find-matching-column col-ref cols-after)))
+          [_- _opts _now days-ref]    (first (lib/expressions after))
+          [_= _opts months-ref _value] (first (lib/filters after))]
+      (is (= [brk3 brk1 brk2] (lib/breakouts after 0)))
+      (is (= (:lib/source-uuid days) (source-uuid days-ref)))
+      (is (= (:lib/source-uuid months) (source-uuid months-ref))))))

@@ -50,7 +50,7 @@ export function SortStep({
     sourceClause: Lib.OrderByClause,
     targetClause: Lib.OrderByClause,
   ) => {
-    const nextQuery = Lib.swapClauses(
+    const nextQuery = Lib.moveClause(
       query,
       stageIndex,
       sourceClause,

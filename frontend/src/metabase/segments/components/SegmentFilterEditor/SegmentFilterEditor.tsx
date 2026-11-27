@@ -47,7 +47,7 @@ export function SegmentFilterEditor({
 
   const handleReorderFilter = useCallback(
     (sourceClause: Lib.FilterClause, targetClause: Lib.FilterClause) => {
-      const nextQuery = Lib.swapClauses(
+      const nextQuery = Lib.moveClause(
         query,
         STAGE_INDEX,
         sourceClause,
