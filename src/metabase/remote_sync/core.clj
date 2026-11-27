@@ -25,4 +25,5 @@
   ensure-built-ins!
   non-default-worktree
   non-default-worktrees
-  user-non-default-worktree-id])
+  user-non-default-worktree-id
+  worktrees-enabled?])

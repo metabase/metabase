@@ -82,6 +82,12 @@
 
 ;;; ------------------------------------------------------ Reads -------------------------------------------------------
 
+(defenterprise worktrees-enabled?
+  "Whether a request can work in a worktree other than the default one, which it can with the `:remote-sync` feature."
+  :feature :remote-sync
+  []
+  true)
+
 (defenterprise non-default-worktrees
   "Every worktree but the default one."
   :feature :none

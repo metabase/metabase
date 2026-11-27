@@ -8,6 +8,12 @@
 
 (set! *warn-on-reflection* true)
 
+(defenterprise worktrees-enabled?
+  "Whether a request can work in a worktree other than the default one, which none can without the enterprise code."
+  metabase-enterprise.remote-sync.models.remote-sync-worktree
+  []
+  false)
+
 (defenterprise non-default-worktrees
   "Every worktree but the default one, of which there are none without the enterprise code."
   metabase-enterprise.remote-sync.models.remote-sync-worktree

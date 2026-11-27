@@ -20,13 +20,15 @@
 
 (defn- header-scope
   "The scope the `X-Metabase-Worktree-Id` header `value` names, `0` naming the default worktree, or an error response:
-  401 without a user, 403 for a user who is not an admin, 400 for a worktree that is not there."
+  401 without a user, 403 for a user who is not an admin, 400 for a worktree that is not there or when worktrees are not
+  enabled."
   [value]
   (cond
     (nil? api/*current-user-id*) {:response (text-response 401 (tru "Unauthenticated"))}
     (not api/*is-superuser?*)    {:response (text-response 403 (tru "Only admins can choose a worktree."))}
     (= "0" value)                {:scope mdb/default-worktree-scope}
-    :else                        (if-let [worktree (some-> value parse-long remote-sync/non-default-worktree)]
+    :else                        (if-let [worktree (when (remote-sync/worktrees-enabled?)
+                                                     (some-> value parse-long remote-sync/non-default-worktree))]
                                    {:scope (mdb/worktree-id->scope (:id worktree))}
                                    {:response (text-response 400 (tru "There is no worktree {0}." value))})))
 
@@ -37,7 +39,8 @@
     value                                       (header-scope value)
     (nil? api/*current-user-id*)                {:scope mdb/default-worktree-scope}
     (empty? (remote-sync/non-default-worktrees)) {:scope {:type :all}}
-    api/*is-superuser?*                         {:scope (mdb/worktree-id->scope
+    (and api/*is-superuser?*
+         (remote-sync/worktrees-enabled?))      {:scope (mdb/worktree-id->scope
                                                          (or (remote-sync/user-non-default-worktree-id api/*current-user-id*)
                                                              mdb/default-worktree-id))}
     :else                                       {:scope mdb/default-worktree-scope}))
