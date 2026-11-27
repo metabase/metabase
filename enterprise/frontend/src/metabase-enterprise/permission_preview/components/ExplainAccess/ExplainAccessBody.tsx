@@ -1,12 +1,14 @@
-import { t } from "ttag";
+import { Fragment } from "react";
+import { jt, t } from "ttag";
 
-import { Flex, Stack } from "metabase/ui";
+import { Code, Flex, Stack } from "metabase/ui";
 import type {
   PermissionDebugAnswer,
   PermissionDebugCollection,
   PermissionDebugDecision,
   PermissionDebugImpersonation,
   PermissionDebugReasons,
+  PermissionDebugRoute,
   PermissionDebugSqlCard,
   PermissionDebugTable,
 } from "metabase-types/api";
@@ -17,7 +19,6 @@ import type { PreviewTarget } from "../types";
 import type { ExplainDetail } from "./ExplainAccessDetail";
 import {
   BodyText,
-  FoldStatus,
   PlainStatus,
   Row,
   SheetCard,
@@ -33,23 +34,19 @@ import {
   type TableStatus,
   getCollectionName,
   getItemNoun,
-  getRouteSentence,
   getSourceText,
   getSqlCardsToWarnAbout,
   getSubject,
   getTableProblemNotes,
   getTableStatusDisplay,
-  getTableStatusLabel,
   getVerdict,
   groupTablesByValue,
   sortTablesByStatus,
 } from "./explain";
 import {
-  type ValueStatus,
   getCollectionStatus,
   getCreateQueriesStatus,
   getDownloadStatus,
-  getViewDataStatus,
 } from "./labels";
 
 interface ExplainAccessBodyProps {
@@ -98,7 +95,6 @@ export function ExplainAccessBody({
           }
         />
       )}
-      {reasons && <ConnectionCard reasons={reasons} />}
       {tables.length > 0 && (
         <ExploringCard
           item={item}
@@ -123,15 +119,6 @@ export function ExplainAccessBody({
               permission: "download-results",
             })
           }
-        />
-      )}
-      {query && (
-        <AllPermissionsCard
-          isQuestion={itemType === "question"}
-          collection={collection}
-          tables={tables}
-          target={target}
-          onOpen={onOpenDetail}
         />
       )}
       <SummaryLink subject={subject} onClick={onOpenSummary} />
@@ -218,8 +205,9 @@ function DataCard({
   const blocked = ofStatus("blocked");
   const opening = ofStatus("cant-load", "filtered");
   const viewable = ofStatus("can-view");
+  const hasOnlyTable = rows.length === 1;
   const hasToggleRow =
-    opening.length > 0 ||
+    (opening.length > 0 && !hasOnlyTable) ||
     blocked.length > 1 ||
     viewable.length > 1 ||
     (isDashboard && sqlCards.length > 1);
@@ -239,23 +227,37 @@ function DataCard({
         reasons={reasons}
         target={target}
       />
-      {opening.map(({ table, status }) => (
-        <ToggleRow
-          key={table["table-id"]}
-          name={table.name}
-          database={table["db-name"]}
-          initiallyOpen
-          status={
-            <StatusButton
-              status={getTableStatusDisplay(status)}
-              rowName={table.name}
-              onClick={() => onOpen(table["table-id"])}
-            />
-          }
-        >
+      {opening.map(({ table, status }) => {
+        const statusButton = (
+          <StatusButton
+            status={getTableStatusDisplay(status)}
+            rowName={table.name}
+            onClick={() => onOpen(table["table-id"])}
+          />
+        );
+        const tableRules = (
           <TableRules table={table} reasons={reasons} target={target} />
-        </ToggleRow>
-      ))}
+        );
+        // A lone table has nothing to fold away from: its rules stay shown
+        return hasOnlyTable ? (
+          <Fragment key={table["table-id"]}>
+            <Row name={table.name} database={table["db-name"]}>
+              {statusButton}
+            </Row>
+            {tableRules}
+          </Fragment>
+        ) : (
+          <ToggleRow
+            key={table["table-id"]}
+            name={table.name}
+            database={table["db-name"]}
+            initiallyOpen
+            status={statusButton}
+          >
+            {tableRules}
+          </ToggleRow>
+        );
+      })}
       <TableRows
         rows={viewable}
         hasChevronSlot={hasToggleRow}
@@ -286,7 +288,7 @@ interface TableRowsProps {
 }
 
 /** Two or more tables with one status fold into a row; one stays its own row. */
-function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
+function TableRows({ rows, hasChevronSlot, reasons, onOpen }: TableRowsProps) {
   if (rows.length === 0) {
     return null;
   }
@@ -296,6 +298,7 @@ function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
       name={table.name}
       database={table["db-name"]}
       detail={getSourceText(table["view-data"].groups)}
+      note={getConnectionNotes(table, reasons)}
       hasChevronSlot={rows.length === 1 && hasChevronSlot}
     >
       <StatusButton
@@ -308,11 +311,10 @@ function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
   if (rows.length === 1) {
     return items;
   }
-  const label = getTableStatusLabel(rows[0].status);
   return (
     <ToggleRow
       name={t`${rows.length} tables`}
-      status={<FoldStatus label={label} />}
+      summary={<PlainStatus status={getTableStatusDisplay(rows[0].status)} />}
     >
       {items}
     </ToggleRow>
@@ -326,7 +328,16 @@ interface SqlCardRowsProps {
 
 /** A dashboard's SQL cards: two or more fold into a row; one stays its own row. */
 function SqlCardRows({ cards, hasChevronSlot }: SqlCardRowsProps) {
-  const status = <FoldStatus label={t`Full access`} />;
+  // The rows inside have no status of their own, so this stays visible when open
+  const status = (
+    <PlainStatus
+      status={{
+        label: t`Full access`,
+        icon: "eye",
+        color: "feedback-positive",
+      }}
+    />
+  );
   if (cards.length === 1) {
     return (
       <Row name={cards[0].name} hasChevronSlot={hasChevronSlot}>
@@ -359,6 +370,7 @@ export function TableRules({ table, reasons, target }: TableRulesProps) {
 
   return (
     <Stack gap="sm">
+      {getConnectionNotes(table, reasons)}
       {notes.map((note) => (
         <BodyText key={note}>{note}</BodyText>
       ))}
@@ -385,38 +397,57 @@ export function TableRules({ table, reasons, target }: TableRulesProps) {
   );
 }
 
-function ConnectionCard({ reasons }: { reasons: PermissionDebugReasons }) {
+/** How a table's database connects for this person: impersonation or database routing */
+function getConnectionNotes(
+  table: PermissionDebugTable,
+  reasons: PermissionDebugReasons,
+) {
   const impersonations = (reasons.impersonations ?? []).filter(
-    (impersonation) => impersonation["enforced?"],
+    (impersonation) =>
+      impersonation["db-id"] === table["db-id"] && impersonation["enforced?"],
   );
-  const routes = reasons.routes ?? [];
-
-  if (impersonations.length === 0 && routes.length === 0) {
-    return null;
-  }
-  return (
-    <SheetCard title={t`Connection`}>
-      <Stack gap="sm" py="sm">
-        {routes.map((route) => (
-          <BodyText key={`route-${route["db-id"]}`}>
-            {getRouteSentence(route)}
-          </BodyText>
-        ))}
-        {impersonations.map((impersonation) => (
-          <BodyText key={`impersonation-${impersonation["db-id"]}`}>
-            {getImpersonationSentence(impersonation)}
-          </BodyText>
-        ))}
-      </Stack>
-    </SheetCard>
+  const routes = (reasons.routes ?? []).filter(
+    (route) => route["db-id"] === table["db-id"],
   );
+  return [
+    ...routes.map((route) => (
+      <BodyText key={`route-${route["db-id"]}`}>
+        {getRouteSentence(route)}
+      </BodyText>
+    )),
+    ...impersonations.map((impersonation) => (
+      <BodyText key={`impersonation-${impersonation["db-id"]}`}>
+        {getImpersonationSentence(impersonation)}
+      </BodyText>
+    )),
+  ];
 }
 
+/** Values from the data go in code, so what is fixed text and what is a value is clear */
 function getImpersonationSentence(impersonation: PermissionDebugImpersonation) {
-  const database = impersonation["db-name"];
+  const attribute = <Code key="attribute">{impersonation.attribute}</Code>;
+  const role = <Code key="role">{impersonation.value}</Code>;
   return impersonation["missing?"]
-    ? t`${database}: every query fails: no value for ${impersonation.attribute}.`
-    : t`${database}: connects as the role ${impersonation.value}, set by ${impersonation.attribute}.`;
+    ? jt`Impersonation: every query fails, because there is no value for ${attribute}.`
+    : jt`Impersonation: connects as the role ${role}, set by ${attribute}.`;
+}
+
+function getRouteSentence(route: PermissionDebugRoute) {
+  const attribute = <Code key="attribute">{route.attribute}</Code>;
+  const value = <Code key="value">{route.value}</Code>;
+  const destination = (
+    <Code key="destination">{route["destination-name"]}</Code>
+  );
+  switch (route.status) {
+    case "routed":
+      return jt`Database routing: queries go to ${destination}, picked by ${attribute} = ${value}.`;
+    case "router":
+      return jt`Database routing: queries stay on this database (${attribute} = ${value}).`;
+    case "missing-value":
+      return jt`Database routing: every query fails, because there is no value for ${attribute}.`;
+    case "no-destination":
+      return jt`Database routing: every query fails, because no database is named ${value}.`;
+  }
 }
 
 interface ExploringCardProps {
@@ -430,10 +461,21 @@ function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
     tables,
     (table) => table["create-queries"].value,
   );
-  const names =
-    tables.length === 1 ? tables[0].name : t`${tables.length} tables`;
   const [first] = values;
-  const isShared = values.length === 1;
+  const rows = tables.map((table) => (
+    <Row
+      key={table["table-id"]}
+      name={table.name}
+      database={table["db-name"]}
+      detail={getSourceText(table["create-queries"].groups)}
+    >
+      <StatusButton
+        status={getCreateQueriesStatus(table["create-queries"].value)}
+        rowName={table.name}
+        onClick={() => onOpen(table["table-id"])}
+      />
+    </Row>
+  ));
 
   return (
     <SheetCard
@@ -443,31 +485,24 @@ function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
         text: t`Create queries on each table decides whether the person can explore the ${item}'s results or start a new question from those results.`,
       }}
     >
-      <Row
-        name={names}
-        tooltip={tables
-          .map((table) => `${table.name} · ${table["db-name"]}`)
-          .join(", ")}
-        detail={
-          isShared
-            ? getSourceText(first.tables[0]["create-queries"].groups)
-            : null
-        }
-      >
-        <StatusButton
-          status={
-            isShared
-              ? getCreateQueriesStatus(first.value)
-              : {
-                  label: t`Varies by table`,
-                  icon: "permissions_limited",
-                  color: "feedback-warning",
-                }
+      {tables.length === 1 ? (
+        rows
+      ) : (
+        <ToggleRow
+          name={t`${tables.length} tables`}
+          summary={
+            values.length === 1 ? (
+              <PlainStatus status={getCreateQueriesStatus(first.value)} />
+            ) : (
+              <BodyText c="text-secondary" flex="none">
+                {t`Varies by table`}
+              </BodyText>
+            )
           }
-          rowName={names}
-          onClick={() => onOpen(first.tables[0]["table-id"])}
-        />
-      </Row>
+        >
+          {rows}
+        </ToggleRow>
+      )}
     </SheetCard>
   );
 }
@@ -483,7 +518,7 @@ function DownloadCard({ tables, download, onOpen }: DownloadCardProps) {
     <SheetCard>
       <ToggleRow
         name={t`Download`}
-        status={
+        summary={
           <PlainStatus
             status={getDownloadStatus(DOWNLOAD_VALUES[download.decision])}
           />
@@ -523,106 +558,4 @@ function getDownloadVerdict(download: PermissionDebugAnswer) {
     return t`Their downloads are capped below the full result.`;
   }
   return t`They can download the full result.`;
-}
-
-interface AllPermissionsCardProps {
-  isQuestion: boolean;
-  collection?: PermissionDebugCollection;
-  tables: PermissionDebugTable[];
-  target: PreviewTarget;
-  onOpen: (detail: ExplainDetail) => void;
-}
-
-interface PermissionRow {
-  key: string;
-  name: string;
-  /** A table's database, which the tooltip of its cut-off row names */
-  database?: string;
-  status: ValueStatus;
-  detail: ExplainDetail;
-}
-
-function AllPermissionsCard({
-  isQuestion,
-  collection,
-  tables,
-  target,
-  onOpen,
-}: AllPermissionsCardProps) {
-  const rows: PermissionRow[] = [
-    ...(collection
-      ? [
-          {
-            key: "collection",
-            name: t`${getCollectionName(collection, target)} · Collection access`,
-            status: getCollectionStatus(collection.value),
-            detail: { kind: "collection", collection } as const,
-          },
-        ]
-      : []),
-    ...tables.flatMap((table): PermissionRow[] => [
-      {
-        key: `${table["table-id"]}-view-data`,
-        name: t`${table.name} · View data`,
-        database: table["db-name"],
-        status: getViewDataStatus(table["view-data"].value),
-        detail: {
-          kind: "table",
-          tableId: table["table-id"],
-          permission: "view-data",
-        },
-      },
-      {
-        key: `${table["table-id"]}-create-queries`,
-        name: t`${table.name} · Create queries`,
-        database: table["db-name"],
-        status: getCreateQueriesStatus(table["create-queries"].value),
-        detail: {
-          kind: "table",
-          tableId: table["table-id"],
-          permission: "create-queries",
-        },
-      },
-      ...(isQuestion
-        ? [
-            {
-              key: `${table["table-id"]}-download-results`,
-              name: t`${table.name} · Download results`,
-              database: table["db-name"],
-              status: getDownloadStatus(table["download-results"].value),
-              detail: {
-                kind: "table",
-                tableId: table["table-id"],
-                permission: "download-results",
-              } as const,
-            },
-          ]
-        : []),
-    ]),
-  ];
-
-  const shownCount = (collection ? 1 : 0) + tables.length + 1;
-
-  if (rows.length <= shownCount) {
-    return null;
-  }
-  return (
-    <SheetCard>
-      <ToggleRow name={t`All permissions (${rows.length})`} status={null}>
-        {rows.map((row) => (
-          <Row
-            key={row.key}
-            name={row.name}
-            tooltip={row.database && `${row.name} · ${row.database}`}
-          >
-            <StatusButton
-              status={row.status}
-              rowName={row.name}
-              onClick={() => onOpen(row.detail)}
-            />
-          </Row>
-        ))}
-      </ToggleRow>
-    </SheetCard>
-  );
 }

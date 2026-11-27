@@ -6,7 +6,6 @@ import type {
   PermissionDebugCollection,
   PermissionDebugGroupValue,
   PermissionDebugReasons,
-  PermissionDebugRoute,
   PermissionDebugTable,
 } from "metabase-types/api";
 
@@ -219,19 +218,6 @@ export function getApplyingGroups(groups: PermissionDebugGroupValue[]) {
 export function getSourceText(groups: PermissionDebugGroupValue[]) {
   const names = getApplyingGroups(groups).map(getGroupLabel);
   return names.length > 0 ? t`from ${names.join(", ")}` : null;
-}
-
-export function getRouteSentence(route: PermissionDebugRoute) {
-  switch (route.status) {
-    case "routed":
-      return t`${route["db-name"]}: queries go to ${route["destination-name"]}, picked by ${route.attribute} = ${route.value}.`;
-    case "router":
-      return t`${route["db-name"]}: queries stay on this database (${route.attribute} = ${route.value}).`;
-    case "missing-value":
-      return t`${route["db-name"]}: every query fails: no value for ${route.attribute}.`;
-    case "no-destination":
-      return t`${route["db-name"]}: every query fails, no database is named ${route.value}.`;
-  }
 }
 
 /** Tables with the same value fold into one row; the order is the first table's. */

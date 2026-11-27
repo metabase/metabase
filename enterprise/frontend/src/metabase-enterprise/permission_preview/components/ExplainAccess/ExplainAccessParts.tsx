@@ -86,6 +86,8 @@ interface RowProps {
   tooltip?: string;
   /** The second line: where the value comes from */
   detail?: string | null;
+  /** Lines under the detail, such as how the table's database connects */
+  note?: ReactNode;
   /** A 16px slot, so rows line up under rows that open */
   hasChevronSlot?: boolean;
   children?: ReactNode;
@@ -98,25 +100,30 @@ export function Row({
   database,
   tooltip,
   detail,
+  note,
   hasChevronSlot,
   children,
 }: RowProps) {
   return (
-    <Flex gap="sm" py="sm" align="flex-start" wrap="nowrap">
-      {hasChevronSlot && <Box w="1rem" flex="none" />}
-      <Box flex={1} miw={0}>
-        <Flex gap="sm" align="baseline" wrap="nowrap">
-          {label && <BodyText c="text-secondary">{label}</BodyText>}
-          <RowName name={name} database={database} tooltip={tooltip} />
-        </Flex>
-        {detail && (
-          <Ellipsified fz="sm" lh="1rem" c="text-secondary">
-            {detail}
-          </Ellipsified>
-        )}
-      </Box>
-      {children}
-    </Flex>
+    <Box py="sm">
+      <Flex gap="sm" align="flex-start" wrap="nowrap">
+        {hasChevronSlot && <Box w="1rem" flex="none" />}
+        <Box flex={1} miw={0}>
+          <Flex gap="sm" align="baseline" wrap="nowrap">
+            {label && <BodyText c="text-secondary">{label}</BodyText>}
+            <RowName name={name} database={database} tooltip={tooltip} />
+          </Flex>
+          {detail && (
+            <Ellipsified fz="sm" lh="1rem" c="text-secondary">
+              {detail}
+            </Ellipsified>
+          )}
+        </Box>
+        {children}
+      </Flex>
+      {/* Under the whole row, so it spans the width the status button takes */}
+      {note}
+    </Box>
   );
 }
 
@@ -184,8 +191,10 @@ export function StatusButton({ status, rowName, onClick }: StatusButtonProps) {
 interface ToggleRowProps {
   name: string;
   database?: string;
-  /** Plain text at the right of a fold, or a status button of a row that opens */
-  status: ReactNode;
+  /** A status button of a row that opens, always shown */
+  status?: ReactNode;
+  /** The value of a fold, at the right while it is closed: the rows inside say the rest once it opens */
+  summary?: ReactNode;
   initiallyOpen?: boolean;
   /** Its rows open too: their own chevrons take the indent, so their names stay in this row's column */
   hasToggleRows?: boolean;
@@ -197,6 +206,7 @@ export function ToggleRow({
   name,
   database,
   status,
+  summary,
   initiallyOpen = false,
   hasToggleRows = false,
   children,
@@ -218,18 +228,10 @@ export function ToggleRow({
           <RowName name={name} database={database} />
         </UnstyledButton>
         {status}
+        {!isOpen && summary}
       </div>
       {isOpen && <Box pl={hasToggleRows ? undefined : "xl"}>{children}</Box>}
     </>
-  );
-}
-
-/** The status of a fold: plain text, nothing to click. */
-export function FoldStatus({ label }: { label: string }) {
-  return (
-    <BodyText c="text-secondary" flex="none">
-      {label}
-    </BodyText>
   );
 }
 

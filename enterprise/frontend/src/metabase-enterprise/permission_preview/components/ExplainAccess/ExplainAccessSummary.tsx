@@ -18,7 +18,7 @@ import type { ExplainDetail } from "./ExplainAccessDetail";
 import {
   BodyText,
   Disclosure,
-  FoldStatus,
+  PlainStatus,
   Row,
   SheetCard,
   StatusButton,
@@ -231,7 +231,9 @@ function TablesByStatus({
         ) : (
           <ToggleRow
             name={t`${ofStatus.length} tables`}
-            status={<FoldStatus label={getTableStatusLabel(status, "list")} />}
+            summary={
+              <PlainStatus status={getTableStatusDisplay(status, "list")} />
+            }
             hasToggleRows={opensRules(status)}
           >
             {rows}

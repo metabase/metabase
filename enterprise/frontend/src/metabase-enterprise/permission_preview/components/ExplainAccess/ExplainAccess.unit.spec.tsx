@@ -61,6 +61,15 @@ interface SetupOpts {
   access?: PermissionDebugAccess;
 }
 
+/** A sentence whose values are in code blocks: its text is split across elements */
+function sentence(text: string) {
+  return (_: string, element: Element | null) =>
+    element != null &&
+    element.textContent === text &&
+    element.querySelector("code") != null &&
+    element.querySelector("p, div") == null;
+}
+
 function setup({
   item = "question/12",
   target = SANDY,
@@ -320,7 +329,6 @@ describe("ExplainAccess", () => {
       ).toBeInTheDocument();
       expect(screen.getByText("Download")).toBeInTheDocument();
       expect(screen.getByText("No downloads")).toBeInTheDocument();
-      expect(screen.getByText("All permissions (4)")).toBeInTheDocument();
     });
 
     it("says the person can open the question but not see its results, and shows the blocked table", async () => {
@@ -489,7 +497,9 @@ describe("ExplainAccess", () => {
 
       expect(
         await screen.findByText(
-          "Sample Database: connects as the role analyst_role, set by role.",
+          sentence(
+            "Impersonation: connects as the role analyst_role, set by role.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -521,7 +531,9 @@ describe("ExplainAccess", () => {
 
       expect(
         await screen.findByText(
-          "Sample Database: queries go to tenant-a, picked by destination = tenant-a.",
+          sentence(
+            "Database routing: queries go to tenant-a, picked by destination = tenant-a.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -532,7 +544,7 @@ describe("ExplainAccess", () => {
       reasons: { collection: createCollection(), tables: [createTable()] },
     });
 
-    it("is one row after Exploring and before All permissions, closed at first", async () => {
+    it("is one row after Exploring, closed at first", async () => {
       setup({ answers: { "card/query": withTable } });
 
       const download = await screen.findByText("Download");
@@ -541,11 +553,6 @@ describe("ExplainAccess", () => {
         screen
           .getByText("Exploring this question")
           .compareDocumentPosition(download),
-      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(
-        download.compareDocumentPosition(
-          screen.getByText("All permissions (4)"),
-        ),
       ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
       expect(screen.queryByText("Downloading")).not.toBeInTheDocument();
       expect(
@@ -771,7 +778,9 @@ describe("ExplainAccess", () => {
 
       expect(
         await screen.findByText(
-          "Sample Database: every query fails: no value for destination.",
+          sentence(
+            "Database routing: every query fails, because there is no value for destination.",
+          ),
         ),
       ).toBeInTheDocument();
     });
@@ -827,10 +836,41 @@ describe("ExplainAccess", () => {
       });
 
       expect(
-        await screen.findByRole("button", {
-          name: "2 tables, Query builder only",
+        await screen.findAllByRole("button", {
+          name: /2 tables/,
+          expanded: false,
         }),
+      ).toHaveLength(2);
+      expect(screen.getByText("Query builder only")).toBeInTheDocument();
+    });
+
+    it("opens the Exploring fold to a row per table, and drops its own status", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [
+                createTable({ "table-id": 1, name: "Orders" }),
+                createTable({ "table-id": 2, name: "Products" }),
+              ],
+            },
+          }),
+        },
+      });
+
+      const folds = await screen.findAllByRole("button", {
+        name: /2 tables/,
+      });
+      await userEvent.click(folds[1]);
+
+      expect(
+        screen.getByRole("button", { name: "Orders, Query builder only" }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Products, Query builder only" }),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("Query builder only")).toHaveLength(2);
     });
 
     it("names the table on the Exploring row when there is one", async () => {
@@ -867,7 +907,7 @@ describe("ExplainAccess", () => {
         },
       });
 
-      const fold = await screen.findByRole("button", {
+      const [fold] = await screen.findAllByRole("button", {
         name: /2 tables/,
         expanded: false,
       });
@@ -881,7 +921,7 @@ describe("ExplainAccess", () => {
       expect(
         screen.getByRole("button", { name: "Orders, Full access" }),
       ).toBeInTheDocument();
-      expect(screen.getAllByText("Full access")).toHaveLength(3);
+      expect(screen.getAllByText("Full access")).toHaveLength(2);
     });
 
     it("names the source under each table with access inside an open fold, and none under a blocked one", async () => {
@@ -956,14 +996,10 @@ describe("ExplainAccess", () => {
         },
       });
 
-      expect(
-        await screen.findByRole("button", {
-          name: "2 tables, Varies by table",
-        }),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Varies by table")).toBeInTheDocument();
     });
 
-    it("lists every permission under a fold with its count, and keeps it open after Back", async () => {
+    it("has no All permissions card", async () => {
       setup({
         answers: {
           "card/query": createAnswer({
@@ -975,24 +1011,9 @@ describe("ExplainAccess", () => {
         },
       });
 
-      await userEvent.click(await screen.findByText("All permissions (4)"));
-      await userEvent.click(
-        screen.getByRole("button", {
-          name: "Orders · Create queries, Query builder only",
-        }),
-      );
-      await userEvent.click(screen.getByRole("button", { name: "Back" }));
+      await screen.findByText("Download");
 
-      expect(
-        screen.getByRole("button", {
-          name: "Orders · Create queries, Query builder only",
-        }),
-      ).toBeVisible();
-      expect(
-        screen.getByRole("button", {
-          name: "Sales reports · Collection access, Curate",
-        }),
-      ).toBeVisible();
+      expect(screen.queryByText(/All permissions/)).not.toBeInTheDocument();
     });
   });
 
@@ -1043,7 +1064,9 @@ describe("ExplainAccess", () => {
 
       expect(
         isBefore(
-          screen.getByRole("button", { name: "chevronright icon 2 tables" }),
+          screen.getAllByRole("button", {
+            name: "chevronright icon 2 tables",
+          })[0],
           warning,
         ),
       ).toBe(true);
@@ -1310,16 +1333,6 @@ describe("ExplainAccess", () => {
         );
       });
 
-      it("names each table with its database on the Exploring row", async () => {
-        await setupDataCard();
-
-        await userEvent.hover(screen.getByText("2 tables"));
-
-        expect(await screen.findByRole("tooltip")).toHaveTextContent(
-          "Orders · Sample Database, Products · Sample Database",
-        );
-      });
-
       it("shows a SQL card's name in full", async () => {
         setup({
           item: "dashboard/3",
@@ -1340,18 +1353,6 @@ describe("ExplainAccess", () => {
         expect(await screen.findByRole("tooltip")).toHaveTextContent(
           "Revenue by state",
         );
-      });
-
-      it("adds the database's name to a permission row", async () => {
-        await setupDataCard();
-        await userEvent.click(screen.getByText("All permissions (7)"));
-
-        await userEvent.hover(screen.getByText("Orders · View data"));
-
-        // The fold's own tooltip is still closing, so ask for this one's text
-        expect(
-          await screen.findByText("Orders · View data · Sample Database"),
-        ).toBeInTheDocument();
       });
 
       it("shows the summary's heading in full", async () => {
