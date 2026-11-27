@@ -101,7 +101,10 @@ function ScalarComponent(
       <ScalarDescription description={description} />
     ) : null;
   const titleLabel = titleElement && (
-    <ScalarLabel description={descriptionFooter ? null : description}>
+    <ScalarLabel
+      description={descriptionFooter ? null : description}
+      xPadding={tier.xPadding}
+    >
       {titleElement}
     </ScalarLabel>
   );

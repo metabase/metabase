@@ -26,7 +26,9 @@ export function TrendCardComparison({
   listsAllComparisons,
 }: TrendCardComparisonProps) {
   const titleWithDescription = title ? (
-    <ScalarLabel description={description}>{title}</ScalarLabel>
+    <ScalarLabel description={description} xPadding={tier.xPadding}>
+      {title}
+    </ScalarLabel>
   ) : null;
 
   if (trend.comparisons.length === 0) {
@@ -49,7 +51,7 @@ export function TrendCardComparison({
 
   if (tier.size === 150) {
     return (
-      <ScalarLabel description={description}>
+      <ScalarLabel description={description} xPadding={tier.xPadding}>
         {title}
         <Box flex="0 0 auto">
           <TrendComparisonRow
