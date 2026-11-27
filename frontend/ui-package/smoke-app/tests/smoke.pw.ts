@@ -245,6 +245,22 @@ for (const scheme of SCHEMES) {
   });
 }
 
+test("the slim provider applies opted-in Button styles in both schemes", async ({
+  page,
+}) => {
+  for (const scheme of ["light", "dark"]) {
+    const button = page.getByTestId("button-filled");
+    await page.goto(`/?scheme=${scheme}`);
+    await expect(button).toBeVisible();
+    const expectedColor = await button.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    );
+    await page.goto(`/?slim&scheme=${scheme}`);
+    await expect(button).toHaveCSS("background-color", expectedColor);
+    await expect(button).toHaveCSS("font-family", /Lato/);
+  }
+});
+
 test("a portalled Select can be used inside a custom modal layer", async ({
   page,
 }) => {

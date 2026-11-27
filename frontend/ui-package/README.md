@@ -27,6 +27,18 @@ createRoot(document.getElementById("root")!).render(
 
 Do not also import `@mantine/core/styles.css` or `@mantine/dates/styles.css`.
 
+For a smaller JavaScript bundle, import `SlimMetabaseUIProvider` from `@metabase/ui/slim` and opt into each component's overrides. The base theme and global stylesheet stay the same. The default provider still registers all overrides.
+
+```tsx
+import { Button } from "@metabase/ui";
+import { SlimMetabaseUIProvider } from "@metabase/ui/slim";
+import { buttonOverrides } from "@metabase/ui/overrides/buttons/Button/Button.config";
+
+<SlimMetabaseUIProvider components={buttonOverrides}>
+  <Button>Save</Button>
+</SlimMetabaseUIProvider>;
+```
+
 The provider sets up the theme, the color variables, the font variable and what overlays (modals, tooltips, popovers) need. Wrap your app in it once.
 
 | Prop          | Type                               | Default                     |

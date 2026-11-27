@@ -15,6 +15,8 @@ import {
   color,
   useColorScheme,
 } from "@metabase/ui";
+import { buttonOverrides } from "@metabase/ui/overrides/buttons/Button/Button.config";
+import { SlimMetabaseUIProvider } from "@metabase/ui/slim";
 import { useState } from "react";
 
 const initialColorScheme =
@@ -47,6 +49,18 @@ export const App = () => {
   const [modalOpened, setModalOpened] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
+  if (params.has("slim")) {
+    return (
+      <SlimMetabaseUIProvider
+        colorScheme={colorScheme}
+        components={buttonOverrides}
+      >
+        <Button variant="filled" data-testid="button-filled">
+          Filled
+        </Button>
+      </SlimMetabaseUIProvider>
+    );
+  }
   const highOverlay = params.has("high-overlay");
   const tooltipOverride = params.has("tooltip-override")
     ? { Tooltip: { defaultProps: { zIndex: 11000 } } }
