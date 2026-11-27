@@ -117,8 +117,9 @@
    :metabase.task.impl/scheduler    #{:metabase.analytics.prometheus/system
                                       :metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}
-   ;; the field-value listener runs warehouse queries, and the search listener records traces
-   :metabase.queue-listener.core/listeners #{:metabase.driver.sql-jdbc.connection/pools
+   ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics
+   :metabase.queue-listener.core/listeners #{:metabase.analytics.prometheus/system
+                                             :metabase.driver.sql-jdbc.connection/pools
                                              :metabase.tracing.core/otel-sdk}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
