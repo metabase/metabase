@@ -181,6 +181,18 @@
           (is (= "Before" (t2/select-one-fn :name :model/Transform :id transform-id)))
           (is (some #{[:event/transform-update transform-id]} @topics)))))))
 
+(deftest transform-revisions-with-hydrated-owner-in-object-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "Snapshot"}]
+        (revisions.tu/push-revision!
+         {:object       (t2/hydrate (t2/select-one :model/Transform :id transform-id) :owner)
+          :entity       :model/Transform
+          :id           transform-id
+          :user-id      (mt/user->id :crowberto)
+          :is-creation? true})
+        (is (seq (mt/user-http-request :crowberto :get 200 "revision" :entity "transform" :id transform-id)))))))
+
 (deftest transform-revisions-guard-prior-source-per-entitlement-test
   (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers
             entitled to the database it read from"
