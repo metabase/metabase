@@ -14,6 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -21,7 +22,7 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -226,7 +227,7 @@ function setupWithQueryUpdates({ query }: SetupWithQueryUpdatesOpts) {
     };
   }
 
-  return { getRecentAggregation };
+  return { getRecentAggregation, onQueryChange };
 }
 
 /** The display name of the column that `countIf(in(column, …))` tests. */
@@ -447,6 +448,93 @@ describe("AggregateStep", () => {
         "Sum([MyCC \\[2027\\]])",
       ),
     );
+  });
+
+  it("should count the distinct values of a date column by a unit behind More… (metabase#13098)", async () => {
+    const { getRecentAggregation } = setupWithQueryUpdates({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+    });
+
+    await userEvent.click(screen.getByText("Pick a function or metric"));
+    await userEvent.click(
+      await screen.findByText("Number of distinct values of ..."),
+    );
+    const createdAt = await screen.findByLabelText("Created At");
+    await userEvent.click(within(createdAt).getByLabelText("Temporal bucket"));
+    expect(
+      screen.queryByRole("menuitem", { name: "Hour of day" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: "More…" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Hour of day" }),
+    );
+
+    expect(getRecentAggregation().displayName).toBe(
+      "Distinct values of Created At: Hour of day",
+    );
+    expect(
+      await screen.findByText("Distinct values of Created At: Hour of day"),
+    ).toBeInTheDocument();
+  });
+
+  it("should keep Count of rows when another aggregation of a saved SQL question is added (metabase#15725)", async () => {
+    const card = createMockCard({
+      id: 2,
+      name: "15725",
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "select 'A' as cat, 5 as val",
+      }),
+      result_metadata: [
+        createMockColumn({
+          id: undefined,
+          table_id: undefined,
+          name: "CAT",
+          display_name: "CAT",
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          field_ref: ["field", "CAT", { "base-type": "type/Text" }],
+        }),
+        createMockColumn({
+          id: undefined,
+          table_id: undefined,
+          name: "VAL",
+          display_name: "VAL",
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+          field_ref: ["field", "VAL", { "base-type": "type/Integer" }],
+        }),
+      ],
+    });
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      }),
+    });
+    const { onQueryChange } = setupWithQueryUpdates({
+      query: Lib.createTestQuery(provider, {
+        stages: [{ source: { type: "card", id: card.id } }],
+      }),
+    });
+
+    await userEvent.click(screen.getByText("Pick a function or metric"));
+    await userEvent.click(await screen.findByText("Count of rows"));
+    expect(await screen.findByText("Count")).toBeInTheDocument();
+
+    await userEvent.click(getIcon("add"));
+    await userEvent.click(await screen.findByText("Sum of ..."));
+    await userEvent.click(await screen.findByText("VAL"));
+
+    const [query] = checkNotNull(onQueryChange.mock.lastCall);
+    expect(
+      Lib.aggregations(query, 0).map(
+        (clause) => Lib.displayInfo(query, 0, clause).displayName,
+      ),
+    ).toEqual(["Count", "Sum of VAL"]);
+    expect(await screen.findByText("Sum of VAL")).toBeInTheDocument();
+    expect(screen.getByText("Count")).toBeInTheDocument();
   });
 
   describe("metrics", () => {
