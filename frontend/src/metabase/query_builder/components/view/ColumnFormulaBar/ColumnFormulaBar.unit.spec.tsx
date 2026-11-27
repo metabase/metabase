@@ -14,6 +14,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { format } from "metabase/querying/expressions";
@@ -777,5 +778,68 @@ describe("editing a custom column from its header", () => {
     expect(onEditSummaryFormula).toHaveBeenCalledTimes(1);
     const [clause] = onEditSummaryFormula.mock.calls[0];
     expect(Lib.isSameClause(clause, expression)).toBe(true);
+  });
+});
+
+function setupTracking() {
+  return jest.spyOn(Analytics, "trackSimpleEvent").mockClear();
+}
+
+describe("column formula bar analytics", () => {
+  it("tracks a new column, from the Add column button to adding it", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { onQuestionChange } = setup();
+    const trigger = screen.getByRole("button", { name: "Add column" });
+    const { textbox } = await openFormula("[Total] * 2");
+    await userEvent.click(trigger);
+
+    fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(onQuestionChange).toHaveBeenCalledTimes(1));
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "table",
+          event_detail: "add_column_button",
+        },
+      ],
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "table",
+          event_detail: "new",
+          result: "success",
+        },
+      ],
+    ]);
+  });
+
+  it("tracks a formula edited from its column header", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { onQuestionChange } = setupCustomColumn();
+    const { textbox, view } = await editFormulaFromHeader(GENERATED_NAME);
+
+    await replaceFormula(view, 'concat([Category], "?")');
+    fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(onQuestionChange).toHaveBeenCalledTimes(1));
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "table",
+          event_detail: "column_header",
+        },
+      ],
+      [
+        {
+          event: "formula_bar_submitted",
+          triggered_from: "table",
+          event_detail: "edit",
+          result: "success",
+        },
+      ],
+    ]);
   });
 });

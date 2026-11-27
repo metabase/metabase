@@ -103,7 +103,11 @@ export function DimensionChip({
           label={item.label}
           isEditing={isEditing}
           onEdit={() =>
-            formulaInput.edit(expression, wellFieldRef?.current ?? null)
+            formulaInput.edit(
+              expression,
+              wellFieldRef?.current ?? null,
+              "chip_edit",
+            )
           }
           onCancelEdit={() => formulaInput.cancelEdit(expression)}
         >

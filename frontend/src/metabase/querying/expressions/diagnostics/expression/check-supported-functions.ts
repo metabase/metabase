@@ -5,8 +5,9 @@ import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 import { getClauseDefinition } from "../../clause";
+import { UnsupportedFunctionError } from "../../errors";
 import { visit } from "../../visitor";
-import { error } from "../utils";
+import { position } from "../utils";
 
 export function checkSupportedFunctions({
   expressionParts,
@@ -32,7 +33,10 @@ export function checkSupportedFunctions({
       database == null ||
       !hasRequiredFeature(database, clause.requiresFeature)
     ) {
-      error(node, t`Unsupported function ${clause.displayName}`);
+      throw new UnsupportedFunctionError(
+        t`Unsupported function ${clause.displayName}`,
+        position(node),
+      );
     }
   });
 }

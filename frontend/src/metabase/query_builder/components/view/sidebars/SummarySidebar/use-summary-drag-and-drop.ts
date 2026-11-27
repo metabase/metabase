@@ -32,6 +32,7 @@ type SummaryDragAndDropOptions = {
   layout: ColumnNameColumnSplitSetting;
   onLayoutChange: (nextLayout: ColumnNameColumnSplitSetting) => void;
   onWellAdd: (nextQuery: Lib.Query, wellId: SummaryWellId) => void;
+  onFieldAdd: (nextQuery: Lib.Query, wellId: SummaryWellId) => void;
 };
 
 export function useSummaryDragAndDrop({
@@ -40,6 +41,7 @@ export function useSummaryDragAndDrop({
   layout,
   onLayoutChange,
   onWellAdd,
+  onFieldAdd,
 }: SummaryDragAndDropOptions) {
   const sensors = useDndSensors({ distance: DRAG_ACTIVATION_DISTANCE_PX });
   const [draggedItem, setDraggedItem] = useState<SummaryDragItem | null>(null);
@@ -66,7 +68,12 @@ export function useSummaryDragAndDrop({
       return;
     }
     const nextQuery = dropOnWell(query, stageIndex, drag, wellId);
-    if (nextQuery !== query) {
+    if (nextQuery === query) {
+      return;
+    }
+    if (drag.kind === "field") {
+      onFieldAdd(nextQuery, wellId);
+    } else {
       onWellAdd(nextQuery, wellId);
     }
   };

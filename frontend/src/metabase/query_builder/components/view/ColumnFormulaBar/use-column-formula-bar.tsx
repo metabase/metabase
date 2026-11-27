@@ -11,6 +11,7 @@ import {
   editExpression,
   findExpression,
   isDefaultFormulaName,
+  trackFormulaBarOpened,
 } from "metabase/querying/components/FormulaEditor";
 import { format } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
@@ -93,6 +94,7 @@ export function useColumnFormulaBar({
     nextKey.current += 1;
     setDraft({ kind: "new", key: nextKey.current });
     claimOwnership();
+    trackFormulaBarOpened("table", "add_column_button");
   }, [isOwner, draft, claimOwnership]);
 
   const edit = useCallback(
@@ -115,6 +117,7 @@ export function useColumnFormulaBar({
         sourceStatus: "loading",
       });
       claimOwnership();
+      trackFormulaBarOpened("table", "column_header");
       // The printed formula only lands in its own draft, not in one that replaced it since.
       const showSource = (source: string, sourceStatus: FormulaSourceStatus) =>
         setDraft((current) =>
@@ -243,6 +246,7 @@ export function useColumnFormulaBar({
             initialSource={isEditing ? openDraft.source : undefined}
             sourceStatus={isEditing ? openDraft.sourceStatus : undefined}
             submitLabel={isEditing ? t`Update` : t`Add column`}
+            triggerLocation="table"
             onEditorCreate={handleEditorCreate}
             onSubmit={handleSubmit}
             onCancel={close}

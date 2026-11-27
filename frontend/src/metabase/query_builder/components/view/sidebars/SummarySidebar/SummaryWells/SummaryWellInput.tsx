@@ -9,12 +9,14 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 
+import { trackFormulaBarOpened } from "metabase/querying/components/FormulaEditor";
 import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
 import { MatchedLabel } from "../MatchedLabel";
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
 import S from "../SummarySidebar.module.css";
+import { getFormulaBarLocation } from "../analytics";
 import type {
   SummaryField,
   SummaryFieldSection,
@@ -149,6 +151,7 @@ export function SummaryWellInput({
         () => {},
         result.name,
       );
+      trackFormulaBarOpened(getFormulaBarLocation(wellId), "generated_formula");
     }
   };
 
@@ -162,6 +165,7 @@ export function SummaryWellInput({
     if (optionValue === CUSTOM_FORMULA_OPTION_VALUE) {
       if (formulaInput && inputRef.current) {
         formulaInput.start("", inputRef.current, () => setSearchText(""));
+        trackFormulaBarOpened(getFormulaBarLocation(wellId), "formula_option");
       }
       return;
     }
@@ -190,6 +194,7 @@ export function SummaryWellInput({
       formulaInput.start(text.slice(1), inputRef.current, () =>
         setSearchText(""),
       );
+      trackFormulaBarOpened(getFormulaBarLocation(wellId), "equals_sign");
       return;
     }
     setSearchText(text);

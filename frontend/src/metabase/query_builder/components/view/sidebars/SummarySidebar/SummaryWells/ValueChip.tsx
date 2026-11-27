@@ -55,7 +55,12 @@ export function ValueChip({
     );
   const handleEdit =
     isFormula && formulaInput
-      ? () => formulaInput.edit(item.clause, wellFieldRef?.current ?? null)
+      ? () =>
+          formulaInput.edit(
+            item.clause,
+            wellFieldRef?.current ?? null,
+            "chip_edit",
+          )
       : undefined;
   const icon =
     item.kind === "column" ? null : (

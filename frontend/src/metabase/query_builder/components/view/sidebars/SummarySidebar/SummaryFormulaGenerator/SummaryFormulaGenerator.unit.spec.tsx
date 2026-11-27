@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { databaseApi } from "metabase/api";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { defer } from "metabase/utils/promise";
@@ -662,5 +663,108 @@ describe("summary formula generator", () => {
     expect(
       within(document.body).queryByRole("option", { name: /Generate/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+function setupTracking() {
+  return jest.spyOn(Analytics, "trackSimpleEvent").mockClear();
+}
+
+describe("summary formula generator analytics", () => {
+  it("tracks a generated formula that is added, with the time it took", async () => {
+    const trackSimpleEvent = setupTracking();
+    const { getLastQuery } = await setup({
+      response: {
+        expression: "Average([Total])",
+        name: "Average total",
+      } satisfies GenerateCustomExpressionResponse,
+    });
+
+    await userEvent.type(getInput("values"), "revenue per customer");
+    await userEvent.click(await findGenerateOption("revenue per customer"));
+    await waitFor(() =>
+      expect(getLastQuery().values).toEqual(["Average total"]),
+    );
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "summary_formula_generated",
+          triggered_from: "values",
+          result: "success",
+          duration_ms: expect.any(Number),
+        },
+      ],
+    ]);
+  });
+
+  it("tracks a request that fails", async () => {
+    const trackSimpleEvent = setupTracking();
+    await setup({
+      response: {
+        status: 422,
+        body: { message: "Couldn't find a formula for that." },
+      },
+    });
+
+    await userEvent.type(getInput("columns"), "something odd");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("alert");
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "summary_formula_generated",
+          triggered_from: "columns",
+          result: "failure",
+          duration_ms: expect.any(Number),
+        },
+      ],
+    ]);
+  });
+
+  it("tracks a formula that doesn't compile as a failure that opens the formula bar", async () => {
+    const trackSimpleEvent = setupTracking();
+    await setup({
+      response: {
+        expression: "Average([Unknown column])",
+        name: "Average unknown",
+      } satisfies GenerateCustomExpressionResponse,
+    });
+
+    await userEvent.type(getInput("values"), "average of something");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByTestId("formula-editor");
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "summary_formula_generated",
+          triggered_from: "values",
+          result: "failure",
+          duration_ms: expect.any(Number),
+        },
+      ],
+      [
+        {
+          event: "formula_bar_opened",
+          triggered_from: "summary_values",
+          event_detail: "generated_formula",
+        },
+      ],
+    ]);
+  });
+
+  it("doesn't track a prompt that is never sent", async () => {
+    const trackSimpleEvent = setupTracking();
+    await setup();
+
+    await userEvent.click(getInput("values"));
+    await userEvent.paste("a".repeat(MAX_FORMULA_PROMPT_LENGTH + 10));
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("alert");
+
+    expect(fetchMock.callHistory.calls(GENERATE_ROUTE)).toHaveLength(0);
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Route } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import { checkNotNull } from "metabase/utils/types";
@@ -1219,6 +1220,43 @@ describe("View Header | Summarize sidebar entry point", () => {
     await pressSummarizeKey();
 
     expect(editSummary).toHaveBeenCalledTimes(1);
+  });
+
+  it("tracks the sidebar opened from the Summarize button", async () => {
+    const trackSimpleEvent = jest
+      .spyOn(Analytics, "trackSimpleEvent")
+      .mockClear();
+    const card = getSavedGUIQuestionCard();
+    setup({ card, queryBuilderMode: "view" });
+
+    await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
+
+    expect(trackSimpleEvent.mock.calls).toEqual([
+      [
+        {
+          event: "summary_sidebar_opened",
+          triggered_from: "summarize_button",
+          event_detail: "empty",
+          target_id: card.id,
+        },
+      ],
+    ]);
+  });
+
+  it("doesn't track the Summarize button closing the sidebar", async () => {
+    const trackSimpleEvent = jest
+      .spyOn(Analytics, "trackSimpleEvent")
+      .mockClear();
+    const { onCloseSummary } = setup({
+      card: getSavedGUIQuestionCard(),
+      queryBuilderMode: "view",
+      isShowingSummarySidebar: true,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
+
+    expect(onCloseSummary).toHaveBeenCalledTimes(1);
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
   });
 
   it("is offered for a saved question the user can query but can't overwrite", () => {

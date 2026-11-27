@@ -6,9 +6,11 @@ import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { trackSummarySidebarOpened } from "../../sidebars/SummarySidebar/analytics";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface QuestionSummarizeWidgetProps {
+  question: Question;
   isShowingSummarySidebar: boolean;
   editSummary: () => void;
   onCloseSummary: () => void;
@@ -22,6 +24,7 @@ const SUMMARIZE_ACTIVE_VARS = {
 };
 
 export function QuestionSummarizeWidget({
+  question,
   isShowingSummarySidebar,
   editSummary,
   onCloseSummary,
@@ -30,6 +33,7 @@ export function QuestionSummarizeWidget({
     if (isShowingSummarySidebar) {
       onCloseSummary();
     } else {
+      trackSummarySidebarOpened(question, "summarize_button");
       editSummary();
     }
   };

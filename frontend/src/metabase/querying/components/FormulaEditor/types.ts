@@ -3,6 +3,8 @@ import type { EditorView } from "@codemirror/view";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+import type { FormulaBarTriggerLocation } from "./analytics";
+
 export type StageExpression = {
   clause: Lib.ExpressionClause;
   index: number;
@@ -29,6 +31,7 @@ export type FormulaEditorProps = {
   /** Represents the formula loading status in the editor */
   sourceStatus?: FormulaSourceStatus;
   submitLabel: string;
+  triggerLocation: FormulaBarTriggerLocation;
   onEditorCreate?: (view: EditorView) => void;
   onNameChange?: (name: string, source: string) => void;
   onSubmit: (expression: NamedExpression) => void;

@@ -6,9 +6,14 @@ import { getTooltipPosition } from "metabase/querying/components/expressions/Edi
 import { Tooltip } from "metabase/querying/components/expressions/Editor/Tooltip";
 import { useCustomTooltip } from "metabase/querying/components/expressions/Editor/custom-tooltip";
 import { useExtensions } from "metabase/querying/components/expressions/Editor/extensions";
-import { diagnoseAndCompile, format } from "metabase/querying/expressions";
+import {
+  UnsupportedFunctionError,
+  diagnoseAndCompile,
+  format,
+} from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
+import { trackFormulaBarSubmitted } from "./analytics";
 import { parenPairDeletion } from "./formula-parens";
 import { formulaTokens } from "./formula-tokens";
 import type { FormulaEditorProps } from "./types";
@@ -26,6 +31,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     initialSource,
     initialName,
     sourceStatus = "ready",
+    triggerLocation,
     onEditorCreate,
     onNameChange,
     onSubmit,
@@ -52,6 +58,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
   });
   const hasFormula = source.trim().length > 0 && sourceStatus === "ready";
   const formulaName = initialName?.trim() || getDefaultFormulaName(source);
+  const submittedDetail = expressionIndex === undefined ? "new" : "edit";
 
   useEffect(() => {
     onNameChange?.(formulaName, source);
@@ -73,6 +80,13 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     });
     if (error || expressionClause == null) {
       setErrorMessage(error?.message ?? t`This formula isn't valid.`);
+      trackFormulaBarSubmitted(
+        triggerLocation,
+        submittedDetail,
+        error instanceof UnsupportedFunctionError
+          ? "unsupported_function"
+          : "invalid",
+      );
       return null;
     }
     return expressionClause;
@@ -93,6 +107,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
       .then((formula) => {
         if (isMounted()) {
           setIsSubmitting(false);
+          trackFormulaBarSubmitted(triggerLocation, submittedDetail, "success");
           onSubmit({
             name: initialName?.trim() || getDefaultFormulaName(formula),
             clause,

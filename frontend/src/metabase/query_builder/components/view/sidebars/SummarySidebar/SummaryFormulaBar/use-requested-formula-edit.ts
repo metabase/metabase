@@ -30,7 +30,7 @@ export function useRequestedFormulaEdit(
       expression,
     );
     if (formula) {
-      edit(formula.clause, null);
+      edit(formula.clause, null, "column_header");
     }
   }, [expression, edit, query, stageIndex, dispatch]);
 }

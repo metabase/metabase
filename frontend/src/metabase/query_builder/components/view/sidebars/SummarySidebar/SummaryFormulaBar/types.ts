@@ -1,3 +1,4 @@
+import type { FormulaBarOpenedEventDetail } from "metabase/querying/components/FormulaEditor";
 import type * as Lib from "metabase-lib";
 
 import type {
@@ -50,6 +51,11 @@ export type SummaryFormulaDraft = {
     }
 );
 
+export type SummaryFormulaEditTrigger = Extract<
+  FormulaBarOpenedEventDetail,
+  "chip_edit" | "column_header"
+>;
+
 export type SummaryFormulaInput = {
   start: (
     source: string,
@@ -59,7 +65,11 @@ export type SummaryFormulaInput = {
   ) => void;
   isPending: () => boolean;
   update: (source: string) => void;
-  edit: (clause: SummaryFormulaClause, input: HTMLInputElement | null) => void;
+  edit: (
+    clause: SummaryFormulaClause,
+    input: HTMLInputElement | null,
+    trigger: SummaryFormulaEditTrigger,
+  ) => void;
   /** Closes the bar when it holds this formula. */
   cancelEdit: (clause: SummaryFormulaClause) => void;
 };

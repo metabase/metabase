@@ -185,6 +185,7 @@ export function ViewTitleHeaderRightSide({
         isActionListVisible,
       }) && (
         <QuestionSummarizeWidget
+          question={question}
           isShowingSummarySidebar={isShowingSummarySidebar}
           editSummary={editSummary}
           onCloseSummary={onCloseSummary}
