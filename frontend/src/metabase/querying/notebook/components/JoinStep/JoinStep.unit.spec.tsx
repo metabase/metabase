@@ -100,6 +100,14 @@ const QUESTION = createMockCard({
   database_id: ANOTHER_DATABASE.id,
 });
 
+const PEOPLE_QUESTION = createMockCard({
+  id: 301,
+  name: "People - Saved Question",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+  }),
+});
+
 const ROOT_COLLECTION = createMockCollection({
   id: "root",
   name: "Our Analytics",
@@ -109,13 +117,13 @@ const PERSONAL_COLLECTION = createMockCollection({ id: 1, name: "Personal" });
 const STATE = createMockState({
   entities: createMockEntitiesState({
     databases: DATABASES,
-    questions: [MODEL, QUESTION],
+    questions: [MODEL, QUESTION, PEOPLE_QUESTION],
   }),
 });
 
 const metadata = createMockMetadata({
   databases: DATABASES,
-  questions: [MODEL, QUESTION],
+  questions: [MODEL, QUESTION, PEOPLE_QUESTION],
 });
 
 const provider = createMetadataProvider({ metadata });
@@ -143,6 +151,51 @@ function getJoinedQuery() {
                   name: "PRODUCT_ID",
                 },
                 right: { type: "column", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+}
+
+function getQueryWithMultipleJoins() {
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: PRODUCTS_ID },
+        joins: [
+          {
+            source: { type: "card", id: MODEL.id },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "ID" },
+                right: { type: "column", name: "PRODUCT_ID" },
+              },
+            ],
+          },
+          {
+            source: { type: "card", id: PEOPLE_QUESTION.id },
+            strategy: "right-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "ID" },
+                right: { type: "column", name: "ID" },
+              },
+            ],
+          },
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "inner-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "ID" },
+                right: { type: "column", name: "PRODUCT_ID" },
               },
             ],
           },
@@ -2067,6 +2120,12 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("link to data source", () => {
+    afterEach(() => {
+      if (jest.isMockFunction(window.open)) {
+        jest.mocked(window.open).mockRestore();
+      }
+    });
+
     it("should show the tooltip on hover only for the actual data source (right table)", async () => {
       setup({ step: createMockNotebookStep({ query: getJoinedQuery() }) });
 
@@ -2143,6 +2202,87 @@ describe("Notebook Editor > Join Step", () => {
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
 
       mockWindowOpen.mockClear();
+    });
+
+    it.each([
+      {
+        itemIndex: 0,
+        title: "a joined model",
+        name: MODEL.name,
+        url: `/question/${MODEL.id}-my-cool-model`,
+      },
+      {
+        itemIndex: 1,
+        title: "a joined saved question",
+        name: PEOPLE_QUESTION.name,
+        url: `/question/${PEOPLE_QUESTION.id}-people-saved-question`,
+      },
+      {
+        itemIndex: 2,
+        title: "a joined table",
+        name: "Reviews",
+        url: `/table/${REVIEWS_ID}-reviews`,
+      },
+    ])(
+      "meta click should open $title at its URL",
+      ({ itemIndex, name, url }) => {
+        const { mockWindowOpen } = setup({
+          step: createMockNotebookStep({
+            query: getQueryWithMultipleJoins(),
+            itemIndex,
+          }),
+        });
+
+        const rhsTable = screen.getByLabelText("Right table");
+        expect(rhsTable).toHaveTextContent(name);
+        fireEvent.click(within(rhsTable).getByText(name), { metaKey: true });
+
+        expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+        expect(mockWindowOpen).toHaveBeenCalledWith(url, "_blank");
+        expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+        mockWindowOpen.mockClear();
+      },
+    );
+
+    it.each([
+      { label: "Change join type", expected: /^Inner join$/ },
+      { label: "Pick columns", expected: /→ Discount$/ },
+      { label: "Left column", expected: /^Vendor$/ },
+      { label: "Change operator", expected: /^>=$/ },
+      { label: "Right column", expected: /→ Discount$/ },
+    ])(
+      "meta click on $label should open its popover",
+      async ({ label, expected }) => {
+        const { mockWindowOpen } = setup({
+          step: createMockNotebookStep({ query: getQueryWithMultipleJoins() }),
+        });
+
+        expect(screen.queryByText(expected)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText(label), { metaKey: true });
+
+        expect(
+          await within(await screen.findByRole("dialog")).findByText(expected),
+        ).toBeInTheDocument();
+        expect(mockWindowOpen).not.toHaveBeenCalled();
+      },
+    );
+
+    it("meta click on Add condition should add a new join condition", async () => {
+      const { mockWindowOpen } = setup({
+        step: createMockNotebookStep({ query: getQueryWithMultipleJoins() }),
+      });
+
+      expect(
+        screen.queryByTestId("new-join-condition"),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText("Add condition"), {
+        metaKey: true,
+      });
+
+      expect(
+        await screen.findByTestId("new-join-condition"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
     });
 
     it("opening in new window does not affect unrelated join step elements", () => {

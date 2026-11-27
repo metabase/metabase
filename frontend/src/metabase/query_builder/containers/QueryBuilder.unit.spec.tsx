@@ -220,6 +220,49 @@ describe("QueryBuilder", () => {
         });
       });
 
+      describe("data step", () => {
+        mockGetBoundingClientRect({ width: 3000, height: 1000 });
+
+        it("shows the source table of a saved question in the data step", async () => {
+          const card = createMockCard({
+            id: 2,
+            name: "Orders, Count",
+            type: "question",
+            dataset_query: Lib.toJsQuery(
+              Lib.createTestQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    aggregations: [
+                      { type: "operator", operator: "count", args: [] },
+                    ],
+                  },
+                ],
+              }),
+            ),
+          });
+          await setup({
+            card,
+            initialRoute: `/question/${card.id}/notebook`,
+          });
+
+          const dataStep = await screen.findByTestId("data-step-cell");
+          expect(dataStep).toHaveTextContent(/^Orders$/);
+          await userEvent.click(within(dataStep).getByText("Orders"));
+
+          const miniPicker = await screen.findByTestId("mini-picker");
+          expect(
+            await within(miniPicker).findByTestId("mini-picker-header"),
+          ).toHaveTextContent("Sample Database");
+          expect(
+            await within(miniPicker).findByText("Orders"),
+          ).toBeInTheDocument();
+          expect(
+            await within(miniPicker).findByText("Products"),
+          ).toBeInTheDocument();
+        });
+      });
+
       it("renders the notebook of a question whose custom column references a missing field (metabase#28221)", async () => {
         const customColumnName = "Non-existing field";
         const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
@@ -409,6 +452,36 @@ describe("QueryBuilder", () => {
 
       response.resolve(new Response(JSON.stringify({}), { status: 500 }));
       await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+    });
+
+    describe("opening a saved source at its URL", () => {
+      it.each([
+        {
+          title: "a saved question",
+          card: createMockCard({
+            id: 2,
+            name: "Orders, Count",
+            type: "question",
+            dataset_query: TEST_CARD.dataset_query,
+          }),
+          route: "/question/2-orders-count",
+        },
+        {
+          title: "a native question",
+          card: { ...TEST_NATIVE_CARD, id: 3, name: "Native source" },
+          route: "/question/3-native-source",
+        },
+      ])("opens $title without unsaved changes", async ({ card, route }) => {
+        await setup({
+          card,
+          dataset: createMockDataset({ running_time: 123 }),
+          initialRoute: route,
+        });
+
+        expect(await screen.findByDisplayValue(card.name)).toBeInTheDocument();
+        expect(await screen.findByTestId("execution-time")).toBeInTheDocument();
+        expect(screen.queryByTestId("qb-save-button")).not.toBeInTheDocument();
+      });
     });
 
     describe("query execution time", () => {

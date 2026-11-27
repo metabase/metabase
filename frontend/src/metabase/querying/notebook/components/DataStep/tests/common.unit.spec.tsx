@@ -27,11 +27,16 @@ import {
   createMockCardQueryMetadata,
   createMockCollection,
   createMockCollectionItem,
+  createMockColumn,
+  createMockDatabase,
+  createMockField,
   createMockSearchResult,
+  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PRODUCTS_ID,
+  REVIEWS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -99,6 +104,41 @@ async function setup(opts: SetupOpts = {}) {
   return baseSetup({
     ...opts,
   });
+}
+
+function createNativeCard({
+  id,
+  name,
+  type = "question",
+}: Pick<Card, "id" | "name"> & { type?: CardType }) {
+  return createMockCard({
+    id,
+    name,
+    type,
+    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+      query: "select 1 as foo",
+    }),
+    result_metadata: [
+      createMockColumn({
+        name: "FOO",
+        display_name: "FOO",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+      }),
+    ],
+  });
+}
+
+function createCardQuery(card: Card) {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    questions: [card],
+  });
+  const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
+  return Lib.queryFromTableOrCardMetadata(
+    metadataProvider,
+    checkNotNull(Lib.cardMetadata(metadataProvider, card.id)),
+  );
 }
 
 const setupEmptyQuery = async () => {
@@ -184,6 +224,265 @@ describe("DataStep", () => {
 
     expect(screen.getByText(card.name)).toBeInTheDocument();
     expect(getIcon(icon)).toBeInTheDocument();
+  });
+
+  it("should show the source table in the mini picker and in the data picker", async () => {
+    await setup({
+      step: createMockNotebookStep({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: REVIEWS_ID } }],
+        }),
+      }),
+    });
+
+    expect(screen.getByTestId("data-step-cell")).toHaveTextContent(/^Reviews$/);
+    await userEvent.click(screen.getByText("Reviews"));
+
+    const miniPicker = await screen.findByTestId("mini-picker");
+    expect(
+      await within(miniPicker).findByTestId("mini-picker-header"),
+    ).toHaveTextContent("Sample Database");
+    expect(await within(miniPicker).findByText("Reviews")).toBeInTheDocument();
+    expect(await within(miniPicker).findByText("Orders")).toBeInTheDocument();
+
+    await userEvent.click(within(miniPicker).getByTestId("mini-picker-header"));
+    await userEvent.click(await within(miniPicker).findByText("Browse all"));
+
+    const modal = await screen.findByTestId("entity-picker-modal");
+    await waitFor(() =>
+      expect(getPickerItem(modal, 2, "Reviews")).toHaveAttribute(
+        "data-active",
+        "true",
+      ),
+    );
+    expect(getPickerItem(modal, 1, "Sample Database")).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(getPickerItem(modal, 2, "Orders")).not.toHaveAttribute(
+      "data-active",
+    );
+  });
+
+  it("should show a model source in the mini picker (metabase#39699)", async () => {
+    const collectionId = 9;
+    const collection = createMockCollection({
+      id: collectionId,
+      name: "Second collection",
+      effective_location: "/",
+    });
+    const model = createMockCard({
+      id: 20,
+      name: "GUI Model",
+      type: "model",
+      collection_id: collection.id,
+      collection,
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: REVIEWS_ID } }],
+      }),
+    });
+    setupCardEndpoints(model);
+    setupCollectionItemsEndpoint({
+      collection: { id: "root" },
+      collectionItems: [
+        createMockCollectionItem({
+          id: collectionId,
+          model: "collection",
+          name: collection.name,
+          location: "/",
+          here: ["dataset"],
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection,
+      collectionItems: [
+        createMockCollectionItem({
+          id: 21,
+          model: "dataset",
+          name: "Other Model",
+          collection_id: collection.id,
+        }),
+        createMockCollectionItem({
+          id: model.id,
+          model: "dataset",
+          name: model.name,
+          collection_id: collection.id,
+        }),
+      ],
+    });
+    await setup({
+      step: createMockNotebookStep({ query: createCardQuery(model) }),
+    });
+
+    expect(screen.getByTestId("data-step-cell")).toHaveTextContent(
+      /^GUI Model$/,
+    );
+    await userEvent.click(screen.getByText("GUI Model"));
+
+    const miniPicker = await screen.findByTestId("mini-picker");
+    expect(
+      await within(miniPicker).findByTestId("mini-picker-header"),
+    ).toHaveTextContent("Second collection");
+    expect(
+      await within(miniPicker).findByText("GUI Model"),
+    ).toBeInTheDocument();
+    expect(
+      await within(miniPicker).findByText("Other Model"),
+    ).toBeInTheDocument();
+  });
+
+  describe("multi-schema database (metabase#39807, metabase#11958)", () => {
+    const WILD_ANIMALS_ID = 101;
+    const WILD_BIRDS_ID = 102;
+    const DOMESTIC_ANIMALS_ID = 103;
+    const MANY_DATA_TYPES_ID = 104;
+    const MULTI_SCHEMA_DB_ID = 2;
+
+    const createSchemaTable = (id: number, schema: string, name: string) =>
+      createMockTable({
+        id,
+        db_id: MULTI_SCHEMA_DB_ID,
+        schema,
+        name,
+        display_name: name,
+        fields: [
+          createMockField({
+            id: id * 10,
+            table_id: id,
+            name: "NAME",
+            display_name: "Name",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+          }),
+        ],
+      });
+
+    const MULTI_SCHEMA_DB = createMockDatabase({
+      id: MULTI_SCHEMA_DB_ID,
+      name: "Writable Postgres12",
+      tables: [
+        createSchemaTable(WILD_ANIMALS_ID, "Wild", "Animals"),
+        createSchemaTable(WILD_BIRDS_ID, "Wild", "Birds"),
+        createSchemaTable(DOMESTIC_ANIMALS_ID, "Domestic", "Animals"),
+        createSchemaTable(MANY_DATA_TYPES_ID, "public", "Many Data Types"),
+      ],
+    });
+
+    const setupMultiSchema = (opts: SetupOpts = {}) => {
+      const metadata = createMockMetadata({ databases: [MULTI_SCHEMA_DB] });
+      const query = Lib.createTestQuery(
+        Lib.metadataProvider(MULTI_SCHEMA_DB_ID, metadata),
+        { stages: [{ source: { type: "table", id: WILD_ANIMALS_ID } }] },
+      );
+      return setup({
+        step: createMockNotebookStep({ query }),
+        databases: [createSampleDatabase(), MULTI_SCHEMA_DB],
+        ...opts,
+      });
+    };
+
+    it("should show the schema of the source table in the mini picker and in the data picker", async () => {
+      await setupMultiSchema();
+
+      expect(screen.getByTestId("data-step-cell")).toHaveTextContent(
+        /^Animals$/,
+      );
+      await userEvent.click(screen.getByText("Animals"));
+
+      const miniPicker = await screen.findByTestId("mini-picker");
+      expect(
+        await within(miniPicker).findByTestId("mini-picker-header"),
+      ).toHaveTextContent("Wild");
+      expect(
+        await within(miniPicker).findByText("Animals"),
+      ).toBeInTheDocument();
+      expect(await within(miniPicker).findByText("Birds")).toBeInTheDocument();
+
+      await userEvent.click(
+        within(miniPicker).getByTestId("mini-picker-header"),
+      );
+      expect(
+        await within(miniPicker).findByTestId("mini-picker-header"),
+      ).toHaveTextContent("Writable Postgres12");
+      await userEvent.click(
+        within(miniPicker).getByTestId("mini-picker-header"),
+      );
+      await userEvent.click(await within(miniPicker).findByText("Browse all"));
+
+      const modal = await screen.findByTestId("entity-picker-modal");
+      await waitFor(() =>
+        expect(getPickerItem(modal, 3, "Animals")).toHaveAttribute(
+          "data-active",
+          "true",
+        ),
+      );
+      expect(getPickerItem(modal, 1, "Writable Postgres12")).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+      expect(getPickerItem(modal, 2, "Wild")).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+      expect(getPickerItem(modal, 2, "Domestic")).not.toHaveAttribute(
+        "data-active",
+      );
+      expect(getPickerItem(modal, 3, "Birds")).not.toHaveAttribute(
+        "data-active",
+      );
+    });
+
+    it.each([
+      {
+        schema: "Domestic",
+        table: "Animals",
+        tableId: DOMESTIC_ANIMALS_ID,
+        listed: ["Animals"],
+        notListed: ["Birds", "Many Data Types"],
+      },
+      {
+        schema: "public",
+        table: "Many Data Types",
+        tableId: MANY_DATA_TYPES_ID,
+        listed: ["Many Data Types"],
+        notListed: ["Animals", "Birds"],
+      },
+      {
+        schema: "Wild",
+        table: "Birds",
+        tableId: WILD_BIRDS_ID,
+        listed: ["Animals", "Birds"],
+        notListed: ["Many Data Types"],
+      },
+    ])(
+      "should only list and pick the tables of the $schema schema",
+      async ({ schema, table, tableId, listed, notListed }) => {
+        const { getNextQuery } = await setupMultiSchema();
+
+        await userEvent.click(screen.getByText("Animals"));
+        const miniPicker = await screen.findByTestId("mini-picker");
+        await userEvent.click(
+          await within(miniPicker).findByTestId("mini-picker-header"),
+        );
+        await userEvent.click(await within(miniPicker).findByText(schema));
+
+        expect(
+          await within(miniPicker).findByTestId("mini-picker-header"),
+        ).toHaveTextContent(schema);
+        for (const name of listed) {
+          expect(await within(miniPicker).findByText(name)).toBeInTheDocument();
+        }
+        notListed.forEach((name) =>
+          expect(within(miniPicker).queryByText(name)).not.toBeInTheDocument(),
+        );
+        await userEvent.click(within(miniPicker).getByText(table));
+
+        await waitFor(() =>
+          expect(Lib.primarySourceTableId(getNextQuery())).toBe(tableId),
+        );
+      },
+    );
   });
 
   it("should change a table", async () => {
@@ -877,6 +1176,12 @@ describe("DataStep", () => {
   });
 
   describe("link to data source", () => {
+    afterEach(() => {
+      if (jest.isMockFunction(window.open)) {
+        jest.mocked(window.open).mockRestore();
+      }
+    });
+
     it("should show the tooltip on hover", async () => {
       await setup();
 
@@ -949,6 +1254,97 @@ describe("DataStep", () => {
       mockWindowOpen.mockClear();
     });
 
+    it.each<{ title: string; card: Card; url: string }>([
+      {
+        title: "a saved question",
+        card: createMockCard({
+          id: 10,
+          name: "Orders, Count",
+          type: "question",
+          dataset_query: Lib.createTestJsQuery(
+            SAMPLE_PROVIDER,
+            DEFAULT_TEST_QUERY,
+          ),
+        }),
+        url: "/question/10-orders-count",
+      },
+      {
+        title: "a native question",
+        card: createNativeCard({ id: 11, name: "Native source" }),
+        url: "/question/11-native-source",
+      },
+      {
+        title: "an archived question",
+        card: createMockCard({
+          id: 12,
+          name: "Orders, Count",
+          type: "question",
+          archived: true,
+          dataset_query: Lib.createTestJsQuery(
+            SAMPLE_PROVIDER,
+            DEFAULT_TEST_QUERY,
+          ),
+        }),
+        url: "/question/12-orders-count",
+      },
+      {
+        // the link uses the /question path for models too: the query builder
+        // redirects a model opened at /question/:id to /model/:id
+        title: "a model",
+        card: createMockCard({
+          id: 13,
+          name: "Orders Model",
+          type: "model",
+          dataset_query: Lib.createTestJsQuery(
+            SAMPLE_PROVIDER,
+            DEFAULT_TEST_QUERY,
+          ),
+        }),
+        url: "/question/13-orders-model",
+      },
+      {
+        title: "a native model",
+        card: createNativeCard({ id: 14, name: "Native model", type: "model" }),
+        url: "/question/14-native-model",
+      },
+    ])(
+      "meta click should open $title source at its URL",
+      async ({ card, url }) => {
+        const { mockWindowOpen } = await setup({
+          step: createMockNotebookStep({ query: createCardQuery(card) }),
+        });
+
+        fireEvent.click(screen.getByText(checkNotNull(card.name)), {
+          metaKey: true,
+        });
+
+        expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+        expect(mockWindowOpen).toHaveBeenCalledWith(url, "_blank");
+        expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+        mockWindowOpen.mockClear();
+      },
+    );
+
+    it("meta click should open a table source at its URL", async () => {
+      const { mockWindowOpen } = await setup({
+        step: createMockNotebookStep({
+          query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: REVIEWS_ID } }],
+          }),
+        }),
+      });
+
+      fireEvent.click(screen.getByText("Reviews"), { metaKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `/table/${REVIEWS_ID}-reviews`,
+        "_blank",
+      );
+      expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+      mockWindowOpen.mockClear();
+    });
+
     it("regular click should open the mini picker", async () => {
       const { mockWindowOpen } = await setup();
 
@@ -1018,4 +1414,9 @@ describe("DataStep", () => {
 
 function expectElementToBePartiallyChecked(element: HTMLElement) {
   expect(element).toHaveAttribute("aria-checked", "mixed");
+}
+
+function getPickerItem(modal: HTMLElement, level: number, name: string) {
+  const levelElement = within(modal).getByTestId(`item-picker-level-${level}`);
+  return checkNotNull(within(levelElement).getByText(name).closest("a"));
 }
