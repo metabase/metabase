@@ -621,3 +621,11 @@
                (lib/native-query "SELECT CAST(NULL AS TIMESTAMP) FROM checkins LIMIT 1")
                qp/process-query
                mt/rows)))))
+
+(deftest ^:synchronized ci-probe-44947-failed-queries-release-statements-test
+  (mt/test-driver :druid-jdbc
+    (let [failing (lib/native-query (mt/metadata-provider) "SELECT count(1) FROM checkins WHERE no_such_column_44947 = 1")
+          good    (lib/native-query (mt/metadata-provider) "SELECT count(1) FROM checkins")]
+      (dotimes [_ 12]
+        (try (qp/process-query failing) (catch Throwable _ nil)))
+      (is (pos? (ffirst (mt/rows (qp/process-query good))))))))
