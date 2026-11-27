@@ -66,4 +66,33 @@ describe("VisibilityToggler", () => {
     fireEvent.click(getIcon("expand"));
     expect(spy).toHaveBeenCalledTimes(1);
   });
+
+  it("should render button that reports whether editor is expanded", () => {
+    render(
+      <VisibilityToggler
+        isOpen={true}
+        readOnly={false}
+        toggleEditor={() => null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Close editor" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("should render collapsed editor button as not expanded", () => {
+    render(
+      <VisibilityToggler
+        isOpen={false}
+        readOnly={false}
+        toggleEditor={() => null}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Open editor" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
 });
