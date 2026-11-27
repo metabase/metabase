@@ -190,17 +190,13 @@
             card-type (:id card))))
 
 (defn- pivot-note
-  "The line saying that `card`, when `dashcard` shows it as a pivot table, ran as its plain query, or nil."
-  [dashcard card]
-  ;; Its own runner would replace the row limit with the pivot cap. A visualizer dashcard shows its own display, and
-  ;; the frontend draws one that sets none as a bar chart.
-  (let [settings (:visualization_settings dashcard)
-        shown    (if (contains? settings :visualization)
-                   (or (get-in settings [:visualization :display]) "bar")
-                   (:display card))]
-    (when (= "pivot" (some-> shown name))
-      (str "This card is a pivot table, and these rows are those of its query: any subtotal or total rows on the"
-           " user's screen are not among them."))))
+  "The line saying that `card`, when it is a pivot table, ran as its plain query, or nil."
+  [card]
+  ;; Its own runner would replace the row limit with the pivot cap. The dashboard fetches a pivot card's subtotal rows
+  ;; whatever chart a visualizer draws them as, so the card's own display decides.
+  (when (= "pivot" (some-> (:display card) name))
+    (str "This card is a pivot table, and these rows are those of its query: any subtotal or total rows on the"
+         " user's screen are not among them.")))
 
 (defn- run-dashboard-card
   "Run the dashcard `dashcard_id` on the dashboard the user is viewing, with the filter values on their screen, for at
@@ -228,7 +224,7 @@
            page
            {:notes [(filters-note dashboard dashcard card values)
                     (combined-note dashcard card card-type)
-                    (pivot-note dashcard card)
+                    (pivot-note card)
                     (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]})]
       {:output            output
        :structured-output {:dashcard-id dashcard_id

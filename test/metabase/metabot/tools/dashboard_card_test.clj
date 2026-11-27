@@ -209,18 +209,16 @@
         (is (=? {:structured-output {:returned 2, :truncated? true}
                  :output            #"(?s).*any subtotal or total rows on the user's screen are not among them\..*"}
                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id, :row_limit 2}))))))
-  (testing "a pivot card that a visualizer dashcard shows as another chart gets no note about pivot totals"
-    (doseq [visualization [{:display "bar", :settings {}}
-                           ;; the frontend draws a visualizer dashcard that sets no display as a bar chart
-                           {:settings {}}]]
-      (mt/with-temp [:model/Card          {card-id :id}      {:display :pivot, :dataset_query (venues-count)}
-                     :model/Dashboard     {dashboard-id :id} {}
-                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
-                                                              :card_id                card-id
-                                                              :visualization_settings {:visualization visualization}}]
-        (is (=? {:structured-output {:returned pos-int?}
-                 :output            (complement #(str/includes? % "pivot table"))}
-                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))
+  (testing "a pivot card drawn as a bar chart by a visualizer keeps the note: the dashboard still fetches subtotals"
+    (mt/with-temp [:model/Card          {card-id :id}      {:display :pivot, :dataset_query (venues-count)}
+                   :model/Dashboard     {dashboard-id :id} {}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
+                                                            :card_id                card-id
+                                                            :visualization_settings {:visualization
+                                                                                     {:display "bar", :settings {}}}}]
+      (is (=? {:structured-output {:returned pos-int?}
+               :output            #"(?s).*any subtotal or total rows on the user's screen are not among them\..*"}
+              (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))
   (testing "a card that isn't a pivot table gets no note about pivot totals"
     (do-with-venues-dashboard
      (fn [{:keys [dashboard-id dashcard-id]}]
