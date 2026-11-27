@@ -216,7 +216,7 @@
    started-run-id                                            :- ::transforms.schema/promise
    {transform-id :id :as transform}                          :- ::transforms.schema/transform]
   (cond
-    (not (transforms.execute/runnable? transform))
+    (not (transforms.execute/can-execute? transform))
     (log/warnf "Skip running transform %d due to lacking premium features or not being in the default worktree"
                transform-id)
 

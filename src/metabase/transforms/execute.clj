@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn runnable? :- :boolean
+(mu/defn can-execute? :- :boolean
   "Whether `transform` runs at all on this thread, as its `:can_query` answers a superuser, whoever the run is for."
   [transform :- ::transforms.schema/transform]
   (request/as-admin
@@ -48,7 +48,7 @@
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
 
 (mu/defn execute! :- :nil
-  "Run `transform` and sync its target table, throwing a 400 unless it is [[runnable?]].
+  "Run `transform` and sync its target table, throwing a 400 unless it is [[can-execute?]].
 
   Executes synchronously, but the start is observable: once the run row is booked in the database,
   `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
@@ -65,7 +65,7 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       (when-not (runnable? transform)
+       (when-not (can-execute? transform)
          (throw (ex-info (tru "This transform cannot be run: its kind of transform is not enabled, or this is not the default worktree.")
                          {:status-code 400 :transform-id (:id transform)})))
        ;; the executors log their own failures at ERROR; this one happens before any executor runs
