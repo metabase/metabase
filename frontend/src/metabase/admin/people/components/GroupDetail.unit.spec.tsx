@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { findRequests, setupUsersEndpoints } from "__support__/server-mocks";
+import {
+  countRequests,
+  findRequestBodies,
+  findRequests,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -133,10 +138,14 @@ describe("GroupDetail", () => {
       await userEvent.click(await screen.findByText("gizmo user"));
       await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
-      const [created] = (await findRequests("POST")).filter(({ url }) =>
-        url.includes("/api/permissions/membership"),
+      await waitFor(() =>
+        expect(countRequests("POST", "/api/permissions/membership")).toBe(1),
       );
-      expect(created.body).toEqual({
+      const [body] = await findRequestBodies({
+        method: "POST",
+        urlSuffix: "/api/permissions/membership",
+      });
+      expect(body).toEqual({
         group_id: TENANT_GROUP.id,
         user_id: TENANT_USER.id,
       });

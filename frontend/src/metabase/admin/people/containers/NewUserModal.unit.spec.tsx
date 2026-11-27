@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  findRequests,
+  findRequestBodies,
   setupGroupsEndpoint,
   setupTenantEntpoints,
 } from "__support__/server-mocks";
@@ -29,6 +29,13 @@ const ALL_TENANT_USERS = createMockGroup({
   is_tenant_group: true,
 });
 
+const TENANT_GROUP = createMockGroup({
+  id: 11,
+  name: "Favorites",
+  magic_group_type: null,
+  is_tenant_group: true,
+});
+
 const TENANT = createMockTenant({ id: 5, name: "Gizmos", slug: "gizmo" });
 
 beforeAll(() => {
@@ -42,7 +49,7 @@ beforeAll(() => {
 });
 
 const setup = ({ emailConfigured }: { emailConfigured: boolean }) => {
-  setupGroupsEndpoint([ALL_TENANT_USERS]);
+  setupGroupsEndpoint([ALL_TENANT_USERS, TENANT_GROUP]);
   setupTenantEntpoints([TENANT]);
   fetchMock.post(
     "path:/api/user",
@@ -84,13 +91,20 @@ const createTenantUser = async () => {
   await userEvent.type(screen.getByLabelText(/Email/), "test.user@email.com");
   await userEvent.click(screen.getByRole("textbox", { name: "Tenant" }));
   await userEvent.click(await screen.findByText(TENANT.name));
-  await userEvent.click(await screen.findByRole("button", { name: "Create" }));
-
-  const [request] = (await findRequests("POST")).filter(({ url }) =>
-    url.includes("/api/user"),
+  await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+  await userEvent.click(
+    await screen.findByRole("option", { name: TENANT_GROUP.name }),
   );
+  await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-  return request;
+  expect(await screen.findByText("tenant user created")).toBeInTheDocument();
+
+  const [body] = await findRequestBodies({
+    method: "POST",
+    urlSuffix: "/api/user",
+  });
+
+  return body;
 };
 
 describe("NewUserModal", () => {
@@ -105,14 +119,17 @@ describe("NewUserModal", () => {
   it("leaves the password to the invite email when SMTP is configured", async () => {
     const { router } = setup({ emailConfigured: true });
 
-    const request = await createTenantUser();
+    const body = await createTenantUser();
 
-    expect(request.body).toMatchObject({
+    expect(body).toMatchObject({
       email: "test.user@email.com",
       tenant_id: TENANT.id,
+      user_group_memberships: [
+        { id: ALL_TENANT_USERS.id, is_group_manager: false },
+        { id: TENANT_GROUP.id, is_group_manager: false },
+      ],
     });
-    expect(request.body).not.toHaveProperty("password");
-    expect(await screen.findByText("tenant user created")).toBeInTheDocument();
+    expect(body).not.toHaveProperty("password");
     expect(router?.location.pathname).toBe(
       `/admin/people/tenants/people/${NEW_USER_ID}/success`,
     );
@@ -121,8 +138,8 @@ describe("NewUserModal", () => {
   it("generates a password when there is no SMTP to invite through", async () => {
     setup({ emailConfigured: false });
 
-    const request = await createTenantUser();
+    const body = await createTenantUser();
 
-    expect(request.body).toHaveProperty("password", expect.any(String));
+    expect(body).toHaveProperty("password", expect.any(String));
   });
 });

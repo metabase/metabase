@@ -2,14 +2,14 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
-  findRequests,
+  findRequestBodies,
   setupApiKeyEndpoints,
   setupCreateGroupEndpoint,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -60,14 +60,25 @@ const createGroup = async (name: string) => {
   await userEvent.click(
     await screen.findByRole("button", { name: "Create a group" }),
   );
-  await userEvent.type(screen.getByPlaceholderText(/something like/i), name);
+  await userEvent.type(
+    await screen.findByPlaceholderText(/something like/i),
+    name,
+  );
   await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
-  const [request] = (await findRequests("POST")).filter(({ url }) =>
-    url.includes("/api/permissions/group"),
+  // The add row closes when the create request resolves.
+  await waitFor(() =>
+    expect(
+      screen.queryByPlaceholderText(/something like/i),
+    ).not.toBeInTheDocument(),
   );
 
-  return request;
+  const [body] = await findRequestBodies({
+    method: "POST",
+    urlSuffix: "/api/permissions/group",
+  });
+
+  return body;
 };
 
 describe("GroupsListingApp", () => {
@@ -82,9 +93,9 @@ describe("GroupsListingApp", () => {
     it("creates the group as a tenant group", async () => {
       setup({ external: true });
 
-      const request = await createGroup("Marketing Team");
+      const body = await createGroup("Marketing Team");
 
-      expect(request.body).toEqual({
+      expect(body).toEqual({
         name: "Marketing Team",
         is_tenant_group: true,
       });
@@ -110,9 +121,9 @@ describe("GroupsListingApp", () => {
     it("creates the group as an internal group", async () => {
       setup({ external: false });
 
-      const request = await createGroup("Marketing Team");
+      const body = await createGroup("Marketing Team");
 
-      expect(request.body).toEqual({
+      expect(body).toEqual({
         name: "Marketing Team",
         is_tenant_group: false,
       });

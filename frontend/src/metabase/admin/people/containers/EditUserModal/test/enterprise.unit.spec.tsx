@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { findRequests } from "__support__/server-mocks";
-import { screen } from "__support__/ui";
+import { findRequestBodies, findRequests } from "__support__/server-mocks";
+import { act, screen, waitFor } from "__support__/ui";
 import { createMockGroup, createMockTenant } from "metabase-types/api/mocks";
 
 import { defaultUser, setup } from "./setup";
@@ -53,7 +53,7 @@ describe("EditUserModal - enterprise", () => {
     });
 
     it("keeps the all tenant users membership when another tenant group is added", async () => {
-      setupTenantUser();
+      const { onCloseSpy } = setupTenantUser();
 
       await userEvent.click(
         await screen.findByRole("combobox", { name: "Groups" }),
@@ -65,10 +65,16 @@ describe("EditUserModal - enterprise", () => {
         await screen.findByRole("button", { name: "Update" }),
       );
 
-      const [update] = (await findRequests("PUT")).filter(({ url }) =>
-        url.includes(`/api/user/${defaultUser.id}`),
-      );
-      expect(update.body).toMatchObject({
+      // The modal closes when the update request resolves. The update also
+      // refetches the user, so let that response land before the test ends.
+      await waitFor(() => expect(onCloseSpy).toHaveBeenCalled());
+      await act(() => fetchMock.callHistory.flush(true));
+
+      const [body] = await findRequestBodies({
+        method: "PUT",
+        urlSuffix: `/api/user/${defaultUser.id}`,
+      });
+      expect(body).toMatchObject({
         tenant_id: TENANT.id,
         user_group_memberships: [
           { id: ALL_TENANT_USERS.id, is_group_manager: false },
