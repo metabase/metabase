@@ -36,8 +36,9 @@
    `queue-be` may be either a keyword identifier (e.g. `:queue.backend/memory`)
    or a concrete backend instance.
 
-   Called by [[startup/def-startup-logic!]] with production backends (handle discarded;
-   production shutdown uses [[startup/def-shutdown-logic!]] instead) and by
+   Called by [[startup/def-startup-logic!]] with production backends, as a global-system
+   component whose stop ignores the handle and calls the no-argument [[stop!]], so either
+   [[startup/def-shutdown-logic!]] or a halt stops it, and by
    `metabase.mq.test-util/with-test-mq` with isolated memory backends.
 
    Backends are set globally via `alter-var-root`. For test isolation, bind
