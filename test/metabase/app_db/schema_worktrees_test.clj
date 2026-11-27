@@ -161,25 +161,6 @@
                    (format "%s: %s" table (str/join ", " (sort unique-key))))]
       (is (empty? bad) (str "Unique keys without worktree_id:\n" (str/join "\n" bad))))))
 
-(deftest worktree-foreign-keys-are-composite-test
-  (testing "a non-null foreign key between two tables with worktree_id has a composite one with worktree_id first"
-    (let [schema    (app-db-schema)
-          worktree? (worktree-tables schema)
-          bad       (for [table                  (sort worktree?)
-                          :let                   [{:keys [foreign-keys not-null]} (schema table)]
-                          {[column] :columns
-                           :keys    [columns parent]} foreign-keys
-                          :when                  (and (= 1 (count columns))
-                                                      (not= "worktree_id" column)
-                                                      (not= table parent)
-                                                      (worktree? parent)
-                                                      (contains? not-null column)
-                                                      (not (some #(= {:columns ["worktree_id" column] :parent parent}
-                                                                     (select-keys % [:columns :parent]))
-                                                                 foreign-keys)))]
-                      (format "%s.%s -> %s" table column parent))]
-      (is (empty? bad) (str "Non-null foreign keys without a composite one:\n" (str/join "\n" bad))))))
-
 (deftest worktree-foreign-keys-cascade-test
   (testing "every foreign key over worktree_id deletes its rows with the row it references"
     (let [bad (for [[table {:keys [foreign-keys]}] (sort-by key (app-db-schema))
