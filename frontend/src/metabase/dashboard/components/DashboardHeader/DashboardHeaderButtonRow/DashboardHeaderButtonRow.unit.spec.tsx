@@ -399,6 +399,19 @@ describe("DashboardHeaderButtonRow", () => {
     });
   });
 
+  describe("when the user can write to the dashboard", () => {
+    it("should offer to edit its settings from the dashboard menu", async () => {
+      setup({ isEditing: false, canWrite: true });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /Move, trash, and more/ }),
+      );
+
+      expect(await screen.findByText("Enter fullscreen")).toBeInTheDocument();
+      expect(screen.getByText("Edit settings")).toBeInTheDocument();
+    });
+  });
+
   describe("when the user cannot write to the dashboard", () => {
     it("should only offer to duplicate it from the dashboard menu (metabase#15280)", async () => {
       setup({ isEditing: false, canWrite: false });
@@ -408,6 +421,7 @@ describe("DashboardHeaderButtonRow", () => {
       );
 
       expect(await screen.findByText("Duplicate")).toBeInTheDocument();
+      expect(screen.getByText("Enter fullscreen")).toBeInTheDocument();
       expect(screen.queryByText("Edit settings")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
