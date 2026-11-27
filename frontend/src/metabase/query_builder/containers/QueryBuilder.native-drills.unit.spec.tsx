@@ -10,6 +10,7 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Card,
+  CardId,
   Dataset,
   DatasetColumn,
   RowValue,
@@ -33,8 +34,6 @@ function setupNativeDrills(opts: SetupOpts) {
 }
 
 registerVisualizations();
-
-const CARD_ID = 1;
 
 function createNativeColumn(
   name: string,
@@ -63,6 +62,7 @@ const PRICE = createNativeColumn("PRICE", "type/Float");
 const CATEGORY = createNativeColumn("CATEGORY", "type/Text");
 
 interface NativeCardOpts {
+  id: CardId;
   query: string;
   cols: DatasetColumn[];
   display?: Card["display"];
@@ -70,13 +70,14 @@ interface NativeCardOpts {
 }
 
 function createNativeCard({
+  id,
   query,
   cols,
   display = "table",
   visualizationSettings = {},
 }: NativeCardOpts) {
   return createMockCard({
-    id: CARD_ID,
+    id,
     name: "SQL",
     display,
     query_type: "native",
@@ -96,6 +97,7 @@ function createDataset(cols: DatasetColumn[], rows: RowValue[][]) {
 const ORDERS_COLS = [ID, CREATED_AT, QUANTITY];
 
 const ORDERS_CARD = createNativeCard({
+  id: 31,
   query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   cols: ORDERS_COLS,
 });
@@ -118,6 +120,7 @@ const ORDERS_DATASET = createDataset(ORDERS_COLS, ORDERS_ROWS);
 const PEOPLE_COLS = [ID, EMAIL, CREATED_AT];
 
 const PEOPLE_CARD = createNativeCard({
+  id: 47,
   query: "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
   cols: PEOPLE_COLS,
 });
@@ -130,6 +133,7 @@ const PEOPLE_DATASET = createDataset(PEOPLE_COLS, [
 const TIMESERIES_COLS = [CREATED_AT, QUANTITY];
 
 const TIMESERIES_CARD = createNativeCard({
+  id: 58,
   query: "SELECT CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   cols: TIMESERIES_COLS,
   display: "line",
@@ -148,6 +152,7 @@ const TIMESERIES_DATASET = createDataset(TIMESERIES_COLS, [
 const CATEGORY_COLS = [PRICE, CATEGORY, CREATED_AT];
 
 const CATEGORY_CARD = createNativeCard({
+  id: 64,
   query:
     "SELECT PRICE, CATEGORY, CREATED_AT FROM PRODUCTS ORDER BY ID LIMIT 10",
   cols: CATEGORY_COLS,
@@ -203,11 +208,11 @@ function getRunBodies(): unknown[] {
 
 /**
  * Answers a run of the drilled question only when its single stage, on top of
- * the saved native question, is `stage`. Any other run fails.
+ * the saved native question `card`, is `stage`. Any other run fails.
  */
-function setupDrillRun(stage: object, dataset: Dataset) {
+function setupDrillRun(card: Card, stage: object, dataset: Dataset) {
   const expectedBody = {
-    stages: [{ "source-card": CARD_ID, ...stage }],
+    stages: [{ "source-card": card.id, ...stage }],
   };
   fetchMock.modifyRoute("dataset-post", {
     response: (call: CallLog) =>
@@ -289,7 +294,11 @@ describe("QueryBuilder > native query drills", () => {
 
     it("should extract a part of a date column from its header", async () => {
       await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
-      const expectedBody = setupDrillRun(EXTRACT_STAGE, EXTRACT_DATASET);
+      const expectedBody = setupDrillRun(
+        ORDERS_CARD,
+        EXTRACT_STAGE,
+        EXTRACT_DATASET,
+      );
 
       const popover = await clickColumnHeader("CREATED_AT");
       await userEvent.click(within(popover).getByText("Extract day, month…"));
@@ -304,7 +313,11 @@ describe("QueryBuilder > native query drills", () => {
 
     it("should extract a part of a date column from the add column button", async () => {
       await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
-      const expectedBody = setupDrillRun(EXTRACT_STAGE, EXTRACT_DATASET);
+      const expectedBody = setupDrillRun(
+        ORDERS_CARD,
+        EXTRACT_STAGE,
+        EXTRACT_DATASET,
+      );
 
       await userEvent.click(
         await screen.findByRole("button", { name: "Add column" }),
@@ -327,6 +340,7 @@ describe("QueryBuilder > native query drills", () => {
     await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
     expect(await screen.findByText("Showing 10 rows")).toBeInTheDocument();
     const expectedBody = setupDrillRun(
+      ORDERS_CARD,
       {
         filters: [
           [
@@ -373,6 +387,7 @@ describe("QueryBuilder > native query drills", () => {
       field_ref: ["aggregation", 0],
     });
     const expectedBody = setupDrillRun(
+      ORDERS_CARD,
       {
         aggregation: [["count", {}]],
         breakout: [
@@ -422,6 +437,7 @@ describe("QueryBuilder > native query drills", () => {
           Number(idB) - Number(idA),
       );
       const expectedBody = setupDrillRun(
+        ORDERS_CARD,
         {
           "order-by": [
             [
@@ -466,6 +482,7 @@ describe("QueryBuilder > native query drills", () => {
     async ({ action, operator, columnName, value }) => {
       await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
       const expectedBody = setupDrillRun(
+        ORDERS_CARD,
         {
           aggregation: [
             [
@@ -501,6 +518,7 @@ describe("QueryBuilder > native query drills", () => {
   it("should summarize a column over time from its header", async () => {
     await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
     const expectedBody = setupDrillRun(
+      ORDERS_CARD,
       {
         aggregation: [
           ["sum", {}, nativeField("QUANTITY", { "base-type": "type/Integer" })],
@@ -538,6 +556,14 @@ describe("QueryBuilder > native query drills", () => {
 
     expect(await screen.findByText("Showing 3 rows")).toBeInTheDocument();
     await waitForRun(expectedBody);
+    expect(
+      screen.getAllByRole("columnheader").map((cell) => cell.textContent),
+    ).toEqual(["CREATED_AT: Month", "Sum of QUANTITY"]);
+    expect(getRowValues()).toEqual([
+      ["May 2026", "3"],
+      ["May 2027", "3"],
+      ["September 2027", "5"],
+    ]);
   });
 
   describe("combine-columns drill", () => {
@@ -558,6 +584,7 @@ describe("QueryBuilder > native query drills", () => {
       await setupNativeDrills({ card: PEOPLE_CARD, dataset: PEOPLE_DATASET });
       const name = "Combined EMAIL, ID";
       const expectedBody = setupDrillRun(
+        PEOPLE_CARD,
         {
           expressions: [
             [
@@ -590,6 +617,7 @@ describe("QueryBuilder > native query drills", () => {
       await setupNativeDrills({ card: PEOPLE_CARD, dataset: PEOPLE_DATASET });
       const name = "Combined ID, EMAIL";
       const expectedBody = setupDrillRun(
+        PEOPLE_CARD,
         {
           expressions: [
             [
@@ -641,6 +669,7 @@ describe("QueryBuilder > native query drills", () => {
     ).not.toBeInTheDocument();
 
     const expectedBody = setupDrillRun(
+      TIMESERIES_CARD,
       {
         filters: [
           [
