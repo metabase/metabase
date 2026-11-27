@@ -209,11 +209,13 @@ export function AdvisoriesPage() {
           <NotificationConfigBanner onConfigureClick={openSettings} />
         </Stack>
         <Stack gap="xxl" className={S.content}>
-          <AdvisoryFilterBar
-            className={S.filterBar}
-            filter={filter}
-            onChange={setFilter}
-          />
+          {advisories.length > 0 && (
+            <AdvisoryFilterBar
+              className={S.filterBar}
+              filter={filter}
+              onChange={setFilter}
+            />
+          )}
           <AdvisoryList
             className={S.list}
             advisories={filtered}

@@ -144,6 +144,17 @@ describe("AdvisoriesPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("hides filter bar when there are no advisories", async () => {
+    setup([]);
+
+    expect(
+      await screen.findByText(
+        /No known security issues that impact your Metabase version/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("advisory-filter-bar")).not.toBeInTheDocument();
+  });
+
   it("renders advisory cards in the correct order (affected first, then by severity)", async () => {
     const advisories = [
       createAdvisory({
@@ -379,10 +390,12 @@ describe("AdvisoriesPage", () => {
     expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
   });
 
-  it("renders the filter bar", async () => {
-    setup([]);
+  it("renders filter bar when there are advisories", async () => {
+    setup([createAdvisory()]);
 
-    expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("advisory-filter-bar"),
+    ).toBeInTheDocument();
   });
 
   it("filters advisory cards by severity", async () => {
