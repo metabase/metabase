@@ -61,7 +61,9 @@ import { MetricTabContent, isRealTab } from "../MetricTabContent";
 import { DefinitionEditor, type PillActions } from "./DefinitionEditor";
 import { DimensionsPanel } from "./DimensionsPanel";
 import { DimensionsTab } from "./DimensionsTab";
-import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
+import { ExampleDiagram } from "./ExampleDiagram";
+import { EXAMPLE_PARAM_PREFIX } from "./ExamplesBar";
+import { ExamplesTable } from "./ExamplesTable";
 import S from "./Explorer.module.css";
 import { MetricsList, useMetrics } from "./MetricExplorerPrototype";
 import { MissingMeasures } from "./MissingMeasures";
@@ -366,7 +368,7 @@ export function MetricEditorPrototype() {
   return (
     <Stack gap="sm">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <ExamplesBar
+        <ExamplesTable
           activeId={example?.id}
           onSelect={(id) => open(`${EXAMPLE}${id}`)}
         />
@@ -391,6 +393,7 @@ export function MetricEditorPrototype() {
           />
         </Group>
       </Group>
+      {example && view === "metric" && <ExampleDiagram example={example} />}
       <Box
         bd="1px solid var(--mb-color-border-neutral)"
         style={{ borderRadius: 8, overflow: "hidden" }}

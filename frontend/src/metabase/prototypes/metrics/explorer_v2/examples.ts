@@ -419,81 +419,16 @@ export type MetricExample = {
 
 export const EXAMPLES: MetricExample[] = [
   {
-    id: "net-revenue",
-    name: "Net revenue",
-    hint: "Math over three measures from one table.",
-    formula: ["Revenue", "−", "Discounts", "−", "Tax"],
-    where: [],
-  },
-  {
-    id: "gross-billings",
-    name: "Gross billings",
-    hint: "Mixed operators: adds one measure, subtracts another.",
-    formula: ["Revenue", "+", "Tax", "−", "Discounts"],
-    where: [],
-  },
-  {
     id: "average-order-value",
     name: "Average order value",
-    hint: "A ratio of two measures.",
+    hint: "A ratio of two measures from one table.",
     formula: ["Revenue", "÷", "Orders count"],
-    where: [],
-  },
-  {
-    id: "discounted-order-share",
-    name: "Share of orders with a discount",
-    hint: "The same measure twice, one filtered by a segment.",
-    formula: [
-      { measure: "Orders count", filters: ["segment:Discounted orders"] },
-      "÷",
-      "Orders count",
-    ],
-    where: [],
-  },
-  {
-    id: "trial-conversion-rate",
-    name: "Trial conversion rate",
-    hint: "A rate: accounts that converted out of all new accounts.",
-    formula: [
-      { measure: "New accounts", filters: ["segment:Converted trials"] },
-      "÷",
-      "New accounts",
-    ],
-    where: [],
-  },
-  {
-    id: "gizmo-average-order-value",
-    name: "Gizmo average order value",
-    hint: "The same segment on each measure.",
-    formula: [
-      { measure: "Revenue", filters: ["segment:Gizmo orders"] },
-      "÷",
-      { measure: "Orders count", filters: ["segment:Gizmo orders"] },
-    ],
-    where: [],
-  },
-  {
-    id: "revenue-per-new-customer",
-    name: "Revenue per new customer",
-    hint: "Measures from two tables, Orders and People: which date column does each one use?",
-    formula: ["Revenue", "÷", "New customers"],
-    where: [],
-  },
-  {
-    id: "large-order-revenue-per-new-customer",
-    name: "Large-order revenue per new customer",
-    hint: "Two tables, one side filtered: the segment is on Orders, so it sits on Revenue's own pill.",
-    formula: [
-      { measure: "Revenue", filters: ["segment:Large orders"] },
-      "÷",
-      "New customers",
-    ],
     where: [],
   },
   {
     id: "large-gizmo-revenue-share",
     name: "Revenue share of large Gizmo orders",
-    hint: "Two segments on one pill: both have to hold.",
+    hint: "The same measure twice, one side filtered by two segments: both have to hold.",
     formula: [
       {
         measure: "Revenue",
@@ -502,6 +437,13 @@ export const EXAMPLES: MetricExample[] = [
       "÷",
       "Revenue",
     ],
+    where: [],
+  },
+  {
+    id: "revenue-per-new-customer",
+    name: "Revenue per new customer",
+    hint: "Measures from two tables, Orders and People: which date column does each one use?",
+    formula: ["Revenue", "÷", "New customers"],
     where: [],
   },
   {

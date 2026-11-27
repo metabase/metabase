@@ -1,0 +1,51 @@
+/* Pele sets its --_* palette in an inline style="" on the <svg>, which the
+   CSP (style-src-attr) blocks, so it is declared here instead. */
+.diagram svg {
+  --_bg: var(--mb-color-background_page-primary);
+  --_fg: var(--mb-color-text-primary);
+  --_m: var(--mb-color-text-secondary);
+  --_l: var(--mb-color-text-secondary);
+  --_s: var(--mb-color-background_surface-secondary);
+  --_a: var(--mb-color-background_surface-secondary);
+  --_b: var(--mb-color-border-neutral);
+  --_c: var(--mb-color-core-brand);
+  --_r: 4px;
+
+  display: block;
+  max-width: 100%;
+  height: auto;
+  color: var(--_fg);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* A join is a note on the tables, not a thing in the flow: outline only. */
+.diagram :global(.join) rect {
+  fill: none;
+  stroke: var(--mb-color-border-neutral-strong);
+  stroke-dasharray: 4 3;
+}
+
+.diagram :global(.join) text {
+  fill: var(--mb-color-text-secondary);
+  font-style: italic;
+}
+
+/* Under a filter: the column it reads. */
+.diagram :global(.filter) tspan + tspan {
+  fill: var(--mb-color-text-secondary);
+}
+
+/* The cylinder's second path is its open top edge: only the body is filled. */
+.diagram :global(.table) path:first-child {
+  fill: var(--mb-color-background_surface-brand-subtle);
+}
+
+.diagram :global(.metric) rect {
+  fill: var(--mb-color-background_surface-success);
+}
+
+/* The warning token is only borrowed for its pale yellow. */
+.diagram :global(.measure) rect {
+  fill: var(--mb-color-background_surface-warning);
+}

@@ -1,0 +1,27 @@
+.table {
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 0 0.75rem 0.5rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+  text-align: start;
+}
+
+.table td {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  line-height: 1.4;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-inline-start: 0;
+  white-space: nowrap;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-inline-end: 0;
+}
