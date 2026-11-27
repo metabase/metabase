@@ -1,12 +1,13 @@
 jest.unmock("@uiw/react-codemirror");
 
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { ExpressionStep } from "metabase/querying/notebook/components/ExpressionStep/ExpressionStep";
@@ -17,7 +18,10 @@ import {
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   createOrdersTable,
@@ -28,10 +32,12 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import {
+  getCompletionLabels,
   getEditorValue,
   getEditorView,
   pressKey,
   typeText,
+  waitForCompletions,
   waitForHelpTextExample,
   waitForValidationDebounce,
 } from "./setup";
@@ -200,5 +206,86 @@ describe("ExpressionWidget > entry points > metrics (metabase#55300)", () => {
       await screen.findByRole("button", { name: "Auto-format" }),
     );
     await waitFor(() => expect(getEditorValue()).toBe("[Count] + Count()"));
+  });
+});
+
+describe("ExpressionWidget > entry points > offset", () => {
+  // the sample database of the e2e tests supports offset(); without the
+  // feature, no mode offers it and the negative assertions would prove nothing
+  function createOffsetSetup() {
+    const database = createSampleDatabase({
+      features: [...COMMON_DATABASE_FEATURES, "window-functions/offset"],
+    });
+    const provider = createMetadataProvider({
+      databaseId: database.id,
+      metadata: createMockMetadata({ databases: [database] }),
+    });
+    const query = Lib.createTestQuery(provider, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    });
+    return { query, database };
+  }
+
+  /** Types the start of offset() and resolves with the offered completions. */
+  async function typeOffsetPrefix() {
+    await findFocusedEditor();
+    // the editor offers the functions that the database supports
+    await act(() => fetchMock.callHistory.flush(true));
+    await typeText("Off");
+    return getCompletionLabels();
+  }
+
+  async function replaceFormula(formula: string) {
+    await pressKey("Backspace", { times: getEditorValue().length });
+    await typeText(formula);
+    await pressKey("Tab");
+    await waitForValidationDebounce();
+  }
+
+  it("should not suggest or accept offset() in a custom filter", async () => {
+    setupFilterPicker(createOffsetSetup());
+    await userEvent.click(await screen.findByText("Custom Expression"));
+
+    expect(await typeOffsetPrefix()).not.toContain("Offset");
+
+    await replaceFormula("Offset([Total], -1) > 0");
+    expect(
+      await screen.findByText("OFFSET is not supported in custom filters"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+
+  it("should not suggest or accept offset() in a custom column", async () => {
+    setupExpressionStep(createOffsetSetup());
+    await userEvent.click(screen.getByRole("img", { name: "add icon" }));
+
+    expect(await typeOffsetPrefix()).not.toContain("Offset");
+
+    await replaceFormula("Offset([Total], -1)");
+    expect(
+      await screen.findByText("OFFSET is not supported in custom columns"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+
+  it("should suggest and accept offset() in a custom aggregation once it has a name", async () => {
+    setupAggregationPicker(createOffsetSetup());
+    await userEvent.click(await screen.findByText("Custom Expression"));
+
+    await typeOffsetPrefix();
+    expect(await waitForCompletions()).toContain("Offset");
+
+    await replaceFormula("Offset(Sum([Total]), -1)");
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    expect(doneButton).toBeDisabled();
+    expect(
+      screen.queryByText(/OFFSET is not supported/),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByTestId("expression-name"),
+      "My expression",
+    );
+    expect(doneButton).toBeEnabled();
   });
 });

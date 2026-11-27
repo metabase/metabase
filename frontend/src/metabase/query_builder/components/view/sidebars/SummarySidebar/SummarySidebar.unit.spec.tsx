@@ -299,6 +299,64 @@ describe("SummarySidebar", () => {
     expect(getLastQuery().values).toEqual(["Sum of Total"]);
   });
 
+  it("keeps the values of a summary of a saved SQL question when another value is added (metabase#15725)", async () => {
+    const card = createMockCard({
+      id: 4,
+      name: "15725",
+      dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+        query: "select 'A' as cat, 5 as val",
+      }),
+      result_metadata: [
+        createMockColumn({
+          id: undefined,
+          table_id: undefined,
+          name: "CAT",
+          display_name: "CAT",
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          field_ref: ["field", "CAT", { "base-type": "type/Text" }],
+        }),
+        createMockColumn({
+          id: undefined,
+          table_id: undefined,
+          name: "VAL",
+          display_name: "VAL",
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+          field_ref: ["field", "VAL", { "base-type": "type/Integer" }],
+        }),
+      ],
+    });
+    const provider = createMetadataProvider({
+      metadata: createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      }),
+    });
+    const { onQueryChange, getLastQuery } = setup({
+      query: Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "card", id: card.id },
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [{ type: "column", name: "CAT" }],
+          },
+        ],
+      }),
+    });
+    expect(getChipLabels("values")).toEqual(["Count"]);
+
+    await pickValueOption("VAL", "VAL");
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    expect(getLastQuery()).toEqual({
+      values: ["Count", "Sum of VAL"],
+      dimensions: ["CAT"],
+    });
+    expect(getChipLabels("values")).toEqual(["Count", "Sum of VAL"]);
+    expect(getChipLabels("columns")).toEqual(["CAT"]);
+  });
+
   it("runs once Count of rows is picked", async () => {
     const { onQueryChange, getLastQuery } = setup();
 
