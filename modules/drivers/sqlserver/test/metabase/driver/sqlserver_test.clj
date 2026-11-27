@@ -2004,7 +2004,7 @@
 
 (deftest ci-probe-56883-datetimeoffset-keeps-per-value-dst-offset-test
   (mt/test-driver :sqlserver
-    (qp.test-util/with-report-timezone-id! "Europe/Paris"
+    (test.tz/with-system-timezone-id! "Europe/Paris"
       (let [mp    (mt/metadata-provider)
             sql   (str "select cast('2025-01-01 12:00:00+01:00' as datetimeoffset(0)) as sample_datetime "
                        "union all select cast('2025-04-01 12:00:00+02:00' as datetimeoffset(0)) "
