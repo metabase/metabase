@@ -1,6 +1,7 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.util :as render.util]
@@ -89,8 +90,8 @@
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s_%s.%s"
-                           (or card-name "query_result")
-                           (streaming.common/export-filename-timestamp)
+                           (str/replace (or card-name "query_result") #"[\\/:*?\"<>|]" "_")
+                           (streaming.common/portable-export-filename-timestamp)
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
