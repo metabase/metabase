@@ -45,6 +45,7 @@ export function MoveActionModal({ action, onClose }: MoveActionModalProps) {
     (): OmniPickerValue => ({
       id: action.collection_id ?? "root",
       model: "collection",
+      namespace: "data-actions",
     }),
     [action.collection_id],
   );
