@@ -250,6 +250,28 @@ describe("card drop handlers", () => {
     editor.destroy();
   });
 
+  it("undoes moving card out of flexContainer in one step", () => {
+    const editor = makeEditor([
+      resizeNode(flexContainer([card(1), card(2)])),
+      { type: "paragraph", content: [{ type: "text", text: "Lorem ipsum" }] },
+      resizeNode(card(3)),
+      { type: "paragraph" },
+    ]);
+    const docBefore = editor.state.doc;
+
+    handleCardDropOnCard(
+      dropCardOnCard(editor, 1, 3, "left"),
+      findCard(editor, 3).node,
+    );
+    expect(getFlexContainerCardIds(editor)).toEqual([[1, 3]]);
+
+    editor.commands.undo();
+
+    expect(editor.state.doc.eq(docBefore)).toBe(true);
+
+    editor.destroy();
+  });
+
   it("removes supporting text when the last chart in its group is dropped onto a standalone card", () => {
     const editor = makeEditor([
       resizeNode(flexContainer([supportingText("Lorem ipsum"), card(1)])),

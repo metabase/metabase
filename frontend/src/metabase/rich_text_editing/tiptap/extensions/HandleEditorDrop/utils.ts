@@ -1,4 +1,5 @@
 import type { Node, ResolvedPos, Slice } from "@tiptap/pm/model";
+import type { Transaction } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
 // Helper function to extract cardEmbed or supportingText from resizeNode wrapper
@@ -176,18 +177,30 @@ export const findNodeParentAndPos = (
   return null;
 };
 
-// Traverses the document and unwraps any flexContainer nodes that only have 1 child
-export const cleanupFlexContainerNodes = (view: EditorView) => {
-  view.state.doc.descendants((node, pos) => {
+export const unwrapSingleChildFlexContainers = (tr: Transaction) => {
+  const singleChildContainers: { node: Node; pos: number }[] = [];
+  tr.doc.descendants((node, pos) => {
     if (node.type.name === "flexContainer" && node.childCount === 1) {
-      const child = node.firstChild;
-      if (child) {
-        view.dispatch(
-          child.type.name === "supportingText"
-            ? view.state.tr.deleteRange(pos, pos + node.nodeSize)
-            : view.state.tr.replaceWith(pos, pos + node.nodeSize, child),
-        );
-      }
+      singleChildContainers.push({ node, pos });
     }
   });
+
+  singleChildContainers.reverse().forEach(({ node, pos }) => {
+    const child = node.firstChild;
+    if (child?.type.name === "supportingText") {
+      tr.deleteRange(pos, pos + node.nodeSize);
+    } else if (child) {
+      tr.replaceWith(pos, pos + node.nodeSize, child);
+    }
+  });
+
+  return tr;
+};
+
+// Traverses the document and unwraps any flexContainer nodes that only have 1 child
+export const cleanupFlexContainerNodes = (view: EditorView) => {
+  const tr = unwrapSingleChildFlexContainers(view.state.tr);
+  if (tr.docChanged) {
+    view.dispatch(tr);
+  }
 };
