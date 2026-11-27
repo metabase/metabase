@@ -12,6 +12,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   CardId,
+  Field,
   ParameterValueOrArray,
   ParameterValues,
   ValuesQueryType,
@@ -360,6 +361,108 @@ describe("ParameterValueWidget", () => {
       ).toHaveTextContent(LABEL);
       expect(onValueChange).toHaveBeenLastCalledWith([LABELED_VALUE]);
     });
+  });
+
+  describe("static list source with custom labels on exotic column types", () => {
+    const CARD_ID = 1;
+
+    const CASES = [
+      {
+        name: "an IP address column",
+        field: createMockField({
+          id: 10,
+          name: "inet",
+          display_name: "Inet",
+          base_type: "type/IPAddress",
+          effective_type: "type/IPAddress",
+          semantic_type: null,
+          has_field_values: "list",
+        }),
+        values: [
+          ["192.168.0.1/24", "Router"],
+          ["127.0.0.1", "Localhost"],
+          ["0.0.0.1/0"],
+        ],
+        labels: ["Router", "Localhost", "0.0.0.1/0"],
+        hiddenValues: ["192.168.0.1/24", "127.0.0.1"],
+        pick: "Localhost",
+        storedValue: ["127.0.0.1"],
+      },
+      {
+        name: "a type/Quantity column",
+        field: createMockField({
+          id: 11,
+          name: "count",
+          display_name: "Count",
+          base_type: "type/Integer",
+          effective_type: "type/Integer",
+          semantic_type: "type/Quantity",
+          has_field_values: "list",
+        }),
+        values: [["10", "Ten"], ["20", "Twenty"], ["30"]],
+        labels: ["Ten", "Twenty", "30"],
+        hiddenValues: ["10", "20"],
+        pick: "Twenty",
+        storedValue: ["20"],
+      },
+    ] satisfies {
+      name: string;
+      field: Field;
+      values: ParameterValues["values"];
+      labels: string[];
+      hiddenValues: string[];
+      pick: string;
+      storedValue: ParameterValueOrArray;
+    }[];
+
+    it.each(CASES)(
+      "should show and keep the custom labels for $name",
+      async ({ field, values, labels, hiddenValues, pick, storedValue }) => {
+        setupCardParameterValuesEndpoint({
+          cardId: CARD_ID,
+          parameterId: PARAMETER_ID,
+          parameterValues: { values, has_more_values: false },
+        });
+        setupCardParameterRemappingEndpoint({
+          cardId: CARD_ID,
+          parameterId: PARAMETER_ID,
+          remappings: values,
+        });
+        const { onValueChange } = setupStateful({
+          cardId: CARD_ID,
+          parameter: {
+            type: "string/=",
+            sectionId: "string",
+            hasVariableTemplateTagTarget: false,
+            fields: [getParameterFieldInfo(field)],
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: { values },
+          },
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: FILTER_NAME }),
+        );
+        const dropdown = await screen.findByTestId("parameter-value-dropdown");
+        for (const label of labels) {
+          expect(await within(dropdown).findByText(label)).toBeInTheDocument();
+        }
+        for (const value of hiddenValues) {
+          expect(within(dropdown).queryByText(value)).not.toBeInTheDocument();
+        }
+
+        await userEvent.click(within(dropdown).getByText(pick));
+        await userEvent.click(
+          within(dropdown).getByRole("button", { name: "Add filter" }),
+        );
+
+        expect(onValueChange).toHaveBeenLastCalledWith(storedValue);
+        expect(
+          screen.getByRole("button", { name: FILTER_NAME }),
+        ).toHaveTextContent(pick);
+      },
+    );
   });
 
   describe("clear and reset status", () => {
