@@ -12,6 +12,8 @@ import { getDataStudioRoutes } from "./routes";
 import { getIsRemoteSyncReadOnly, getIsRemoteSyncVisible } from "./selectors";
 
 export function initializePlugin() {
+  PLUGIN_REMOTE_SYNC.getDataStudioRoutes = getDataStudioRoutes;
+
   if (hasPremiumFeature("remote_sync")) {
     PLUGIN_REMOTE_SYNC.isEnabled = true;
     PLUGIN_REMOTE_SYNC.SettingsNavItem = SettingsNavItem;
@@ -19,7 +21,6 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.SettingsModal = SettingsModal;
     PLUGIN_REMOTE_SYNC.SetupMenuItem = SetupMenuItem;
     PLUGIN_REMOTE_SYNC.WorktreesNavItem = WorktreesNavItem;
-    PLUGIN_REMOTE_SYNC.getDataStudioRoutes = getDataStudioRoutes;
     PLUGIN_REMOTE_SYNC.AppBarControls = AppBarControls;
     PLUGIN_REMOTE_SYNC.ChangesBadge = ChangesBadge;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;
