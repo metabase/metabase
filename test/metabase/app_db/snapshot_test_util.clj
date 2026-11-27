@@ -227,65 +227,6 @@
   (doseq [sql after]
     (.execute stmt sql)))
 
-(defn- load-snapshot-version!
-  [^java.sql.Connection conn db-type version]
-  (let [flavor           (flavor conn db-type)
-        resource         (or (snapshot-resource version flavor)
-                             (throw (ex-info "No app DB snapshot for this dialect"
-                                             {:version version, :db-type db-type, :flavor flavor})))
-        stmts            (statements (slurp resource))
-        [before after]   (session-guards flavor)
-        [guarded views]  (load-order flavor stmts)]
-    (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
-    (with-open [stmt (.createStatement conn)]
-      (letfn [(execute! [sqls]
-                (doseq [sql sqls]
-                  (try
-                    (.execute stmt sql)
-                    (catch Throwable e
-                      (throw (ex-info "Error loading app DB snapshot statement"
-                                      {:version version, :flavor flavor, :statement sql}
-                                      e))))))]
-        ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
-        ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
-        ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
-        (let [autocommit? (.getAutoCommit conn)]
-          (when autocommit?
-            (.setAutoCommit conn false))
-          (try
-            ;; the guards are set inside the `try`, so that a failing one still restores those before it and a pooled
-            ;; connection never goes back with foreign key checks or strict mode off
-            (try
-              (doseq [sql before]
-                (.execute stmt sql))
-              (execute! guarded)
-              (catch Throwable e
-                ;; a restore that fails too must not hide the statement that failed first
-                (try
-                  (restore-guards! stmt after)
-                  (catch Throwable restore-error
-                    (.addSuppressed e restore-error)))
-                (throw e)))
-            (restore-guards! stmt after)
-            (execute! views)
-            ;; Committed even when the caller had autocommit off. Postgres runs DDL inside the transaction, and
-            ;; anything that has already opened Liquibase against this connection has left autocommit off; Liquibase
-            ;; rolls back before taking its changelog lock, which would undo the entire load.
-            (.commit conn)
-            (catch Throwable e
-              ;; without this, restoring autocommit would commit however much of the load got through
-              (try (.rollback conn) (catch Throwable _))
-              ;; not a `finally`: on a dead connection this fails as well, and must not hide the statement that failed
-              (when autocommit?
-                (try
-                  (.setAutoCommit conn true)
-                  (catch Throwable restore-error
-                    (.addSuppressed e restore-error))))
-              (throw e)))
-          (when autocommit?
-            (.setAutoCommit conn true)))))
-    :done))
-
 (defn load-snapshot!
   "Load the checked-in snapshot of `version` (default [[snapshot-version]]) into the empty DB behind `conn`, picking
   the dialect from [[flavor]], and commit.
@@ -293,7 +234,62 @@
   ([conn db-type]
    (load-snapshot! conn db-type snapshot-version))
   ([^java.sql.Connection conn db-type version]
-   (load-snapshot-version! conn db-type version)))
+   (let [flavor           (flavor conn db-type)
+         resource         (or (snapshot-resource version flavor)
+                              (throw (ex-info "No app DB snapshot for this dialect"
+                                              {:version version, :db-type db-type, :flavor flavor})))
+         stmts            (statements (slurp resource))
+         [before after]   (session-guards flavor)
+         [guarded views]  (load-order flavor stmts)]
+     (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
+     (with-open [stmt (.createStatement conn)]
+       (letfn [(execute! [sqls]
+                 (doseq [sql sqls]
+                   (try
+                     (.execute stmt sql)
+                     (catch Throwable e
+                       (throw (ex-info "Error loading app DB snapshot statement"
+                                       {:version version, :flavor flavor, :statement sql}
+                                       e))))))]
+         ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
+         ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
+         ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
+         (let [autocommit? (.getAutoCommit conn)]
+           (when autocommit?
+             (.setAutoCommit conn false))
+           (try
+             ;; the guards are set inside the `try`, so that a failing one still restores those before it and a pooled
+             ;; connection never goes back with foreign key checks or strict mode off
+             (try
+               (doseq [sql before]
+                 (.execute stmt sql))
+               (execute! guarded)
+               (catch Throwable e
+                 ;; a restore that fails too must not hide the statement that failed first
+                 (try
+                   (restore-guards! stmt after)
+                   (catch Throwable restore-error
+                     (.addSuppressed e restore-error)))
+                 (throw e)))
+             (restore-guards! stmt after)
+             (execute! views)
+             ;; Committed even when the caller had autocommit off. Postgres runs DDL inside the transaction, and
+             ;; anything that has already opened Liquibase against this connection has left autocommit off; Liquibase
+             ;; rolls back before taking its changelog lock, which would undo the entire load.
+             (.commit conn)
+             (catch Throwable e
+               ;; without this, restoring autocommit would commit however much of the load got through
+               (try (.rollback conn) (catch Throwable _))
+               ;; not a `finally`: on a dead connection this fails as well, and must not hide the statement that failed
+               (when autocommit?
+                 (try
+                   (.setAutoCommit conn true)
+                   (catch Throwable restore-error
+                     (.addSuppressed e restore-error))))
+               (throw e)))
+           (when autocommit?
+             (.setAutoCommit conn true)))))
+     :done)))
 
 (defn changesets
   "The `[id author filename]` of every changeset in the current changelog, in the order Liquibase will run them."

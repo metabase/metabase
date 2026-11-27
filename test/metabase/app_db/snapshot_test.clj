@@ -314,34 +314,35 @@
     (mt/test-drivers #{:h2 :mysql :postgres}
       (doseq [version snapshot/snapshot-versions
               :let    [driver driver/*driver*]]
-        (impl/with-temp-empty-app-db [conn driver]
-          (let [flavor    (snapshot/flavor conn driver)
-                loadable? (snapshot/loadable? conn driver version)]
-            (is loadable? (format "a %s snapshot should be checked in for %s" version flavor))
-            (when loadable?
-              (snapshot/load-snapshot! conn driver version)
-              (let [changesets (snapshot/changesets conn)
-                    through    (snapshot/through-changeset-id version)
-                    boundary   (u/index-of (comp #{through} first) changesets)
-                    recorded   (recorded-changesets conn)]
-                (is (some? boundary)
-                    "the snapshot's boundary changeset should still exist in the changelog")
-                (is (some (comp #{through} first) recorded)
-                    "the snapshot should record its boundary changeset")
-                (is (empty? (remove (set changesets) recorded))
-                    "every changeset the snapshot records should still be in the changelog")
-                (is (= :valid (liquibase/with-liquibase [lb conn]
-                                (.validate lb)
-                                :valid))
-                    "Liquibase should accept the checksums the snapshot records")
-                ;; not a failure: these run after the snapshot loads, so tests stay correct, and they cost the same with
-                ;; or without it. Regenerating would load them too.
-                (when-let [missing (when boundary
-                                     (seq (remove recorded (take (inc boundary) changesets))))]
-                  (log/infof (str "app DB snapshot %s [%s] predates %d changesets before its boundary, "
-                                  "which run after it loads: %s")
-                             version flavor (count missing)
-                             (str/join ", " (map first missing))))))))))))
+        (testing version
+          (impl/with-temp-empty-app-db [conn driver]
+            (let [flavor    (snapshot/flavor conn driver)
+                  loadable? (snapshot/loadable? conn driver version)]
+              (is loadable? (format "a %s snapshot should be checked in for %s" version flavor))
+              (when loadable?
+                (snapshot/load-snapshot! conn driver version)
+                (let [changesets (snapshot/changesets conn)
+                      through    (snapshot/through-changeset-id version)
+                      boundary   (u/index-of (comp #{through} first) changesets)
+                      recorded   (recorded-changesets conn)]
+                  (is (some? boundary)
+                      "the snapshot's boundary changeset should still exist in the changelog")
+                  (is (some (comp #{through} first) recorded)
+                      "the snapshot should record its boundary changeset")
+                  (is (empty? (remove (set changesets) recorded))
+                      "every changeset the snapshot records should still be in the changelog")
+                  (is (= :valid (liquibase/with-liquibase [lb conn]
+                                  (.validate lb)
+                                  :valid))
+                      "Liquibase should accept the checksums the snapshot records")
+                  ;; not a failure: these run after the snapshot loads, so tests stay correct, and they cost the same
+                  ;; with or without it. Regenerating would load them too.
+                  (when-let [missing (when boundary
+                                       (seq (remove recorded (take (inc boundary) changesets))))]
+                    (log/infof (str "app DB snapshot %s [%s] predates %d changesets before its boundary, "
+                                    "which run after it loads: %s")
+                               version flavor (count missing)
+                               (str/join ", " (map first missing)))))))))))))
 
 (defn- migrate-from-snapshot!
   "Load the snapshot of `version` into the empty DB behind `conn` and migrate the rest of the way.

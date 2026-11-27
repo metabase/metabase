@@ -26,6 +26,9 @@
   2. Add the version to [[metabase.app-db.snapshot-test-util/snapshot-versions]].
   3. Generate every flavor with `(generate! flavor version)`, and run the drift test as above.
 
+  Editing a changeset or custom migration that more than one snapshot records means regenerating each of them.
+  Called without a version, [[generate!]] writes only the newest snapshot.
+
   The boundary can go no later than the last changeset with a `vNN.` id until this namespace also writes the snapshot's
   `databasechangelog_version` rows, because loading a snapshot backfills its version from those ids.
 

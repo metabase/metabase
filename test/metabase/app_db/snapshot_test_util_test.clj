@@ -97,9 +97,11 @@
           (is (= snapshot/snapshot-version (snapshot/version-for-start conn :h2 after-boundary)))
           (is (nil? (snapshot/version-for-start conn :h2 before-boundary)))
           (testing "the snapshot with the latest boundary before the start is the one used"
-            (doseq [version snapshot/snapshot-versions]
-              (is (= version (snapshot/version-for-start conn :h2 (after version))))
-              (is (not= version (snapshot/version-for-start conn :h2 (snapshot/through-changeset-id version))))))))
+            (is (= snapshot/snapshot-versions
+                   (map (comp #(snapshot/version-for-start conn :h2 %) after) snapshot/snapshot-versions)))
+            (is (= (cons nil (butlast snapshot/snapshot-versions))
+                   (map (comp #(snapshot/version-for-start conn :h2 %) snapshot/through-changeset-id)
+                        snapshot/snapshot-versions))))))
       (testing "it is never used with an encryption key, since it was generated without one"
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
           (is (nil? (snapshot/version-for-start conn :h2 after-boundary))))))))
