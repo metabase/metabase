@@ -1230,6 +1230,18 @@
     (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
            (cache-control-for "/app/dist/fonts/Lato/lato-v16-latin-regular.cc2c3b4a.woff2" {:status 404})))))
 
+(deftest hashed-asset-head-request-gets-same-cache-control-as-get-test
+  (let [cache-control (fn [request-method]
+                        (let [handler (mw.security/add-security-headers
+                                       (fn [_request respond _raise] (respond {:status 200 :body "x"})))
+                              result  (promise)]
+                          (handler {:request-method request-method :uri "/app/dist/vendor.abc123def456.js"}
+                                   #(deliver result %)
+                                   #(deliver result %))
+                          (get-in @result [:headers "Cache-Control"])))]
+    (is (= "public, max-age=31536000" (cache-control :get)))
+    (is (= (cache-control :get) (cache-control :head)))))
+
 (deftest embedded-data-app-has-content-security-policy-test
   (mt/with-temporary-setting-values [site-url "https://instance.example.com"]
     (let [policy (mw.security/embedded-data-app-content-security-policy

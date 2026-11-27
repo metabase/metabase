@@ -45,7 +45,8 @@
     (are [uri] (false? (cacheable? uri))
       "/app/fonts/Lato/lato-v16-latin-regular.woff2"
       "/app/fonts/CustomFont/custom.ttf"))
-  (testing "only GETs are cacheable"
+  (testing "only GETs and HEADs are cacheable"
+    (is (true? (req.util/cacheable? {:request-method :head :uri "/app/dist/abc123def456.png"})))
     (is (false? (req.util/cacheable? {:request-method :post :uri "/app/dist/abc123def456.png"}))))
   (testing "other paths are not cacheable"
     (are [uri] (false? (cacheable? uri))
