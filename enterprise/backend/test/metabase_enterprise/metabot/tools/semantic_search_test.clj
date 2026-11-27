@@ -79,14 +79,11 @@
                 (is (some #(= (:id %) 1) results))
                 (is (some #(= (:id %) 2) results)))))
           (testing "with no semantic engine active, semantic queries fold into the default engine"
-            (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
-                          ;; Pass terms through uncombined: Postgres appdb would OR them into one string,
-                          ;; which breaks the per-query mock keying below. Keeps this deterministic on any app-db.
-                          search.engine/disjunction (fn [_ terms] terms)
-                          search-core/ranked-results (fn [context]
-                                                       (if (= (:search-string context) "orders")
-                                                         [order-table]
-                                                         [dashboard]))]
+            (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                                        search-core/ranked-results (fn [context]
+                                                                     (if (= (:search-string context) "orders")
+                                                                       [order-table]
+                                                                       [dashboard]))]
               (let [args {:term-queries ["orders"]
                           :semantic-queries ["sales"]
                           :entity-types ["table" "dashboard"]}

@@ -418,8 +418,8 @@
                             ranked))
         ranked-fn*      (fn [search-engine queries]
                           (let [searches (search.engine/disjunction search-engine queries)
-                                ;; Only the in-place engine folds the queries into one search; every other engine
-                                ;; keeps them apart, so each is searched, scored and prefixed on its own.
+                                ;; An engine may fold the queries into one search; a failure is then charged to
+                                ;; every query that search held.
                                 covered  (if (= 1 (count searches)) [queries] (map vector queries))]
                             (mapv #(assoc %1 :queries %2) (run-searches ranked-fn search-engine searches) covered)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
@@ -438,8 +438,9 @@
                           semantic-engine
                           (into []
                                 (keep (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries))))
-                                {semantic-engine semantic-queries
-                                 fallback-engine term-queries})
+                                ;; A repeated query would add its ranking to the fusion twice.
+                                {semantic-engine (distinct semantic-queries)
+                                 fallback-engine (distinct term-queries)})
 
                           ;; Search for all the terms on equal footing, using the default engine.
                           :else
@@ -752,8 +753,13 @@
   [:sequential {:error/message "must be an array of strings"}
    [:string {:description semantic-query-desc}]])
 
+(def ^:private max-keyword-queries
+  "Cap on keyword queries per search. Each runs as its own search of the full ranked pool, concurrently."
+  10)
+
 (def ^:private keyword-queries-schema
-  [:sequential {:error/message "must be an array of strings"}
+  [:sequential {:max           max-keyword-queries
+                :error/message (str "must be an array of at most " max-keyword-queries " strings")}
    [:string {:description keyword-query-desc}]])
 
 (defn- entity-types-schema
