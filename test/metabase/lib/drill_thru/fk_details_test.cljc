@@ -226,3 +226,20 @@
               :expected-query
               {:stages [{:filters [[:= {} exp-venue-id venue-id]
                                    [:= {} exp-user-id  user-id]]}]}})))))))
+
+(deftest ^:parallel fk-details-with-compound-or-filter-test
+  (testing "fk-details drill applies when the query has an OR filter (#85717)"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/filter (lib/or (lib/> (meta/field-metadata :orders :total) 100)
+                                            (lib/> (meta/field-metadata :orders :tax) 2))))
+          column    (meta/field-metadata :orders :product-id)
+          context   {:column     column
+                     :column-ref (lib/ref column)
+                     :value      1
+                     :row        [{:column column :column-ref (lib/ref column) :value 1}]}
+          drill     (m/find-first #(= (:type %) :drill-thru/fk-details)
+                                  (lib/available-drill-thrus query -1 context))]
+      (is (some? drill))
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :filters      [[:= {} [:field {} (meta/id :products :id)] 1]]}]}
+              (lib/drill-thru query -1 nil drill))))))
