@@ -1,7 +1,9 @@
 (ns metabase.change-log.numbering-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.numbering :as change-log.numbering]
+   [metabase.config.core :as config]
    [metabase.global-system.system :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -92,6 +94,30 @@
           (with-redefs [change-log.numbering/batch-size 2]
             (#'change-log.numbering/number-while-awake! (atom Long/MAX_VALUE)))
           (is (every? some? (map position ids))))))))
+
+(deftest number-while-awake-interrupt-test
+  (testing "it stops numbering full batches when its thread is interrupted"
+    (mt/with-dynamic-fn-redefs [change-log.numbering/number-entries! (constantly @#'change-log.numbering/batch-size)]
+      (let [thread (doto (Thread. ^Runnable (bound-fn []
+                                              (#'change-log.numbering/number-while-awake! (atom Long/MAX_VALUE))))
+                     (.setDaemon true)
+                     (.start))]
+        (.interrupt thread)
+        (.join thread 5000)
+        (is (not (.isAlive thread)))))))
+
+(deftest worktree-entries-test
+  (when config/ee-available?
+    (testing "the entries of every remote sync worktree get a position"
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+          (let [main  (entry!)
+                other (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+                        (entry!))]
+            (number-entries!)
+            (is (some? (position main)))
+            (is (some? (mdb/with-worktree-scope {:type :all}
+                         (position other))))))))))
 
 (deftest stay-awake-test
   (with-redefs [change-log.numbering/interval-ms 20]

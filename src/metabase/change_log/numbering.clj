@@ -28,21 +28,23 @@
   (if (mdb/mariadb?) 1 1000))
 
 (defn- number-entries!
-  "Numbers up to 10,000 committed entries that have no position, and returns how many. The first gets the clock in
-  microseconds, or the next free position if that is higher, and the rest rise with their ids."
+  "Numbers up to 10,000 committed entries that have no position, of every remote sync worktree, and returns how many.
+  The first gets the clock in microseconds, or the next free position if that is higher, and the rest rise with their
+  ids."
   []
-  (if (seq (change-log.db/unnumbered-ids 1))
-    ;; Before the lock: the first call on a node can take a connection of its own to read the product name.
-    (let [size (statement-size)]
-      (cluster-lock/with-cluster-lock ::number-entries
-        (let [ids (change-log.db/unnumbered-ids batch-size)]
-          (when (seq ids)
-            (let [start (max (* 1000 (System/currentTimeMillis))
-                             (inc (or (change-log.db/highest-position) 0)))]
-              (doseq [statement-ids (partition-all size ids)]
-                (change-log.db/set-positions! statement-ids start (first ids)))))
-          (count ids))))
-    0))
+  (mdb/with-worktree-scope {:type :all}
+    (if (seq (change-log.db/unnumbered-ids 1))
+      ;; Before the lock: the first call on a node can take a connection of its own to read the product name.
+      (let [size (statement-size)]
+        (cluster-lock/with-cluster-lock ::number-entries
+          (let [ids (change-log.db/unnumbered-ids batch-size)]
+            (when (seq ids)
+              (let [start (max (* 1000 (System/currentTimeMillis))
+                               (inc (or (change-log.db/highest-position) 0)))]
+                (doseq [statement-ids (partition-all size ids)]
+                  (change-log.db/set-positions! statement-ids start (first ids)))))
+            (count ids))))
+      0)))
 
 ;; The numbering of this node: `{:executor ..., :awake-until ...}`. `:awake-until` is an atom that holds when the
 ;; numbering goes to sleep, in milliseconds since the epoch.
@@ -55,7 +57,8 @@
   (try
     (when (< (System/currentTimeMillis) @awake-until)
       ;; A full batch means that more entries may wait, as after the delete of a large database.
-      (while (= batch-size (number-entries!))))
+      (while (and (not (.isInterrupted (Thread/currentThread)))
+                  (= batch-size (number-entries!)))))
     (catch Throwable e
       (log/warn e "Could not number the change log entries."))))
 
