@@ -6,7 +6,11 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { canAccessDataStudio } from "./selectors";
+import {
+  canAccessDataStudio,
+  getUserCanWriteMeasures,
+  getUserCanWriteSegments,
+} from "./selectors";
 
 jest.mock("metabase/utils/iframe", () => ({
   isWithinIframe: jest.fn(() => false),
@@ -87,5 +91,26 @@ describe("canAccessDataStudio", () => {
     });
 
     expect(canAccessDataStudio(state)).toBe(false);
+  });
+});
+
+describe("getUserCanWriteSegments and getUserCanWriteMeasures", () => {
+  it.each([
+    ["segments", getUserCanWriteSegments],
+    ["measures", getUserCanWriteMeasures],
+  ])("allows entitled data analysts to write %s", (_name, canWrite) => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+      }),
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures({
+          advanced_permissions: true,
+        }),
+      }),
+    });
+
+    expect(canWrite(state, false)).toBe(true);
   });
 });
