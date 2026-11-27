@@ -2,12 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase.session.models.session :as session]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
@@ -46,7 +50,7 @@
                  :config  {:users [{:first_name       "Cam"
                                     :last_name        "Saul"
                                     :email            "cam+config-file-test@metabase.com"
-                                    :password         "2cans"
+                                    :password         "3cans"
                                     :login_attributes {"b" 2}}]}})))
         (is (= 1
                (t2/count :model/User :email "cam+config-file-test@metabase.com")))
@@ -61,10 +65,10 @@
             (is (not= original-hashed-password
                       new-hashed-password))
             (testing "Password should not be saved as plaintext"
-              (is (not= "2cans"
+              (is (not= "3cans"
                         new-hashed-password)))
             (testing "Password should work correctly"
-              (is (u.password/verify-password "2cans" (salt) new-hashed-password)))))))
+              (is (u.password/verify-password "3cans" (salt) new-hashed-password)))))))
     (finally
       (t2/delete! :model/User :email "cam+config-file-test@metabase.com"))))
 
@@ -177,3 +181,24 @@
       (finally
         (t2/delete! :model/User :email "cam+config-file-test@metabase.com")
         (t2/delete! :model/User :email "Cam+config-file-test@metabase.com")))))
+
+(deftest init-from-config-file-keeps-existing-sessions-test
+  (try
+    (let [config {:version 1
+                  :config  {:users [{:first_name "Test"
+                                     :last_name  "User"
+                                     :email      "user+config-file-sessions-test@example.com"
+                                     :password   "2cans"}]}}]
+      (is (= :ok (advanced-config.file/initialize! config)))
+      (let [user-id (t2/select-one-pk :model/User :email "user+config-file-sessions-test@example.com")
+            pw-id   (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "password")]
+        (session/create-session! {:id               (session/generate-session-id)
+                                  :user_id          user-id
+                                  :auth_identity_id pw-id
+                                  :session_key      (session/generate-session-key)})
+        (is (= 1 (t2/count :model/Session :user_id user-id :ended_at nil)))
+        (testing "Restarting with an unchanged config file does not end the sessions of its users"
+          (is (= :ok (advanced-config.file/initialize! config)))
+          (is (= 1 (t2/count :model/Session :user_id user-id :ended_at nil))))))
+    (finally
+      (t2/delete! :model/User :email "user+config-file-sessions-test@example.com"))))
