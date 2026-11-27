@@ -104,7 +104,7 @@
     (try
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
-      (log/infof "%s: SELECT privileges confirmed" (pr-table table-schema table-name))
+      (log/debugf "%s: SELECT privileges confirmed" (pr-table table-schema table-name))
       true
       (catch Throwable e
         (let [;; Let's try to ensure the connection is not just open but also valid.

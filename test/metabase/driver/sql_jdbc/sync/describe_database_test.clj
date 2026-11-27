@@ -353,3 +353,15 @@
         (let [[result probes] (run-retry-have-select-privilege! 3 true probe-error-fn)]
           (is (true? result))
           (is (= 1 probes)))))))
+
+(deftest describe-database-does-not-log-confirmed-select-privileges-at-info-test
+  (mt/test-drivers (mt/normal-driver-select
+                    {:+parent :sql-jdbc
+                     :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
+                                         (get-method sql-jdbc.sync/have-select-privilege? %))]
+                     :-features [:table-privileges]})
+    (testing "confirmed SELECT privileges are not logged at info level for every table (#74779)"
+      (mt/with-log-messages-for-level [log-messages :info]
+        (let [tables (into [] (:tables (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))))]
+          (is (seq tables))
+          (is (empty? (filter #(re-find #"SELECT privileges confirmed" (str (:message %))) (log-messages)))))))))
