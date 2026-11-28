@@ -3,7 +3,7 @@
 
   Talks to the OpenAI- and Anthropic-compatible \"v1\" surfaces of a customer's Azure resource
   (`https://<resource>.services.ai.azure.com/{openai|anthropic}`, or the `*.openai.azure.com`
-  equivalent), authenticating with `Authorization: Bearer {llm-azure-api-key}`:
+  equivalent), authenticating with `api-key: {llm-azure-api-key}`:
 
     - `POST {base-url}/v1/messages`  — Anthropic Messages API, for `anthropic/*` models
     - `POST {base-url}/v1/responses` — OpenAI Responses API, for `openai/*` models
@@ -132,12 +132,10 @@
   credentials)
 
 (defn- azure-auth
-  "Azure's `:auth`. The scheme is the default [[adapter/bearer-auth]]; the only difference is that Azure
-  validates the whole credential pair up front, so a half-configured connection fails with its own
-  message instead of a 401 from Azure."
-  [p {:keys [credentials] :as req}]
-  (ensure-credentials credentials)
-  (adapter/bearer-auth p req))
+  "Azure's `:auth`: validates the whole credential pair up front, then sends the key in the `api-key` header."
+  [{:keys [slug display-name]} {:keys [credentials ai-proxy?]}]
+  (let [{:keys [api-key base-url]} (ensure-credentials credentials)]
+    (core/resolve-auth slug display-name {:url base-url :headers {"api-key" api-key}} ai-proxy?)))
 
 (def ^:private provider
   (adapter/provider

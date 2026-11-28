@@ -56,7 +56,7 @@
                                    :model       "openai/gpt-4.1-mini"})))
         (is (=? {:method  :get
                  :url     (str test-base-url "/v1/models")
-                 :headers {"Authorization" "Bearer override-key"}}
+                 :headers {"api-key" "override-key"}}
                 @captured))))))
 
 (deftest list-models-anthropic-family-accepts-the-model-free-400-test
@@ -74,7 +74,7 @@
         (is (=? {:method  :post
                  :url     "https://my-resource.services.ai.azure.com/anthropic/v1/messages"
                  :body    "{}"
-                 :headers {"Authorization"     "Bearer override-key"
+                 :headers {"api-key"           "override-key"
                            "anthropic-version" "2023-06-01"}}
                 @captured))))))
 
@@ -125,7 +125,7 @@
                                      :input  [{:role :user :content "hi"}]})
         body (json/decode+kw (:body req))]
     (is (= "https://my-resource.services.ai.azure.com/anthropic/v1/messages" (:url req)))
-    (is (=? {"Authorization"     "Bearer azure-key"
+    (is (=? {"api-key"           "azure-key"
              "anthropic-version" "2023-06-01"
              "Content-Type"      "application/json"}
             (:headers req)))
@@ -146,9 +146,11 @@
                                      :max-tokens  128})
         body (json/decode+kw (:body req))]
     (is (= (str test-base-url "/v1/responses") (:url req)))
-    (is (=? {"Authorization" "Bearer azure-key"
+    (is (=? {"api-key"       "azure-key"
              "Content-Type"  "application/json"}
             (:headers req)))
+    (testing "the key is not also sent as a bearer token"
+      (is (not (contains? (:headers req) "Authorization"))))
     (is (=? {:model             "gpt-5-deployment"
              :stream            true
              :instructions      "be brief"
@@ -315,7 +317,7 @@
   (testing "credentials passed to azure-raw reach the request, without requiring saved settings"
     (with-redefs [http/request (fn [req]
                                  (is (=? {:url     (str test-base-url "/v1/responses")
-                                          :headers {"Authorization" "Bearer override-key"}}
+                                          :headers {"api-key" "override-key"}}
                                          req))
                                  (throw (ex-info "stop" {::stop true})))]
       (is (thrown-with-msg?
