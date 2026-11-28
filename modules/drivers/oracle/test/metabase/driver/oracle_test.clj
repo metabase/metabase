@@ -46,7 +46,10 @@
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
-   (java.time LocalDateTime)))
+   (java.io ByteArrayOutputStream)
+   (java.security KeyStore)
+   (java.time LocalDateTime)
+   (java.util Base64)))
 
 (set! *warn-on-reflection* true)
 
@@ -979,3 +982,26 @@
         (is (= [[1345 "Alice Connelly"]]
                (mt/formatted-rows [int str] result)
                (mt/formatted-rows [int str] (qp/process-query native-query))))))))
+
+(defn- pkcs12-keystore-data-uri [^String password]
+  (let [store (doto (KeyStore/getInstance "PKCS12")
+                (.load nil nil))
+        out   (ByteArrayOutputStream.)]
+    (.store store out (.toCharArray password))
+    (str "data:application/octet-stream;base64," (.encodeToString (Base64/getEncoder) (.toByteArray out)))))
+
+(deftest ^:parallel pkcs12-keystore-and-truststore-types-detected-test
+  (testing "uploaded PKCS12 stores are not opened as JKS, which fails with Invalid keystore format (#28129)"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :oracle
+                {:host "h", :port 1521, :sid "ORCL", :ssl true
+                 :ssl-use-keystore              true
+                 :ssl-keystore-options          "uploaded"
+                 :ssl-keystore-value            (pkcs12-keystore-data-uri "pw")
+                 :ssl-keystore-password-value   "pw"
+                 :ssl-use-truststore            true
+                 :ssl-truststore-options        "uploaded"
+                 :ssl-truststore-value          (pkcs12-keystore-data-uri "pw")
+                 :ssl-truststore-password-value "pw"})]
+      (is (= "PKCS12" (:javax.net.ssl.keyStoreType spec)))
+      (is (= "PKCS12" (:javax.net.ssl.trustStoreType spec))))))
