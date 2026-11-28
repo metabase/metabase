@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getUserCanWriteToCollections } from "metabase/current-user";
+import { isNewQuerySqlIdle } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { MODAL_TYPES } from "metabase/querying/constants";
@@ -13,6 +14,7 @@ import type {
   QueryBuilderMode,
   QueryModalType,
 } from "metabase/redux/store";
+import { useLocation } from "metabase/router";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import MetabaseSettings from "metabase/utils/settings";
@@ -102,6 +104,8 @@ export function ViewTitleHeaderRightSide({
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const { pathname } = useLocation();
+  const hideNewQuerySqlChrome = isNewQuerySqlIdle(pathname, question);
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
@@ -111,6 +115,7 @@ export function ViewTitleHeaderRightSide({
   // to save it as a new question (based on that model/metric). In other words, at this point
   // the `type` field is set to "question".
   const hasSaveButton =
+    !hideNewQuerySqlChrome &&
     !isModelOrMetric &&
     isDirty &&
     !question.isArchived() &&

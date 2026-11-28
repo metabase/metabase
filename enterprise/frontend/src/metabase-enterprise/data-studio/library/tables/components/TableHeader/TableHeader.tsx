@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
@@ -8,6 +10,7 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { getLibraryCollectionDisplayName } from "metabase/data-studio/common/utils";
+import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -26,6 +29,12 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
     collectionId: table.collection?.id ?? null,
   });
   const [tableModal, setTableModal] = useState<TableModalState>();
+  const exploreUrl = Urls.modelToUrl({
+    id: Number(table.id),
+    name: table.name,
+    model: "table",
+    database: { id: table.db_id },
+  });
 
   return (
     <>
@@ -34,7 +43,18 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
         title={<TableNameInput table={table} />}
         icon="table"
         menu={<TableMoreMenu table={table} onOpenModal={setTableModal} />}
-        tabs={<TableTabs table={table} />}
+        tabs={
+          <Group justify="space-between" align="center" wrap="nowrap" w="100%">
+            <TableTabs table={table} />
+            <Button
+              component={ForwardRefLink}
+              to={exploreUrl}
+              aria-label={t`Explore`}
+            >
+              {t`Explore`}
+            </Button>
+          </Group>
+        }
         {...rest}
         breadcrumbs={
           <DataStudioBreadcrumbs loading={isLoadingPath}>

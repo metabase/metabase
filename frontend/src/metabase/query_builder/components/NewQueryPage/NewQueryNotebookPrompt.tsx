@@ -1,0 +1,78 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { t } from "ttag";
+
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { NotebookProvider } from "metabase/querying/notebook/components/Notebook/context";
+import { NotebookCell } from "metabase/querying/notebook/components/NotebookCell";
+import { NotebookDataPicker } from "metabase/querying/notebook/components/NotebookDataPicker";
+import { Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import * as Lib from "metabase-lib";
+
+import S from "./NewQueryNotebookPrompt.module.css";
+
+type Props = {
+  onSelect: (url: string) => void;
+};
+
+export function NewQueryNotebookPrompt({ onSelect }: Props) {
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isOpened, setIsOpened] = useState(false);
+
+  const question = useMemo(() => buildQuestion({}), [buildQuestion]);
+  const query = question.query();
+  const stageIndex = -1;
+
+  // Focus the Data search input after layout settles so the picker anchors to
+  // the Data box's final position (not a pre-layout spot).
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const input = rootRef.current?.querySelector("input");
+      input?.focus();
+    }, 100);
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  const handleChange = (
+    table: Lib.TableMetadata | Lib.CardMetadata,
+    metadataProvider: Lib.MetadataProvider,
+  ) => {
+    const nextQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    const nextQuestion = question.setQuery(nextQuery);
+    const url = Urls.question(nextQuestion).replace(
+      /^\/question/,
+      "/question/new/notebook",
+    );
+    onSelect(url);
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className={S.root}
+      data-testid="new-query-notebook-prompt"
+    >
+      <Text className={S.label} fw={700} fz="md">
+        {t`Data`}
+      </Text>
+      <NotebookProvider>
+        <NotebookCell color="core-brand" className={S.dataBox}>
+          <NotebookDataPicker
+            query={query}
+            stageIndex={stageIndex}
+            table={undefined}
+            title={t`Pick your starting data`}
+            canChangeDatabase
+            hasMetrics
+            isOpened={isOpened}
+            setIsOpened={setIsOpened}
+            isDisabled={false}
+            onChange={handleChange}
+            columnPicker={null}
+          />
+        </NotebookCell>
+      </NotebookProvider>
+    </div>
+  );
+}

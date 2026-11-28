@@ -15,12 +15,13 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
-import { Badge } from "metabase/ui";
+import { Badge, Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { getCurrentTab } from "./utils";
@@ -222,6 +223,16 @@ export function DataStudioLayout() {
       )}
     </>
   );
+
+  // The prototype nav provides Data Studio navigation (Library + Data
+  // sections), so Data Studio's own left nav is suppressed.
+  if (PROTO_NAV_ENABLED) {
+    return (
+      <Box h="100%" w="100%" miw={0}>
+        <Outlet />
+      </Box>
+    );
+  }
 
   return (
     <AreaLayout

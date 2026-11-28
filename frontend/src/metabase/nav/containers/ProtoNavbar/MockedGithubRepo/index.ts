@@ -1,0 +1,1 @@
+export { MockedGithubRepoPage } from "./MockedGithubRepoPage";

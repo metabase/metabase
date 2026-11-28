@@ -1,3 +1,5 @@
+import { ProtoHome } from "metabase/nav/containers/ProtoNavbar/ProtoHome";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import { Navigate } from "metabase/router";
 
@@ -20,5 +22,5 @@ export function LandingPageRedirect() {
     );
   }
 
-  return <HomePage />;
+  return PROTO_NAV_ENABLED ? <ProtoHome /> : <HomePage />;
 }

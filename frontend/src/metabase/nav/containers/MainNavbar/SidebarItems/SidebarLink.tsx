@@ -8,7 +8,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { Flex, Icon, type IconProps } from "metabase/ui";
+import { Flex, type FlexProps, Icon, type IconProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import { LongItemNameTooltip, SidebarItemName } from "./SidebarItemName";
@@ -25,6 +25,8 @@ export interface SidebarLinkProps {
   target?: string;
   rel?: string;
   className?: string;
+  /** Row start padding, e.g. to line the icon up with a tree's icons. */
+  pl?: FlexProps["pl"];
 }
 
 function isIconPropsObject(
@@ -79,6 +81,7 @@ export function SidebarLink({
   target,
   rel,
   className,
+  pl = "md",
   ...props
 }: SidebarLinkProps) {
   const content = (
@@ -94,7 +97,7 @@ export function SidebarLink({
       isSelected={isSelected}
       className={cx(S.nodeRoot, { [S.selected]: isSelected }, className)}
       bdrs="xxs"
-      pl="md"
+      pl={pl}
       aria-label={children}
       aria-selected={isSelected}
       onMouseDown={disableImageDragging}

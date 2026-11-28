@@ -1,23 +1,16 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/settings-components";
+import { SettingsPageWrapper } from "metabase/settings-components";
 
 import { SettingsForm } from "../SettingsForm";
-import { SyncActionsSection } from "../SyncActionsSection";
 
 export function SettingsPage() {
   return (
     <SettingsPageWrapper
-      title={t`Remote sync`}
-      description={t`Keep your content in sync with a git repository.`}
+      title={t`Git integration`}
+      description={t`Pull in content from a connected git repository.`}
     >
-      <SettingsSection>
-        <SettingsForm triggeredFrom="admin-settings" />
-      </SettingsSection>
-      <SyncActionsSection />
+      <SettingsForm triggeredFrom="admin-settings" />
     </SettingsPageWrapper>
   );
 }

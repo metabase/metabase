@@ -221,7 +221,8 @@ export function useLibraryTreeTableInstance({
 function getRowCanExpand(row: Row<TreeItem>) {
   const { model, data, children } = row.original;
   if (model !== "collection") {
-    return false;
+    // e.g. tables grouping their segments or measures
+    return (children?.length ?? 0) > 0;
   }
   if (row.original.childrenLoaded) {
     return children != null && children.length > 0;

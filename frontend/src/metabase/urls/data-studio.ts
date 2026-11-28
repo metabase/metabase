@@ -105,8 +105,17 @@ function getExpandedIdsQueryString({ expandedIds }: ExpandedIdsParams) {
   return `?${params.toString()}`;
 }
 
-export function dataStudioLibrary(params: ExpandedIdsParams = {}) {
-  return `${ROOT_URL}/library${getExpandedIdsQueryString(params)}`;
+export function dataStudioLibrary({
+  expandedIds,
+  library,
+}: ExpandedIdsParams & { library?: string } = {}) {
+  const params = new URLSearchParams();
+  if (library) {
+    params.set("library", library);
+  }
+  expandedIds?.forEach((id) => params.append("expandedId", String(id)));
+  const query = params.toString();
+  return `${ROOT_URL}/library${query ? `?${query}` : ""}`;
 }
 
 export function dataStudioSnippets(params: ExpandedIdsParams = {}) {
@@ -339,6 +348,10 @@ export function dataStudioSchemaViewer(args?: DataStudioSchemaViewerParams) {
 
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
+}
+
+export function dataStudioEvents() {
+  return `${dataStudio()}/events`;
 }
 
 export function dataStudioGitSync() {

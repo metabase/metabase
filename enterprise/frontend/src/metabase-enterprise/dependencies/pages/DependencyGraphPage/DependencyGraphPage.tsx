@@ -3,6 +3,7 @@ import { useContext } from "react";
 
 import { skipToken } from "metabase/api";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
@@ -43,7 +44,7 @@ export function DependencyGraphPage() {
         getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
         withEntryPicker={withEntryPicker}
         headerRightSide={
-          baseUrl === undefined ? (
+          baseUrl === undefined && !PROTO_NAV_ENABLED ? (
             <AppSwitcher className={S.appSwitcher} />
           ) : null
         }

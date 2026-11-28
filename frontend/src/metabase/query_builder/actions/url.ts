@@ -163,6 +163,15 @@ export const updateUrl = createThunkAction(
       // this is necessary because we can't get the state from history.state
       dispatch(setCurrentState(newState));
 
+      // Keep the New Query page mounted while the hash updates, so the mode
+      // chrome (heading + segmented control) stays visible until engagement.
+      const isOnNewQueryRoute = window.location.pathname.startsWith(
+        `${getBasename()}/question/new`,
+      );
+      if (isOnNewQueryRoute) {
+        to.pathname = window.location.pathname.slice(getBasename().length);
+      }
+
       try {
         if (replaceState) {
           navigate(to, {

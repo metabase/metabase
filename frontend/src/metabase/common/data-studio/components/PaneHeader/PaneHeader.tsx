@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import {
   Box,
   Button,
@@ -38,13 +39,15 @@ export const PaneHeader = ({
   showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
+  const shouldShowAppSwitcher = showAppSwitcher && !PROTO_NAV_ENABLED;
+
   return (
     <Stack gap={0} pt="xxs" {...rest}>
       <Flex mb="xl" mt="lg" w="100%" h="xxl">
         {breadcrumbs}
 
         <Group ml="auto" gap="lg" className={S.ButtonGroup}>
-          {showAppSwitcher && <AppSwitcher />}
+          {shouldShowAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
       <Group
@@ -54,7 +57,7 @@ export const PaneHeader = ({
         align="flex-start"
         wrap="nowrap"
       >
-        <Stack gap="lg">
+        <Stack gap="lg" flex={1} miw={0}>
           {title && (
             <Group align="center" gap="sm" wrap="nowrap">
               {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}

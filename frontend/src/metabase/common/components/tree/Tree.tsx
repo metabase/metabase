@@ -12,6 +12,8 @@ export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initialExpandedIds?: ITreeNodeItem<TData>["id"][];
+  /** IDs that stay expanded and cannot be collapsed. */
+  pinnedExpandedIds?: ITreeNodeItem<TData>["id"][];
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -26,6 +28,7 @@ function BaseTree<TData = unknown>({
   role = "menu",
   emptyState = null,
   initialExpandedIds,
+  pinnedExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
@@ -37,6 +40,7 @@ function BaseTree<TData = unknown>({
     data: dataProp,
     selectedId: selectedIdProp,
     initialExpandedIds,
+    pinnedExpandedIds,
   });
   const controller = tree ?? defaultController;
   const data = controller.data ?? dataProp;

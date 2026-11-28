@@ -7,6 +7,7 @@ import {
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/shell-selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";
 import { getIsSavedQuestionChanged, getQuestion } from "metabase/query_builder";
@@ -80,12 +81,16 @@ export const getIsAppSwitcherVisible = createSelector(
 const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
-  /^\/data-studio/,
-  /^\/monitor/,
+  // The prototype nav stays mounted on /data-studio (Library and Data
+  // sections) and /monitor (Monitor section), so they're only excluded when
+  // the prototype is off.
+  ...(PROTO_NAV_ENABLED ? [] : [/^\/data-studio/, /^\/monitor/]),
   new RegExp(`^${EMBEDDING_HUB_PATH_PREFIX}`),
   // Data apps run full-page with their own custom chrome (a hover-down panel),
   // so neither the left navbar nor the top app bar should be shown.
   new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
+  // PROTOTYPE: a full-page mock of an external GitHub repo page.
+  /^\/mocked-github-repo/,
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,

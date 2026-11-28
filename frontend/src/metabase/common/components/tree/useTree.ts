@@ -8,7 +8,7 @@ import { getInitialExpandedIds } from "./utils";
 
 type UseTreeOptions<TData = unknown> = Pick<
   TreeProps<TData>,
-  "data" | "selectedId" | "initialExpandedIds"
+  "data" | "selectedId" | "initialExpandedIds" | "pinnedExpandedIds"
 > & {
   freezeAutoExpandOnManualToggle?: boolean;
 };
@@ -22,18 +22,32 @@ export interface TreeController<TData = unknown> {
   collapse: (itemId: ITreeNodeItem<TData>["id"]) => void;
 }
 
+function withPinnedIds<TData>(
+  ids: Set<ITreeNodeItem<TData>["id"]>,
+  pinnedExpandedIds?: ITreeNodeItem<TData>["id"][],
+) {
+  if (!pinnedExpandedIds?.length) {
+    return ids;
+  }
+  return new Set([...ids, ...pinnedExpandedIds]);
+}
+
 export function useTree<TData = unknown>({
   data = [],
   selectedId,
   initialExpandedIds,
+  pinnedExpandedIds,
   freezeAutoExpandOnManualToggle = false,
 }: UseTreeOptions<TData>) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initialExpandedIds) {
-      return new Set(initialExpandedIds);
+      return withPinnedIds(new Set(initialExpandedIds), pinnedExpandedIds);
     }
-    return new Set(
-      selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
+    return withPinnedIds(
+      new Set(
+        selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
+      ),
+      pinnedExpandedIds,
     );
   });
   const previousSelectedId = usePrevious(selectedId);
@@ -65,8 +79,30 @@ export function useTree<TData = unknown>({
     freezeAutoExpandOnManualToggle,
   ]);
 
+  useEffect(() => {
+    if (!pinnedExpandedIds?.length) {
+      return;
+    }
+    setExpandedIds((prev) => withPinnedIds(prev, pinnedExpandedIds));
+  }, [pinnedExpandedIds, data]);
+
+  useEffect(() => {
+    if (!initialExpandedIds?.length) {
+      return;
+    }
+    setExpandedIds((prev) =>
+      withPinnedIds(
+        new Set([...prev, ...initialExpandedIds]),
+        pinnedExpandedIds,
+      ),
+    );
+  }, [initialExpandedIds, data, pinnedExpandedIds]);
+
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
+      if (expandedIds.has(itemId) && pinnedExpandedIds?.includes(itemId)) {
+        return;
+      }
       hasManuallyToggledRef.current = true;
       if (expandedIds.has(itemId)) {
         setExpandedIds(
@@ -76,16 +112,22 @@ export function useTree<TData = unknown>({
         setExpandedIds((prev) => new Set([...prev, itemId]));
       }
     },
-    [expandedIds],
+    [expandedIds, pinnedExpandedIds],
   );
 
-  const collapse = useCallback((itemId: string | number) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(itemId);
-      return next;
-    });
-  }, []);
+  const collapse = useCallback(
+    (itemId: string | number) => {
+      if (pinnedExpandedIds?.includes(itemId)) {
+        return;
+      }
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    },
+    [pinnedExpandedIds],
+  );
 
   return {
     data,

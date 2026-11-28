@@ -13,6 +13,7 @@ import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
 import { getUser } from "metabase/current-user";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -77,6 +78,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const currentApp = useGetCurrentApp();
 
   const appsSection = useMemo(() => {
+    // The prototype nav drops the app-switching items, leaving just the
+    // initials avatar that opens the account menu.
+    if (PROTO_NAV_ENABLED) {
+      return null;
+    }
+
     const showAdminSettingsItem = adminItems?.length > 0;
 
     if (

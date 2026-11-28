@@ -5,6 +5,7 @@ import {
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/common/data-studio/collection-utils";
 import { getUserPersonalCollectionId } from "metabase/current-user";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
@@ -435,7 +436,8 @@ export function getCollectionIcon(
     return { name: "person" };
   }
 
-  if (isSyncedCollection(collection) && !isTenantUser) {
+  // The prototype nav shows git-synced collections with the regular folder icon.
+  if (!PROTO_NAV_ENABLED && isSyncedCollection(collection) && !isTenantUser) {
     // tenant users see the normal icon, they don't know what a synced collection is
     return { name: "synced_collection" };
   }
