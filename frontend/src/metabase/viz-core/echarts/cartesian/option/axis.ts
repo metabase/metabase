@@ -309,7 +309,7 @@ export const buildTimeSeriesDimensionAxis = (
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
           return getPaddedAxisLabel(
-            formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")),
+            formatter(value.format("YYYY-MM-DDTHH:mm:ss.SSS[Z]")),
           );
         }
         return "";
