@@ -12,7 +12,7 @@ import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -367,7 +367,51 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   });
 });
 
+describe("Visualizations > PivotTable > value alignment (#87467)", () => {
+  const getAlign = (text: string) =>
+    screen
+      .getAllByTestId("pivot-table-cell")
+      .find((cell) => cell.textContent === text)
+      ?.getAttribute("data-align");
+
+  it("right-aligns values by default", () => {
+    setupPivotTable();
+    expect(getAlign("111")).toBe("right");
+    expect(getAlign("222")).toBe("right");
+  });
+
+  it("aligns each measure's values by its own text_align setting", () => {
+    setupPivotTable({
+      initialSettings: {
+        ...settings,
+        column: (c: DatasetColumn) => ({
+          ...settings,
+          column: c,
+          column_title: c.display_name,
+          ...(c.name === "aggregation-1" ? { text_align: "middle" } : {}),
+          ...(c.name === "aggregation-2" ? { text_align: "left" } : {}),
+        }),
+      },
+    });
+    expect(getAlign("111")).toBe("middle");
+    expect(getAlign("222")).toBe("left");
+  });
+});
+
 describe("Visualizations > PivotTable > Chart Settings", () => {
+  it("should offer Alignment for measures only", async () => {
+    setupPivotSettings();
+    await userEvent.click(await screen.findByTestId("Count-settings-button"));
+    expect(await screen.findByText("Alignment")).toBeInTheDocument();
+    expect(screen.getByText("Middle")).toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByTestId("Category-settings-button"),
+    );
+    expect(await screen.findByDisplayValue("Category")).toBeInTheDocument();
+    expect(screen.queryByText("Alignment")).not.toBeInTheDocument();
+  });
+
   it("should allow you to update a column name", async () => {
     setupPivotSettings();
     await userEvent.click(
