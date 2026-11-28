@@ -15,6 +15,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
+import type { MockResponse } from "./types";
 
 export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card, {
@@ -190,6 +191,15 @@ export function setupCardQueryEndpoints(
       ...resolvedDataset,
       json_query: { ...resolvedDataset.json_query, parameters },
     };
+  });
+}
+
+export function setupCardPivotQueryEndpoint(
+  card: Card,
+  response: MockResponse<Dataset | Promise<Dataset>>,
+) {
+  fetchMock.post(`path:/api/card/pivot/${card.id}/query`, response, {
+    name: `card-${card.id}-pivot-query`,
   });
 }
 
