@@ -27,6 +27,7 @@ summary: Find the guide for your problem, with likely causes, how to spot them, 
 
 - [My permissions aren't working][permissions].
 - [Row and column security isn't working][row-and-column].
+- [Someone can't see a question's results](./cant-see-results.md).
 
 ## Databases
 

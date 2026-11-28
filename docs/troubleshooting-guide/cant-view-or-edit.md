@@ -31,6 +31,7 @@ Someone with edit permissions (your Metabase admin is probably a safe bet) will 
 
 ## Related problems
 
+- [Someone can't see a question's results](./cant-see-results.md).
 - [Error message: your question took too long](./timeout.md).
 - [Error message: permission denied](./data-permissions.md#getting-a-permission-denied-error-message).
 - [I can't view or edit queries from the SQL editor](./data-permissions.md#a-user-group-cant-access-the-sql-editor).
