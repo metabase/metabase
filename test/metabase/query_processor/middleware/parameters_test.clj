@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -28,19 +27,17 @@
 
   ([metadata-provider query]
    (driver/with-driver :h2
-     (if (:lib/type query)
-       (parameters/substitute-parameters query)
-       (-> (lib/query metadata-provider (mbql.normalize/normalize query))
-           parameters/substitute-parameters
-           ;; existing usage -- do not use going forward
-           #_{:clj-kondo/ignore [:deprecated-var]}
-           lib/->legacy-MBQL)))))
+     (parameters/substitute-parameters
+      (cond->> query
+        (not (:lib/type query)) (lib/query metadata-provider))))))
 
 (deftest ^:parallel expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:aggregation [[:count]]
-               :filter      [:= $price 1]})
+    (is (=? (lib.tu.macros/$ids venues
+              {:database (meta/id)
+               :stages   [{:source-table $$venues
+                           :aggregation  [[:count {}]]
+                           :filters      [[:= {} [:field {} %price] 1]]}]})
             (substitute-params
              (lib.tu.macros/mbql-query venues
                {:aggregation [[:count]]
@@ -48,8 +45,9 @@
 
 (deftest ^:parallel expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
-    (is (=? {:type            :native
-             :native          {:query "SELECT * FROM venues WHERE price = 1;", :params []}
+    (is (=? {:stages          [{:lib/type :mbql.stage/native
+                                :native   "SELECT * FROM venues WHERE price = 1;"
+                                :params   []}]
              :user-parameters [{:type :category, :target [:variable [:template-tag "price"]], :value "1"}]}
             (substitute-params
              {:database   (meta/id)
@@ -60,10 +58,11 @@
 
 (deftest ^:parallel expand-mbql-source-query-params-test
   (testing "can we expand MBQL params in a source query?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :filter       [:= $price 1]}
-               :aggregation  [[:count]]})
+    (is (=? (lib.tu.macros/$ids venues
+              {:database (meta/id)
+               :stages   [{:source-table $$venues
+                           :filters      [[:= {} [:field {} %price] 1]]}
+                          {:aggregation [[:count {}]]}]})
             (substitute-params
              (lib.tu.macros/mbql-query venues
                {:source-query {:source-table $$venues
@@ -72,13 +71,13 @@
 
 (deftest ^:parallel expand-mbql-source-query-date-expression-param-test
   (testing "can we expand MBQL number and date expression params in a source query?"
-    (is (=? (lib.tu.macros/mbql-query users
-              {:source-query {:source-table (meta/id :users)
-                              :expressions {"date-column" [:field (meta/id :users :last-login) nil]
-                                            "number-column" [:field (meta/id :users :id) nil]}
-                              :filter [:and
-                                       [:between [:expression "date-column"] "2019-09-29" "2023-09-29"]
-                                       [:= [:expression "number-column"] 1]]}})
+    (is (=? {:database (meta/id)
+             :stages   [{:source-table (meta/id :users)
+                         :expressions  [[:field {:lib/expression-name "date-column"} (meta/id :users :last-login)]
+                                        [:field {:lib/expression-name "number-column"} (meta/id :users :id)]]
+                         :filters      [[:between {} [:expression {} "date-column"] "2019-09-29" "2023-09-29"]
+                                        [:= {} [:expression {} "number-column"] 1]]}
+                        {:lib/type :mbql.stage/mbql}]}
             (substitute-params
              (lib.tu.macros/mbql-query users
                {:source-query {:source-table (meta/id :users)
@@ -93,23 +92,32 @@
 
 (deftest ^:parallel expand-native-source-query-params-test
   (testing "can we expand native params if in a source query?"
-    (is (= (lib.tu.macros/mbql-query nil
-             {:source-query {:native "SELECT * FROM categories WHERE name = ?;"
-                             :params ["BBQ"]}})
-           (substitute-params
-            (lib.tu.macros/mbql-query nil
-              {:source-query {:native         "SELECT * FROM categories WHERE name = {{cat}};"
-                              :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
-                              :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}}))))))
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query nil
+                   {:source-query {:native         "SELECT * FROM categories WHERE name = {{cat}};"
+                                   :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
+                                   :parameters    [{:type "category", :target [:variable [:template-tag "cat"]], :value "BBQ"}]}}))]
+      (is (= (lib/update-query-stage query 0 (fn [stage]
+                                               (-> stage
+                                                   (assoc :native "SELECT * FROM categories WHERE name = ?;"
+                                                          :params ["BBQ"])
+                                                   (dissoc :template-tags :parameters))))
+             (substitute-params query))))))
 
 (deftest ^:parallel expand-mbql-join-params-test
   (testing "can we expand MBQL params in a JOIN?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:aggregation [[:count]]
-               :joins       [{:source-query {:source-table $$categories
-                                             :filter       [:= $categories.name "BBQ"]}
-                              :alias        "c"
-                              :condition    [:= $category-id &c.categories.id]}]})
+    (is (=? (lib.tu.macros/$ids venues
+              {:database (meta/id)
+               :stages   [{:source-table $$venues
+                           :aggregation  [[:count {}]]
+                           :joins        [{:stages     [{:source-table $$categories
+                                                         :filters      [[:= {} [:field {} %categories.name] "BBQ"]]}]
+                                           :alias      "c"
+                                           :conditions [[:=
+                                                         {}
+                                                         [:field {} %category-id]
+                                                         [:field {:join-alias "c"} %categories.id]]]}]}]})
             (substitute-params
              (lib.tu.macros/mbql-query venues
                {:aggregation [[:count]]
@@ -120,12 +128,18 @@
 
 (deftest ^:parallel expand-native-join-params-test
   (testing "can we expand native params in a JOIN?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:aggregation [[:count]]
-               :joins       [{:source-query {:native "SELECT * FROM categories WHERE name = ?;"
-                                             :params ["BBQ"]}
-                              :alias        "c"
-                              :condition    [:= $category-id &c.*categories.id]}]})
+    (is (=? (lib.tu.macros/$ids venues
+              {:database (meta/id)
+               :stages   [{:source-table $$venues
+                           :aggregation  [[:count {}]]
+                           :joins        [{:stages     [{:lib/type :mbql.stage/native
+                                                         :native   "SELECT * FROM categories WHERE name = ?;"
+                                                         :params   ["BBQ"]}]
+                                           :alias      "c"
+                                           :conditions [[:=
+                                                         {}
+                                                         [:field {} %category-id]
+                                                         [:field {:base-type :type/BigInteger, :join-alias "c"} "ID"]]]}]}]})
             (substitute-params
              (lib.tu.macros/mbql-query venues
                {:aggregation [[:count]]
@@ -138,14 +152,18 @@
 (deftest ^:parallel expand-multiple-mbql-params-test
   (testing "can we expand multiple sets of MBQL params?"
     (is (=?
-         (lib.tu.macros/mbql-query venues
-           {:source-query {:source-table $$venues
-                           :filter       [:= $price 1]}
-            :aggregation  [[:count]]
-            :joins        [{:source-query {:source-table $$categories
-                                           :filter       [:= $categories.name "BBQ"]}
-                            :alias        "c"
-                            :condition    [:= $category-id &c.categories.id]}]})
+         (lib.tu.macros/$ids venues
+           {:database (meta/id)
+            :stages   [{:source-table $$venues
+                        :filters      [[:= {} [:field {} %price] 1]]}
+                       {:aggregation [[:count {}]]
+                        :joins       [{:stages     [{:source-table $$categories
+                                                     :filters      [[:= {} [:field {} %categories.name] "BBQ"]]}]
+                                       :alias      "c"
+                                       :conditions [[:=
+                                                     {}
+                                                     [:field {} %category-id]
+                                                     [:field {:join-alias "c"} %categories.id]]]}]}]})
          (substitute-params
           (lib.tu.macros/mbql-query venues
             {:source-query {:source-table $$venues
@@ -160,14 +178,18 @@
   ;; (This is dumb. Hopefully no one is creating queries like this.  The `:parameters` should go in the source query
   ;; instead of in the join.)
   (testing "can we expand multiple sets of MBQL params with params in a join and the join's source query?"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:aggregation [[:count]]
-               :joins       [{:source-query {:source-table $$categories
-                                             :filter       [:and
-                                                            [:= $categories.id 5]
-                                                            [:= $categories.name "BBQ"]]}
-                              :alias        "c"
-                              :condition    [:= $category-id &c.categories.id]}]})
+    (is (=? (lib.tu.macros/$ids venues
+              {:database (meta/id)
+               :stages   [{:source-table $$venues
+                           :aggregation  [[:count {}]]
+                           :joins        [{:stages     [{:source-table $$categories
+                                                         :filters      [[:= {} [:field {} %categories.id] 5]
+                                                                        [:= {} [:field {} %categories.name] "BBQ"]]}]
+                                           :alias      "c"
+                                           :conditions [[:=
+                                                         {}
+                                                         [:field {} %category-id]
+                                                         [:field {:join-alias "c"} %categories.id]]]}]}]})
             (substitute-params
              (lib.tu.macros/mbql-query venues
                {:aggregation [[:count]]
@@ -193,6 +215,14 @@
    :type     :native
    :native   inner-query})
 
+(defn- substituted-native-query
+  "The MBQL 5 query we expect after substituting every parameter of a native query: `sql`, with no params."
+  [sql]
+  {:database (meta/id)
+   :stages   [{:lib/type :mbql.stage/native
+               :native   sql
+               :params   []}]})
+
 (def ^:private mock-native-query-cards-metadata-provider
   (lib.tu/metadata-provider-with-cards-for-queries
    meta/metadata-provider
@@ -204,8 +234,7 @@
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
-    (is (=? (native-query
-             {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
+    (is (=? (substituted-native-query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2")
             (substitute-params
              mock-native-query-cards-metadata-provider
              (native-query
@@ -214,8 +243,7 @@
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags-2
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
-    (is (=? (native-query
-             {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
+    (is (=? (substituted-native-query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2")
             (substitute-params
              mock-native-query-cards-metadata-provider
              (native-query
@@ -224,8 +252,7 @@
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags-3
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
-    (is (=? (native-query
-             {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
+    (is (=? (substituted-native-query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2")
             (substitute-params
              mock-native-query-cards-metadata-provider
              (native-query
@@ -248,8 +275,8 @@
                                "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
                                "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                "FROM \"PUBLIC\".\"VENUES\"")]
-      (is (=? (native-query
-               {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
+      (is (=? (substituted-native-query
+               (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2"))
               (substitute-params
                mp
                (native-query
@@ -269,8 +296,7 @@
                                   :type         :number
                                   :default      "1"
                                   :required     true}}})])]
-      (is (=? (native-query
-               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
+      (is (=? (substituted-native-query "SELECT * FROM (SELECT 1) AS x")
               (substitute-params
                mp
                (native-query
@@ -330,7 +356,7 @@
       (is (=? {:stages [{:native "SELECT name, price FROM venues WHERE price > 2", :params nil}]}
               (substitute-params mp (:dataset-query (lib.metadata/card mp 1))))))
     (testing "multiple snippets are expanded from saved sub-query"
-      (is (=? {:native {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params []}}
+      (is (=? {:stages [{:native "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params []}]}
               (substitute-params
                mp
                (mt/native-query
@@ -358,10 +384,11 @@
                                       :type         :card
                                       :card-id      1}}})]
       (is (malli= [:map
-                   [:native
-                    [:map
-                     [:query  ::lib.schema.common/non-blank-string]
-                     [:params [:= ["G%"]]]]]]
+                   [:stages
+                    [:tuple
+                     [:map
+                      [:native ::lib.schema.common/non-blank-string]
+                      [:params [:= ["G%"]]]]]]]
                   (substitute-params mp query))))))
 
 ;;; see also [[metabase.query-processor.parameters-test/filter-nested-queries-test]]
@@ -380,9 +407,10 @@
       (is (=? {:parameters [{:target [:dimension [:field "DATE" {:base-type :type/Date}] {:stage-number 0}]
                              :value  "2014-01-06"}]}
               query))
-      (is (=? {:query {:filter [:=
-                                [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
-                                "2014-01-06"]}}
+      (is (=? {:stages [{:filters [[:=
+                                    {}
+                                    [:field {:base-type :type/Date, :temporal-unit :day} "DATE"]
+                                    "2014-01-06"]]}]}
               (substitute-params mp query))))))
 
 (deftest ^:parallel stage-number-in-parameters-e2e-test

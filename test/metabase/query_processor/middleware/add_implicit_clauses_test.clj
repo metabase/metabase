@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-implicit-clauses-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,86 +24,78 @@
    (add-implicit-clauses meta/metadata-provider query))
 
   ([metadata-provider query]
-   (if (= (:lib/type query) :mbql/query)
-     (qp.add-implicit-clauses/add-implicit-clauses query)
-     (-> (lib/query metadata-provider query)
-         qp.add-implicit-clauses/add-implicit-clauses
-         ;; existing usage -- do not use going forward
-         #_{:clj-kondo/ignore [:deprecated-var]}
-         lib/->legacy-MBQL))))
-
-(defn- add-implicit-clauses-to-legacy-inner-query
-  ([inner-query]
-   (add-implicit-clauses-to-legacy-inner-query meta/metadata-provider inner-query))
-
-  ([metadata-provider inner-query]
-   (-> (lib/query-from-legacy-inner-query metadata-provider (meta/id) inner-query)
-       add-implicit-clauses
-       ;; existing usage -- do not use going forward
-       #_{:clj-kondo/ignore [:deprecated-var]}
-       lib/->legacy-MBQL
-       :query)))
+   (qp.add-implicit-clauses/add-implicit-clauses
+    (cond->> query
+      (not= (:lib/type query) :mbql/query) (lib/query metadata-provider)))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test
   (testing "we should add order-bys for breakout clauses"
-    (is (= {:source-table (meta/id :venues)
-            :breakout     [[:field (meta/id :venues :price) nil]]
-            :order-by     [[:asc [:field (meta/id :venues :price) nil]]]}
-           (add-implicit-clauses-to-legacy-inner-query
-            {:source-table (meta/id :venues)
-             :breakout     [[:field (meta/id :venues :price) nil]]})))))
+    (is (=? {:stages [{:source-table (meta/id :venues)
+                       :breakout     [[:field {} (meta/id :venues :price)]]
+                       :order-by     [[:asc {} [:field {} (meta/id :venues :price)]]]
+                       :fields       (symbol "nil #_\"key is not present.\"")}]}
+            (add-implicit-clauses
+             (lib.tu.macros/mbql-query venues
+               {:breakout [[:field %price nil]]}))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-2
   (testing "we should add order-bys for breakout clauses"
     (testing "Add Field to existing order-by"
-      (is (=? (lib.tu.macros/mbql-query orders
-                {:breakout [$product-id->products.category]
-                 :order-by [[:asc $created-at]
-                            [:asc $product-id->products.category]]})
-              (update (lib.tu.macros/mbql-query orders
-                        {:breakout [$product-id->products.category]
-                         :order-by [[:asc $created-at]]})
-                      :query add-implicit-clauses-to-legacy-inner-query))))))
+      (is (=? {:stages [(lib.tu.macros/$ids orders
+                          {:source-table $$orders
+                           :breakout     [[:field {:source-field %product-id} %products.category]]
+                           :order-by     [[:asc {} [:field {} %created-at]]
+                                          [:asc {} [:field {:source-field %product-id} %products.category]]]})]}
+              (add-implicit-clauses
+               (lib.tu.macros/mbql-query orders
+                 {:breakout [$product-id->products.category]
+                  :order-by [[:asc $created-at]]})))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-3
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
-      (let [{:keys [query]} (lib.tu.macros/mbql-query orders
-                              {:breakout [$product-id->products.category]
-                               :order-by [[:asc $product-id->products.category]]})]
+      (let [query (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query orders
+                     {:breakout [$product-id->products.category]
+                      :order-by [[:asc $product-id->products.category]]}))]
         (is (= query
-               (add-implicit-clauses-to-legacy-inner-query query)))))))
+               (add-implicit-clauses query)))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-4
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
-      (let [{:keys [query]} (lib.tu.macros/mbql-query orders
-                              {:breakout [$product-id->products.category]
-                               :order-by [[:desc $product-id->products.category]]})]
+      (let [query (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query orders
+                     {:breakout [$product-id->products.category]
+                      :order-by [[:desc $product-id->products.category]]}))]
         (is (= query
-               (add-implicit-clauses-to-legacy-inner-query query)))))))
+               (add-implicit-clauses query)))))))
 
 (deftest ^:parallel add-order-bys-for-breakouts-test-5
   (testing "we should add order-bys for breakout clauses"
     (testing "...but not if the Field is already in an order-by"
       (testing "With a datetime-field"
-        (let [{:keys [query]} (lib.tu.macros/mbql-query orders
-                                {:breakout [!day.created-at]
-                                 :order-by [[:asc !day.created-at]]})]
+        (let [query (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:breakout [!day.created-at]
+                        :order-by [[:asc !day.created-at]]}))]
           (is (= query
-                 (add-implicit-clauses-to-legacy-inner-query query))))))))
+                 (add-implicit-clauses query))))))))
 
 (deftest ^:parallel add-order-bys-for-no-aggregations-test
   (testing "We should add sorted implicit Fields for a query with no aggregations"
-    (is (=? (:query
-             (lib.tu.macros/mbql-query venues
-               {:fields [[:field %id {}]
-                         [:field %name {}]
-                         [:field %category-id {}]
-                         [:field %latitude {}]
-                         [:field %longitude {}]
-                         [:field %price {}]]}))
-            (add-implicit-clauses-to-legacy-inner-query (:query (lib.tu.macros/mbql-query venues)))))))
+    (is (=? {:stages [(lib.tu.macros/$ids venues
+                        {:source-table $$venues
+                         :fields       [[:field {} %id]
+                                        [:field {} %name]
+                                        [:field {} %category-id]
+                                        [:field {} %latitude]
+                                        [:field {} %longitude]
+                                        [:field {} %price]]})]}
+            (add-implicit-clauses (lib.tu.macros/mbql-query venues))))))
 
 (deftest ^:parallel sort-by-field-position-test
   (testing "when adding sorted implicit Fields, Field positions should be taken into account"
@@ -118,19 +111,19 @@
                          :position  101
                          :name      "aaaaa"
                          :base-type :type/Text}]})]
-      (is (=? (:query
-               (lib.tu.macros/mbql-query venues
-                 {:fields [;; all fields with lower positions should get sorted first according to rules above
-                           [:field %id {}]
-                           [:field %name {}]
-                           [:field %category-id {}]
-                           [:field %latitude {}]
-                           [:field %longitude {}]
-                           [:field %price {}]
-                           ;; followed by position = 100, then position = 101
-                           [:field 1 {}]
-                           [:field 2 {}]]}))
-              (add-implicit-clauses-to-legacy-inner-query mp (:query (lib.tu.macros/mbql-query venues))))))))
+      (is (=? {:stages [(lib.tu.macros/$ids venues
+                          {:source-table $$venues
+                           :fields       [;; all fields with lower positions should get sorted first according to rules above
+                                          [:field {} %id]
+                                          [:field {} %name]
+                                          [:field {} %category-id]
+                                          [:field {} %latitude]
+                                          [:field {} %longitude]
+                                          [:field {} %price]
+                                          ;; followed by position = 100, then position = 101
+                                          [:field {} 1]
+                                          [:field {} 2]]})]}
+              (add-implicit-clauses mp (lib.tu.macros/mbql-query venues)))))))
 
 (deftest ^:parallel default-bucketing-test
   (testing "datetime Fields should get default bucketing of :day"
@@ -142,34 +135,40 @@
                          :name      "aaaaa"
                          :base-type :type/DateTime}]})]
       (is (lib.types.isa/temporal? (lib.metadata/field mp 1)))
-      (is (=? (:query
-               (lib.tu.macros/mbql-query venues
-                 {:fields [[:field %id {}]
-                           [:field %name {}]
-                           [:field 1 {}]
-                           [:field %category-id {}]
-                           [:field %latitude {}]
-                           [:field %longitude {}]
-                           [:field %price {}]]}))
-              (add-implicit-clauses-to-legacy-inner-query mp (:query (lib.tu.macros/mbql-query venues))))))))
+      (is (=? {:stages [(lib.tu.macros/$ids venues
+                          {:source-table $$venues
+                           :fields       [[:field {} %id]
+                                          [:field {} %name]
+                                          [:field {} 1]
+                                          [:field {} %category-id]
+                                          [:field {} %latitude]
+                                          [:field {} %longitude]
+                                          [:field {} %price]]})]}
+              (add-implicit-clauses mp (lib.tu.macros/mbql-query venues)))))))
 
 (deftest ^:parallel add-implicit-fields-for-source-queries-test
   (testing "We should add implicit Fields when we have source queries"
-    (is (=? {:fields [[:field "DATE" {:inherited-temporal-unit :month}]
-                      [:field "count" {:base-type :type/Integer}]]}
-            (add-implicit-clauses-to-legacy-inner-query
-             (:query (lib.tu.macros/mbql-query checkins
-                       {:source-query {:source-table $$checkins
-                                       :aggregation  [[:count]]
-                                       :breakout     [!month.$date]}})))))))
+    (is (=? {:stages [{}
+                      {:fields [[:field {:inherited-temporal-unit :month} "DATE"]
+                                [:field {:base-type :type/Integer} "count"]]}]}
+            (add-implicit-clauses
+             (lib.tu.macros/mbql-query checkins
+               {:source-query {:source-table $$checkins
+                               :aggregation  [[:count]]
+                               :breakout     [!month.$date]}}))))))
 
 (deftest ^:parallel expression-with-only-field-in-source-query-test
   (testing "Field coming from expression in source query should have string id"
-    (is (some #(when (= % [:field "ccprice" {:base-type :type/Integer}]) %)
-              (-> (lib.tu.macros/mbql-query nil
-                    {:source-query {:source-table $$venues
-                                    :expressions  {"ccprice" $venues.price}}})
-                  :query add-implicit-clauses-to-legacy-inner-query :fields)))))
+    (is (=? [:field {:base-type :type/Integer} "ccprice"]
+            (m/find-first (fn [[_tag _opts id-or-name]]
+                            (= id-or-name "ccprice"))
+                          (-> (lib.tu.macros/mbql-query nil
+                                {:source-query {:source-table $$venues
+                                                :expressions  {"ccprice" $venues.price}}})
+                              add-implicit-clauses
+                              :stages
+                              last
+                              :fields))))))
 
 (deftest ^:parallel joined-field-test
   (testing "When adding implicit `:fields` clauses, should include `join-alias` clauses for joined fields (#14745)"
@@ -205,11 +204,18 @@
                                           :id           %categories.name
                                           :display_name "Category → Name"
                                           :base_type    :type/Text}]})]
-          (is (= [[:field "ID" {:base-type :type/BigInteger}]
-                  [:field "c__NAME" {:base-type :type/Text}]
-                  [:field "CATEGORIES__via__CATEGORY_ID__NAME" {:base-type :type/Text}]]
-                 (get-in (add-implicit-clauses query)
-                         [:query :fields]))))))))
+          (is (=? {:stages [{}
+                            {:fields [[:field {:base-type :type/BigInteger} "ID"]
+                                      [:field
+                                       {:base-type     :type/Text
+                                        :join-alias    (symbol "nil #_\"key is not present.\"")
+                                        :temporal-unit (symbol "nil #_\"key is not present.\"")}
+                                       "c__NAME"]
+                                      [:field
+                                       {:base-type    :type/Text
+                                        :source-field (symbol "nil #_\"key is not present.\"")}
+                                       "CATEGORIES__via__CATEGORY_ID__NAME"]]}]}
+                  (add-implicit-clauses query))))))))
 
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
@@ -232,28 +238,32 @@
                           {:source-query    (:query q2)
                            :filter          [:> *sum/Float 100]
                            :source-metadata (expected-cols q2)})]
-      (is (=? [[:field "PRODUCTS__via__PRODUCT_ID__TITLE" {:base-type :type/Text}]
-               [:field "sum" {:base-type :type/Float}]]
-              (-> (add-implicit-clauses query)
-                  :query
-                  :fields))))))
+      (is (=? {:stages [{}
+                        {}
+                        {:fields [[:field {:base-type :type/Text} "PRODUCTS__via__PRODUCT_ID__TITLE"]
+                                  [:field {:base-type :type/Float} "sum"]]}]}
+              (add-implicit-clauses query))))))
 
 (deftest ^:parallel add-implicit-fields-for-source-query-inside-join-test
   (testing "Should add implicit `:fields` for `:source-query` inside a join"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:joins    [{:source-query {:source-table $$categories
-                                          :fields       [[:field %categories.id {}]
-                                                         [:field %categories.name {}]]}
-                           :alias        "cat"
-                           :condition    [:= $venues.category-id &cat.*ID/BigInteger]}]
-               :fields   [[:field %venues.id {}]
-                          [:field %venues.name {}]
-                          [:field %venues.category-id {}]
-                          [:field %venues.latitude {}]
-                          [:field %venues.longitude {}]
-                          [:field %venues.price {}]]
-               :order-by [[:asc $venues.name]]
-               :limit    3})
+    (is (=? {:stages [(lib.tu.macros/$ids venues
+                        {:source-table $$venues
+                         :joins        [{:stages     [{:source-table $$categories
+                                                       :fields       [[:field {} %categories.id]
+                                                                      [:field {} %categories.name]]}]
+                                         :alias      "cat"
+                                         :conditions [[:=
+                                                       {}
+                                                       [:field {} %venues.category-id]
+                                                       [:field {:base-type :type/BigInteger, :join-alias "cat"} "ID"]]]}]
+                         :fields       [[:field {} %venues.id]
+                                        [:field {} %venues.name]
+                                        [:field {} %venues.category-id]
+                                        [:field {} %venues.latitude]
+                                        [:field {} %venues.longitude]
+                                        [:field {} %venues.price]]
+                         :order-by     [[:asc {} [:field {} %venues.name]]]
+                         :limit        3})]}
             (add-implicit-clauses
              (lib.tu.macros/mbql-query venues
                {:joins    [{:alias        "cat"
@@ -264,27 +274,32 @@
 
 (deftest ^:parallel add-implicit-fields-skip-join-test
   (testing "Don't add implicit `:fields` clause to a JOIN even if we have source metadata"
-    (is (=? (lib.tu.macros/mbql-query venues
-              {:joins    [{:source-query {:source-table $$categories
-                                          :fields       [[:field %categories.id {}]
-                                                         [:field %categories.name {}]]}
-                           :alias        "cat"
-                           :condition    [:= $venues.category-id &cat.*ID/BigInteger]}]
-               :fields   [[:field %venues.id {}]
-                          [:field %venues.name {}]
-                          [:field %venues.category-id {}]
-                          [:field %venues.latitude {}]
-                          [:field %venues.longitude {}]
-                          [:field %venues.price {}]]
-               :order-by [[:asc $venues.name]]
-               :limit    3})              (add-implicit-clauses
-                                           (lib.tu.macros/mbql-query venues
-                                             {:source-table $$venues
-                                              :joins        [{:alias        "cat"
-                                                              :source-query {:source-table $$categories}
-                                                              :condition    [:= $category-id &cat.*categories.id]}]
-                                              :order-by     [[:asc $name]]
-                                              :limit        3}))))))
+    (is (=? {:stages [(lib.tu.macros/$ids venues
+                        {:source-table $$venues
+                         :joins        [{:stages     [{:source-table $$categories
+                                                       :fields       [[:field {} %categories.id]
+                                                                      [:field {} %categories.name]]}]
+                                         :alias      "cat"
+                                         :conditions [[:=
+                                                       {}
+                                                       [:field {} %venues.category-id]
+                                                       [:field {:base-type :type/BigInteger, :join-alias "cat"} "ID"]]]}]
+                         :fields       [[:field {} %venues.id]
+                                        [:field {} %venues.name]
+                                        [:field {} %venues.category-id]
+                                        [:field {} %venues.latitude]
+                                        [:field {} %venues.longitude]
+                                        [:field {} %venues.price]]
+                         :order-by     [[:asc {} [:field {} %venues.name]]]
+                         :limit        3})]}
+            (add-implicit-clauses
+             (lib.tu.macros/mbql-query venues
+               {:source-table $$venues
+                :joins        [{:alias        "cat"
+                                :source-query {:source-table $$categories}
+                                :condition    [:= $category-id &cat.*categories.id]}]
+                :order-by     [[:asc $name]]
+                :limit        3}))))))
 
 ;;; These are Libor's original notes about the code in the middleware that was needed to make this test pass. With
 ;;; various Lib and QP improvements this just works automatically, so I moved the notes here next to the test. -- Cam

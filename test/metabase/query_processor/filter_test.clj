@@ -1083,12 +1083,11 @@
                              (u/pprint-to-str
                               (select-keys checkins-date [:base-type :effective-type :database-type])))
               (testing "\nPreprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
-                (is (=? {:query {:filter [:=
-                                          [:field (mt/id :checkins :date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
-                                          [:absolute-datetime #t "2014-05-08" :default]]}}
-                        ;; existing usage -- do not use going forward
-                        #_{:clj-kondo/ignore [:deprecated-var]}
-                        (lib/->legacy-MBQL preprocessed))))
+                (is (=? {:stages [{:filters [[:=
+                                              {}
+                                              [:field {:base-type #(isa? % :type/Date), :temporal-unit :default} (mt/id :checkins :date)]
+                                              [:absolute-datetime {} #t "2014-05-08" :default]]]}]}
+                        preprocessed)))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"
@@ -1124,16 +1123,17 @@
                              (u/pprint-to-str
                               (select-keys orders-created-at [:base-type :effective-type :database-type])))
               (testing "\nPreprocessing should give us an optimized temporal filter"
-                (is (=? {:query {:filter [:and
-                                          [:>=
-                                           [:field (:id orders-created-at) {:temporal-unit :default}]
-                                           [:absolute-datetime #t "2019-02-11T00:00-08:00" :default]]
-                                          [:<
-                                           [:field (:id orders-created-at) {:temporal-unit :default}]
-                                           [:absolute-datetime #t "2019-02-12T00:00-08:00" :default]]]}}
-                        ;; existing usage -- do not use going forward
-                        #_{:clj-kondo/ignore [:deprecated-var]}
-                        (lib/->legacy-MBQL preprocessed))))
+                (is (=? {:stages [{:filters [[:and
+                                              {}
+                                              [:>=
+                                               {}
+                                               [:field {:temporal-unit :default} (:id orders-created-at)]
+                                               [:absolute-datetime {} #t "2019-02-11T00:00-08:00" :default]]
+                                              [:<
+                                               {}
+                                               [:field {:temporal-unit :default} (:id orders-created-at)]
+                                               [:absolute-datetime {} #t "2019-02-12T00:00-08:00" :default]]]]}]}
+                        preprocessed)))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"

@@ -343,15 +343,12 @@
                                                        :fields       [&Products.products.price]}]
                                              :fields [$id]})}]})
           query (lib/query mp (lib.metadata/card mp 1))]
-      (is (=? {:query {:fields [[:field "ID"                 {:base-type :type/BigInteger}]
-                                [:field "People__LONGITUDE"  {:base-type :type/Float}]
-                                [:field "People__BIRTH_DATE" {:base-type :type/Date, :inherited-temporal-unit :default}]
-                                [:field "Products__PRICE"    {:base-type :type/Float}]]}}
-              (-> query
-                  qp.preprocess/preprocess
-                  ;; existing usage -- do not use going forward
-                  #_{:clj-kondo/ignore [:deprecated-var]}
-                  lib/->legacy-MBQL)))
+      (is (=? {:stages [{}
+                        {:fields [[:field {:base-type :type/BigInteger} "ID"]
+                                  [:field {:base-type :type/Float} "People__LONGITUDE"]
+                                  [:field {:base-type :type/Date, :inherited-temporal-unit :default} "People__BIRTH_DATE"]
+                                  [:field {:base-type :type/Float} "Products__PRICE"]]}]}
+              (qp.preprocess/preprocess query)))
       (is (= [;; orders.id, from :fields
               "ID"
               ;; from the People join :fields
@@ -431,62 +428,61 @@
                                                                      :source-field            (meta/id :checkins :venue-id)
                                                                      :source-field-join-alias "CH"}]
                                    "1234"]}))]
-      (is (=? {:query {:source-query {:source-table (meta/id :orders)
-                                      :fields       [[:field (meta/id :orders :id)         {}]
-                                                     [:field (meta/id :orders :user-id)    {}]
-                                                     [:field (meta/id :orders :product-id) {}]
-                                                     [:field (meta/id :orders :subtotal)   {}]
-                                                     [:field (meta/id :orders :tax)        {}]
-                                                     [:field (meta/id :orders :total)      {}]
-                                                     [:field (meta/id :orders :discount)   {}]
-                                                     [:field (meta/id :orders :created-at) {}]
-                                                     [:field (meta/id :orders :quantity)   {}]]}
-                       :joins        [{:source-query {:source-table (meta/id :checkins)}
-                                       :alias        "CH"
-                                       :strategy     :left-join
-                                       :fields       [[:field (meta/id :checkins :id)       {:join-alias "CH"}]
-                                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
-                                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
-                                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
-                                       :condition    [:=
-                                                      [:field "ID" {:base-type :type/BigInteger}]
-                                                      [:field (meta/id :checkins :id)
-                                                       {:base-type :type/BigInteger, :join-alias "CH"}]]}
-                                      {:source-query        {:source-table (meta/id :venues)}
-                                       :qp/is-implicit-join true
-                                       :fk-join-alias       "CH"
-                                       :alias               "VENUES__via__VENUE_ID__via__CH"
-                                       :strategy            :left-join
-                                       :fk-field-id         (meta/id :checkins :venue-id)
-                                       :condition           [:=
-                                                             [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]
-                                                             [:field (meta/id :venues :id) {:join-alias "VENUES__via__VENUE_ID__via__CH"}]]}]
-                       :fields       [[:field "ID"         {:base-type :type/BigInteger}]
-                                      [:field "USER_ID"    {:base-type :type/Integer}]
-                                      [:field "PRODUCT_ID" {:base-type :type/Integer}]
-                                      [:field "SUBTOTAL"   {:base-type :type/Float}]
-                                      [:field "TAX"        {:base-type :type/Float}]
-                                      [:field "TOTAL"      {:base-type :type/Float}]
-                                      [:field "DISCOUNT"   {:base-type :type/Float}]
-                                      [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
-                                      [:field "QUANTITY"   {:base-type :type/Integer}]
-                                      ;; TODO (Cam 7/15/25) -- these should ACTUALLY be using field name refs rather
-                                      ;; than ID refs as well
-                                      [:field (meta/id :checkins :id)       {:join-alias "CH"}]
-                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
-                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
-                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
-                       :filter       [:=
-                                      [:field
-                                       (meta/id :venues :price)
-                                       {:source-field-join-alias "CH"
-                                        :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
-                                      [:value 1234 {}]]}}
-              (-> query
-                  qp.preprocess/preprocess
-                  ;; existing usage -- do not use going forward
-                  #_{:clj-kondo/ignore [:deprecated-var]}
-                  lib/->legacy-MBQL))))))
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :fields       [[:field {} (meta/id :orders :id)]
+                                        [:field {} (meta/id :orders :user-id)]
+                                        [:field {} (meta/id :orders :product-id)]
+                                        [:field {} (meta/id :orders :subtotal)]
+                                        [:field {} (meta/id :orders :tax)]
+                                        [:field {} (meta/id :orders :total)]
+                                        [:field {} (meta/id :orders :discount)]
+                                        [:field {} (meta/id :orders :created-at)]
+                                        [:field {} (meta/id :orders :quantity)]]}
+                        {:joins   [{:stages     [{:source-table (meta/id :checkins)}]
+                                    :alias      "CH"
+                                    :strategy   :left-join
+                                    :fields     [[:field {:join-alias "CH"} (meta/id :checkins :id)]
+                                                 [:field {:join-alias "CH"} (meta/id :checkins :date)]
+                                                 [:field {:join-alias "CH"} (meta/id :checkins :user-id)]
+                                                 [:field {:join-alias "CH"} (meta/id :checkins :venue-id)]]
+                                    :conditions [[:= {}
+                                                  [:field {:base-type :type/BigInteger} "ID"]
+                                                  [:field
+                                                   {:base-type :type/BigInteger, :join-alias "CH"}
+                                                   (meta/id :checkins :id)]]]}
+                                   {:stages              [{:source-table (meta/id :venues)}]
+                                    :qp/is-implicit-join true
+                                    :fk-join-alias       "CH"
+                                    :alias               "VENUES__via__VENUE_ID__via__CH"
+                                    :strategy            :left-join
+                                    :fk-field-id         (meta/id :checkins :venue-id)
+                                    :conditions          [[:= {}
+                                                           [:field {:join-alias "CH"} (meta/id :checkins :venue-id)]
+                                                           [:field
+                                                            {:join-alias "VENUES__via__VENUE_ID__via__CH"}
+                                                            (meta/id :venues :id)]]]}]
+                         :fields  [[:field {:base-type :type/BigInteger} "ID"]
+                                   [:field {:base-type :type/Integer} "USER_ID"]
+                                   [:field {:base-type :type/Integer} "PRODUCT_ID"]
+                                   [:field {:base-type :type/Float} "SUBTOTAL"]
+                                   [:field {:base-type :type/Float} "TAX"]
+                                   [:field {:base-type :type/Float} "TOTAL"]
+                                   [:field {:base-type :type/Float} "DISCOUNT"]
+                                   [:field {:base-type :type/DateTimeWithLocalTZ} "CREATED_AT"]
+                                   [:field {:base-type :type/Integer} "QUANTITY"]
+                                   ;; TODO (Cam 7/15/25) -- these should ACTUALLY be using field name refs rather
+                                   ;; than ID refs as well
+                                   [:field {:join-alias "CH"} (meta/id :checkins :id)]
+                                   [:field {:join-alias "CH"} (meta/id :checkins :date)]
+                                   [:field {:join-alias "CH"} (meta/id :checkins :user-id)]
+                                   [:field {:join-alias "CH"} (meta/id :checkins :venue-id)]]
+                         :filters [[:= {}
+                                    [:field
+                                     {:source-field-join-alias "CH"
+                                      :join-alias              "VENUES__via__VENUE_ID__via__CH"}
+                                     (meta/id :venues :price)]
+                                    [:value {} 1234]]]}]}
+              (qp.preprocess/preprocess query))))))
 
 (deftest ^:parallel returned-columns-no-duplicates-test
   (testing "Don't return columns from a join twice (QUE-1607)"
@@ -504,19 +500,16 @@
                                     :fields       :all}]
                     :order-by     [[:asc !month.created-at]]
                     :limit        3}))]
-      (is (=? {:query {:joins [{:fields [[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
-                                         [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]
-                       :fields [[:field "CREATED_AT" {:inherited-temporal-unit :month}]
-                                [:field "count" {:base-type :type/Integer}]
-                                ;; TODO (Cam 9/11/25) -- this should use a name ref as well, once we convert the
-                                ;; `resolve-joins` middleware this should be fixed
-                                [:field (meta/id :people :birth-date) {:join-alias "Q2"}]
-                                [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}}
-              (-> query
-                  qp.preprocess/preprocess
-                  ;; existing usage -- do not use going forward
-                  #_{:clj-kondo/ignore [:deprecated-var]}
-                  lib/->legacy-MBQL)))
+      (is (=? {:stages [{}
+                        {:joins  [{:fields [[:field {:join-alias "Q2"} (meta/id :people :birth-date)]
+                                            [:field {:base-type :type/Integer, :join-alias "Q2"} "count"]]}]
+                         :fields [[:field {:inherited-temporal-unit :month} "CREATED_AT"]
+                                  [:field {:base-type :type/Integer} "count"]
+                                  ;; TODO (Cam 9/11/25) -- this should use a name ref as well, once we convert the
+                                  ;; `resolve-joins` middleware this should be fixed
+                                  [:field {:join-alias "Q2"} (meta/id :people :birth-date)]
+                                  [:field {:base-type :type/Integer, :join-alias "Q2"} "count"]]}]}
+              (qp.preprocess/preprocess query)))
       (is (= ["CREATED_AT"
               "count"
               "Q2__BIRTH_DATE"

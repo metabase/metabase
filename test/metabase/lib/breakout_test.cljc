@@ -183,6 +183,16 @@
                  {:display-name "Name"}]
                 (lib/breakoutable-columns query)))))))
 
+(defn- legacy-people-query-with-birth-date-breakout
+  "A legacy MBQL query against People, broken out by Birth Date bucketed by `temporal-unit`."
+  [temporal-unit]
+  {:database (meta/id)
+   :type     :query
+   :query    {:source-table (meta/id :people)
+              :breakout     [[:field
+                              (meta/id :people :birth-date)
+                              {:base-type :type/Date, :temporal-unit temporal-unit}]]}})
+
 (deftest ^:parallel multiple-breakouts-for-the-same-column-test
   (testing "multiple breakout positions for the same column"
     (let [base-query         (lib.tu/venues-query)
@@ -226,22 +236,16 @@
           breakouts  (lib/breakouts query)]
       (is (= 1 (count breakouts)))))
   (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
-    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column     (meta/field-metadata :people :birth-date)
-          query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL ; existing usage -- do not use going forward
-                                        (lib/query meta/metadata-provider))
-                                   (lib/with-temporal-bucket column :year))
-          breakouts  (lib/breakouts query)]
+    (let [column    (meta/field-metadata :people :birth-date)
+          query     (lib/breakout (lib/query meta/metadata-provider (legacy-people-query-with-birth-date-breakout :year))
+                                  (lib/with-temporal-bucket column :year))
+          breakouts (lib/breakouts query)]
       (is (= 1 (count breakouts)))))
   (testing "should allow multiple breakouts with different temporal buckets when converting from legacy MBQL"
-    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column     (meta/field-metadata :people :birth-date)
-          query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL ; existing usage -- do not use going forward
-                                        (lib/query meta/metadata-provider))
-                                   (lib/with-temporal-bucket column :month))
-          breakouts  (lib/breakouts query)]
+    (let [column    (meta/field-metadata :people :birth-date)
+          query     (lib/breakout (lib/query meta/metadata-provider (legacy-people-query-with-birth-date-breakout :year))
+                                  (lib/with-temporal-bucket column :month))
+          breakouts (lib/breakouts query)]
       (is (= 2 (count breakouts))))))
 
 (deftest ^:parallel breakoutable-explicit-joins-test

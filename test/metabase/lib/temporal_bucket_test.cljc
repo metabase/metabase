@@ -273,3 +273,22 @@
                :display-name   "Created At: Day of week"
                :effective-type :type/Integer}
               created-at)))))
+
+(deftest ^:parallel with-temporal-bucket-on-untyped-ref-test
+  (doseq [a-ref [[:field {:lib/uuid (str (random-uuid))} (meta/id :checkins :date)]
+                 [:expression {:lib/uuid (str (random-uuid))} "expr"]]]
+    (testing (pr-str (first a-ref))
+      (testing "bucketing a ref with no type info should not add a nil :effective-type"
+        (is (=? [(first a-ref)
+                 {:temporal-unit               :day
+                  :effective-type              (symbol "nil #_\"key is not present.\"")
+                  :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}
+                 (last a-ref)]
+                (lib/with-temporal-bucket a-ref :day))))
+      (testing "an extraction unit still makes the ref an integer"
+        (is (=? [(first a-ref)
+                 {:temporal-unit               :month-of-year
+                  :effective-type              :type/Integer
+                  :lib/original-effective-type (symbol "nil #_\"key is not present.\"")}
+                 (last a-ref)]
+                (lib/with-temporal-bucket a-ref :month-of-year)))))))

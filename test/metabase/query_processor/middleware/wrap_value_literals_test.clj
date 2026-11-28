@@ -23,60 +23,66 @@
 (defmethod driver/database-supports? [::tz-driver :set-timezone] [_driver _feature _db] true)
 
 (defn- wrap-value-literals
+  "Run the middleware on `query`, upgrading a legacy `query` to MBQL 5 first."
   ([query]
    (wrap-value-literals query "UTC"))
 
   ([query ^String timezone-id]
-   (letfn [(f [query]
-             (mt/with-results-timezone-id timezone-id
-               (qp.wrap-value-literals/wrap-value-literals query)))]
-     (driver/with-driver ::tz-driver
-       (if (:lib/type query)
-         (f query)
-         (let [mp meta/metadata-provider]
-           (-> (lib/query mp query)
-               f
-               ;; existing usage -- do not use going forward
-               #_{:clj-kondo/ignore [:deprecated-var]}
-               lib/->legacy-MBQL)))))))
+   (driver/with-driver ::tz-driver
+     (mt/with-results-timezone-id timezone-id
+       (qp.wrap-value-literals/wrap-value-literals
+        (if (:lib/type query)
+          query
+          (lib/query meta/metadata-provider query)))))))
 
 (deftest ^:parallel wrap-integers-test
-  (is (= (lib.tu.macros/mbql-query venues
-           {:filter [:>
-                     $id
-                     [:value 50 {:base_type     :type/BigInteger
-                                 :semantic_type :type/PK
-                                 :database_type "BIGINT"}]]})
-         (wrap-value-literals
-          (lib.tu.macros/mbql-query venues
-            {:filter [:> $id 50]})))))
+  (is (=? (lib.tu.macros/$ids venues
+            {:database (meta/id)
+             :stages   [{:source-table $$venues
+                         :filters      [[:>
+                                         {}
+                                         [:field {} %id]
+                                         [:value {:base-type     :type/BigInteger
+                                                  :semantic-type :type/PK
+                                                  :database-type "BIGINT"}
+                                          50]]]}]})
+          (wrap-value-literals
+           (lib.tu.macros/mbql-query venues
+             {:filter [:> $id 50]})))))
 
 (deftest ^:parallel wrap-string-literal-on-lhs-test
   (testing "string literal on LHS of comparison should get wrapped with type info from RHS field (#53598)"
-    (is (= (lib.tu.macros/mbql-query venues
-             {:filter [:=
-                       [:value "foo" {:base_type     :type/Text
-                                      :semantic_type :type/Name
-                                      :database_type "CHARACTER VARYING"}]
-                       $name]})
-           (wrap-value-literals
-            (lib.tu.macros/mbql-query venues
-              {:filter [:= "foo" $name]}))))))
+    (is (=? (lib.tu.macros/$ids venues
+              {:database (meta/id)
+               :stages   [{:source-table $$venues
+                           :filters      [[:=
+                                           {}
+                                           [:value {:base-type     :type/Text
+                                                    :semantic-type :type/Name
+                                                    :database-type "CHARACTER VARYING"}
+                                            "foo"]
+                                           [:field {} %name]]]}]})
+            (wrap-value-literals
+             (lib.tu.macros/mbql-query venues
+               {:filter [:= "foo" $name]}))))))
 
 (deftest ^:parallel wrap-integers-test-2
-  (is (= (lib.tu.macros/mbql-query venues
-           {:filter [:and
-                     [:> $id [:value 50 {:base_type     :type/BigInteger
-                                         :semantic_type :type/PK
-                                         :database_type "BIGINT"}]]
-                     [:< $price [:value 5 {:base_type     :type/Integer
-                                           :semantic_type :type/Category
-                                           :database_type "INTEGER"}]]]})
-         (wrap-value-literals
-          (lib.tu.macros/mbql-query venues
-            {:filter [:and
-                      [:> $id 50]
-                      [:< $price 5]]})))))
+  (is (=? (lib.tu.macros/$ids venues
+            {:database (meta/id)
+             :stages   [{:source-table $$venues
+                         :filters      [[:> {} [:field {} %id] [:value {:base-type     :type/BigInteger
+                                                                        :semantic-type :type/PK
+                                                                        :database-type "BIGINT"}
+                                                                50]]
+                                        [:< {} [:field {} %price] [:value {:base-type     :type/Integer
+                                                                           :semantic-type :type/Category
+                                                                           :database-type "INTEGER"}
+                                                                   5]]]}]})
+          (wrap-value-literals
+           (lib.tu.macros/mbql-query venues
+             {:filter [:and
+                       [:> $id 50]
+                       [:< $price 5]]})))))
 
 (defn- parse-with-timezone [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
@@ -96,42 +102,40 @@
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test
-  (is (= (:query
-          (lib.tu.macros/mbql-query checkins
-            {:filter [:= !month.date [:absolute-datetime (t/local-date "2018-10-01") :month]]}))
-         (-> (lib.tu.macros/$ids checkins
-               (lib.tu.macros/mbql-query checkins
-                 {:filter [:= !month.date "2018-10-01"]}))
-             wrap-value-literals
-             :query))
+  (is (=? (lib.tu.macros/$ids checkins
+            {:stages [{:source-table $$checkins
+                       :filters      [[:=
+                                       {}
+                                       [:field {:temporal-unit :month} %date]
+                                       [:absolute-datetime {} (t/local-date "2018-10-01") :month]]]}]})
+          (-> (lib.tu.macros/$ids checkins
+                (lib.tu.macros/mbql-query checkins
+                  {:filter [:= !month.date "2018-10-01"]}))
+              wrap-value-literals))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?"))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test-2
-  (is (= [:datetime-diff
-          [:absolute-datetime #t "2018-10-01" :default]
-          [:absolute-datetime #t "2019-10-01T01:02:03" :default]
-          :month]
-         (-> (lib.tu.macros/mbql-query checkins
-               {:fields      [[:expression "a"]]
-                :expressions {"a" [:datetime-diff "2018-10-01" "2019-10-01T01:02:03" :month]}})
-             wrap-value-literals
-             :query
-             :expressions
-             (get "a")))
+  (is (=? {:stages [{:expressions [[:datetime-diff
+                                    {:lib/expression-name "a"}
+                                    [:absolute-datetime {} #t "2018-10-01" :default]
+                                    [:absolute-datetime {} #t "2019-10-01T01:02:03" :default]
+                                    :month]]}]}
+          (-> (lib.tu.macros/mbql-query checkins
+                {:fields      [[:expression "a"]]
+                 :expressions {"a" [:datetime-diff "2018-10-01" "2019-10-01T01:02:03" :month]}})
+              wrap-value-literals))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in datetime-diff clauses"))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test-3
-  (is (= (:query
-          (lib.tu.macros/mbql-query checkins
-            {:source-query {:source-table $$checkins}
-             :filter       [:=
-                            !month.*date
-                            [:absolute-datetime (t/local-date "2018-10-01") :month]]}))
-         (:query
+  (is (=? {:stages [{:source-table (meta/id :checkins)}
+                    {:filters [[:=
+                                {}
+                                [:field {:base-type :type/Date, :temporal-unit :month} "DATE"]
+                                [:absolute-datetime {} (t/local-date "2018-10-01") :month]]]}]}
           (wrap-value-literals
            (lib.tu.macros/mbql-query checkins
              {:source-query {:source-table $$checkins}
-              :filter       [:= !month.*date "2018-10-01"]}))))
+              :filter       [:= !month.*date "2018-10-01"]})))
       (str "make sure datetime literal strings should also get wrapped in `absolute-datetime` clauses if they are "
            "being compared against a type/DateTime `field-literal`")))
 
@@ -186,18 +190,19 @@
 
 (deftest wrap-datetime-literal-strings-test-6
   (mt/with-report-timezone-id! "US/Pacific"
-    (is (= (:query
-            (lib.tu.macros/mbql-query checkins
-              {:source-query {:source-table $$checkins}
-               :filter       [:=
-                              [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
-                              [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]") :day]]}))
-           (-> (lib.tu.macros/mbql-query checkins
-                 {:source-query {:source-table $$checkins}
-                  :filter       [:= [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}] "2018-10-01"]})
-               (assoc-in [:settings :report-timezone] "US/Pacific")
-               (wrap-value-literals "US/Pacific")
-               :query))
+    (is (=? {:stages [{:source-table (meta/id :checkins)}
+                      {:filters [[:=
+                                  {}
+                                  [:field {:temporal-unit :day, :base-type :type/DateTimeWithZoneID} "DATE"]
+                                  [:absolute-datetime
+                                   {}
+                                   (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]")
+                                   :day]]]}]}
+            (-> (lib.tu.macros/mbql-query checkins
+                  {:source-query {:source-table $$checkins}
+                   :filter       [:= [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}] "2018-10-01"]})
+                (assoc-in [:settings :report-timezone] "US/Pacific")
+                (wrap-value-literals "US/Pacific")))
         "Datetime literal strings should get parsed in the current report timezone.")))
 
 (deftest ^:parallel wrap-prewrapped-absolute-datetime-strings-test
@@ -232,19 +237,20 @@
   (testing (str "a pre-wrapped local string is coerced using the report timezone, by the field's "
                 "type — the type/tz awareness that can only happen here in the QP, at execution time")
     (mt/with-report-timezone-id! "US/Pacific"
-      (is (= (:query
-              (lib.tu.macros/mbql-query checkins
-                {:source-query {:source-table $$checkins}
-                 :filter       [:=
-                                [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
-                                [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]") :day]]}))
-             (-> (lib.tu.macros/mbql-query checkins
-                   {:source-query {:source-table $$checkins}
-                    :filter       [:= [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
-                                   [:absolute-datetime "2018-10-01" :day]]})
-                 (assoc-in [:settings :report-timezone] "US/Pacific")
-                 (wrap-value-literals "US/Pacific")
-                 :query))
+      (is (=? {:stages [{:source-table (meta/id :checkins)}
+                        {:filters [[:=
+                                    {}
+                                    [:field {:temporal-unit :day, :base-type :type/DateTimeWithZoneID} "DATE"]
+                                    [:absolute-datetime
+                                     {}
+                                     (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]")
+                                     :day]]]}]}
+              (-> (lib.tu.macros/mbql-query checkins
+                    {:source-query {:source-table $$checkins}
+                     :filter       [:= [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
+                                    [:absolute-datetime "2018-10-01" :day]]})
+                  (assoc-in [:settings :report-timezone] "US/Pacific")
+                  (wrap-value-literals "US/Pacific")))
           "pre-wrapped string coerced to the report timezone for a DateTimeWithZoneID field"))))
 
 (defn- year-literal-filter-query
@@ -382,35 +388,45 @@
 
 (deftest ^:parallel string-filters-test
   (testing "string filters like `starts-with` should not parse datetime strings for obvious reasons"
-    (is (= (lib.tu.macros/mbql-query checkins
-             {:filter [:starts-with
-                       !month.date
-                       [:value "2018-10-01" {:base_type     :type/Date
-                                             :database_type "DATE"
-                                             :unit          :month}]]})
-           (wrap-value-literals
-            (lib.tu.macros/mbql-query checkins
-              {:filter [:starts-with !month.date "2018-10-01"]}))))))
+    (is (=? (lib.tu.macros/$ids checkins
+              {:database (meta/id)
+               :stages   [{:source-table $$checkins
+                           :filters      [[:starts-with
+                                           {}
+                                           [:field {:temporal-unit :month} %date]
+                                           [:value {:base-type     :type/Date
+                                                    :database-type "DATE"
+                                                    :unit          :month}
+                                            "2018-10-01"]]]}]})
+            (wrap-value-literals
+             (lib.tu.macros/mbql-query checkins
+               {:filter [:starts-with !month.date "2018-10-01"]}))))))
 
 (deftest ^:parallel wrap-literals-in-source-queries-test
   (testing "does wrapping value literals work recursively on source queries as well?"
-    (is (= (lib.tu.macros/mbql-query checkins
-             {:source-query {:source-table $$checkins
-                             :filter       [:>
-                                            $date
-                                            [:absolute-datetime (t/local-date #t "2014-01-01") :default]]}})
-           (wrap-value-literals
-            (lib.tu.macros/mbql-query checkins
-              {:source-query {:source-table $$checkins
-                              :filter       [:> $date "2014-01-01"]}}))))))
+    (is (=? (lib.tu.macros/$ids checkins
+              {:database (meta/id)
+               :stages   [{:source-table $$checkins
+                           :filters      [[:>
+                                           {}
+                                           [:field {} %date]
+                                           [:absolute-datetime {} (t/local-date #t "2014-01-01") :default]]]}
+                          {}]})
+            (wrap-value-literals
+             (lib.tu.macros/mbql-query checkins
+               {:source-query {:source-table $$checkins
+                               :filter       [:> $date "2014-01-01"]}}))))))
 
 (deftest ^:parallel wrap-literals-around-expressions-test
   (testing "does wrapping literals work against expressions? (#27185)"
-    (is (=? (lib.tu.macros/mbql-query checkins
-              {:expressions {"foo" $date}
-               :filter      [:>
-                             [:expression "foo" {:base-type :type/DateTime}]
-                             [:absolute-datetime #t "2014-01-01T00:00" :day]]})
+    (is (=? (lib.tu.macros/$ids checkins
+              {:database (meta/id)
+               :stages   [{:source-table $$checkins
+                           :expressions  [[:field {:lib/expression-name "foo"} %date]]
+                           :filters      [[:>
+                                           {}
+                                           [:expression {:base-type :type/DateTime} "foo"]
+                                           [:absolute-datetime {} #t "2014-01-01T00:00" :day]]]}]})
             (wrap-value-literals
              (lib.tu.macros/mbql-query checkins
                {:expressions {"foo" $date}
@@ -418,9 +434,15 @@
 
 (deftest ^:parallel other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
-    (is (=? (lib.tu.macros/mbql-query checkins
-              {:aggregation [[:share
-                              [:> !day.date [:absolute-datetime (t/local-date #t "2015-06-01") :day]]]]})
+    (is (=? (lib.tu.macros/$ids checkins
+              {:database (meta/id)
+               :stages   [{:source-table $$checkins
+                           :aggregation  [[:share
+                                           {}
+                                           [:>
+                                            {}
+                                            [:field {:temporal-unit :day} %date]
+                                            [:absolute-datetime {} (t/local-date #t "2015-06-01") :day]]]]}]})
             (wrap-value-literals
              (lib.tu.macros/mbql-query checkins
                {:aggregation [[:share [:> !day.date "2015-06-01"]]]}))))))
@@ -537,12 +559,13 @@
 
 (deftest ^:parallel type-info-gets-field-ref-data-test
   (testing "type info includes data from :field_ref as well as :source-metadata"
-    (is (=? {:query
-             {:filter
-              [:=
-               [:field "CATEGORY" {:base-type :type/Text}]
-               [:value "Doohickey" {:base_type :type/Text
-                                    :database_type "CHARACTER VARYING"}]]}}
+    (is (=? {:stages [{}
+                      {:filters [[:=
+                                  {}
+                                  [:field {:base-type :type/Text} "CATEGORY"]
+                                  [:value {:base-type     :type/Text
+                                           :database-type "CHARACTER VARYING"}
+                                   "Doohickey"]]]}]}
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query products
@@ -551,9 +574,6 @@
                                    :aggregation  [[:count]]
                                    :breakout     [$category]}}))
                 qp.preprocess/preprocess
-                ;; existing usage -- do not use going forward
-                #_{:clj-kondo/ignore [:deprecated-var]}
-                lib/->legacy-MBQL
                 wrap-value-literals)))))
 
 (deftest ^:parallel wrap-value-literals-in-mbql-test

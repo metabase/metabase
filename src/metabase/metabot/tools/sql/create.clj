@@ -4,6 +4,8 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable]
@@ -16,15 +18,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- create-native-query
-  "Create a native (SQL) query structure."
-  [database-id sql-content]
-  (let [mp (lib-be/application-database-metadata-provider database-id)]
-    (-> (lib/native-query mp sql-content)
-        ;; ⚠⚠⚠ Going forward we NEED TO ensure consumers are fine processing MBQL 5, since `->legacy-MBQL` is getting
-        ;; removed very soon. ⚠⚠⚠
-        ^{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-        lib/->legacy-MBQL)))
+(mu/defn- create-native-query :- ::lib.schema/query
+  "An MBQL 5 native query that runs `sql-content` against the database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   sql-content :- :string]
+  (lib/native-query (lib-be/application-database-metadata-provider database-id) sql-content))
 
 (defn- validate-database-access
   [database-id]
@@ -54,9 +52,10 @@
   - check-tables?: Whether to check the table references (optional, default true). The card and snippet
     references are always checked.
 
-  Returns a map with:
+  Returns a map with `:validation-result` and, when the SQL is valid, an `:action-result` map with:
   - :query-id - The ID of the created query
   - :query-content - The SQL content
+  - :query - The MBQL 5 native query
   - :database - Database ID"
   [{:keys [database-id sql check-tables?] :or {check-tables? true}} :- [:map {:closed true}
                                                                         [:database-id :int]

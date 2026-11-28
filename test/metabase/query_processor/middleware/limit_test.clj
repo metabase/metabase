@@ -20,13 +20,7 @@
     (recur (lib/query meta/metadata-provider query))))
 
 (defn- add-default-limit [query]
-  (if (:lib/type query)
-    (limit/add-default-limit query)
-    (-> (lib/query meta/metadata-provider query)
-        limit/add-default-limit
-        ;; existing usage -- do not use going forward
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        lib/->legacy-MBQL)))
+  (limit/add-default-limit (lib/query meta/metadata-provider query)))
 
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `qp.settings/absolute-max-results`"
@@ -35,13 +29,8 @@
 
 (deftest ^:parallel disable-max-results-test
   (testing "Apply `absolute-max-results` limit in the default case"
-    (let [query {:database (meta/id)
-                 :type     :query
-                 :query    {:source-table (meta/id :venues)}}]
-      (is (= {:database (meta/id)
-              :type     :query
-              :query    {:source-table (meta/id :venues)
-                         :limit        qp.settings/absolute-max-results}}
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
+      (is (= (lib/limit query qp.settings/absolute-max-results)
              (add-default-limit query))))))
 
 (deftest ^:parallel aggregation-then-empty-stage-test
@@ -54,9 +43,7 @@
 
 (deftest ^:parallel disable-max-results-test-2
   (testing "Don't apply the `absolute-max-results` limit when `disable-max-results` is used."
-    (let [query (limit/disable-max-results {:database (meta/id)
-                                            :type     :query
-                                            :query    {:source-table (meta/id :venues)}})]
+    (let [query (limit/disable-max-results (lib/query meta/metadata-provider (meta/table-metadata :venues)))]
       (is (= query
              (add-default-limit query))))))
 
@@ -94,9 +81,8 @@
              (:row_count result))
           ":row_count should match the limit added by middleware")
       (is (=? {:constraints {:max-results 46}
-               :type        :query
-               :query       {:limit 46}}
-              (#'add-default-limit query))
+               :stages      [{:limit 46}]}
+              (add-default-limit query))
           "Preprocessed query should have :limit added to it"))))
 
 (deftest ^:parallel download-row-max-results-test
@@ -104,9 +90,8 @@
     (let [query {:type  :query
                  :query {:source-table (meta/id :venues)}
                  :info  {:context :csv-download}}]
-      (is (=? {:type     :query
-               :query    {:limit qp.settings/absolute-max-results}
-               :info     {:context :csv-download}}
+      (is (=? {:stages [{:limit qp.settings/absolute-max-results}]
+               :info   {:context :csv-download}}
               (add-default-limit query))))))
 
 (deftest download-row-limit-test
@@ -124,11 +109,11 @@
                        context)
         (mt/with-temp-env-var-value! [mb-download-row-limit limit]
           (is (= expected
-                 (get-in (add-default-limit
-                          {:type  :query
-                           :query {:source-table (meta/id :venues)}
-                           :info  {:context context}})
-                         [:query :limit]))))))))
+                 (lib/current-limit
+                  (add-default-limit
+                   {:type  :query
+                    :query {:source-table (meta/id :venues)}
+                    :info  {:context context}})))))))))
 
 (deftest ^:parallel download-row-limit-test-2
   (testing "Apply appropriate maximum when download-row-limit is unset, but `(mbql.u/query->max-rows-limit query)` returns a value above absolute-max-results"
@@ -144,14 +129,14 @@
                          "above")
                        context)
         (is (= expected
-               (get-in (add-default-limit
-                        {:type        :query
-                         :query       {:source-table (meta/id :venues)}
-                         ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
-                         ;; so we can use this to check the behaviour of `add-default-limit` when download-row-limit is unset
-                         :constraints (when limit {:max-results-bare-rows limit})
-                         :info        {:context context}})
-                       [:query :limit])))))))
+               (lib/current-limit
+                (add-default-limit
+                 {:type        :query
+                  :query       {:source-table (meta/id :venues)}
+                  ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
+                  ;; so we can use this to check the behaviour of `add-default-limit` when download-row-limit is unset
+                  :constraints (when limit {:max-results-bare-rows limit})
+                  :info        {:context context}}))))))))
 
 (deftest embedded-download-row-limit-test
   (testing "Apply custom download row limits for embedded contexts"
@@ -168,11 +153,11 @@
                        context)
         (mt/with-temp-env-var-value! [mb-download-row-limit limit]
           (is (= expected
-                 (get-in (add-default-limit
-                          {:type  :query
-                           :query {:source-table (meta/id :venues)}
-                           :info  {:context context}})
-                         [:query :limit]))))))))
+                 (lib/current-limit
+                  (add-default-limit
+                   {:type  :query
+                    :query {:source-table (meta/id :venues)}
+                    :info  {:context context}})))))))))
 
 (deftest public-download-row-limit-test
   (testing "Apply custom download row limits for public contexts"
@@ -189,8 +174,8 @@
                        context)
         (mt/with-temp-env-var-value! [mb-download-row-limit limit]
           (is (= expected
-                 (get-in (add-default-limit
-                          {:type  :query
-                           :query {:source-table (meta/id :venues)}
-                           :info  {:context context}})
-                         [:query :limit]))))))))
+                 (lib/current-limit
+                  (add-default-limit
+                   {:type  :query
+                    :query {:source-table (meta/id :venues)}
+                    :info  {:context context}})))))))))

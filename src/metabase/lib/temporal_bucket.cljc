@@ -478,9 +478,9 @@
                                     :type/Integer
                                     original-effective-type)
           options                 (-> options
-                                      (assoc :temporal-unit unit
-                                             :effective-type new-effective-type)
-                                      (m/assoc-some :lib/original-effective-type original-effective-type))]
+                                      (assoc :temporal-unit unit)
+                                      (m/assoc-some :effective-type              new-effective-type
+                                                    :lib/original-effective-type original-effective-type))]
       [tag options id-or-name])
     ;; `unit` is `nil`: remove the temporal bucket.
     (let [original-effective-type (:lib/original-effective-type options)

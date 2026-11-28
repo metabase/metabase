@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -51,14 +50,13 @@
         (lib/drill-thru query -1 nil drill "asc")))
     (testing "Handle JS input correctly (#34342)"
       (mu/disable-enforcement
-        (is (=? {:query {:source-table (meta/id :orders)
-                         :order-by     [[:asc
-                                         [:field
-                                          (meta/id :orders :id)
-                                          {:base-type :type/BigInteger}]]]}}
-                ;; existing usage -- do not use going forward
-                #_{:clj-kondo/ignore [:deprecated-var]}
-                (lib.convert/->legacy-MBQL (lib/drill-thru query -1 nil drill "asc"))))))
+        (is (=? {:stages [{:source-table (meta/id :orders)
+                           :order-by     [[:asc
+                                           {}
+                                           [:field
+                                            {:base-type :type/BigInteger}
+                                            (meta/id :orders :id)]]]}]}
+                (lib/drill-thru query -1 nil drill "asc")))))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :order-by [[:desc {} [:field {} (meta/id :orders :id)]]]}]}
             (lib/drill-thru query -1 nil drill :desc)))))

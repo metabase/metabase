@@ -911,13 +911,11 @@
 ;;;   ["between", {}, ["field", {}, <col>], ["absolute-datetime", {}, "2025-01-01", "day"], ["now", {}]]
 ;;;   => ["between", {}, ["field", {}, <col>], "2025-01-01", ["now", {}]]
 ;;;
-;;; `metabase.metabot.agent.links/->frontend-query` converts a structured query that does not
-;;; normalize to valid MBQL 5 to legacy MBQL. If that conversion fails too, as it does for a query
-;;; stripped of its `:lib/*` keys whose aggregation ref points at one of several aggregations, the
-;;; raw MBQL 5 query goes out instead. In legacy MBQL, JSON turns the unit into a string, and the legacy schema cannot
-;;; decode it for `absolute-datetime` / `during`, so the frontend drops the clause (BOT-1972). A
-;;; `temporal-unit` on a ref decodes correctly (`legacy-json-round-trip-temporal-filters-test`). The
-;;; query builder also writes the hoisted form.
+;;; In legacy MBQL, JSON turns the unit into a string, and the legacy schema cannot decode it for
+;;; `absolute-datetime` / `during`, so a frontend that reads the query as legacy MBQL drops the
+;;; clause (BOT-1972). A `temporal-unit` on a ref decodes correctly. Metabot's links carry a query
+;;; as MBQL 5 ([[metabase.metabot.agent.links/->frontend-query]]), so this matters only to a consumer
+;;; that converts the query to legacy MBQL. The query builder also writes the hoisted form.
 ;;;
 ;;; Only inside a stage's `filters` and `expressions`, at every nesting level of the two -- a
 ;;; comparison inside a `case` included -- and in every stage of the query, a join's inner stages
@@ -1360,8 +1358,8 @@
 ;;;   ["temporal-extract", {}, <col>, "day-of-week", "us"]    => ["get-day-of-week", {}, <col>]
 ;;;
 ;;; The unit lands in the legacy `::TemporalExtractUnit` enum, which has no decoder, so a question
-;;; that opens from legacy MBQL 400s. The `/question#` link carries a structured query as MBQL 5,
-;;; where the clause survives, so this matters only when a query falls back to legacy MBQL. A
+;;; that opens from legacy MBQL 400s. The `/question#` link carries a query as MBQL 5, where the
+;;; clause survives, so this matters only to a consumer that converts the query to legacy MBQL. A
 ;;; `get-*` clause carries no unit. The week-mode units keep their meaning through the trailing
 ;;; argument `get-week` / `get-day-of-week` already take. The clause's own optional mode slot (third
 ;;; example) is dropped: SQL compilation reads only the unit (`:temporal-extract` in
@@ -1640,11 +1638,11 @@
 ;;;   aggregation: [[sum, {}, [field, {}, [..., TOTAL]]]]
 ;;;   order-by:    [[desc, {}, [sum, {}, [field, {}, [..., TOTAL]]]]]   # <-- inline copy
 ;;;
-;;; In MBQL 5 / legacy MBQL the `order-by` direction must wrap an aggregation **reference**,
-;;; not the aggregation expression itself. The `lib.normalize` step accepts the inline form
-;;; structurally, but `lib/->legacy-MBQL` produces a query that fails legacy-schema validation
-;;; the moment something downstream re-loads it (e.g. when the chart is opened, the QP
-;;; round-trips through legacy MBQL and explodes with `Invalid output: {:query {:order-by ...}}`).
+;;; The query builder writes an aggregation **reference** in `order-by`, not the aggregation
+;;; expression itself. MBQL 5 accepts the inline form, but legacy MBQL allows only an
+;;; `aggregation`, `expression` or `field` ref there, so this matters only to a consumer that
+;;; converts the query to legacy MBQL: the converted query fails to load, with
+;;; `Invalid output: {:query {:order-by ...}}`.
 ;;;
 ;;; This pass detects the pattern, structurally matches each `order-by` inner clause against
 ;;; the stage's `aggregation` list (ignoring options-map differences), and:
@@ -3586,8 +3584,8 @@
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
-    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, which survives a fallback
-       to legacy MBQL (examples in the pass header);
+    1.867. rewrite `temporal-extract` to the equivalent `get-*` clause, which survives a
+       conversion to legacy MBQL (examples in the pass header);
     1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
@@ -3604,7 +3602,7 @@
        aggregation clause and `base-type`/`effective-type` on the ref's options;
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
        `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
-       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
+       conversion to legacy MBQL, and the query engine runs it right where it runs the literal-side
        form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3.7. auto-wire `source-field-join-alias` (and the accompanying portable `source-field`)
        on field clauses whose target table is reachable through **exactly one** explicit

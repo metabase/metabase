@@ -210,31 +210,28 @@
 (deftest ^:parallel basic-deleted-columns-test-3
   (testing "should remove field in joins"
     (let [preprocessed (-> (lib/query @deleted-columns-metadata-provider (join-query))
-                           qp.preprocess/preprocess
-                           ;; existing usage -- do not use going forward
-                           #_{:clj-kondo/ignore [:deprecated-var]}
-                           lib/->legacy-MBQL)]
-      (testing ":query => :joins => first => :source-query => :fields"
-        (is (=? [[:field "ID" {:base-type :type/BigInteger}]
-                 [:field "SUBTOTAL" {:base-type :type/Float}]
-                 [:field "TOTAL" {:base-type :type/Float}]
-                 [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
-                 [:field "QUANTITY" {:base-type :type/Integer}]
-                 [:field "Product__ID" {:base-type :type/BigInteger}]
-                 [:field "Product__TITLE" {:base-type :type/Text}]
-                 [:field "Product__PRICE" {:base-type :type/Float}]
-                 [:field "Product__RATING" {:base-type :type/Float}]]
-                (-> preprocessed :query :joins first :source-query :fields))))
-      (testing ":query => :fields"
-        (is (=? [[:field (mt/id :products :id) {}]
-                 [:field (mt/id :products :title) {}]
-                 [:field (mt/id :products :category) {}]
-                 [:field (mt/id :products :price) {}]
-                 [:field (mt/id :products :rating) {}]
-                 [:field (mt/id :products :created_at) {}]
-                 [:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}]
-                 [:field "TOTAL" {:join-alias "Card", :base-type :type/Float}]]
-                (-> preprocessed :query :fields)))))))
+                           qp.preprocess/preprocess)]
+      (testing "first stage => :joins => first => last stage => :fields"
+        (is (=? [[:field {:base-type :type/BigInteger} "ID"]
+                 [:field {:base-type :type/Float} "SUBTOTAL"]
+                 [:field {:base-type :type/Float} "TOTAL"]
+                 [:field {:base-type :type/DateTimeWithLocalTZ} "CREATED_AT"]
+                 [:field {:base-type :type/Integer} "QUANTITY"]
+                 [:field {:base-type :type/BigInteger} "Product__ID"]
+                 [:field {:base-type :type/Text} "Product__TITLE"]
+                 [:field {:base-type :type/Float} "Product__PRICE"]
+                 [:field {:base-type :type/Float} "Product__RATING"]]
+                (-> preprocessed :stages first :joins first :stages last :fields))))
+      (testing "first stage => :fields"
+        (is (=? [[:field {} (mt/id :products :id)]
+                 [:field {} (mt/id :products :title)]
+                 [:field {} (mt/id :products :category)]
+                 [:field {} (mt/id :products :price)]
+                 [:field {} (mt/id :products :rating)]
+                 [:field {} (mt/id :products :created_at)]
+                 [:field {:join-alias "Card", :base-type :type/BigInteger} "ID_2"]
+                 [:field {:join-alias "Card", :base-type :type/Float} "TOTAL"]]
+                (-> preprocessed :stages first :fields)))))))
 
 (deftest ^:parallel deleted-columns-test
   (qp.store/with-metadata-provider @deleted-columns-metadata-provider

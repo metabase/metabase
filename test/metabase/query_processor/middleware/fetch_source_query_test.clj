@@ -4,11 +4,10 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -20,14 +19,9 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
-(defn resolve-source-cards* [query]
-  ;; Handle old tests written with legacy queries. Convert legacy query to MBQL 5 and then convert results
-  ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
-  (letfn [(thunk [] (let [mbql5-query (lib.query/query (qp.store/metadata-provider) query)
-                          resolved    (fetch-source-query/resolve-source-cards mbql5-query)]
-                      (cond-> resolved
-                        ;; existing usage -- do not use going forward
-                        (not (:lib/type query)) #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL)))]
+(defn- resolve-source-cards* [query]
+  ;; Old tests pass legacy queries; `lib/query` upgrades those to MBQL 5.
+  (letfn [(thunk [] (fetch-source-query/resolve-source-cards (lib/query (qp.store/metadata-provider) query)))]
     (if (qp.store/initialized?)
       (thunk)
       (qp.store/with-metadata-provider meta/metadata-provider
@@ -49,21 +43,16 @@
     (dissoc col :field_ref :source)
     (m/filter-keys simple-keyword? col)))
 
-(defn- default-result-with-inner-query
-  ([inner-query]
-   (default-result-with-inner-query inner-query ::infer))
+(defn- expected-stage-metadata
+  "Expected `:lib/stage-metadata` of a stage that returns `cols`, legacy results metadata such as
+  [[qp.preprocess/query->expected-cols]] returns."
+  [cols]
+  {:columns (mapv #(lib/normalize ::lib.schema.metadata/column (remove-irrelevant-keys %)) cols)})
 
-  ([inner-query metadata]
-   (let [outer-query     {:database (meta/id)
-                          :type     :query
-                          :query    inner-query}
-         result-metadata (not-empty (for [col (if (= metadata ::infer)
-                                                (qp.preprocess/query->expected-cols outer-query)
-                                                metadata)]
-                                      (remove-irrelevant-keys col)))]
-     (cond-> outer-query
-       result-metadata
-       (assoc-in [:query :source-metadata] result-metadata)))))
+(defn- venues-stage-metadata
+  "Expected `:lib/stage-metadata` of a stage that returns the columns of the Venues Table."
+  []
+  (expected-stage-metadata (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))))
 
 (defn- mock-metadata-provider []
   (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
@@ -74,11 +63,12 @@
 (deftest ^:parallel resolve-mbql-queries-test
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
     (qp.store/with-metadata-provider (mock-metadata-provider)
-      (is (=? (assoc (default-result-with-inner-query
-                      {:source-query {:source-table (meta/id :venues)}}
-                      (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
-                     :info {:card-id 1}
-                     :qp/source-card-id 1)
+      (is (=? {:database          (meta/id)
+               :stages            [{:source-table       (meta/id :venues)
+                                    :lib/stage-metadata (venues-stage-metadata)}
+                                   {:lib/type :mbql.stage/mbql}]
+               :info              {:card-id 1}
+               :qp/source-card-id 1}
               (resolve-source-cards
                (wrap-inner-query
                 {:source-table "card__1"})))))))
@@ -87,13 +77,13 @@
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
     (qp.store/with-metadata-provider (mock-metadata-provider)
       (testing "with aggregations/breakouts"
-        (is (=? (assoc (default-result-with-inner-query
-                        {:aggregation  [[:count]]
-                         :breakout     [[:field "price" {:base-type :type/Integer}]]
-                         :source-query {:source-table (meta/id :venues)}}
-                        (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
-                       :info {:card-id 1}
-                       :qp/source-card-id 1)
+        (is (=? {:database          (meta/id)
+                 :stages            [{:source-table       (meta/id :venues)
+                                      :lib/stage-metadata (venues-stage-metadata)}
+                                     {:aggregation [[:count {}]]
+                                      :breakout    [[:field {:base-type :type/Integer} "price"]]}]
+                 :info              {:card-id 1}
+                 :qp/source-card-id 1}
                 (resolve-source-cards
                  (wrap-inner-query
                   {:source-table "card__1"
@@ -104,12 +94,17 @@
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
     (qp.store/with-metadata-provider (mock-metadata-provider)
       (testing "with filters"
-        (is (=? (assoc (default-result-with-inner-query
-                        {:source-query {:source-table (meta/id :checkins)}
-                         :filter       [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
-                        (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query checkins)))
-                       :info {:card-id 2}
-                       :qp/source-card-id 2)
+        (is (=? {:database          (meta/id)
+                 :stages            [{:source-table       (meta/id :checkins)
+                                      :lib/stage-metadata (expected-stage-metadata
+                                                           (qp.preprocess/query->expected-cols
+                                                            (lib.tu.macros/mbql-query checkins)))}
+                                     {:filters [[:between {}
+                                                 [:field {:base-type :type/Date} "date"]
+                                                 "2015-01-01"
+                                                 "2015-02-01"]]}]
+                 :info              {:card-id 2}
+                 :qp/source-card-id 2}
                 (resolve-source-cards
                  (wrap-inner-query
                   {:source-table "card__2"
@@ -144,13 +139,13 @@
     (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                                       meta/metadata-provider
                                       [(:dataset-query (:venues/native (lib.tu/mock-cards)))])
-      (is (=? (assoc (default-result-with-inner-query
-                      {:aggregation  [[:count]]
-                       :breakout     [[:field "price" {:base-type :type/Integer}]]
-                       :source-query {:native "SELECT * FROM venues"}}
-                      nil)
-                     :info {:card-id 1}
-                     :qp/source-card-id 1)
+      (is (=? {:database          (meta/id)
+               :stages            [{:lib/type :mbql.stage/native
+                                    :native   "SELECT * FROM venues"}
+                                   {:aggregation [[:count {}]]
+                                    :breakout    [[:field {:base-type :type/Integer} "price"]]}]
+               :info              {:card-id 1}
+               :qp/source-card-id 1}
               (resolve-source-cards
                (wrap-inner-query
                 {:source-table "card__1"
@@ -169,18 +164,15 @@
 (deftest ^:parallel nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
     (qp.store/with-metadata-provider (nested-nested-provider)
-      (is (=? (-> (default-result-with-inner-query
-                   {:limit        25
-                    :source-query {:limit           50
-                                   :source-query    {:source-table (meta/id :venues)
-                                                     :limit        100}
-                                   :source-metadata nil}}
-                   (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
-                  (assoc-in [:query :source-query :source-metadata]
-                            (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                              (remove-irrelevant-keys col)))
-                  (assoc :info {:card-id 2}
-                         :qp/source-card-id 2))
+      (is (=? {:database          (meta/id)
+               :stages            [{:source-table       (meta/id :venues)
+                                    :limit              100
+                                    :lib/stage-metadata (venues-stage-metadata)}
+                                   {:limit              50
+                                    :lib/stage-metadata (venues-stage-metadata)}
+                                   {:limit 25}]
+               :info              {:card-id 2}
+               :qp/source-card-id 2}
               (resolve-source-cards
                (wrap-inner-query
                 {:source-table "card__2", :limit 25})))))))
@@ -223,16 +215,6 @@
           (is (= {:rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 
-(defn- clean-metadata
-  "The metadata that comes back gets merged quite a bit. In these tests we only assert on the field_ref leave for other
-  tests the actual contents of the metadata."
-  [results]
-  (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
-    (update-in results [:query :joins]
-               (fn [joins]
-                 (map (fn [join] (update join :source-metadata clean))
-                      joins)))))
-
 (def ^:private joins-metadata
   [{:name         "ID"
     :display_name "Card ID"
@@ -249,11 +231,17 @@
 (deftest ^:parallel joins-test
   (qp.store/with-metadata-provider joins-metadata-provider
     (testing "Are `card__id` source tables resolved in `:joins`?"
-      (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
-                                         :source-metadata joins-metadata}
-                          :alias        "c"
-                          :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]})
+      (is (=? (lib.tu.macros/$ids venues
+                {:database (meta/id)
+                 :stages   [{:source-table $$venues
+                             :joins        [{:stages     [{:source-table       $$categories
+                                                           :limit              100
+                                                           :lib/stage-metadata (expected-stage-metadata joins-metadata)}
+                                                          {:lib/type :mbql.stage/mbql}]
+                                             :alias      "c"
+                                             :conditions [[:= {}
+                                                           [:field {} %category-id]
+                                                           [:field {:join-alias "c"} %categories.id]]]}]}]})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:joins [{:source-table "card__1"
@@ -263,11 +251,17 @@
 (deftest ^:parallel joins-test-2
   (qp.store/with-metadata-provider joins-metadata-provider
     (testing "Are `card__id` source tables resolved in JOINs against a source query?"
-      (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
-                                         :source-metadata joins-metadata}
-                          :alias        "c"
-                          :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]})
+      (is (=? (lib.tu.macros/$ids venues
+                {:database (meta/id)
+                 :stages   [{:source-table $$venues
+                             :joins        [{:stages     [{:source-table       $$categories
+                                                           :limit              100
+                                                           :lib/stage-metadata (expected-stage-metadata joins-metadata)}
+                                                          {:lib/type :mbql.stage/mbql}]
+                                             :alias      "c"
+                                             :conditions [[:= {}
+                                                           [:field {} %category-id]
+                                                           [:field {:join-alias "c"} %categories.id]]]}]}]})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:joins [{:source-query {:source-table "card__1"}
@@ -277,13 +271,18 @@
 (deftest ^:parallel joins-test-3
   (qp.store/with-metadata-provider joins-metadata-provider
     (testing "Are `card__id` source tables resolved in JOINs inside nested source queries?"
-      (is (=? (lib.tu.macros/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :joins        [{:source-query {:source-query    {:source-table $$categories
-                                                                                 :limit        100}
-                                                               :source-metadata joins-metadata}
-                                                :alias        "c"
-                                                :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}})
+      (is (=? (lib.tu.macros/$ids venues
+                {:database (meta/id)
+                 :stages   [{:source-table $$venues
+                             :joins        [{:stages     [{:source-table       $$categories
+                                                           :limit              100
+                                                           :lib/stage-metadata (expected-stage-metadata joins-metadata)}
+                                                          {:lib/type :mbql.stage/mbql}]
+                                             :alias      "c"
+                                             :conditions [[:= {}
+                                                           [:field {} %category-id]
+                                                           [:field {:join-alias "c"} %categories.id]]]}]}
+                            {:lib/type :mbql.stage/mbql}]})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:source-query
@@ -304,20 +303,24 @@
                                                   :dataset-query   query
                                                   :result-metadata (qp.preprocess/query->expected-cols query)})]}))
     (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
-      (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:alias        "c"
-                          :condition    [:= $category-id &c.$categories.id]
-                          :source-query {:source-query    {:source-query    {:source-table $$categories
-                                                                             :limit        100}
-                                                           :source-metadata joins-metadata
-                                                           :limit           200}
-                                         :source-metadata [{} {}]}}]})
-              (clean-metadata
-               (resolve-source-cards
-                (lib.tu.macros/mbql-query venues
-                  {:joins [{:source-table "card__2"
-                            :alias        "c"
-                            :condition    [:= $category-id &c.categories.id]}]}))))))))
+      (is (=? (lib.tu.macros/$ids venues
+                {:database (meta/id)
+                 :stages   [{:source-table $$venues
+                             :joins        [{:alias      "c"
+                                             :conditions [[:= {}
+                                                           [:field {} %category-id]
+                                                           [:field {:join-alias "c"} %categories.id]]]
+                                             :stages     [{:source-table       $$categories
+                                                           :limit              100
+                                                           :lib/stage-metadata (expected-stage-metadata joins-metadata)}
+                                                          {:limit              200
+                                                           :lib/stage-metadata {:columns [{} {}]}}
+                                                          {:lib/type :mbql.stage/mbql}]}]}]})
+              (resolve-source-cards
+               (lib.tu.macros/mbql-query venues
+                 {:joins [{:source-table "card__2"
+                           :alias        "c"
+                           :condition    [:= $category-id &c.categories.id]}]})))))))
 
 (deftest ^:parallel circular-dependency-test
   (testing "Middleware should throw an Exception if we try to resolve a source query for a card whose source query is itself"
@@ -379,12 +382,12 @@
     (qp.store/with-metadata-provider (mock-metadata-provider)
       (let [query (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
                          :info {:card-id Integer/MAX_VALUE})]
-        (is (=? (assoc (lib.tu.macros/mbql-query nil
-                         {:source-query    {:source-table (meta/id :venues)}
-                          :source-metadata (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                                             (remove-irrelevant-keys col))})
-                       :info {:card-id Integer/MAX_VALUE}
-                       :qp/source-card-id 1)
+        (is (=? {:database          (meta/id)
+                 :stages            [{:source-table       (meta/id :venues)
+                                      :lib/stage-metadata (venues-stage-metadata)}
+                                     {:lib/type :mbql.stage/mbql}]
+                 :info              {:card-id Integer/MAX_VALUE}
+                 :qp/source-card-id 1}
                 (resolve-source-cards query)))))))
 
 ;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
@@ -444,12 +447,6 @@
 
 (deftest ^:parallel remove-card-id-key-test
   (testing "Strip out the :qp/source-card-id key for queries that don't have a source card"
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (is (= {:database (meta/id)
-              :type     :query
-              :query    {:source-table (meta/id :venues)}}
-             (resolve-source-cards
-              {:database                           (meta/id)
-               :type                               :query
-               :query                              {:source-table (meta/id :venues)}
-               :qp/source-card-id 1}))))))
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
+      (is (= query
+             (resolve-source-cards (assoc query :qp/source-card-id 1)))))))

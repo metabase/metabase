@@ -81,21 +81,23 @@
       (is (== 20 (mt/metric-value system :metabase-metabot/llm-output-tokens
                                   {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"}))))))
 
+(defn- create-sql-query-stub
+  "A stand-in for [[create-sql-query-tools/create-sql-query]] that accepts the SQL and returns `query`, an MBQL 5 native
+  query as the tool returns one."
+  [query]
+  (fn [_]
+    {:validation-result {:valid? true, :dialect "h2"}
+     :action-result     {:query-id "q-1" :query query}}))
+
 (deftest generate-content-tool-call-produces-draft-card-test
   (testing "a document_construct_sql_chart tool call round trip produces a :draft_card (#73690)"
     ;; resolve the test database *before* process-query gets redefed below, so DB sync (which
     ;; itself calls process-query) isn't affected by the mock
-    (let [db-id (mt/id)]
+    (let [db-id (mt/id)
+          query (lib/native-query (mt/metadata-provider) "SELECT COUNT(*) FROM ORDERS")]
       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider test-provider]
-        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                    (fn [_]
-                                      {:validation-result {:valid? true, :dialect "h2"}
-                                       :action-result      {:query-id "q-1"
-                                                            :query    {:database db-id
-                                                                       :type     "native"
-                                                                       :native   {:query         "SELECT COUNT(*) FROM ORDERS"
-                                                                                  :template-tags {}}}}})
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (create-sql-query-stub query)
                                     qp/process-query (fn [_] nil)
                                     openrouter/openrouter
                                     (let [call-count (atom 0)]
@@ -118,7 +120,10 @@
                                                :post 200 "metabot/document/generate-content"
                                                {:instructions "chart it"})]
             (is (=? {:error      nil
-                     :draft_card {:name "Orders by day"}}
+                     :draft_card {:name          "Orders by day"
+                                  :database_id   db-id
+                                  :dataset_query {:database db-id
+                                                  :stages   [{:native "SELECT COUNT(*) FROM ORDERS"}]}}}
                     response))))))))
 
 (defn- scripted-llm
@@ -251,9 +256,7 @@
 
 (deftest generate-content-step-limit-reply-test
   (let [db-id       (mt/id)
-        chart-query {:database db-id
-                     :type     "native"
-                     :native   {:query "SELECT COUNT(*) FROM ORDERS" :template-tags {}}}
+        chart-query (lib/native-query (mt/metadata-provider) "SELECT COUNT(*) FROM ORDERS")
         read-call   [{:type      :tool-input
                       :function  "list_available_fields"
                       :arguments {:table_ids [] :model_ids [] :metric_ids []}}]
@@ -289,10 +292,7 @@
           (is (= {:draft_card nil :description nil :error reply} response))
           (is (= [21 "none"] [(count requests) (:tool_choice (last requests))]))))
       (testing "a chart made on the last step is the answer, with no call after it"
-        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                    (fn [_]
-                                      {:validation-result {:valid? true, :dialect "h2"}
-                                       :action-result     {:query-id "q-1" :query chart-query}})
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (create-sql-query-stub chart-query)
                                     qp/process-query (fn [_] nil)]
           (let [{:keys [response requests]} (generate! chart-call [{:type :text :text "Unexpected"}])]
             (is (=? {:error nil :draft_card {:name "Orders by day"}} response))
@@ -301,17 +301,11 @@
 (deftest generate-content-internal-failure-error-test
   (testing "a failure inside Metabase while the chart query runs ends the turn with the generic error"
     (let [db-id (mt/id)
+          query (lib/native-query (mt/metadata-provider) "SELECT COUNT(*) FROM ORDERS")
           calls (atom 0)]
       (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                          llm-metabot-provider test-provider]
-        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
-                                    (fn [_]
-                                      {:validation-result {:valid? true, :dialect "h2"}
-                                       :action-result     {:query-id "q-1"
-                                                           :query    {:database db-id
-                                                                      :type     "native"
-                                                                      :native   {:query "SELECT COUNT(*) FROM ORDERS"
-                                                                                 :template-tags {}}}}})
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query (create-sql-query-stub query)
                                     qp/process-query mut/reject-app-db-lookup
                                     openrouter/openrouter
                                     (fn [_]

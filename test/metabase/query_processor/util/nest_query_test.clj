@@ -18,32 +18,25 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- nest-expressions-mbql5 [query]
+(defn- nest-expressions
+  "Preprocess `query`, then nest its expressions with [[nest-query/nest-expressions]]."
+  [query]
   (driver/with-driver (or driver/*driver* :h2)
     (-> query
         qp.preprocess/preprocess
         nest-query/nest-expressions)))
 
-(defn- nest-expressions [query]
-  (-> query
-      nest-expressions-mbql5
-      ;; existing usage -- do not use going forward
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      lib/->legacy-MBQL
-      :query))
-
 (deftest ^:parallel nest-expressions-test
   (is (=? (lib.tu.macros/$ids venues
-            {:source-query {:source-table $$venues
-                            :expressions  {"double_price" [:* [:field %price nil]
-                                                           2]}
-                            :fields       [[:field %price nil]
-                                           [:expression "double_price" {}]]}
-             :breakout     [[:field "PRICE" {}]
-                            [:field "double_price" {}]]
-             :aggregation  [[:count]]
-             :order-by     [[:asc [:field "PRICE" {}]]
-                            [:asc [:field "double_price" {}]]]})
+            {:stages [{:source-table $$venues
+                       :expressions  [[:* {:lib/expression-name "double_price"} [:field {} %price] 2]]
+                       :fields       [[:field {} %price]
+                                      [:expression {} "double_price"]]}
+                      {:breakout    [[:field {} "PRICE"]
+                                     [:field {} "double_price"]]
+                       :aggregation [[:count {}]]
+                       :order-by    [[:asc {} [:field {} "PRICE"]]
+                                     [:asc {} [:field {} "double_price"]]]}]})
           (-> (lib/query
                meta/metadata-provider
                (lib.tu.macros/mbql-query venues
@@ -61,19 +54,18 @@
                       (lib/breakout   q (lib/expression-ref q "double_price"))
                       (lib/aggregate  q (lib/count)))
         orig-uuids  (mapv lib.options/uuid (lib/breakouts q))
-        nested      (nest-expressions-mbql5 q)
+        nested      (nest-expressions q)
         outer-uuids (mapv lib.options/uuid (lib/breakouts nested))]
     (is (= orig-uuids outer-uuids))))
 
 (deftest ^:parallel nest-order-by-expressions-test
   (testing "Expressions in an order-by clause result in nesting"
     (is (=? (lib.tu.macros/$ids venues
-              {:source-query {:source-table $$venues
-                              :expressions  {"double_price" [:* [:field %price nil]
-                                                             2]}
-                              :fields       [[:field %price nil]
-                                             [:expression "double_price" {}]]}
-               :order-by     [[:asc *double_price/Integer]]})
+              {:stages [{:source-table $$venues
+                         :expressions  [[:* {:lib/expression-name "double_price"} [:field {} %price] 2]]
+                         :fields       [[:field {} %price]
+                                        [:expression {} "double_price"]]}
+                        {:order-by [[:asc {} [:field {:base-type :type/Integer} "double_price"]]]}]})
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query venues
@@ -87,14 +79,14 @@
 (deftest ^:parallel nest-order-by-literal-expressions-test
   (testing "Literal expressions in an order-by clause result in nesting"
     (is (=? (lib.tu.macros/$ids venues
-              {:source-query {:source-table $$venues
-                              :expressions  {"favorite" [:value "good venue" {:base_type :type/Text}]}
-                              :fields       [[:field %name nil]
-                                             [:expression "favorite" {}]]
-                              :filter       [:=
-                                             [:field %name nil]
-                                             [:expression "favorite" {:base-type :type/Text}]]}
-               :order-by     [[:asc *favorite/Text]]})
+              {:stages [{:source-table $$venues
+                         :expressions  [[:value {:base-type :type/Text, :lib/expression-name "favorite"} "good venue"]]
+                         :fields       [[:field {} %name]
+                                        [:expression {} "favorite"]]
+                         :filters      [[:= {}
+                                         [:field {} %name]
+                                         [:expression {:base-type :type/Text} "favorite"]]]}
+                        {:order-by [[:asc {} [:field {:base-type :type/Text} "favorite"]]]}]})
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query venues
@@ -109,23 +101,22 @@
 (deftest ^:parallel multiple-expressions-test
   (testing "Make sure the nested version of the query doesn't mix up expressions if we have ones that reference others"
     (is (=? (lib.tu.macros/$ids venues
-              {:source-query {:source-table $$venues
-                              :expressions  {"big_price"
-                                             [:+
-                                              [:field %price nil]
-                                              2]
-
-                                             "my_cool_new_field"
-                                             [:/
-                                              [:field %price nil]
-                                              [:expression "big_price" {}]]}
-                              :fields [[:expression "my_cool_new_field" {}]
-                                       [:field %id nil]]}
-               :breakout [[:field "my_cool_new_field" {:base-type :type/Float}]]
-               ;; uh... not sure ordering by ID is legal here??? Since it doesn't appear in the query results??
-               :order-by [[:asc [:field "ID" {}]]
-                          [:asc [:field "my_cool_new_field" {:base-type :type/Float}]]]
-               :limit    3})
+              {:stages [{:source-table $$venues
+                         :expressions  [[:+
+                                         {:lib/expression-name "big_price"}
+                                         [:field {} %price]
+                                         2]
+                                        [:/
+                                         {:lib/expression-name "my_cool_new_field"}
+                                         [:field {} %price]
+                                         [:expression {} "big_price"]]]
+                         :fields       [[:expression {} "my_cool_new_field"]
+                                        [:field {} %id]]}
+                        {:breakout [[:field {:base-type :type/Float} "my_cool_new_field"]]
+                         ;; uh... not sure ordering by ID is legal here??? Since it doesn't appear in the query results??
+                         :order-by [[:asc {} [:field {} "ID"]]
+                                    [:asc {} [:field {:base-type :type/Float} "my_cool_new_field"]]]
+                         :limit    3}]})
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query venues
@@ -150,23 +141,19 @@
                     :limit        1}))]
       (mt/with-native-query-testing-context query
         (is (=? (lib.tu.macros/$ids venues
-                  {:source-query {:source-query {:source-query {:source-table $$venues
-                                                                :expressions {"x" [:*
-                                                                                   [:field %price nil]
-                                                                                   2]}
-                                                                :fields [[:field %id nil]
-                                                                         #_[:field %price nil]
-                                                                         [:expression "x" {}]]}
-                                                 :breakout [[:field "ID" {}]
-                                                            [:field "x" {:base-type :type/Integer}]]}
-                                  :expressions {"x" [:*
-                                                     [:field %price nil]
-                                                     4]}
-                                  :fields [[:field %id nil]
-                                           [:expression "x" {}]]}
-                   :breakout [[:field "ID" {}]
-                              [:field "x" {:base-type :type/Integer}]]
-                   :limit 1})
+                  {:stages [{:source-table $$venues
+                             :expressions  [[:* {:lib/expression-name "x"} [:field {} %price] 2]]
+                             :fields       [[:field {} %id]
+                                            #_[:field {} %price]
+                                            [:expression {} "x"]]}
+                            {:breakout [[:field {} "ID"]
+                                        [:field {:base-type :type/Integer} "x"]]}
+                            {:expressions [[:* {:lib/expression-name "x"} [:field {} %price] 4]]
+                             :fields      [[:field {} %id]
+                                           [:expression {} "x"]]}
+                            {:breakout [[:field {} "ID"]
+                                        [:field {:base-type :type/Integer} "x"]]
+                             :limit    1}]})
                 (nest-expressions query)))))))
 
 (deftest ^:parallel idempotence-test
@@ -192,11 +179,9 @@
                                      :fields       :all}]
                       :expressions {"CC" [:+ 1 1]}
                       :limit       2}))
-          nested  (assoc query :query (nest-expressions query))
-          query*  (lib/query mp query)
-          nested* (lib/query mp nested)]
-      (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
-             (map :lib/desired-column-alias (lib/returned-columns nested*)))))))
+          nested  (nest-expressions query)]
+      (is (= (map :lib/desired-column-alias (lib/returned-columns query))
+             (map :lib/desired-column-alias (lib/returned-columns nested)))))))
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
@@ -230,55 +215,49 @@
 (deftest ^:parallel nest-expressions-with-joins-test
   (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."
     (is (=? (lib.tu.macros/$ids venues
-              {:source-query {:source-table $$venues
-                              :joins        [{:strategy     :left-join
-                                              :condition    [:=
-                                                             [:field %category-id nil]
-                                                             [:field %category-id {:join-alias "CategoriesStats"}]]
-                                              :source-query {:source-table $$venues
-                                                             :aggregation  [[:aggregation-options
-                                                                             [:max [:field %price nil]]
-                                                                             {:name "MaxPrice"}]
-                                                                            [:aggregation-options
-                                                                             [:avg
-                                                                              [:field %price nil]]
-                                                                             {:name "AvgPrice"}]
-                                                                            [:aggregation-options
-                                                                             [:min [:field %price nil]]
-                                                                             {:name "MinPrice"}]]
-                                                             :breakout     [[:field %category-id nil]]
-                                                             :order-by     [[:asc [:field %category-id nil]]]}
-                                              :alias        "CategoriesStats"
-                                              :fields       [[:field %category-id {:join-alias "CategoriesStats"}]
-                                                             [:field "MaxPrice" {:join-alias "CategoriesStats"}]
-                                                             [:field "AvgPrice" {:join-alias "CategoriesStats"}]
-                                                             [:field "MinPrice" {:join-alias "CategoriesStats"}]]}]
-                              :expressions  {"RelativePrice" [:/
-                                                              [:field %price nil]
-                                                              [:field "AvgPrice" {:join-alias "CategoriesStats"}]]}
-                              :fields       [[:field %id nil]
-                                             [:field %name nil]
-                                             [:field %category-id nil]
-                                             [:field %latitude nil]
-                                             [:field %longitude nil]
-                                             [:field %price nil]
-                                             [:expression "RelativePrice" {}]
-                                             [:field %category-id {:join-alias "CategoriesStats"}]
-                                             [:field "MaxPrice" {:join-alias "CategoriesStats"}]
-                                             [:field "AvgPrice" {:join-alias "CategoriesStats"}]
-                                             [:field "MinPrice" {:join-alias "CategoriesStats"}]]}
-               :breakout     [[:field "ID" {}]
-                              [:field "NAME" {}]
-                              [:field "CATEGORY_ID" {}]
-                              [:field "LATITUDE" {}]
-                              [:field "LONGITUDE" {}]
-                              [:field "PRICE" {}]
-                              [:field "RelativePrice" {}]
-                              [:field "CategoriesStats__CATEGORY_ID" {}]
-                              [:field "CategoriesStats__MaxPrice" {}]
-                              [:field "CategoriesStats__AvgPrice" {}]
-                              [:field "CategoriesStats__MinPrice" {}]]
-               :limit        3})
+              {:stages [{:source-table $$venues
+                         :joins        [{:strategy   :left-join
+                                         :conditions [[:= {}
+                                                       [:field {:join-alias (symbol "nil #_\"key is not present.\"")} %category-id]
+                                                       [:field {:join-alias "CategoriesStats"} %category-id]]]
+                                         :stages     [{:source-table $$venues
+                                                       :aggregation  [[:max {:name "MaxPrice"} [:field {} %price]]
+                                                                      [:avg {:name "AvgPrice"} [:field {} %price]]
+                                                                      [:min {:name "MinPrice"} [:field {} %price]]]
+                                                       :breakout     [[:field {} %category-id]]
+                                                       :order-by     [[:asc {} [:field {} %category-id]]]}]
+                                         :alias      "CategoriesStats"
+                                         :fields     [[:field {:join-alias "CategoriesStats"} %category-id]
+                                                      [:field {:join-alias "CategoriesStats"} "MaxPrice"]
+                                                      [:field {:join-alias "CategoriesStats"} "AvgPrice"]
+                                                      [:field {:join-alias "CategoriesStats"} "MinPrice"]]}]
+                         :expressions  [[:/
+                                         {:lib/expression-name "RelativePrice"}
+                                         [:field {} %price]
+                                         [:field {:join-alias "CategoriesStats"} "AvgPrice"]]]
+                         :fields       [[:field {} %id]
+                                        [:field {} %name]
+                                        [:field {:join-alias (symbol "nil #_\"key is not present.\"")} %category-id]
+                                        [:field {} %latitude]
+                                        [:field {} %longitude]
+                                        [:field {} %price]
+                                        [:expression {} "RelativePrice"]
+                                        [:field {:join-alias "CategoriesStats"} %category-id]
+                                        [:field {:join-alias "CategoriesStats"} "MaxPrice"]
+                                        [:field {:join-alias "CategoriesStats"} "AvgPrice"]
+                                        [:field {:join-alias "CategoriesStats"} "MinPrice"]]}
+                        {:breakout [[:field {} "ID"]
+                                    [:field {} "NAME"]
+                                    [:field {} "CATEGORY_ID"]
+                                    [:field {} "LATITUDE"]
+                                    [:field {} "LONGITUDE"]
+                                    [:field {} "PRICE"]
+                                    [:field {} "RelativePrice"]
+                                    [:field {} "CategoriesStats__CATEGORY_ID"]
+                                    [:field {} "CategoriesStats__MaxPrice"]
+                                    [:field {} "CategoriesStats__AvgPrice"]
+                                    [:field {} "CategoriesStats__MinPrice"]]
+                         :limit    3}]})
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query venues
@@ -315,13 +294,13 @@
                          :coercion-strategy :Coercion/UNIXSeconds->DateTime
                          :effective-type    :type/DateTime}]})]
       (is (=? (lib.tu.macros/$ids venues
-                {:source-query {:source-table $$venues
-                                :expressions  {"test" [:* 1 1]}
-                                :fields       [[:field %price {:temporal-unit (symbol "nil #_\"key is not present.\"")}]
-                                               [:expression "test" {}]]}
-                 :breakout     [[:field "PRICE" {:temporal-unit :day}]
-                                [:field "test" {}]]
-                 :limit        1})
+                {:stages [{:source-table $$venues
+                           :expressions  [[:* {:lib/expression-name "test"} 1 1]]
+                           :fields       [[:field {:temporal-unit (symbol "nil #_\"key is not present.\"")} %price]
+                                          [:expression {} "test"]]}
+                          {:breakout [[:field {:temporal-unit :day} "PRICE"]
+                                      [:field {} "test"]]
+                           :limit    1}]})
               (-> (lib/query
                    mp
                    (lib.tu.macros/mbql-query venues
@@ -333,40 +312,27 @@
 
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
-    (is (=? (:query (merge (let [products-category (lib.tu.macros/$ids orders
-                                                     [:field %products.category {:join-alias "PRODUCTS__via__PRODUCT_ID"}])
-                                 created-at        (lib.tu.macros/$ids orders
-                                                     [:field %created-at {:temporal-unit      :year
-                                                                          :qp/ignore-coercion true}])
-                                 pivot-grouping    [:field "pivot-grouping" {:base-type :type/Float}]]
-                             (lib.tu.macros/mbql-query orders
-                               {:breakout    [products-category
-                                              created-at
-                                              pivot-grouping]
-                                :aggregation [[:aggregation-options [:count] {:name "count"}]]
-                                :order-by    [[:asc products-category]
-                                              [:asc created-at]
-                                              [:asc pivot-grouping]]}))
-                           (lib.tu.macros/mbql-query orders
-                             ;; TODO: The order here is not deterministic! It's coming
-                             ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
-                             ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking for
-                             ;; refs in an arbitrary order, and returns `m/distinct-by` over that random order.
-                             ;; Changing the map keys on the inner query can perturb this order; if you cause this
-                             ;; test to fail based on shuffling the order of these joined fields, just edit the
-                             ;; expectation to match the new order. Tech debt issue: #39396
-                             {:source-query {:source-table $$orders
-                                             :joins        [{:source-query {:source-table $$products}
-                                                             :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                             :condition    [:=
-                                                                            [:field %product-id nil]
-                                                                            [:field %products.id {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
-                                                             :strategy     :left-join
-                                                             :fk-field-id  %product-id}]
-                                             :expressions  {"pivot-grouping" [:abs 0]}
-                                             :fields       [[:field %products.category {:join-alias "PRODUCTS__via__PRODUCT_ID"}]
-                                                            [:field %orders.created-at nil]
-                                                            [:expression "pivot-grouping" {:base-type :type/Integer}]]}})))
+    (is (=? (lib.tu.macros/$ids orders
+              ;; TODO: The order here is not deterministic! It's coming
+              ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
+              ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking for
+              ;; refs in an arbitrary order, and returns `m/distinct-by` over that random order.
+              ;; Changing the map keys on the first stage can perturb this order; if you cause this
+              ;; test to fail based on shuffling the order of these joined fields, just edit the
+              ;; expectation to match the new order. Tech debt issue: #39396
+              {:stages [{:source-table $$orders
+                         :joins        [{:stages      [{:source-table $$products}]
+                                         :alias       "PRODUCTS__via__PRODUCT_ID"
+                                         :conditions  [[:= {}
+                                                        [:field {} %product-id]
+                                                        [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} %products.id]]]
+                                         :strategy    :left-join
+                                         :fk-field-id %product-id}]
+                         :expressions  [[:abs {:lib/expression-name "pivot-grouping"} 0]]
+                         :fields       [[:field {:join-alias "PRODUCTS__via__PRODUCT_ID"} %products.category]
+                                        [:field {:temporal-unit (symbol "nil #_\"key is not present.\"")} %orders.created-at]
+                                        [:expression {:base-type :type/Integer} "pivot-grouping"]]}
+                        {}]})
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -387,15 +353,13 @@
 
 (deftest ^:parallel uniquify-aliases-test
   (is (=? (lib.tu.macros/$ids products
-            {:source-query {:source-table $$products
-                            :expressions  {"CATEGORY" [:concat
-                                                       [:field %category nil]
-                                                       "2"]}
-                            :fields       [[:expression "CATEGORY" {}]]}
-             :breakout     [[:field "CATEGORY" {:base-type :type/Text}]]
-             :aggregation  [[:count]]
-             :order-by     [[:asc [:field "CATEGORY" {:base-type :type/Text}]]]
-             :limit        1})
+            {:stages [{:source-table $$products
+                       :expressions  [[:concat {:lib/expression-name "CATEGORY"} [:field {} %category] "2"]]
+                       :fields       [[:expression {} "CATEGORY"]]}
+                      {:breakout    [[:field {:base-type :type/Text} "CATEGORY"]]
+                       :aggregation [[:count {}]]
+                       :order-by    [[:asc {} [:field {:base-type :type/Text} "CATEGORY"]]]
+                       :limit       1}]})
           (-> (lib/query
                meta/metadata-provider
                (lib.tu.macros/mbql-query products
@@ -408,19 +372,18 @@
 
 (deftest ^:parallel uniquify-aliases-test-2
   (testing "multi-stage query with an expression name that matches a table column (#39059)"
-    (is (=? (-> (lib.tu.macros/mbql-query orders
-                  {:source-query {:breakout     [[:field "ID" {}]
-                                                 [:field "SUBTOTAL" {}]
-                                                 [:field "DISCOUNT" {}]]
-                                  :source-query {:expressions  {"DISCOUNT" [:coalesce [:field %discount nil] 0]}
-                                                 :fields       [[:field %id nil]
-                                                                [:field %subtotal nil]
-                                                                [:expression "DISCOUNT" {}]]
-                                                 :source-table $$orders}}
-                   :breakout     [[:field "ID"       {}]
-                                  [:field "SUBTOTAL" {}]
-                                  [:field "DISCOUNT" {:base-type :type/Float}]]})
-                :query)
+    (is (=? (lib.tu.macros/$ids orders
+              {:stages [{:expressions  [[:coalesce {:lib/expression-name "DISCOUNT"} [:field {} %discount] 0]]
+                         :fields       [[:field {} %id]
+                                        [:field {} %subtotal]
+                                        [:expression {} "DISCOUNT"]]
+                         :source-table $$orders}
+                        {:breakout [[:field {} "ID"]
+                                    [:field {} "SUBTOTAL"]
+                                    [:field {} "DISCOUNT"]]}
+                        {:breakout [[:field {} "ID"]
+                                    [:field {} "SUBTOTAL"]
+                                    [:field {:base-type :type/Float} "DISCOUNT"]]}]})
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -455,22 +418,22 @@
                                    [:expression "pivot-grouping"]]
                     :aggregation  [[:aggregation-options [:count] {:name "count"}]]}))]
       (is (=? (lib.tu.macros/$ids products
-                {:source-query {:source-query {:fields [[:field %id nil]
-                                                        [:field %ean nil]
-                                                        [:field %title nil]
-                                                        [:field %category nil]
-                                                        [:field %vendor nil]
-                                                        [:field %price nil]
-                                                        [:field %rating nil]
-                                                        [:field %created-at {:temporal-unit :default}]]}
-                                :expressions  {"pivot-grouping" [:abs 0]}
-                                :fields       [[:field "CATEGORY" {}]
-                                               [:field "CREATED_AT" {}]
-                                               [:expression "pivot-grouping" {}]]}
-                 :breakout     [[:field "CATEGORY" {}]
-                                [:field "CREATED_AT" {}]
-                                [:field "pivot-grouping" {}]]
-                 :aggregation  [[:aggregation-options [:count] {}]]})
+                {:stages [{:fields [[:field {} %id]
+                                    [:field {} %ean]
+                                    [:field {} %title]
+                                    [:field {} %category]
+                                    [:field {} %vendor]
+                                    [:field {} %price]
+                                    [:field {} %rating]
+                                    [:field {:temporal-unit :default} %created-at]]}
+                          {:expressions [[:abs {:lib/expression-name "pivot-grouping"} 0]]
+                           :fields      [[:field {} "CATEGORY"]
+                                         [:field {} "CREATED_AT"]
+                                         [:expression {} "pivot-grouping"]]}
+                          {:breakout    [[:field {} "CATEGORY"]
+                                         [:field {} "CREATED_AT"]
+                                         [:field {} "pivot-grouping"]]
+                           :aggregation [[:count {}]]}]})
               (nest-expressions query))))))
 
 (deftest ^:parallel nest-expressions-ignores-temporal-units-from-joined-fields
@@ -481,9 +444,12 @@
     ;; and returns `m/distinct-by` over that random order. Changing the map keys on the inner query can perturb this
     ;; order; if you cause this test to fail based on shuffling the order of these joined fields, just edit the
     ;; expectation to match the new order. Tech debt issue: #39396
-    (is (=? {:source-query {:fields [[:field (meta/id :people :created-at) {:temporal-unit (symbol "nil #_\"key is not present.\"")
-                                                                            :join-alias    "p"}]
-                                     [:expression "double_total" {}]]}}
+    (is (=? {:stages [{:fields [[:field
+                                 {:temporal-unit (symbol "nil #_\"key is not present.\"")
+                                  :join-alias    "p"}
+                                 (meta/id :people :created-at)]
+                                [:expression {} "double_total"]]}
+                      {}]}
             (-> (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -534,7 +500,7 @@
                                             "pivot-grouping"]]}]
                  :lib/type :mbql/query}))
         stages (-> query
-                   nest-expressions-mbql5
+                   nest-expressions
                    (as-> $query (driver/with-driver :h2
                                   (add/add-alias-info $query)))
                    :stages
@@ -598,19 +564,24 @@
                                                   [:field 2 nil]
                                                   [:field "LIKED" {:base-type :type/Boolean}]
                                                   [:expression "T"]]}})]
-      (is (= {:aggregation  [[:count-where [:field "T" {:base-type :type/Boolean}]]
-                             [:count-where [:field "F" {:base-type :type/Boolean}]]
-                             [:count-where [:field "LIKED" {:base-type :type/Boolean}]]
-                             [:count-where [:field "LIKED" {:base-type :type/Boolean}]]]
-              :source-query {:source-query {:fields [[:field 2 nil]], :source-table 1}
-                             :expressions  {"F" [:value false {:base_type :type/Boolean}]
-                                            "T" [:value true {:base_type :type/Boolean}]}
-                             :fields       [[:expression "T" {:base-type :type/Boolean}]
-                                            [:expression "F" {:base-type :type/Boolean}]
-                                            ;; make sure we do not include duplicate entries for `LIKED`/Field 2
-                                            [:field "LIKED" {:base-type :type/Boolean}]]
-                             :filter       [:or
-                                            [:field 2 nil]
-                                            [:field "LIKED" {:base-type :type/Boolean}]
-                                            [:expression "T" {:base-type :type/Boolean}]]}}
-             (nest-expressions query))))))
+      (is (=? {:stages [{:fields       [[:field {} 2]]
+                         :source-table 1}
+                        {:expressions [[:value {:base-type :type/Boolean, :lib/expression-name "T"} true]
+                                       [:value {:base-type :type/Boolean, :lib/expression-name "F"} false]]
+                         :fields      [[:expression {:base-type :type/Boolean} "T"]
+                                       [:expression {:base-type :type/Boolean} "F"]
+                                       ;; make sure we do not include duplicate entries for `LIKED`/Field 2
+                                       [:field {:base-type :type/Boolean} "LIKED"]]
+                         :filters     [[:or {}
+                                        [:field {} 2]
+                                        [:field {:base-type :type/Boolean} "LIKED"]
+                                        [:expression {:base-type :type/Boolean} "T"]]]
+                         :aggregation (symbol "nil #_\"key is not present.\"")}
+                        {:aggregation [[:count-where {} [:field {:base-type :type/Boolean} "T"]]
+                                       [:count-where {} [:field {:base-type :type/Boolean} "F"]]
+                                       [:count-where {} [:field {:base-type :type/Boolean} "LIKED"]]
+                                       [:count-where {} [:field {:base-type :type/Boolean} "LIKED"]]]
+                         :expressions (symbol "nil #_\"key is not present.\"")
+                         :fields      (symbol "nil #_\"key is not present.\"")
+                         :filters     (symbol "nil #_\"key is not present.\"")}]}
+              (nest-expressions query))))))

@@ -305,6 +305,32 @@ Existing tests may keep their `mt/mbql-query` calls. When code under test stops 
 tests a small wrapper that converts the query with `lib/query` and then calls the real function, rather than rewriting
 every query.
 
+**Asserting a key is absent with `=?`:**
+
+`=?` reads an expected map as a pattern: every key in it must match, and keys it leaves out are ignored. An expected
+vector must be as long as the actual one. To assert that a key is NOT present, give it the expected value
+`(symbol "nil #_\"key is not present.\"")`, inline in the expected map. It prints as `nil #_"key is not present."` in a
+failure. Do not write `nil` for this: `nil` matches only a key that is present with a `nil` value, and fails when the
+key is absent. Do not add a separate `contains?` assertion either.
+
+```clojure
+;; bad: fails when :join-alias is absent, which is the case the test wants to pass
+(is (=? [:field {:join-alias nil} 1]
+        (lib/ref col)))
+
+;; bad: a second assertion for something the pattern can say
+(is (=? [:field {} 1]
+        (lib/ref col)))
+(is (not (contains? (second (lib/ref col)) :join-alias)))
+
+;; good
+(is (=? [:field {:join-alias (symbol "nil #_\"key is not present.\"")} 1]
+        (lib/ref col)))
+```
+
+When an exact `=` becomes `=?`, for example because the value now carries `:lib/uuid`s, check what the `=` asserted by
+omission (an option that was not added, a clause that was removed) and keep it with this idiom.
+
 **Redefining `defn`-vars under test:**
 
 Use `mt/with-dynamic-fn-redefs` instead of `with-redefs` when stubbing `defn`/`defn-` vars — plain `with-redefs` is not parallel-test-safe and a clj-kondo hook (`:metabase/prefer-with-dynamic-fn-redefs`, see `.clj-kondo/config.edn`) will warn. `with-redefs` is still fine for `def` / dynamic var rebinding.
@@ -705,6 +731,7 @@ Other useful map ops:
 - **`(pos? (count xs))` to test a lazy `xs` for non-emptiness** — `count` forces the whole seq into memory. Use `(seq xs)`. (Rebuilding the seq — `(map f xs)` twice — is the only thing that recomputes; a bound seq caches.)
 - **Plain `with-redefs` on a `defn` var in a test** — not parallel-safe; the kondo hook will warn. Use `mt/with-dynamic-fn-redefs`.
 - **`(Thread/sleep N)` in an async test** — flake source #1. `(deref p timeout-ms ::timeout)` and assert `not= ::timeout`.
+- **`{:k nil}` or a separate `(not (contains? m :k))` to assert a key is absent under `=?`** — `nil` fails on an absent key. Use `(symbol "nil #_\"key is not present.\"")` as the key's expected value. See "Tests".
 - **Hand-rolled `(str/split host #":")` for origin/host comparison** — mis-handles IPv6. Use `mw.security/parse-url` (or `try-parse-url` for client-controlled input).
 - **`(subs (pr-str huge) 0 N)` on a log path** — the multi-MB string is already allocated. Bind `*print-length*`/`*print-level*` around `pr-str` instead.
 - **New retry loop / new "find this column" helper / new transform-source-type predicate** — search first. `metabase.util.retry/with-retry`, `metabase.lib.equality/find-matching-column`, and `metabase.transforms.feature-gating/any-transforms-enabled?` already exist (along with many others). Reviewers ask "isn't there already an X for this?" more than any single idiom.
