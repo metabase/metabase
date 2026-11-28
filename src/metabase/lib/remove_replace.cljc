@@ -138,41 +138,32 @@
 
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
-  ;; We may see missing idents during the remove/replace process, so disable the assertions.
-  (let [result (lib.util/update-query-stage query stage-number
-                                            remove-replace-fn location target-clause)
-        target-uuid (lib.options/uuid target-clause)]
-    (if (not= query result)
+  (let [target-uuid  (lib.options/uuid target-clause)
+        ;; For expressions and aggregations, remove the local references before the clause, so that each intermediate
+        ;; query stays valid.
+        without-refs (match/match-one location
+                       [:expressions]
+                       (remove-local-references query stage-number unmodified-query-for-stage
+                                                :expression {} (lib.util/expression-name target-clause))
+
+                       [:aggregation]
+                       (remove-local-references query stage-number unmodified-query-for-stage
+                                                :aggregation {} target-uuid)
+
+                       _
+                       query)
+        ;; We may see missing idents during the remove/replace process, so disable the assertions.
+        result       (lib.util/update-query-stage without-refs stage-number
+                                                  remove-replace-fn location target-clause)]
+    (if (not= without-refs result)
       (match/match-one location
-        [:expressions]
-        (-> result
-            (remove-local-references
-             stage-number
-             unmodified-query-for-stage
-             :expression
-             {}
-             (lib.util/expression-name target-clause))
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
-
-        [:aggregation]
-        (-> result
-            (remove-local-references
-             stage-number
-             unmodified-query-for-stage
-             :aggregation
-             {}
-             target-uuid)
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
-            (update-stale-references stage-number unmodified-query-for-stage))
-
-        (:or [:breakout] [:fields] [:joins _ :fields])
+        (:or [:expressions] [:aggregation] [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
         _
         result)
-      result)))
+      query)))
 
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
