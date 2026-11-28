@@ -855,7 +855,7 @@
   (let [download-contexts #{:csv-download :xlsx-download :json-download
                             :public-csv-download :public-xlsx-download :public-json-download
                             :embedded-csv-download :embedded-xlsx-download :embedded-json-download
-                            :pulse}]
+                            :pulse :dashboard-subscription}]
     (boolean (download-contexts context))))
 
 (def ^:private drivers-exempt-from-cancelation
