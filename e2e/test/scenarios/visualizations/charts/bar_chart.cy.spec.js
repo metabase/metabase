@@ -301,7 +301,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
   });
 
-  // Note (EmmadUsmani): see `line_chart.cy.spec.js` for more test cases of this
+  // Note (EmmadUsmani): see `QueryBuilder.line-chart.unit.spec.tsx` for more test cases of this
   describe("with split y-axis (metabase#12939)", () => {
     it("should split the y-axis when column settings differ", () => {
       H.visitQuestionAdhoc({
