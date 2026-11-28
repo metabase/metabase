@@ -306,6 +306,48 @@ test("a floating tooltip stays above a custom modal layer", async ({
   await expect.poll(() => isOnTop(tooltip)).toBe(true);
 });
 
+test("@release renders with a nonce-only inline style policy", async ({
+  page,
+}) => {
+  const nonce = "test-style-nonce";
+  const violations: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("Content Security Policy")) {
+      violations.push(message.text());
+    }
+  });
+  await page.route(`/?nonce=${nonce}`, async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      headers: {
+        ...response.headers(),
+        "content-security-policy": `style-src 'self' 'nonce-${nonce}'`,
+      },
+    });
+  });
+
+  await page.goto(`/?nonce=${nonce}`);
+  await expect(page.getByTestId("button-filled")).toBeVisible();
+  await page.getByTestId("open-modal").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+  const styles = await page.locator("style").evaluateAll((elements) =>
+    elements.map((element) => ({
+      nonce: element.nonce,
+      css: element.textContent,
+    })),
+  );
+  expect(
+    styles.some(({ css }) => css?.includes("--mb-color-core-brand:")),
+  ).toBe(true);
+  expect(styles.some(({ css }) => css?.includes("--mantine-color-"))).toBe(
+    true,
+  );
+  expect(styles.map((style) => style.nonce)).toEqual(styles.map(() => nonce));
+  expect(violations).toEqual([]);
+});
+
 test("@release light and dark resolve different colors", async ({ page }) => {
   await page.goto("/?theme-controls&dark-font=Georgia%2Cserif");
   const scheme = page.getByLabel("Resolved color scheme");

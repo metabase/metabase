@@ -27,6 +27,10 @@ createRoot(document.getElementById("root")!).render(
 
 Do not also import `@mantine/core/styles.css` or `@mantine/dates/styles.css`.
 
+For a nonce-based `style-src` Content Security Policy, install `get-nonce` in the host and call `setNonce(nonce)` before mounting the provider. Use the same server-generated nonce as the one in your response policy. Mantine and the modal scroll lock use that shared nonce for their generated style tags.
+
+The package can be imported in Node.js without browser globals. This does not imply support for server-side rendering or hydration.
+
 The provider sets up the theme, the color variables, the font variable and what overlays (modals, tooltips, popovers) need. Wrap your app in it once.
 
 | Prop          | Type                               | Default                     |

@@ -103,6 +103,11 @@ try {
     assert(paths.length === 1, `expected one ${name}, got ${paths}`);
   }
 
+  must(
+    "node",
+    ["--input-type=module", "-e", 'await import("@metabase/ui")'],
+    appDir,
+  );
   must("bun", ["run", "type-check"], appDir);
   must("bun", ["run", "build"], appDir);
 

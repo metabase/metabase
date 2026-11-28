@@ -18,6 +18,7 @@ import {
   type ColorSchemeContextType,
 } from "../../src/metabase/ui/components/theme/ColorSchemeProvider";
 import { ThemeProvider } from "../../src/metabase/ui/components/theme/ThemeProvider";
+import { getCspNonce } from "../../src/metabase/utils/csp";
 import { deepMerge } from "../../src/metabase/utils/deep-merge";
 
 const DEFAULT_FONT_FAMILY = '"Lato", Arial, sans-serif';
@@ -130,7 +131,7 @@ const CssVariables = ({
     return `:root { ${declarations.join(" ")} }`;
   }, [colorScheme, fontFamily, zIndex]);
 
-  return <style>{css}</style>;
+  return <style nonce={getCspNonce()}>{css}</style>;
 };
 
 export const MetabaseUIProvider = ({
