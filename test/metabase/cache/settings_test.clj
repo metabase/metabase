@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase.cache.settings :as cache.settings]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest enable-query-caching-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -16,6 +19,16 @@
                                       :strategy :ttl
                                       :config   {:multiplier 1
                                                  :min_duration_ms 1}})
+      (is (true? (cache.settings/enable-query-caching))))))
+
+(deftest enable-query-caching-ignores-stored-false-test
+  (t2/with-transaction [_conn nil {:rollback-only true}]
+    (t2/insert! :model/CacheConfig {:model    "root"
+                                    :model_id 0
+                                    :strategy :ttl
+                                    :config   {:multiplier 1
+                                               :min_duration_ms 1}})
+    (mt/with-temporary-raw-setting-values [enable-query-caching "false"]
       (is (true? (cache.settings/enable-query-caching))))))
 
 (deftest query-caching-max-kb-test
