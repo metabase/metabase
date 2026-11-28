@@ -1,11 +1,22 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupUsersEndpoints } from "__support__/server-mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  countRequests,
+  findRequestBodies,
+  findRequests,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { Group, Member, TokenFeatures } from "metabase-types/api";
+import type {
+  Group,
+  Member,
+  TokenFeatures,
+  UserListResult,
+} from "metabase-types/api";
 import {
   createMockGroup,
   createMockTokenFeatures,
@@ -52,17 +63,46 @@ const MARKETING = createMockGroupWithMembers({
   members: [createMockMember({ group_id: 6, membership_id: 11 })],
 });
 
+const TENANT_GROUP = createMockGroupWithMembers({
+  id: 7,
+  name: "Marketing Team",
+  magic_group_type: null,
+  is_tenant_group: true,
+  members: [],
+});
+
+const TENANT_USER = createMockUser({
+  id: 3,
+  first_name: "gizmo",
+  last_name: "user",
+  common_name: "gizmo user",
+  email: "gizmo.user@email.com",
+  tenant_id: 1,
+});
+
+// The tenants plugin decides whether a group is a tenant group, so it has to be
+// registered before any test renders.
+beforeAll(() => {
+  mockSettings({
+    "token-features": createMockTokenFeatures({ tenants: true }),
+  });
+  setupEnterpriseOnlyPlugin("tenants");
+});
+
 const setup = ({
   group,
   tokenFeatures = {},
+  users = [],
 }: {
   group: Group;
   tokenFeatures?: Partial<TokenFeatures>;
+  users?: UserListResult[];
 }) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
-  setupUsersEndpoints([]);
+  setupUsersEndpoints(users);
+  fetchMock.post("path:/api/permissions/membership", 200);
   fetchMock.delete(MEMBERSHIP_PATH, 204);
 
   renderWithProviders(
@@ -79,6 +119,51 @@ const getAddMembersButton = () =>
   screen.getByRole("button", { name: "Add members" });
 
 describe("GroupDetail", () => {
+  describe("tenant group", () => {
+    it("searches tenant users only, and adds the chosen one", async () => {
+      setup({ group: TENANT_GROUP, users: [TENANT_USER] });
+
+      await userEvent.click(getAddMembersButton());
+
+      const listRequests = (await findRequests("GET")).filter(({ url }) =>
+        url.includes("/api/user"),
+      );
+      expect(listRequests).toHaveLength(1);
+      expect(listRequests[0].url).toContain("tenancy=external");
+
+      await userEvent.type(
+        screen.getByPlaceholderText(/Julie McMemberson/),
+        "gizmo",
+      );
+      await userEvent.click(await screen.findByText("gizmo user"));
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      await waitFor(() =>
+        expect(countRequests("POST", "/api/permissions/membership")).toBe(1),
+      );
+      const [body] = await findRequestBodies({
+        method: "POST",
+        urlSuffix: "/api/permissions/membership",
+      });
+      expect(body).toEqual({
+        group_id: TENANT_GROUP.id,
+        user_id: TENANT_USER.id,
+      });
+    });
+
+    it("searches all users for a group that is not a tenant group", async () => {
+      setup({ group: MARKETING, users: [TENANT_USER] });
+
+      await userEvent.click(getAddMembersButton());
+
+      const listRequests = (await findRequests("GET")).filter(({ url }) =>
+        url.includes("/api/user"),
+      );
+      expect(listRequests).toHaveLength(1);
+      expect(listRequests[0].url).not.toContain("tenancy");
+    });
+  });
+
   describe("without the advanced-permissions feature", () => {
     it("disables adding members to the Data Analysts group and explains why", async () => {
       setup({ group: DATA_ANALYSTS });

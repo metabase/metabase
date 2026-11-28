@@ -79,3 +79,16 @@
             (let [response (mt/user-http-request :crowberto :delete 400
                                                  (format "permissions/membership/%d" membership-id))]
               (is (= [tenant-group-id] (get-in response [:errors :tenant-group-ids]))))))))))
+
+(deftest add-tenant-user-to-tenant-group-test
+  (testing "POST /api/permissions/membership adds a tenant user to a tenant group, and the group then lists them"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant           {tenant-id :id}       {:name "Test Tenant" :slug "test"}
+                       :model/User             {tenant-user-id :id}  {:tenant_id tenant-id}
+                       :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group" :is_tenant_group true}]
+          (is (=? [{:user_id tenant-user-id}]
+                  (mt/user-http-request :crowberto :post 200 "permissions/membership"
+                                        {:group_id tenant-group-id :user_id tenant-user-id})))
+          (is (=? {:members [{:user_id tenant-user-id}]}
+                  (mt/user-http-request :crowberto :get 200 (format "permissions/group/%d" tenant-group-id)))))))))
