@@ -1,0 +1,44 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 2rem;
+  border-bottom: 1px dashed var(--mb-color-border-neutral-strong);
+}
+
+.label {
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.15;
+}
+
+.value {
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  font-weight: bold;
+  line-height: 1.22;
+}
+
+.sampleNote {
+  /* The note wraps to the width of the stats or the histogram, and does not make it wider. */
+  width: 0;
+  min-width: 100%;
+  padding-top: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.3;
+}
+
+.unavailableNote {
+  color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.3;
+}
+
+.matchCount {
+  padding-top: var(--mantine-spacing-sm);
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: bold;
+  line-height: 1.3;
+}
