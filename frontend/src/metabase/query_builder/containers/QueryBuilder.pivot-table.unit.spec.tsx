@@ -977,6 +977,12 @@ describe("QueryBuilder > pivot table", () => {
     expect(getPivotCalls()).toHaveLength(pivotCallCount);
 
     expect(await screen.findByTestId("table-root")).toBeInTheDocument();
+    // A changed saved question shows the title of an ad-hoc one
+    expect(
+      within(screen.getByTestId("qb-header")).getByText(
+        "Count by User → Source and Product → Category",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("pivot-table")).not.toBeInTheDocument();
     const root = screen.getByTestId("query-visualization-root");
     expect(within(root).getByText(/User → Source/)).toBeInTheDocument();
@@ -1123,6 +1129,7 @@ describe("QueryBuilder > pivot table", () => {
 
     await openColumnSettings("Count");
     expect(await screen.findByText("Column title")).toBeInTheDocument();
+    expect(screen.getByText("Format")).toBeInTheDocument();
     expect(screen.getByText("Separator style")).toBeInTheDocument();
     // Value fields cannot be sorted
     expect(screen.queryByText("Sort order")).not.toBeInTheDocument();
@@ -1251,7 +1258,7 @@ describe("QueryBuilder > pivot table", () => {
     expect(getInPivotTable("294")).toBeInTheDocument();
 
     await userEvent.click(
-      within(getPivotTable()).getByTestId("Gadget-toggle-button"),
+      within(getPivotCell("Gadget")).getByLabelText("dash icon"),
     );
     await waitFor(() =>
       expect(queryInPivotTable("215")).not.toBeInTheDocument(),
@@ -1261,7 +1268,7 @@ describe("QueryBuilder > pivot table", () => {
     expect(getInPivotTable("294")).toBeInTheDocument();
 
     await userEvent.click(
-      within(getPivotTable()).getByTestId("Gadget-toggle-button"),
+      within(getPivotCell("Totals for Gadget")).getByLabelText("add icon"),
     );
     await waitFor(() => expect(getInPivotTable("215")).toBeInTheDocument());
 
@@ -1274,7 +1281,7 @@ describe("QueryBuilder > pivot table", () => {
     expect(getInPivotTable("Totals for Widget")).toBeInTheDocument();
 
     await userEvent.click(
-      within(getPivotTable()).getByTestId("Gadget-toggle-button"),
+      within(getPivotCell("Totals for Gadget")).getByLabelText("add icon"),
     );
     await waitFor(() => expect(getInPivotTable("215")).toBeInTheDocument());
     expect(queryInPivotTable("294")).not.toBeInTheDocument();
@@ -1308,7 +1315,7 @@ describe("QueryBuilder > pivot table", () => {
     expect(queryInPivotTable("71")).not.toBeInTheDocument();
 
     await userEvent.click(
-      within(getPivotTable()).getByTestId("1162-toggle-button"),
+      within(getPivotCell("Totals for 1162")).getByLabelText("add icon"),
     );
     await waitFor(() => expect(getInPivotTable("1162")).toBeVisible());
     expect(getInPivotTable("34")).toBeVisible();
