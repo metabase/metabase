@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupAdhocQueryEndpoint,
+  setupDatabaseEndpoints,
+} from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -14,8 +17,9 @@ import {
 } from "__support__/ui";
 import { Api } from "metabase/api";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { RowValues } from "metabase-types/api";
+import type { Dataset, RowValues } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatabase,
@@ -96,6 +100,31 @@ const ROWS: RowValues[] = [
   [1, "Alpha", 10, "2020-02-01", "2020-02-01T10:00:00", false],
   [2, "Bravo", 20, "2020-02-02", "2020-02-02T10:00:00", false],
   [3, "Charlie", 30, "2020-02-03", "2020-02-03T10:00:00", false],
+];
+
+// The grid shows the category name in place of `category_id`, from a column of its own
+const CATEGORY_COLS = [
+  ...COLS,
+  createMockColumn({
+    id: 107,
+    table_id: TABLE_ID,
+    name: "category_id",
+    display_name: "Category ID",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    semantic_type: "type/FK",
+    source: "fields",
+    field_ref: ["field", 107, null],
+    remapped_to: "category_name",
+  }),
+  createMockColumn({
+    name: "category_name",
+    display_name: "Category",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    source: "fields",
+    remapped_from: "category_id",
+  }),
 ];
 
 const UPDATE_FORM: DescribeActionFormResponse = {
@@ -200,17 +229,26 @@ function toServerRow(row: Record<string, unknown>) {
   return "score" in row ? { ...row, score: Number(row.score) } : row;
 }
 
+type SetupOpts = {
+  isAdmin?: boolean;
+  isTableEditingEnabled?: boolean;
+  isTableWritable?: boolean;
+  initialRoute?: string;
+  dataset?: Dataset;
+  updateForm?: DescribeActionFormResponse | Promise<DescribeActionFormResponse>;
+};
+
 function setup({
   isAdmin = true,
   isTableEditingEnabled = true,
   isTableWritable = true,
   initialRoute = EDIT_PATH,
-}: {
-  isAdmin?: boolean;
-  isTableEditingEnabled?: boolean;
-  isTableWritable?: boolean;
-  initialRoute?: string;
-} = {}) {
+  dataset = createMockDataset({
+    data: { cols: COLS, rows: ROWS },
+    row_count: ROWS.length,
+  }),
+  updateForm = UPDATE_FORM,
+}: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 1000 });
   // Edit mode builds its filter and sort URLs from `window.location`.
   window.history.pushState({}, "", EDIT_PATH);
@@ -225,12 +263,8 @@ function setup({
 
   setupDatabaseEndpoints(database);
   fetchMock.get("path:/api/database", { data: [database], total: 1 });
-  fetchMock.post(
-    "path:/api/dataset",
-    createMockDataset({ data: { cols: COLS, rows: ROWS }, row_count: 3 }),
-    { name: "dataset" },
-  );
-  fetchMock.post("path:/api/ee/action-v2/execute-form", UPDATE_FORM, {
+  setupAdhocQueryEndpoint(dataset, { name: "dataset" });
+  fetchMock.post("path:/api/ee/action-v2/execute-form", updateForm, {
     body: { action: TableActionId.UpdateRow },
     matchPartialBody: true,
   });
@@ -259,7 +293,7 @@ function setup({
   );
 }
 
-async function setupGrid(options?: Parameters<typeof setup>[0]) {
+async function setupGrid(options?: SetupOpts) {
   const view = setup(options);
   await waitForGridToSettle(view.store, { datasetRequests: 1 });
   expect(screen.getByText("Bravo")).toBeInTheDocument();
@@ -267,13 +301,9 @@ async function setupGrid(options?: Parameters<typeof setup>[0]) {
 }
 
 /**
- * Each time the dataset, the table metadata or a form description arrives, the
- * grid builds new header and cell components for every column, and React
- * remounts those cells. A click whose pointer events straddle a remount lands
- * on a detached node and is lost, and a cell clicked before the update form
- * description arrives does not know that its column is readonly. The sort
- * indicator is read from the URL, so it shows before the dataset refetch that
- * the sort starts has finished.
+ * A cell clicked before the update form description arrives does not know that
+ * its column is readonly. The sort indicator is read from the URL, so it shows
+ * before the dataset refetch that the sort starts has finished.
  *
  * So wait for every running API request, then for the animation frame on
  * which RTK's `autoBatchEnhancer` notifies subscribers of the results, so that
@@ -322,10 +352,6 @@ function getCell(rowIndex: number, columnId: string) {
   return cell;
 }
 
-/**
- * The header remounts each time the grid gets new data, so query it again for
- * each assertion.
- */
 function getHeader() {
   return within(screen.getByTestId("table-header"));
 }
@@ -552,6 +578,174 @@ describe("EditTableDataContainer", () => {
       expect(getCell(1, "active")).toHaveTextContent("true");
     });
 
+    it("keeps text typed into a cell while another cell's save lands", async () => {
+      const { store } = await setupGrid();
+      // An untouched cell must stay mounted while editors open and close
+      const alphaCellContent = within(getCell(0, "name")).getByText("Alpha");
+      const saveResponse = defer<void>();
+      fetchMock.modifyRoute("execute-bulk", {
+        response: async (callLog: CallLog) => {
+          await saveResponse.promise;
+          return executeBulk(callLog);
+        },
+      });
+
+      try {
+        await userEvent.click(getCell(1, "score"));
+        const scoreInput = within(getCell(1, "score")).getByRole("textbox");
+        await userEvent.clear(scoreInput);
+        await userEvent.type(scoreInput, "25{Enter}");
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+        );
+        await userEvent.click(getCell(2, "name"));
+        await userEvent.type(
+          within(getCell(2, "name")).getByRole("textbox"),
+          " Delta",
+        );
+        expect(screen.queryByTestId("toast-undo")).not.toBeInTheDocument();
+      } finally {
+        // A pending save would keep the shared afterEach waiting
+        saveResponse.resolve();
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(screen.getByText("Successfully updated")).toBeInTheDocument();
+      expect(getCell(1, "score")).toHaveTextContent("25");
+      expect(within(getCell(2, "name")).getByRole("textbox")).toHaveValue(
+        "Charlie Delta",
+      );
+      expect(alphaCellContent).toBeInTheDocument();
+    });
+
+    it("shows the latest value in an open editor when its cell changes underneath", async () => {
+      const { store } = await setupGrid();
+      const saveResponse = defer<void>();
+      fetchMock.modifyRoute("execute-bulk", {
+        response: async (callLog: CallLog) => {
+          await saveResponse.promise;
+          const { outputs } = executeBulk(callLog);
+          // As if a database trigger rewrote the name when the score changed
+          return {
+            outputs: outputs.map((output) => ({
+              ...output,
+              row: { ...output.row, name: "Bravo Jr." },
+            })),
+          };
+        },
+      });
+
+      try {
+        await userEvent.click(getCell(1, "score"));
+        const scoreInput = within(getCell(1, "score")).getByRole("textbox");
+        await userEvent.clear(scoreInput);
+        await userEvent.type(scoreInput, "25{Enter}");
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+        );
+        await userEvent.click(getCell(1, "name"));
+        expect(within(getCell(1, "name")).getByRole("textbox")).toHaveValue(
+          "Bravo",
+        );
+      } finally {
+        // A pending save would keep the shared afterEach waiting
+        saveResponse.resolve();
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(within(getCell(1, "name")).getByRole("textbox")).toHaveValue(
+        "Bravo Jr.",
+      );
+    });
+
+    it("keeps a draft in an editor reopened while its own save lands", async () => {
+      const { store } = await setupGrid();
+      const saveResponse = defer<void>();
+      fetchMock.modifyRoute("execute-bulk", {
+        response: async (callLog: CallLog) => {
+          await saveResponse.promise;
+          const { outputs } = executeBulk(callLog);
+          // The server can send a saved value back normalized, like a timestamp with its time zone
+          return {
+            outputs: outputs.map((output) => ({
+              ...output,
+              row: { ...output.row, name: "Bravo" },
+            })),
+          };
+        },
+      });
+
+      try {
+        await userEvent.click(getCell(1, "name"));
+        await userEvent.type(
+          within(getCell(1, "name")).getByRole("textbox"),
+          " {Enter}",
+        );
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+        );
+        await userEvent.click(getCell(1, "name"));
+        await userEvent.type(
+          within(getCell(1, "name")).getByRole("textbox"),
+          "Jr.",
+        );
+      } finally {
+        // A pending save would keep the shared afterEach waiting
+        saveResponse.resolve();
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(within(getCell(1, "name")).getByRole("textbox")).toHaveValue(
+        "Bravo Jr.",
+      );
+    });
+
+    it("closes the editor when a refetch moves another record into its row", async () => {
+      const { store } = await setupGrid();
+      await userEvent.click(getCell(1, "name"));
+      await userEvent.type(
+        within(getCell(1, "name")).getByRole("textbox"),
+        " Jr.",
+      );
+      fetchMock.modifyRoute("dataset", {
+        response: createMockDataset({
+          data: { cols: COLS, rows: [ROWS[2], ROWS[0], ROWS[1]] },
+        }),
+      });
+
+      await act(async () => {
+        store.dispatch(Api.util.invalidateTags(["dataset"]));
+      });
+      await waitForGridToSettle(store, { datasetRequests: 2 });
+
+      expect(
+        within(getCell(1, "name")).queryByRole("textbox"),
+      ).not.toBeInTheDocument();
+      expect(getCell(1, "name")).toHaveTextContent("Alpha");
+    });
+
+    it("keeps cells mounted and read-only cells closed when the form arrives after a click", async () => {
+      const updateForm = defer<DescribeActionFormResponse>();
+      const { store } = setup({ updateForm: updateForm.promise });
+      let alphaCellContent: HTMLElement | undefined;
+
+      try {
+        alphaCellContent = await waitFor(() =>
+          within(getCell(0, "name")).getByText("Alpha"),
+        );
+        await userEvent.click(getCell(1, "id"));
+      } finally {
+        // A pending form request would keep the shared afterEach waiting
+        updateForm.resolve(UPDATE_FORM);
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(alphaCellContent).toBeInTheDocument();
+      expect(
+        within(getCell(1, "id")).queryByRole("textbox"),
+      ).not.toBeInTheDocument();
+    });
+
     it("does not make a cell editable when the form description marks its column readonly", async () => {
       await setupGrid();
 
@@ -607,8 +801,10 @@ describe("EditTableDataContainer", () => {
   describe("filter and sort", () => {
     it("cycles a column sort through ascending, descending and none", async () => {
       const { router, store } = await setupGrid();
+      // Every click goes to the same header element, so a remount would lose them
+      const nameHeader = getHeader().getByText("Name");
 
-      await userEvent.click(getHeader().getByText("Name"));
+      await userEvent.click(nameHeader);
       await waitForGridToSettle(store, { datasetRequests: 2 });
       expect(getHeader().getByLabelText("chevronup icon")).toBeInTheDocument();
       expect(getHeader().getAllByTestId("header-sort-indicator")).toHaveLength(
@@ -616,19 +812,49 @@ describe("EditTableDataContainer", () => {
       );
       expect(router?.location.search).toMatch(/^\?query=/);
 
-      await userEvent.click(getHeader().getByText("Name"));
+      await userEvent.click(nameHeader);
       await waitForGridToSettle(store, { datasetRequests: 3 });
       expect(
         getHeader().getByLabelText("chevrondown icon"),
       ).toBeInTheDocument();
 
-      await userEvent.click(getHeader().getByText("Name"));
+      await userEvent.click(nameHeader);
       await waitFor(() =>
         expect(
           getHeader().queryByTestId("header-sort-indicator"),
         ).not.toBeInTheDocument(),
       );
       expect(router?.location.search).toBe("");
+    });
+
+    it("keeps body cells mounted and their foreign key names current after a refetch", async () => {
+      const { store } = await setupGrid({
+        dataset: createMockDataset({
+          data: {
+            cols: CATEGORY_COLS,
+            rows: ROWS.map((row) => [...row, 1, "Asian"]),
+          },
+        }),
+      });
+      const nameCellContent = within(getCell(1, "name")).getByText("Bravo");
+      const rowCheckbox = getRowSelectSection(1).getByTestId(
+        "row-select-checkbox",
+      );
+      fetchMock.modifyRoute("dataset", {
+        response: createMockDataset({
+          data: {
+            cols: CATEGORY_COLS,
+            rows: ROWS.map((row) => [...row, 2, "Burger"]),
+          },
+        }),
+      });
+
+      await userEvent.click(getHeader().getByText("Score"));
+      await waitForGridToSettle(store, { datasetRequests: 2 });
+
+      expect(nameCellContent).toBeInTheDocument();
+      expect(rowCheckbox).toBeInTheDocument();
+      expect(getCell(1, "category_id")).toHaveTextContent("Burger");
     });
 
     it("adds a filter and keeps filter and sort in the URL across reloads", async () => {

@@ -9,11 +9,15 @@ import type { TableDataGetColumnSortDirection } from "../use-edit-table-data";
 import type { TableRowUpdateHandler } from "../use-table-crud";
 
 import S from "./EditTableDataGrid.module.css";
-import { useEditDataDridColumnOptions } from "./use-edit-datagrid-column-options";
+import {
+  EditTableDataGridContextProvider,
+  type EditTableDataGridContextValue,
+} from "./EditTableDataGridContext";
 import {
   ROW_SELECT_COLUMN_ID,
-  useTableColumnRowSelect,
-} from "./use-table-column-row-select";
+  ROW_SELECT_COLUMN_OPTIONS,
+} from "./EditTableDataGridRowSelectColumn";
+import { useEditDataGridColumnOptions } from "./use-edit-datagrid-column-options";
 import { useTableEditingCell } from "./use-table-editing-cell";
 
 type EditTableDataGridProps = {
@@ -50,20 +54,70 @@ export const EditTableDataGrid = ({
     handleRowUpdate,
   });
 
-  const columnsOptions = useEditDataDridColumnOptions({
-    cols,
-    editingCell,
-    updateFormDescription,
-    getColumnSortDirection,
-    onColumnSort,
-    onCancelEditing: handleCancelEditing,
-    onValueUpdated: handleUpdateEditingCell,
-    getCellState,
-  });
+  const columnsOptions = useEditDataGridColumnOptions(cols);
 
-  const columnRowSelectOptions = useTableColumnRowSelect({
-    onRowEditClick: onRowExpandClick,
-  });
+  const columnsByName = useMemo(
+    () => new Map(cols.map((column) => [column.name, column])),
+    [cols],
+  );
+
+  const parametersByName = useMemo(
+    () =>
+      new Map(
+        updateFormDescription?.parameters.map((parameter) => [
+          parameter.id,
+          parameter,
+        ]),
+      ),
+    [updateFormDescription],
+  );
+
+  const sortDirectionsByName = useMemo(
+    () =>
+      new Map(
+        cols.map((column) => [column.name, getColumnSortDirection?.(column)]),
+      ),
+    [cols, getColumnSortDirection],
+  );
+
+  const contextValue = useMemo<EditTableDataGridContextValue>(
+    () => ({
+      columnsByName,
+      parametersByName,
+      sortDirectionsByName,
+      editingCell,
+      getCellState,
+      onColumnSort,
+      onRowExpandClick,
+      onCancelEditing: handleCancelEditing,
+      onValueUpdated: handleUpdateEditingCell,
+    }),
+    [
+      columnsByName,
+      parametersByName,
+      sortDirectionsByName,
+      editingCell,
+      getCellState,
+      onColumnSort,
+      onRowExpandClick,
+      handleCancelEditing,
+      handleUpdateEditingCell,
+    ],
+  );
+
+  // Column widths are measured from values in a separate React root, so it never renders an editor
+  const measurementContextValue = useMemo(
+    () => ({ ...contextValue, editingCell: null }),
+    [contextValue],
+  );
+  const measurementRenderWrapper = useCallback(
+    (children: React.ReactElement) => (
+      <EditTableDataGridContextProvider value={measurementContextValue}>
+        {children}
+      </EditTableDataGridContextProvider>
+    ),
+    [measurementContextValue],
+  );
 
   const handleBodyCellClick = useCallback(
     (
@@ -78,16 +132,13 @@ export const EditTableDataGrid = ({
         return;
       }
 
-      const parameter = updateFormDescription?.parameters.find(
-        ({ id }) => id === columnId,
-      );
-      if (parameter?.readonly) {
+      if (parametersByName.get(columnId)?.readonly) {
         return;
       }
 
       handleSelectEditingCell(rowIndex, columnId);
     },
-    [handleSelectEditingCell, editingCell, updateFormDescription],
+    [handleSelectEditingCell, editingCell, parametersByName],
   );
 
   const columnSizingMap = useMemo(() => {
@@ -109,7 +160,8 @@ export const EditTableDataGrid = ({
     enableRowSelection: true,
     rowSelection,
     onRowSelectionChange,
-    columnRowSelectOptions,
+    columnRowSelectOptions: ROW_SELECT_COLUMN_OPTIONS,
+    measurementRenderWrapper,
   });
 
   const stylingProps = useMemo(
@@ -138,10 +190,12 @@ export const EditTableDataGrid = ({
   );
 
   return (
-    <DataGrid
-      onBodyCellClick={handleBodyCellClick}
-      {...tableProps}
-      {...stylingProps}
-    />
+    <EditTableDataGridContextProvider value={contextValue}>
+      <DataGrid
+        onBodyCellClick={handleBodyCellClick}
+        {...tableProps}
+        {...stylingProps}
+      />
+    </EditTableDataGridContextProvider>
   );
 };

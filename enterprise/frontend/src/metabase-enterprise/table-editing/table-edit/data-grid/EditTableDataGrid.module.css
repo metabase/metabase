@@ -67,3 +67,11 @@
 .tableRow:hover .pencilIcon {
   visibility: visible;
 }
+
+/* The checked and disabled states are listed too, so the Checkbox's own state borders don't win */
+.checkboxInput,
+.checkboxInput:checked,
+.checkboxInput[data-indeterminate],
+.checkboxInput:disabled {
+  border-color: var(--mb-color-border-neutral);
+}

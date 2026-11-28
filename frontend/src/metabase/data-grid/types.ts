@@ -76,9 +76,6 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
-  /** Custom cell render template for cells in editing state */
-  editingCell?: (props: CellContext<TRow, TValue>) => React.JSX.Element;
-
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -128,9 +125,6 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values when copying to clipboard */
   clipboardFormatter?: PlainCellFormatter<TValue>;
-
-  /** Function to determine if a cell is in editing state */
-  getIsEditing?: (columnId: string, rowIndex: number) => boolean;
 }
 
 /**

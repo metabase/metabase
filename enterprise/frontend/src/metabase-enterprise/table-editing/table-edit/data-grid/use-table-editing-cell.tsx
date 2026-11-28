@@ -1,9 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RowValue } from "metabase-types/api";
 
 import type { RowCellsWithPkValue } from "../../api/types";
+import {
+  getPkColumns,
+  getRowObjectPkUniqueKeyByColumnNames,
+  getRowUniqueKeyByPkIndexes,
+} from "../../common/utils";
 import type { TableRowUpdateHandler } from "../use-table-crud";
 
 import {
@@ -30,6 +35,22 @@ export function useTableEditingCell({
   const { getCellState, setCellState, resetCellState } =
     useEditDataGridCellState();
   const [editingCell, setEditingCell] = useState<TableEditingCell | null>(null);
+
+  // The editor belongs to the record it opened on, so it closes when a refetch puts another record in its row
+  const pkColumns = useMemo(() => getPkColumns(data.cols), [data.cols]);
+  const editingRow =
+    editingCell != null ? data.rows[editingCell.rowIndex] : undefined;
+  const hasEditingRecordMoved =
+    editingCell != null &&
+    (editingRow == null ||
+      getRowUniqueKeyByPkIndexes(pkColumns.indexes, editingRow) !==
+        getRowObjectPkUniqueKeyByColumnNames(
+          pkColumns.names,
+          editingCell.actionInput,
+        ));
+  if (hasEditingRecordMoved) {
+    setEditingCell(null);
+  }
 
   const handleSelectEditingCell = useCallback(
     (rowIndex: number, columnId: string) => {

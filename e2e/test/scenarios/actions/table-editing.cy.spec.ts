@@ -121,8 +121,7 @@ function setTableEditingEnabledForDB(dbId: number, enabled = true) {
 }
 
 /**
- * The grid remounts while the dataset loads, so elements found before that
- * point can detach before a click.
+ * Waits for the table metadata, the dataset and the loading overlay that covers the grid, so clicks reach the cells.
  */
 function waitForGrid() {
   cy.wait(["@getTableMetadata", "@dataset"]);

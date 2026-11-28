@@ -24,8 +24,6 @@ const getDefaultCellTemplate = <TRow, TValue>({
   wrap,
   getCellClassName,
   getCellStyle,
-  getIsEditing,
-  editingCell: EditingCellComponent,
 }: ColumnOptions<TRow, TValue>) => {
   return function Cell(
     props: CellContext<TRow, TValue> & {
@@ -39,14 +37,9 @@ const getDefaultCellTemplate = <TRow, TValue>({
     const backgroundColor =
       getBackgroundColor?.(value, row?.index) ??
       getDefaultCellBackgroundColor(theme, isStriped);
-    const isEditing = getIsEditing?.(id, row.index);
     // Read from column meta so the component identity can stay stable across
     // column width changes (metabase#78557)
     const { isTruncated = false, onExpand } = column.columnDef.meta ?? {};
-
-    if (isEditing && EditingCellComponent) {
-      return <EditingCellComponent {...props} />;
-    }
 
     return (
       <BodyCell
