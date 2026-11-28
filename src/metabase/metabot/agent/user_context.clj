@@ -274,13 +274,42 @@
     (assoc details :open_tab tab)
     details))
 
+(defn- with-current-filter-values
+  "The dashboard `details` with each filter's value on the user's screen as `:current_value`, from `filter-values`,
+  the `{:id :value}` maps the frontend sent.
+  A filter the frontend sent no value for, or sent without a `:value`, keeps no `:current_value`, so its value is
+  unknown.
+  A value for a filter the dashboard doesn't have is dropped."
+  [details filter-values]
+  (let [id->value (into {}
+                        (comp (filter #(contains? % :value))
+                              (map (juxt :id :value)))
+                        filter-values)]
+    (update details :parameters (fn [parameters]
+                                  (for [{:keys [id] :as parameter} parameters]
+                                    (cond-> parameter
+                                      (contains? id->value id) (assoc :current_value (get id->value id))))))))
+
+(defn- dashboard-preamble
+  "The line above a viewed dashboard, saying what its filters' values mean when the frontend sent them."
+  [{filter-values :parameters}]
+  (te/lines "The user is currently looking at the details of a dashboard:"
+            (if (some? filter-values)
+              (str "Each filter's `current_value` is the value applied to the cards on the user's screen, and a filter"
+                   " marked `cleared` has no value applied. A filter with neither has an unknown value on screen."
+                   " A value is the one the filter runs with, which can be an ID where the filter shows the user a"
+                   " name.")
+              "The filter values on the user's screen are unknown.")))
+
 (defmethod format-entity "dashboard"
   [entity]
   (fetch-and-format entity
-                    "The user is currently looking at the details of a dashboard:"
+                    (dashboard-preamble entity)
                     #(update (entity-details/get-dashboard-details {:dashboard-id (:id entity)})
                              :structured-output
-                             (fn [details] (some-> details (with-open-tab (:tab_id entity)))))
+                             (fn [details] (some-> details
+                                                   (with-open-tab (:tab_id entity))
+                                                   (with-current-filter-values (:parameters entity)))))
                     llm-shape/dashboard->xml))
 
 ;;; Viewing Context Formatting

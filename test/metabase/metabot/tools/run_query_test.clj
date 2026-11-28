@@ -21,6 +21,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.run-query :as run-query]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -430,7 +431,13 @@
       (let [cols (for [i (range 30)] {:display_name (str "c" i (apply str (repeat 200 "x")))})
             rows [(repeat 30 (apply str (repeat 400 "x")))]]
         (is (=? {:returned 0, :truncated? true, :output #"(?s).*\(rows too long to show\).*Select fewer columns.*"}
-                (#'run-query/result-output "q1" {:cols cols, :rows rows, :truncated? false} nil)))))
+                (#'run-query/result-output "q1" {:cols cols, :rows rows, :truncated? false} nil)))
+        (testing "and the query on the user's screen is still told to select fewer columns"
+          (mt/with-dynamic-fn-redefs [shared/current-client-ids (constantly #{"q1"})]
+            (is (re-find #"Select fewer columns and run it again\."
+                         (:output (#'run-query/result-output "q1"
+                                                             {:cols cols, :rows rows, :truncated? false}
+                                                             nil))))))))
     (testing "columns past the cap are dropped and reported"
       (let [cols (for [i (range 40)] {:display_name (str "c" i)})
             out  (output cols [(vec (range 40))])]

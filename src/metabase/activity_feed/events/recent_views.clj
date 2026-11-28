@@ -49,10 +49,10 @@
   [topic {:keys [card-id user-id context] :as _event}]
   (try
     (let [user-id (or user-id api/*current-user-id*)]
-      ;; we don't want to count dashboard or subscription card views, document cards, or cards run as another chart's
-      ;; dynamic goal
+      ;; we don't want to count dashboard or subscription card views, document cards, cards run as another chart's
+      ;; dynamic goal, or Metabot reading a card
       (when (and user-id
-                 (not (#{:dashboard :dashboard-subscription :dynamic-goal} context))
+                 (not (#{:dashboard :dashboard-subscription :dynamic-goal :metabot} context))
                  (not (activity-feed.db/card-document-id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e

@@ -13,6 +13,8 @@ import type {
   DraftTransform,
   PaginationRequest,
   PaginationResponse,
+  ParameterId,
+  ParameterValueOrArray,
   ResearchPlanContext,
   RowValue,
   SuggestedTransform,
@@ -117,11 +119,19 @@ export type MetabotCardInfo = {
   error?: any;
 };
 
+export type MetabotDashboardFilterValue = {
+  id: ParameterId;
+  // null is a cleared filter
+  value: ParameterValueOrArray | null;
+};
+
 export type MetabotDashboardInfo = {
   type: "dashboard";
   id: DashboardId;
   // The open tab, on a dashboard with tabs
   tab_id?: DashboardTabId;
+  // The value of each filter as the dashboard's cards ran with it
+  parameters?: MetabotDashboardFilterValue[];
 };
 
 export type MetabotAdhocQueryInfo = {

@@ -148,6 +148,7 @@
   [#'tools/search-tool
    #'tools/construct-notebook-query-tool
    #'tools/run-query-tool
+   #'tools/run-dashboard-card-tool
    #'tools/read-resource-tool
    #'tools/create-sql-query-tool
    #'tools/edit-sql-query-tool
@@ -177,7 +178,8 @@
   :prompt-template "internal.selmer"
   :max-iterations  20
   :tools           (into []
-                         (comp (remove #{#'tools/construct-notebook-query-tool})
+                         ;; run_dashboard_card runs a card whether it holds SQL or not, so it has no place here
+                         (comp (remove #{#'tools/construct-notebook-query-tool #'tools/run-dashboard-card-tool})
                                (replace {#'tools/run-query-tool     #'tools/run-sql-query-tool
                                          #'tools/analyze-chart-tool #'tools/analyze-chart-sql-tool}))
                          internal-tools)})

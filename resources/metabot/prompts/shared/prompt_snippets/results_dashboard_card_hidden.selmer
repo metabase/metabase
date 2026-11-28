@@ -1,0 +1,1 @@
+The one exception is a card on the dashboard the user is viewing: `run_dashboard_card` runs it with the dashboard's filter values on the user's screen and shows you its rows. When you report figures from it, say which filter values they cover.

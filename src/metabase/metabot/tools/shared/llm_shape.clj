@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting]
    [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
 
@@ -175,6 +176,22 @@
         (str/replace "&" "&amp;")
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;"))))
+
+(defn- escape-xml-attr-text
+  "`s` as the value of an XML attribute on one line, for text whose backslashes are already escapes: each invisible
+  or line-breaking character as `\\uXXXX`, and XML special characters escaped."
+  [s]
+  (-> s
+      (quoting/escape-code-points quoting/invisible-code-point?)
+      escape-xml))
+
+(defn- escape-xml-attr-line
+  "`s` as the value of an XML attribute on one line: each backslash doubled, each invisible or line-breaking
+  character as `\\uXXXX`, and XML special characters escaped.
+  Use it for text others can write, so it can't read as more lines, or as an escape it doesn't contain."
+  [s]
+  (when s
+    (escape-xml-attr-text (str/replace (str s) "\\" "\\\\"))))
 
 (defn- markdown-cell
   "Render `v` as the text of one markdown table cell in `|safe` template output.
@@ -742,7 +759,7 @@
     ;; Default to viz card
     (viz-card->xml card)))
 
-(def ^:private max-dashboard-filters
+(def max-dashboard-filters
   "Cap on the filters listed for a dashboard."
   50)
 
@@ -750,33 +767,63 @@
   "Cap on a dashboard filter's name."
   100)
 
-(def ^:private max-dashboard-filter-default-values
-  "Cap on the values listed for a dashboard filter's default."
+(def ^:private max-dashboard-filter-values
+  "Cap on the values listed for a dashboard filter's default or current value."
   10)
 
-(def ^:private max-dashboard-filter-default-length
-  "Cap on a dashboard filter's default, as written in the prompt."
+(def ^:private max-dashboard-filter-value-length
+  "Cap on a dashboard filter's default or current value, as written in the prompt."
   500)
 
-(defn- dashboard-filter-default
-  "The text of a dashboard filter's `default`, with at most [[max-dashboard-filter-default-values]] of its values and
-  [[max-dashboard-filter-default-length]] characters, and a note of how many values were left out.
-  A string default is written as it is, anything else as JSON."
-  [default]
-  (let [shown (cond-> default (sequential? default) (->> (take max-dashboard-filter-default-values) vec))
-        more  (when (sequential? default) (- (count default) (count shown)))]
-    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-default-length)
+(defn dashboard-filter-name
+  "A dashboard filter's `name` as an XML attribute value on one line, cut to [[max-dashboard-filter-name-length]]
+  characters and escaped as [[escape-xml-attr-line]] escapes it."
+  [name]
+  (escape-xml-attr-line (truncate name max-dashboard-filter-name-length)))
+
+(defn- truncate-json
+  "`json` as [[truncate]] cuts it, without the half of an escape that the cut left before the ellipsis."
+  [json max-len]
+  ;; A backslash that starts an escape, alone or with part of a `\uXXXX`, before the ellipsis. JSON that wasn't cut
+  ;; never ends in one.
+  (str/replace (truncate json max-len) #"(?<!\\)((?:\\\\)*)\\(?:u[0-9a-fA-F]{0,3})?\.\.\.$" "$1..."))
+
+(defn dashboard-filter-value
+  "The text of a dashboard filter's default or current `value` as an XML attribute value on one line, with at most
+  [[max-dashboard-filter-values]] of its values and [[max-dashboard-filter-value-length]] characters, and a note of
+  how many values were left out.
+  A string is escaped as [[escape-xml-attr-line]] escapes it, and anything else is written as JSON."
+  [value]
+  (let [shown (cond-> value (sequential? value) (->> (take max-dashboard-filter-values) vec))
+        more  (when (sequential? value) (- (count value) (count shown)))]
+    (str (if (string? shown)
+           (escape-xml-attr-line (truncate shown max-dashboard-filter-value-length))
+           ;; JSON already escapes backslashes and line breaks, and a `\uXXXX` escape keeps it valid JSON
+           (escape-xml-attr-text (truncate-json (json/encode shown) max-dashboard-filter-value-length)))
          (when (pos-int? more) (str " (+" more " more)")))))
+
+(defn dashboard-filter-cleared?
+  "Whether the dashboard filter value `value` applies no filter, as the QP reads it.
+  That is nil, or a list of nothing but nils, the empty list included."
+  [value]
+  (or (nil? value) (and (sequential? value) (every? nil? value))))
 
 (defn dashboard-filter->xml
   "The `<filter>` element for the dashboard filter `parameter`.
-  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them."
-  [{:keys [id name type default connected_dashcards]}]
-  (str "<filter id=\"" (escape-xml id)
-       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
-       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them.
+  A filter on the dashboard the user is viewing can also carry `:current_value`, the value on the user's screen.
+  A filter without that key says nothing about its value on screen."
+  [{:keys [id name type default connected_dashcards] :as parameter}]
+  ;; A dashboard's editors write its filters, and a link can set the value on the user's screen
+  (str "<filter id=\"" (escape-xml-attr-line id)
+       "\" name=\"" (dashboard-filter-name name)
+       "\" type=\"" (escape-xml-attr-line (u/qualified-name type)) "\""
        (when (some? default)
-         (str " default=\"" (escape-xml (dashboard-filter-default default)) "\""))
+         (str " default=\"" (dashboard-filter-value default) "\""))
+       (when-let [[_ value] (find parameter :current_value)]
+         (if (dashboard-filter-cleared? value)
+           " cleared=\"true\""
+           (str " current_value=\"" (dashboard-filter-value value) "\"")))
        (when (seq connected_dashcards)
          (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
        "/>"))

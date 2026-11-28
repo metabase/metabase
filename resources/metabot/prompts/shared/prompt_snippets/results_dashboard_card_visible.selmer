@@ -1,0 +1,1 @@
+To read a card on the dashboard the user is viewing, run it with `run_dashboard_card`, which applies the dashboard's filter values on the user's screen. `run_query` with the question's ID runs it without them. When you report figures from a dashboard, say which filter values they cover.

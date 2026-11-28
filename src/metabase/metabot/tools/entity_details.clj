@@ -155,7 +155,7 @@
          :authority_level (:authority_level collection)
          :archived        (boolean (:archived collection))}))))
 
-(defn- visible-dashcards
+(defn visible-dashcards
   "The dashcards of the dashboard with `dashboard-id` that the current user can see: text, headings, links and actions,
   and charts whose question they can read.
   When the session may only reach curated content, charts also need a curated card, or a metric whose definition
