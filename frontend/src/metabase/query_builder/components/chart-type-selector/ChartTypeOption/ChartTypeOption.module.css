@@ -3,6 +3,8 @@
 }
 
 .VisualizationButton:hover + .SettingsButton,
-.SettingsButton:hover {
+.VisualizationButton:focus-visible + .SettingsButton,
+.SettingsButton:hover,
+.SettingsButton:focus-visible {
   opacity: 1;
 }
