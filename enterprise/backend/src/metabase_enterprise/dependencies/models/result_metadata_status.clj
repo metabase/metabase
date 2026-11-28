@@ -32,11 +32,13 @@
 (mu/defn take-pending-result-metadata-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` MBQL cards Metabase did not create itself without a ResultMetadataStatus, or whose status counts a
   write or records a version of the logic below `current-version`, and whose dependencies the dependency logic of
-  `dependency-version` computed, outdated ones last, with the `stale` count the job clears afterwards."
+  `dependency-version` computed, outdated ones last, with the `stale` count the job clears afterwards; with
+  `depended-on-only?`, only the ones something depends on."
   [batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
-   dependency-version :- ms/PositiveInt]
-  (dependencies.db/take-pending-result-metadata-statuses! batch-size current-version dependency-version))
+   dependency-version :- ms/PositiveInt
+   opts               :- ::dependencies.schema/job-opts]
+  (dependencies.db/take-pending-result-metadata-statuses! batch-size current-version dependency-version opts))
 
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of the entities `type->ids` stale, so the result metadata job re-derives them."

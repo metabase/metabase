@@ -636,18 +636,48 @@
                                       [:= :ds.stale 0]
                                       [:= :ds.analysis_version dependency-version]]}])
 
+;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
+(def ^:private reported-entity-columns
+  {:card      {:archived? true,  :collection? true}
+   :transform {:archived? false, :collection? true}
+   :segment   {:archived? true,  :collection? false}})
+
+(mu/defn- reported-clause
+  "Whether the entity of `entity-type` in the table aliased `table-alias` is neither archived nor internal content, as
+  Honey SQL."
+  [entity-type :- (into [:enum] (keys reported-entity-columns))
+   table-alias :- :keyword]
+  (cond-> [:and (mi/non-internal-filter-clause (dependencies/entity-model entity-type) table-alias)]
+    (:archived? (reported-entity-columns entity-type))
+    (conj [:= (u/qualified-key table-alias :archived) false])))
+
+(mu/defn- depended-on-clause
+  "Whether something depends on the entity of `entity-type` with `id-field`, as Honey SQL."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   id-field    :- :keyword]
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[(t2/table-name :model/Dependency) :dep]]
+                             :where  [:and
+                                      [:= :dep.to_entity_type (name entity-type)]
+                                      [:= :dep.to_entity_id id-field]]}])
+
+(def ^:private PendingStatusesOpts
+  [:merge ::dependencies.schema/job-opts
+   [:map {:closed true}
+    [:user-mbql-only?    {:optional true} :boolean]
+    [:dependency-version {:optional true} ms/PositiveInt]]])
+
 (mu/defn- pending-statuses :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of `entity-type` without a status in `status-model`, or whose status the job has not
   given up on and that counts a write or records a version of the job's logic below `current-version`, those last,
   with their `stale` counts, nil without a status; `user-mbql-only?` narrows cards to MBQL ones that Metabase did not create itself, and `dependency-version`
-  to the entities whose dependencies are current."
+  to the entities whose dependencies are current. `reported-only?` narrows them to the ones that are neither archived
+  nor internal content, and `depended-on-only?` to the ones something depends on."
   [entity-type     :- ::deps.dependency-types/dependency-types
    status-model    :- StatusModel
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt
-   {:keys [user-mbql-only? dependency-version]} :- [:map {:closed true}
-                                                    [:user-mbql-only?    {:optional true} :boolean]
-                                                    [:dependency-version {:optional true} ms/PositiveInt]]]
+   {:keys [user-mbql-only? dependency-version reported-only? depended-on-only?]} :- PendingStatusesOpts]
   (let [table-name (t2/table-name (dependencies/entity-model entity-type))
         id-field   (u/qualified-key table-name :id)
         outdated   [:< :status.analysis_version current-version]]
@@ -664,7 +694,9 @@
                                                    [:not= (u/qualified-key (t2/table-name :model/Card) :query_type) "native"]]
                                                   (mi/non-internal-filter-clause :model/Card (t2/table-name :model/Card)))
                          dependency-version (conj (current-dependencies-clause
-                                                   entity-type id-field dependency-version)))
+                                                   entity-type id-field dependency-version))
+                         reported-only?     (conj (reported-clause entity-type table-name))
+                         depended-on-only?  (conj (depended-on-clause entity-type id-field)))
             :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]
             :limit     batch-size}))))
 
@@ -675,9 +707,7 @@
    status-model    :- StatusModel
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt
-   opts            :- [:map {:closed true}
-                       [:user-mbql-only?    {:optional true} :boolean]
-                       [:dependency-version {:optional true} ms/PositiveInt]]]
+   opts            :- PendingStatusesOpts]
   (let [statuses (pending-statuses entity-type status-model batch-size current-version opts)
         missing  (remove :stale statuses)]
     (when (seq missing)
@@ -765,13 +795,16 @@
 (mu/defn take-pending-result-metadata-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` MBQL cards Metabase did not create itself without a ResultMetadataStatus, or whose status counts a
   write or records a version of the logic below `current-version`, and whose dependencies the dependency logic of
-  `dependency-version` computed, outdated ones last, with the `stale` count the job clears afterwards."
+  `dependency-version` computed, outdated ones last, with the `stale` count the job clears afterwards; with
+  `depended-on-only?`, only the ones something depends on."
   [batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
-   dependency-version :- ms/PositiveInt]
+   dependency-version :- ms/PositiveInt
+   opts               :- ::dependencies.schema/job-opts]
   (take-pending-statuses! :card :model/ResultMetadataStatus batch-size current-version
-                          {:user-mbql-only?    true
-                           :dependency-version dependency-version}))
+                          (assoc opts
+                                 :user-mbql-only?    true
+                                 :dependency-version dependency-version)))
 
 (mu/defn record-result-metadata-failure! :- :boolean
   "Record that the result metadata job failed to re-derive the Card with `card-id`, giving up on it until a write
@@ -885,13 +918,15 @@
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a
   write or records an analysis below `current-version`, and whose dependencies the analysis of `dependency-version`
-  computed, outdated ones last, with the `stale` count the job clears afterwards."
+  computed, outdated ones last, with the `stale` count the job clears afterwards; with `reported-only?`, only the ones
+  that are neither archived nor internal content."
   [entity-type        :- ::deps.dependency-types/dependency-types
    batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
-   dependency-version :- ms/PositiveInt]
+   dependency-version :- ms/PositiveInt
+   opts               :- ::dependencies.schema/job-opts]
   (take-pending-statuses! entity-type :model/AnalysisFindingStatus batch-size current-version
-                          {:dependency-version dependency-version}))
+                          (assoc opts :dependency-version dependency-version)))
 
 (mu/defn record-analysis-finding-failure! :- :boolean
   "Record that the analysis job failed to analyze the entity `entity-type` `entity-id`, giving up on it until a write changes it once it failed
@@ -925,12 +960,6 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in %]) entity-ids))
 
-;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
-(def ^:private failed-entity-columns
-  {:card      {:archived? true,  :collection? true}
-   :transform {:archived? false, :collection? true}
-   :segment   {:archived? true,  :collection? false}})
-
 (mu/defn failed-analysis-entities :- [:sequential [:map
                                                    [:id            ms/PositiveInt]
                                                    [:entity_id     :string]
@@ -938,12 +967,11 @@
                                                    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                    [:given_up      [:maybe :boolean]]]]
   "The entities of `entity-type` whose analysis failed or whose dependencies the dependency job gave up computing, with
-  `given_up` true for the latter, excluding archived and Metabase-managed content."
-  [entity-type :- (into [:enum] (keys failed-entity-columns))]
-  (let [model                           (dependencies/entity-model entity-type)
-        {:keys [archived? collection?]} (failed-entity-columns entity-type)]
+  `given_up` true for the latter, excluding archived and internal content."
+  [entity-type :- (into [:enum] (keys reported-entity-columns))]
+  (let [model (dependencies/entity-model entity-type)]
     (t2/query {:select    (cond-> [:entity.id :entity.entity_id :entity.name [:ds.terminal :given_up]]
-                            collection? (conj :entity.collection_id))
+                            (:collection? (reported-entity-columns entity-type)) (conj :entity.collection_id))
                :from      [[(t2/table-name model) :entity]]
                :left-join [[(t2/table-name :model/AnalysisFinding) :af]
                            [:and
@@ -953,12 +981,11 @@
                            [:and
                             [:= :ds.entity_id :entity.id]
                             [:= :ds.entity_type (name entity-type)]]]
-               :where     (cond-> [:and
-                                   [:or
-                                    [:= :af.result false]
-                                    [:= :ds.terminal true]]
-                                   (mi/non-internal-filter-clause model :entity)]
-                            archived? (conj [:= :entity.archived false]))
+               :where     [:and
+                           [:or
+                            [:= :af.result false]
+                            [:= :ds.terminal true]]
+                           (reported-clause entity-type :entity)]
                :order-by  [[:entity.id :asc]]})))
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------

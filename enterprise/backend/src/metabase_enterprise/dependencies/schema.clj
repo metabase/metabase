@@ -48,9 +48,13 @@
    [:stale     [:maybe ms/IntGreaterThanOrEqualToZero]]])
 
 (mr/def ::job-opts
-  "Options of a dependency job batch: `threads` is how many entities it computes at the same time, 1 when absent."
+  "Options of a dependency job batch: `threads` is how many entities it computes at the same time, 1 when absent;
+  `reported-only?` takes only entities that are neither archived nor internal content, and `depended-on-only?` only
+  cards that something depends on."
   [:map {:closed true}
-   [:threads {:optional true} ms/PositiveInt]])
+   [:threads           {:optional true} ms/PositiveInt]
+   [:reported-only?    {:optional true} :boolean]
+   [:depended-on-only? {:optional true} :boolean]])
 
 (mr/def ::type->ids
   "Entities as `{entity-type ids}`."

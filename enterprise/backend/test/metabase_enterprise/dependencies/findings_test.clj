@@ -10,9 +10,9 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest failed-entity-columns-cover-every-analyzed-type-test
+(deftest reported-entity-columns-cover-every-analyzed-type-test
   (is (= (set (deps.analysis-finding/analyzed-types))
-         (set (keys @#'dependencies.db/failed-entity-columns)))))
+         (set (keys @#'dependencies.db/reported-entity-columns)))))
 
 (deftest cause-columns-cover-every-source-type-test
   (is (= (set (mc/children (mr/resolve-schema ::lib.schema.validate/source-entity-type)))

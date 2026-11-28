@@ -24,12 +24,15 @@
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a
   write or records an analysis below `current-version`, and whose dependencies the analysis of `dependency-version`
-  computed, outdated ones last, with the `stale` count the job clears afterwards."
+  computed, outdated ones last, with the `stale` count the job clears afterwards; with `reported-only?`, only the ones
+  that are neither archived nor internal content."
   [entity-type        :- ::deps.dependency-types/dependency-types
    batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
-   dependency-version :- ms/PositiveInt]
-  (dependencies.db/take-pending-analysis-finding-statuses! entity-type batch-size current-version dependency-version))
+   dependency-version :- ms/PositiveInt
+   opts               :- ::dependencies.schema/job-opts]
+  (dependencies.db/take-pending-analysis-finding-statuses! entity-type batch-size current-version dependency-version
+                                                           opts))
 
 (mu/defn mark-analysis-finding-statuses-stale!
   "Mark the AnalysisFindingStatuses of the entities `type->ids` stale, so the analysis job analyzes them again."

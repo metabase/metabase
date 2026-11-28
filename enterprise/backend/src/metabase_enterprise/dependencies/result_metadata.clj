@@ -181,13 +181,13 @@
   "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus
   counts a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or
   counting its failure, returning how many statuses it took, deleted ones included, the re-derived metadata stored
-  together, or for each card when that fails."
+  together, or for each card when that fails; with `depended-on-only?`, only the cards something depends on."
   [batch-size :- ms/PositiveInt
    opts       :- ::dependencies.schema/job-opts]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
         statuses    (models.result-metadata-status/take-pending-result-metadata-statuses!
                      batch-size models.result-metadata-status/current-result-metadata-version
-                     models.dependency/current-dependency-analysis-version)]
+                     models.dependency/current-dependency-analysis-version opts)]
     (when (seq deleted-ids)
       (models.result-metadata-status/delete-result-metadata-statuses! deleted-ids))
     (when (seq statuses)

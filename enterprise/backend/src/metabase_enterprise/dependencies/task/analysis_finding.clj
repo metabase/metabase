@@ -45,9 +45,10 @@
    :run-batch!       #'run-batch!})
 
 (mu/defn run-batch-in-place! :- ::task.util/batch-outcome
-  "Run a batch of the UpdateAnalysisFindings job now rather than on its schedule."
-  []
-  (task.util/run-batch-in-place! job))
+  "Run a batch of the UpdateAnalysisFindings job now rather than on its schedule; with `reported-only?`, of only the
+  entities that are neither archived nor internal content."
+  [opts :- ::dependencies.schema/job-opts]
+  (task.util/run-batch-in-place! (assoc job :run-batch! #(run-batch! (merge % opts)))))
 
 (mu/defn enabled? :- :boolean
   "Whether the UpdateAnalysisFindings job runs."

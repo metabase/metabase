@@ -160,7 +160,7 @@
               (card-results (lint-report) native-card)))))))
 
 (deftest ^:synchronized archived-and-internal-content-left-out-test
-  (testing "POST /api/ee/lint leaves out archived entities and content Metabase manages itself"
+  (testing "POST /api/ee/lint leaves out archived entities and internal content"
     (do-with-broken-model!
      (fn [user model-card]
        [(create-card-filtering-total! user model-card "Lint archived")
@@ -171,7 +171,12 @@
        (let [report (lint-report)]
          (doseq [card [archived-card internal-card]]
            (is (= [] (card-results report card)))
-           (is (not (contains? (:entities report) (keyword (:entity_id card)))))))))))
+           (is (not (contains? (:entities report) (keyword (:entity_id card)))))
+           (testing "and leaves their analysis to the scheduled job"
+             (is (not (t2/exists? :model/AnalysisFinding :entity_type "card" :entity_id (:id card))))))
+         (testing "and doesn't re-derive the result metadata of an archived card nothing depends on"
+           (is (not (t2/exists? :model/ResultMetadataStatus
+                                :entity_type "card" :entity_id (:id archived-card) :stale 0)))))))))
 
 (deftest ^:synchronized fixed-entity-no-longer-reported-test
   (testing "POST /api/ee/lint stops reporting an entity once it is fixed"
@@ -187,8 +192,24 @@
     (do-with-broken-model!
      (fn [user model-card]
        (let [intermediate-card (create-card! user "Lint intermediate" :model (deps.test/card-query (:id model-card)))]
-         (create-card-filtering-total! user intermediate-card "Lint dependent")))
-     (fn [_model-card dependent-card]
+         [intermediate-card (create-card-filtering-total! user intermediate-card "Lint dependent")]))
+     (fn [_model-card [intermediate-card dependent-card]]
+       (is (= ["missing-column"] (map :ruleId (card-results (lint-report) dependent-card))))
+       (testing "without re-deriving the result metadata of the dependent, which nothing depends on"
+         (is (= {"Lint intermediate" 0 "Lint dependent" nil}
+                (into {}
+                      (map (juxt :name #(t2/select-one-fn :stale :model/ResultMetadataStatus
+                                                          :entity_type "card" :entity_id (:id %))))
+                      [intermediate-card dependent-card]))))))))
+
+(deftest ^:synchronized broken-through-archived-intermediate-card-test
+  (testing "POST /api/ee/lint reports an entity broken through an archived card it depends on"
+    (do-with-broken-model!
+     (fn [user model-card]
+       (let [intermediate-card (create-card! user "Lint intermediate" :model (deps.test/card-query (:id model-card)))]
+         [intermediate-card (create-card-filtering-total! user intermediate-card "Lint dependent")]))
+     (fn [_model-card [intermediate-card dependent-card]]
+       (card/update-cards! [{:id (:id intermediate-card) :archived true}])
        (is (= ["missing-column"] (map :ruleId (card-results (lint-report) dependent-card))))))))
 
 (deftest ^:synchronized source-read-before-drain-test
