@@ -133,11 +133,12 @@
                                      (when started-at-end [:< :started_at started-at-end])])}))
 
 (mu/defn nth-newest-task-history-ended-at
-  "The `ended_at` of the TaskHistory row `offset` rows from the most recently ended, or nil."
+  "The `ended_at` of the TaskHistory row `offset` rows from the most recently ended, or nil. Only `ended_at` is
+  selected, because the cleanup skips past up to 100,000 rows and reading all their columns is slow."
   [offset :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select-one-fn :ended_at :model/TaskHistory {:limit    1
-                                                  :offset   offset
-                                                  :order-by [[:ended_at :desc]]}))
+  (t2/select-one-fn :ended_at [:model/TaskHistory :ended_at] {:limit    1
+                                                              :offset   offset
+                                                              :order-by [[:ended_at :desc]]}))
 
 (mu/defn task-history-ids-ended-before :- [:sequential ms/PositiveInt]
   "The ids of the TaskHistory rows that ended at or before `ended-before`."
