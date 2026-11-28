@@ -42,16 +42,16 @@ RowValues
 
 <!-- [<snippet properties>] -->
 
-| Property                                | Type                                                                                                        |
-| :-------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
-| <a id="columns"></a> `columns`          | `DatasetColumn`[]                                                                                           |
-| <a id="description"></a> `description?` | [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"description"`\]           |
-| <a id="entityid"></a> `entityId?`       | \| [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"entityId"`\] \| `null` |
-| <a id="id"></a> `id?`                   | [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"id"`\] \| `null`          |
-| <a id="name"></a> `name?`               | \| [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"name"`\] \| `null`     |
-| <a id="rawrows"></a> `rawRows`          | `RowValues`[]                                                                                               |
-| <a id="rowcount"></a> `rowCount`        | `number` \| `null`                                                                                          |
-| <a id="rows"></a> `rows`                | `TRow`[]                                                                                                    |
-| <a id="runningtime"></a> `runningTime`  | `number` \| `null`                                                                                          |
+| Property                                          | Type                                                                                                        |
+| :------------------------------------------------ | :---------------------------------------------------------------------------------------------------------- |
+| <a id="querydata-columns"></a> `columns`          | `DatasetColumn`[]                                                                                           |
+| <a id="querydata-description"></a> `description?` | [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"description"`\]           |
+| <a id="querydata-entityid"></a> `entityId?`       | \| [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"entityId"`\] \| `null` |
+| <a id="querydata-id"></a> `id?`                   | [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"id"`\] \| `null`          |
+| <a id="querydata-name"></a> `name?`               | \| [`QueryQuestionResult`](/docs/latest/embedding/sdk/api/QueryQuestionResult.md)\[`"name"`\] \| `null`     |
+| <a id="querydata-rawrows"></a> `rawRows`          | `RowValues`[]                                                                                               |
+| <a id="querydata-rowcount"></a> `rowCount`        | `number` \| `null`                                                                                          |
+| <a id="querydata-rows"></a> `rows`                | `TRow`[]                                                                                                    |
+| <a id="querydata-runningtime"></a> `runningTime`  | `number` \| `null`                                                                                          |
 
 <!-- [<endsnippet properties>] -->

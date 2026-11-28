@@ -18,16 +18,16 @@ The User entity
 
 <!-- [<snippet properties>] -->
 
-| Property                               | Type                                                       |
-| :------------------------------------- | :--------------------------------------------------------- |
-| <a id="common_name"></a> `common_name` | `string`                                                   |
-| <a id="date_joined"></a> `date_joined` | `string`                                                   |
-| <a id="email"></a> `email`             | `string`                                                   |
-| <a id="first_login"></a> `first_login` | `string`                                                   |
-| <a id="first_name"></a> `first_name`   | `string` \| `null`                                         |
-| <a id="id"></a> `id`                   | [`SdkUserId`](/docs/latest/embedding/sdk/api/SdkUserId.md) |
-| <a id="last_login"></a> `last_login`   | `string`                                                   |
-| <a id="last_name"></a> `last_name`     | `string` \| `null`                                         |
-| <a id="locale"></a> `locale`           | `string` \| `null`                                         |
+| Property                                            | Type                                                       |
+| :-------------------------------------------------- | :--------------------------------------------------------- |
+| <a id="metabaseuser-common_name"></a> `common_name` | `string`                                                   |
+| <a id="metabaseuser-date_joined"></a> `date_joined` | `string`                                                   |
+| <a id="metabaseuser-email"></a> `email`             | `string`                                                   |
+| <a id="metabaseuser-first_login"></a> `first_login` | `string`                                                   |
+| <a id="metabaseuser-first_name"></a> `first_name`   | `string` \| `null`                                         |
+| <a id="metabaseuser-id"></a> `id`                   | [`SdkUserId`](/docs/latest/embedding/sdk/api/SdkUserId.md) |
+| <a id="metabaseuser-last_login"></a> `last_login`   | `string`                                                   |
+| <a id="metabaseuser-last_name"></a> `last_name`     | `string` \| `null`                                         |
+| <a id="metabaseuser-locale"></a> `locale`           | `string` \| `null`                                         |
 
 <!-- [<endsnippet properties>] -->

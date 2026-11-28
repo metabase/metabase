@@ -10,8 +10,8 @@ Response from a single-row update — the number of rows updated.
 
 <!-- [<snippet properties>] -->
 
-| Property                                 | Type     |
-| :--------------------------------------- | :------- |
-| <a id="rows-updated"></a> `rows-updated` | `number` |
+| Property                                                       | Type     |
+| :------------------------------------------------------------- | :------- |
+| <a id="actionresultforupdate-rows-updated"></a> `rows-updated` | `number` |
 
 <!-- [<endsnippet properties>] -->

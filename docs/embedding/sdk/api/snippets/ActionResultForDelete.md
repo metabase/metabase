@@ -10,8 +10,8 @@ Response from a single-row delete — the number of rows deleted.
 
 <!-- [<snippet properties>] -->
 
-| Property                                 | Type     |
-| :--------------------------------------- | :------- |
-| <a id="rows-deleted"></a> `rows-deleted` | `number` |
+| Property                                                       | Type     |
+| :------------------------------------------------------------- | :------- |
+| <a id="actionresultfordelete-rows-deleted"></a> `rows-deleted` | `number` |
 
 <!-- [<endsnippet properties>] -->

@@ -10,9 +10,9 @@
 
 <!-- [<snippet properties>] -->
 
-| Property                          | Type                                                                                                      |
-| :-------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| <a id="children"></a> `children?` | [`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L436) |
-| <a id="to"></a> `to`              | `string`                                                                                                  |
+| Property                                           | Type                                                                                                      |
+| :------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
+| <a id="dataapplinkprops-children"></a> `children?` | [`ReactNode`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L436) |
+| <a id="dataapplinkprops-to"></a> `to`              | `string`                                                                                                  |
 
 <!-- [<endsnippet properties>] -->
