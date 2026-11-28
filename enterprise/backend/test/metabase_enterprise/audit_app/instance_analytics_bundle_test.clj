@@ -50,3 +50,16 @@
         (is (= [] (mapv #(or (:file (ex-data %)) (ex-message %))
                         (ee.serialization/ingest-errors ingestion)))))
       (is (= [] (vec failures))))))
+
+(deftest ^:parallel most-viewed-content-dashboard-lists-documents-test
+  (let [ingestion (bundle-ingestion)
+        entities  (into {}
+                        (map (fn [[[_model id] entity]] [id entity]))
+                        (ee.serialization/ingested ingestion (vec (ee.serialization/ingest-list ingestion))))
+        filtered  (into #{}
+                        (comp (map #(get entities (:card_id %)))
+                              (mapcat #(get-in % [:dataset_query :stages 0 :filters]))
+                              (map last))
+                        (:dashcards (get entities "IW64bVIFFkpldy410Pe5F")))]
+    (is (contains? filtered "dashboard"))
+    (is (contains? filtered "document"))))
