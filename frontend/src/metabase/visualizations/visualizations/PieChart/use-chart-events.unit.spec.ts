@@ -4,7 +4,9 @@ import type { MutableRefObject } from "react";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
+  type ComputedVisualizationSettings,
   OTHER_SLICE_KEY,
+  type PieChartFormatters,
   type PieChartModel,
   type SliceTreeNode,
 } from "metabase/viz-core";
@@ -17,7 +19,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { useChartEvents } from "./use-chart-events";
+import { getTooltipModel, useChartEvents } from "./use-chart-events";
 
 const categoryColumn = createMockColumn({
   name: "CATEGORY",
@@ -171,5 +173,42 @@ describe("useChartEvents", () => {
         ],
       }),
     );
+  });
+});
+
+describe("getTooltipModel", () => {
+  const formatters: PieChartFormatters = {
+    formatMetric: (value: unknown) => String(value),
+    formatPercent: (value: unknown) => `${Number(value) * 100}%`,
+  };
+
+  const settingsWithColumnTitle: ComputedVisualizationSettings = {
+    column: () => ({ column_title: "Renamed category" }),
+  };
+
+  const emptyColumnSettings: ComputedVisualizationSettings = {
+    column: () => ({}),
+  };
+
+  it("uses the user-defined column title when one is set (#71974)", () => {
+    const model = getTooltipModel(
+      [OTHER_SLICE_KEY],
+      createChartModel(),
+      formatters,
+      settingsWithColumnTitle,
+    );
+
+    expect(model.header).toBe("Renamed category");
+  });
+
+  it("falls back to the column display name when no column title is set (#71974)", () => {
+    const model = getTooltipModel(
+      [OTHER_SLICE_KEY],
+      createChartModel(),
+      formatters,
+      emptyColumnSettings,
+    );
+
+    expect(model.header).toBe("Category");
   });
 });
