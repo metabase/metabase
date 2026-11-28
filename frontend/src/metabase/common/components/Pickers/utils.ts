@@ -1,9 +1,48 @@
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
+
+/**
+ * The name the picker shows for a collection. The Library and its Data
+ * section use the main nav's labels ("Data" and "Datasets") instead of their
+ * collection names, and the root collection uses `rootName` when given.
+ */
+export function getPickerCollectionName(
+  {
+    id,
+    name,
+    type,
+    namespace,
+    is_library_root,
+  }: {
+    id?: unknown;
+    name: string;
+    // Picker items share `type` with cards ("question", "model", …); only the
+    // Library's collection types are relabeled.
+    type?: string | null;
+    namespace?: string | null;
+    is_library_root?: boolean;
+  },
+  rootName?: string,
+): string {
+  if (rootName && id === "root" && !namespace) {
+    return rootName;
+  }
+  switch (type) {
+    case "library":
+      return c("A noun, shown in the sidebar as a navigation link").t`Data`;
+    case "library-data":
+      // Subfolders share the section's type; only the section is relabeled.
+      // PROTOTYPE: was "Tables".
+      return is_library_root === false ? name : t`Datasets`;
+    default:
+      return name;
+  }
+}
 
 /**
  * Returns true if the item is the collection itself or a descendant of it.

@@ -18,7 +18,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import S from "./MainNavbar.module.css";
 import MainNavbarContainer from "./MainNavbarContainer";
-import { Sidebar } from "./Sidebar";
+import { ResizableSidebar } from "./ResizableSidebar";
 import {
   getSelectedItems,
   isCollectionPath,
@@ -67,6 +67,7 @@ function MainNavbarInner({
   dashboard,
   openNavbar,
   closeNavbar,
+  header,
   ...props
 }: Props) {
   const navigate = useNavigate();
@@ -111,7 +112,9 @@ function MainNavbarInner({
   }, [location, params, question, dashboard, collection]);
 
   return (
-    <Sidebar
+    // PROTOTYPE: resizable in every variant; the width is remembered.
+    <ResizableSidebar
+      storageKey="prototype-nav-width"
       isOpen={isOpen}
       side="left"
       aria-hidden={!isOpen}
@@ -122,9 +125,10 @@ function MainNavbarInner({
         component="nav"
         className={S.nav}
         direction="column"
-        pt="sm"
+        pt={header ? undefined : "sm"}
         h="100%"
       >
+        {header}
         <MainNavbarContainer
           isOpen={isOpen}
           location={location}
@@ -137,7 +141,7 @@ function MainNavbarInner({
         />
         <NavbarPromoSlot />
       </Flex>
-    </Sidebar>
+    </ResizableSidebar>
   );
 }
 

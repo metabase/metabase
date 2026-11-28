@@ -106,12 +106,15 @@ import eye_outline_component from "./eye_outline.svg?component";
 import factory_component from "./factory.svg?component";
 import field_component from "./field.svg?component";
 import fields_component from "./fields.svg?component";
+import files_component from "./files.svg?component";
 import filter_component from "./filter.svg?component";
 import filter_plus_component from "./filter_plus.svg?component";
 import find_replace_component from "./find_replace.svg?component";
 import folder_component from "./folder.svg?component";
+import folder_bookmark_component from "./folder_bookmark.svg?component";
 import folder_database_component from "./folder_database.svg?component";
 import folder_filled_component from "./folder_filled.svg?component";
+import folder_open_component from "./folder_open.svg?component";
 import format_code_component from "./format_code.svg?component";
 import formula_component from "./formula.svg?component";
 import function_component from "./function.svg?component";
@@ -131,6 +134,7 @@ import google_sheet_component from "./google_sheet.svg?component";
 import grabber_component from "./grabber.svg?component";
 import grid_component from "./grid.svg?component";
 import grid_2x2_component from "./grid_2x2.svg?component";
+import grid_2x2_check_component from "./grid_2x2_check.svg?component";
 import grid_bordered_component from "./grid_bordered.svg?component";
 import group_component from "./group.svg?component";
 import heart_handshake_component from "./heart_handshake.svg?component";
@@ -410,6 +414,8 @@ export const Icons: Record<IconName, React.FC> = {
   factory: factory_component,
   field: field_component,
   fields: fields_component,
+  // PROTOTYPE: Lucide "files", used for Explorations.
+  files: files_component,
   filter: filter_component,
   filter_plus: filter_plus_component,
   find_replace: find_replace_component,
@@ -419,9 +425,12 @@ export const Icons: Record<IconName, React.FC> = {
   function: function_component,
   funnel: funnel_component,
   funnel_outline: funnel_outline_component,
+  // PROTOTYPE: Lucide "folder", "folder-bookmark" and "folder-open".
   folder: folder_component,
+  folder_bookmark: folder_bookmark_component,
   folder_database: folder_database_component,
   folder_filled: folder_filled_component,
+  folder_open: folder_open_component,
   gauge: gauge_component,
   gear: gear_component,
   gear_settings_filled: gear_settings_filled_component,
@@ -433,6 +442,8 @@ export const Icons: Record<IconName, React.FC> = {
   grabber: grabber_component,
   grid: grid_component,
   grid_2x2: grid_2x2_component,
+  // PROTOTYPE: Lucide "grid-2x2-check".
+  grid_2x2_check: grid_2x2_check_component,
   grid_bordered: grid_bordered_component,
   group: group_component,
   google: google_component,

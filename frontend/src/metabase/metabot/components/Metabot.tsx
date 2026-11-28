@@ -11,6 +11,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { ResizableSidebar } from "metabase/nav/containers/MainNavbar/ResizableSidebar";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -179,10 +180,11 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
       {/* The fallback covers the sidebar too, so an empty panel never opens */}
       <Suspense fallback={null}>
-        <Sidebar
+        {/* PROTOTYPE: starts at the main nav's width and resizes the same way. */}
+        <ResizableSidebar
+          storageKey="prototype-metabot-width"
           isOpen={visible}
           side="right"
-          width="30rem"
           aria-hidden={!visible}
         >
           <MetabotChat
@@ -192,7 +194,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
             config={config}
             headerActions={<MetabotSidebarActions agentId={agentId} />}
           />
-        </Sidebar>
+        </ResizableSidebar>
       </Suspense>
     </ErrorBoundary>
   );

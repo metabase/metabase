@@ -411,8 +411,20 @@ export const getCollectionsPermissionEditor = createSelector(
       })
       .filter(isNotNull);
 
+    // PROTOTYPE: the root collection reads "Collections", the Library
+    // "Semantic layer" and its data section "Datasets", as in the sidebar.
+    const displayName =
+      collection.id === ROOT_COLLECTION.id
+        ? t`Collections`
+        : collection.type === "library"
+          ? t`Semantic layer`
+          : collection.type === "library-data" &&
+              collection.is_library_root === true
+            ? t`Datasets`
+            : collection.name;
+
     return {
-      title: t`Permissions for ${collection.name}`,
+      title: t`Permissions for ${displayName}`,
       filterPlaceholder: t`Search for a group`,
       columns: [{ name: t`Group name` }, getCollectionAccessColumn(namespace)],
       entities,

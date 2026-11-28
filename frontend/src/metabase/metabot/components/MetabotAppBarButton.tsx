@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -15,10 +16,13 @@ import { MetabotIcon } from "./MetabotIcon";
 
 interface MetabotAppBarButtonProps extends ActionIconProps {
   className?: string;
+  /** Replaces the default Metabot icon. */
+  icon?: ReactNode;
 }
 
 export function MetabotAppBarButton({
   className,
+  icon,
   ...rest
 }: MetabotAppBarButtonProps) {
   const { hasMetabotAccess } = useUserMetabotPermissions();
@@ -49,7 +53,7 @@ export function MetabotAppBarButton({
         {...rest}
         disabled={isFullPageMetabot}
       >
-        <MetabotIcon />
+        {icon ?? <MetabotIcon />}
       </ActionIcon>
     </Tooltip>
   );

@@ -7,6 +7,7 @@ import { CreateLibraryModal } from "./components/CreateLibraryModal";
 import { DataReferenceLibraryPane } from "./components/DataReferenceLibraryPane";
 import { PublishTablesModal } from "./components/PublishTablesModal";
 import { UnpublishTablesModal } from "./components/UnpublishTablesModal";
+import { useEnsureLibrary } from "./hooks/use-ensure-library";
 import { useGetLibraryChildCollectionByType } from "./hooks/use-get-library-child-collection-by-type";
 import { useGetLibraryCollection } from "./hooks/use-get-library-collection";
 import { useGetResolvedLibraryCollection } from "./hooks/use-get-resolved-library-collection";
@@ -29,6 +30,7 @@ export function initializePlugin() {
       useGetLibraryChildCollectionByType;
     PLUGIN_LIBRARY.useGetResolvedLibraryCollection =
       useGetResolvedLibraryCollection;
+    PLUGIN_LIBRARY.useEnsureLibrary = useEnsureLibrary;
     PLUGIN_LIBRARY.getCollectionPickerItems = getCollectionPickerItems;
     PLUGIN_LIBRARY.getEntityPickerSyntheticLibraryItem =
       getEntityPickerSyntheticLibraryItem;

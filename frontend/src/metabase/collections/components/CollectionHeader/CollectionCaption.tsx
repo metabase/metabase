@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { type JSX, useCallback } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   isEditableCollection,
@@ -9,7 +9,7 @@ import {
 } from "metabase/common/collections/utils";
 import { EditableDescription } from "metabase/common/components/EditableDescription";
 import { EditableText } from "metabase/common/components/EditableText";
-import { getIsTenantUser, getUser } from "metabase/current-user";
+import { getUser } from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -32,6 +32,17 @@ export const CollectionCaption = ({
   const currentUser = useSelector(getUser);
   const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
+  // PROTOTYPE: the Library is shown as "Data", and its published-data section
+  // as "Datasets", everywhere, so their headings match; their real names
+  // aren't edited here.
+  const isDatasetsSection =
+    collection.type === "library-data" && collection.is_library_root === true;
+  const isLibraryRoot = collection.type === "library";
+  const navName = isDatasetsSection
+    ? t`Datasets`
+    : isLibraryRoot
+      ? c("A noun, shown in the sidebar as a navigation link").t`Data`
+      : null;
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -54,9 +65,9 @@ export const CollectionCaption = ({
         <EditableText
           key={collection.id}
           as="h1"
-          initialValue={collection.name}
+          initialValue={navName ?? collection.name}
           placeholder={t`Add title`}
-          isDisabled={!isEditable}
+          isDisabled={!isEditable || navName != null}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
           maxLength={100}
@@ -90,8 +101,6 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  const isTenantUser = useSelector(getIsTenantUser);
-
   if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
@@ -101,11 +110,6 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
         entity="collection"
       />
     );
-  }
-
-  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
-    // external users should see the normal icon, they should not know about what synced collections are
-    return <Icon name="synced_collection" size={24} c="core-brand" />;
   }
 
   if (isRootTrashCollection(collection)) {

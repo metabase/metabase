@@ -1,9 +1,18 @@
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
+import {
+  useNavToggleAlignedPadding,
+  useNavToggleInset,
+} from "metabase/nav/prototype/use-nav-toggle-inset";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
@@ -147,21 +156,54 @@ export function ViewTitleHeader({
   ]);
 
   const isSaved = question.isSaved();
+  // PROTOTYPE: in "No top nav", this row sits beside the nav's header, so it
+  // matches that header's height to line their contents up.
+  const { variant } = useNavVariant();
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
+  // PROTOTYPE: in "Modern nav - C" with the nav closed, a saved question's
+  // header lines up with the open-sidebar button's icon in the bar above —
+  // measured, since the title sits inside several offset wrappers. With a
+  // back-to-dashboard button, its arrow lines up instead, the title after it.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const navToggleAlignedPadding = useNavToggleAlignedPadding(headerRef, [
+    { selector: '[data-testid="qb-back-button"] svg', kind: "icon" },
+    { selector: '[data-testid="saved-question-header-title"]', kind: "text" },
+  ]);
+  // On unsaved questions the header carries the open-sidebar button itself,
+  // with one spacing step ("md", 12px) of padding before it — a touch more
+  // than the 8px that would center its icon between the edge and the crumbs.
+  // With the nav open, "Modern nav - C" pulls the source crumbs in two steps
+  // from the usual 32px ("xxl" → "lg", 16px).
+  const isNavToggleAligned = useNavToggleInset() != null;
+  const isVariantCWithNavOpen = variant === "modern-nav-c" && isNavBarOpen;
+  const alignedInset = isSaved
+    ? navToggleAlignedPadding
+    : isNavToggleAligned
+      ? "md"
+      : isVariantCWithNavOpen
+        ? "lg"
+        : undefined;
 
   return (
     <>
       <ViewSection
         className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
           [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
+          [ViewTitleHeaderS.alignWithNavHeader]: isModernNav(variant),
+          [ViewTitleHeaderS.underBreadcrumbBar]:
+            variant === "modern-nav-c" && isSaved,
         })}
         style={style}
         data-testid="qb-header"
+        ref={headerRef}
+        pl={alignedInset}
       >
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
-          <QueryBuilderBackButton mr="sm" />
+          {/* PROTOTYPE: "No top nav" opens the closed nav from here. */}
+          <NavOpenButton />
+          <QueryBuilderBackButton mr="sm" data-testid="qb-back-button" />
           {isSaved ? (
             <SavedQuestionLeftSide
               question={question}

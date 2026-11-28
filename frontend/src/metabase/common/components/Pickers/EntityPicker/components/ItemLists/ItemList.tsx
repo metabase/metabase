@@ -6,6 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { getIsTenantUser } from "metabase/current-user";
+import { useRootCollectionName } from "metabase/nav/prototype/use-root-collection-name";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -18,6 +19,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import { getPickerCollectionName } from "../../../utils";
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
@@ -52,6 +54,7 @@ export function ItemList({
   containerProps = { pb: "xxs" },
 }: ItemListProps) {
   const tc = useTranslateContent();
+  const rootCollectionName = useRootCollectionName();
   const {
     path,
     setPath,
@@ -128,7 +131,11 @@ export function ItemList({
                 mb={0}
                 label={
                   <Flex align="center">
-                    {tc(item.name)}{" "}
+                    {tc(
+                      item.model === "collection"
+                        ? getPickerCollectionName(item, rootCollectionName)
+                        : item.name,
+                    )}{" "}
                     <PLUGIN_MODERATION.ModerationStatusIcon
                       status={
                         "moderated_status" in item && item.moderated_status

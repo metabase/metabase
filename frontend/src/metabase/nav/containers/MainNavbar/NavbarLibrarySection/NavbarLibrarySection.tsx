@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { t } from "ttag";
+import { type ReactNode, useMemo } from "react";
+import { c, t } from "ttag";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
@@ -23,6 +23,14 @@ type LibraryCollectionSectionProps = {
   collections: Collection[];
   selectedId?: string | number;
   onItemSelect: () => void;
+  /** Extra links listed below the Library's collections. */
+  children?: ReactNode;
+  /** Lists the links without the collapsible "Data" heading or section. */
+  hideHeading?: boolean;
+  /** PROTOTYPE: leaves out Metrics, e.g. when a Browse metrics link stands in. */
+  hideMetrics?: boolean;
+  /** PROTOTYPE: leaves out Datasets. */
+  hideDatasets?: boolean;
 };
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
@@ -40,9 +48,10 @@ function buildSectionTree(
   );
 
   if (rootCollection) {
-    // User has access to the root — build its subtree normally
+    // User has access to the root — build its subtree normally, labeled with
+    // the section's nav name rather than the collection's own name.
     const [tree] = buildCollectionTree([rootCollection]);
-    return tree ?? null;
+    return tree ? { ...tree, name: sectionName } : null;
   }
 
   // User doesn't have access to the root collection. Find any promoted
@@ -89,6 +98,10 @@ export function NavbarLibrarySection({
   collections,
   selectedId,
   onItemSelect,
+  children,
+  hideHeading,
+  hideMetrics,
+  hideDatasets,
 }: LibraryCollectionSectionProps) {
   const [expandLibrary = true, setExpandLibrary] = useUserSetting(
     "expand-library-in-nav",
@@ -100,18 +113,22 @@ export function NavbarLibrarySection({
       return [];
     }
 
-    const dataTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-data",
-      t`Data`,
-    );
-    const metricsTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-metrics",
-      t`Metrics`,
-    );
+    const dataTree = hideDatasets
+      ? null
+      : buildSectionTree(
+          libraryCollection,
+          collections,
+          "library-data",
+          t`Datasets`,
+        );
+    const metricsTree = hideMetrics
+      ? null
+      : buildSectionTree(
+          libraryCollection,
+          collections,
+          "library-metrics",
+          t`Metrics`,
+        );
     const dashboardsTree = buildSectionTree(
       libraryCollection,
       collections,
@@ -122,39 +139,54 @@ export function NavbarLibrarySection({
     return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
-  }, [collections]);
+  }, [collections, hideMetrics, hideDatasets]);
 
-  if (libraryTree.length === 0) {
+  if (libraryTree.length === 0 && !children) {
     return null;
+  }
+
+  const content = (
+    <>
+      <Tree
+        data={libraryTree}
+        selectedId={selectedId}
+        onSelect={onItemSelect}
+        TreeNode={SidebarCollectionLink}
+        role="tree"
+        aria-label="library-collection-tree"
+        rightSection={(item) =>
+          typeof item.id === "number" && (
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "collection", id: item.id }}
+            />
+          )
+        }
+      />
+      {children}
+    </>
+  );
+
+  if (hideHeading) {
+    return content;
   }
 
   return (
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
+          header={
+            <SidebarHeading>
+              {c("A noun, shown in the sidebar as a navigation link").t`Data`}
+            </SidebarHeading>
+          }
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
           role="section"
-          aria-label={t`Library`}
+          aria-label={t`Data`}
           onToggle={setExpandLibrary}
         >
-          <Tree
-            data={libraryTree}
-            selectedId={selectedId}
-            onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
-            role="tree"
-            aria-label="library-collection-tree"
-            rightSection={(item) =>
-              typeof item.id === "number" && (
-                <PLUGIN_REMOTE_SYNC.ChangesBadge
-                  target={{ type: "collection", id: item.id }}
-                />
-              )
-            }
-          />
+          {content}
         </CollapseSection>
       </ErrorBoundary>
     </SidebarSection>

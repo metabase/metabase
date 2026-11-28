@@ -1,7 +1,3 @@
-.iconContainer {
-  pointer-events: none;
-}
-
 .viewAndFilterResults:hover {
   text-decoration: underline;
 }

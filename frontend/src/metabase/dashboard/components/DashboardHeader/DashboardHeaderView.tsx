@@ -21,11 +21,17 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
+import { useNavToggleInset } from "metabase/nav/prototype/use-nav-toggle-inset";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
@@ -57,6 +63,22 @@ export function DashboardHeaderView({
   onLastEditInfoClick,
 }: DashboardHeaderViewProps) {
   const { titled } = useDashboardContext();
+  // PROTOTYPE: in "No top nav" with the nav collapsed, the breadcrumb strip
+  // right above already spaces the title from the top, so it needs less of
+  // its own. With the nav open there's no strip, so it keeps its spacing —
+  // except in "Modern nav - C", which always shows the strip.
+  const { variant } = useNavVariant();
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const hasCompactTop =
+    isModernNav(variant) && (!isNavbarOpen || variant === "modern-nav-c");
+  // PROTOTYPE: in "Modern nav - C" with the nav closed, a full-width
+  // dashboard's title lines up with the open-sidebar button above it (the
+  // title's text sits 1px into its row).
+  const navToggleInset = useNavToggleInset();
+  const alignedInset =
+    navToggleInset != null && dashboard?.width !== "fixed"
+      ? navToggleInset
+      : undefined;
 
   const isEditing = useSelector(getIsEditing);
 
@@ -125,6 +147,7 @@ export function DashboardHeaderView({
           <FullWidthContainer
             className={cx(CS.wrapper, S.HeaderRow)}
             data-testid="dashboard-header"
+            pl={alignedInset != null ? alignedInset - 1 : undefined}
             ref={header}
           >
             <FixedWidthContainer
@@ -138,6 +161,7 @@ export function DashboardHeaderView({
                   aria-level={1}
                   className={cx(S.HeaderContent, {
                     [S.showSubHeader]: showSubHeader,
+                    [S.compactTop]: hasCompactTop,
                   })}
                 >
                   <Flex className={S.HeaderCaptionContainer} gap={2}>
@@ -179,7 +203,7 @@ export function DashboardHeaderView({
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
-        <FullWidthContainer className={S.HeaderRow}>
+        <FullWidthContainer className={S.HeaderRow} pl={alignedInset}>
           <FixedWidthContainer
             className={S.HeaderFixedWidthContainer}
             data-testid="fixed-width-dashboard-tabs"

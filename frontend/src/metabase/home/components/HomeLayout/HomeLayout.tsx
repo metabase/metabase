@@ -6,10 +6,11 @@ import { LighthouseIllustration } from "metabase/common/components/LighthouseIll
 import { useHasTokenFeature } from "metabase/common/hooks";
 import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { useSelector } from "metabase/redux";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Icon, Title, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Group, Icon, Title, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { HomeGreeting } from "../HomeGreeting";
@@ -69,20 +70,22 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
           />
         ))}
       <HomeGreeting />
-      {isAdmin && (
-        <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
-          <Button
-            pos="absolute"
-            top="0.75rem"
-            right="1rem"
-            variant="subtle"
-            leftSection={<Icon name="pencil" />}
-            onClick={() => setShowModal(true)}
-          >
-            {t`Customize`}
-          </Button>
-        </Tooltip>
-      )}
+      {/* PROTOTYPE: "No top nav" puts Chat with Metabot right of Customize. */}
+      <Group pos="absolute" top="0.75rem" right="1rem" gap="sm">
+        {isAdmin && (
+          // PROTOTYPE: icon-only; the tooltip says what it does.
+          <Tooltip label={t`Pick a dashboard to serve as the homepage`}>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Customize`}
+              onClick={() => setShowModal(true)}
+            >
+              <Icon name="pencil" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+        <PageMetabotButton />
+      </Group>
       <Box
         pos="relative"
         mt={{

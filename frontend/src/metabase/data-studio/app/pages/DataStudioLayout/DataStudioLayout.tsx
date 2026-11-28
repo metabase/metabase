@@ -15,7 +15,11 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
-import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -57,6 +61,7 @@ export function DataStudioLayout() {
 
   const settings = useDataStudioSettings();
   const currentTab = getCurrentTab(pathname);
+  PLUGIN_LIBRARY.useEnsureLibrary();
 
   const upperNav = (
     <>
@@ -94,12 +99,17 @@ export function DataStudioLayout() {
         )}
       </AreaTabGroup>
 
-      <AreaTabGroup label={t`Library`} showLabel={isNavbarOpened}>
+      <AreaTabGroup label={t`Semantic layer`} showLabel={isNavbarOpened}>
         <AreaTab
-          label={t`Semantic layer`}
-          icon="repository"
-          to={Urls.dataStudioLibrary()}
-          isSelected={currentTab === "library"}
+          label={t`Metrics`}
+          icon="metric"
+          // Without the library feature, both items lead to its upsell page.
+          to={
+            hasLibraryFeature
+              ? Urls.dataStudioLibraryMetrics()
+              : Urls.dataStudioLibrary()
+          }
+          isSelected={currentTab === "library-metrics"}
           showLabel={isNavbarOpened}
           rightSection={
             hasLibraryFeature ? (
@@ -110,6 +120,43 @@ export function DataStudioLayout() {
           }
           isGated={!hasLibraryFeature}
         />
+        <AreaTab
+          label={t`Published datasets`}
+          icon="table"
+          to={
+            hasLibraryFeature
+              ? Urls.dataStudioLibraryTables()
+              : Urls.dataStudioLibrary()
+          }
+          isSelected={currentTab === "library-tables"}
+          showLabel={isNavbarOpened}
+          rightSection={
+            hasLibraryFeature ? (
+              <PLUGIN_REMOTE_SYNC.ChangesBadge
+                target={{ type: "area", area: "library" }}
+              />
+            ) : undefined
+          }
+          isGated={!hasLibraryFeature}
+        />
+      </AreaTabGroup>
+
+      <AreaTabGroup label={t`Content`} showLabel={isNavbarOpened}>
+        {isAdmin && (
+          <AreaTab
+            label={t`Data apps`}
+            icon="app"
+            to={Urls.dataStudioDataApps()}
+            isSelected={currentTab === "data-apps"}
+            showLabel={isNavbarOpened}
+            rightSection={
+              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
+                <Badge variant="light" color="neutral">{t`Beta`}</Badge>
+              ) : null
+            }
+            isGated={!PLUGIN_DATA_APPS.isEnabled}
+          />
+        )}
         <AreaTab
           label={t`SQL snippets`}
           icon="snippet"
@@ -134,21 +181,6 @@ export function DataStudioLayout() {
             />
           }
         />
-        {isAdmin && (
-          <AreaTab
-            label={t`Data apps`}
-            icon="app"
-            to={Urls.dataStudioDataApps()}
-            isSelected={currentTab === "data-apps"}
-            showLabel={isNavbarOpened}
-            rightSection={
-              PLUGIN_DATA_APPS.isEnabled && isNavbarOpened ? (
-                <Badge color="brand">{t`Beta`}</Badge>
-              ) : null
-            }
-            isGated={!PLUGIN_DATA_APPS.isEnabled}
-          />
-        )}
         <AreaTab
           label={t`Glossary`}
           icon="glossary"

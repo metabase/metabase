@@ -26,6 +26,7 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../EntityPicker";
+import { isRootCollectionItem } from "../EntityPicker/hooks/use-synced-content";
 import { getCollectionType, getValidNamespaces } from "../EntityPicker/utils";
 
 interface BaseMoveModalProps {
@@ -107,6 +108,11 @@ export const MoveModal = ({
       }
 
       if (shouldDisableItem(item)) {
+        return false;
+      }
+
+      // PROTOTYPE: only collections can move to the top of Explorations.
+      if (movingItem.model !== "collection" && isRootCollectionItem(item)) {
         return false;
       }
 
@@ -289,6 +295,14 @@ export const BulkMoveModal = ({
         return false;
       }
       if (shouldDisableItem(item)) {
+        return false;
+      }
+
+      // PROTOTYPE: only collections can move to the top of Explorations.
+      if (
+        isRootCollectionItem(item) &&
+        selectedItems.some((selected) => selected.model !== "collection")
+      ) {
         return false;
       }
 

@@ -16,8 +16,13 @@ import { getUser } from "metabase/current-user";
 import { getIsSidebarOpen } from "metabase/documents/selectors";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
+import type { MinimalAppBarLayout } from "metabase/nav/components/AppBar/AppBarLarge";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
+import {
+  type NavVariant,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import { getOriginalQuestion, getQuestion } from "metabase/query_builder";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, openNavbar, toggleNavbar } from "metabase/redux/app";
@@ -46,7 +51,48 @@ export function getSearchResultSelection(
   return { type: "navigate", url: modelToUrl(result) };
 }
 
-export function AppBarContainer() {
+/**
+ * PROTOTYPE: how the "No top nav" minimal bar fits the page under it: the
+ * page's background, so the bar blends in, and — on collections and
+ * dashboards — the title its breadcrumbs line up with.
+ */
+function getMinimalAppBarLayout(
+  pathname: string,
+  navVariant: NavVariant,
+): MinimalAppBarLayout {
+  if (pathname.startsWith("/collection/")) {
+    return {
+      background: "background_page-secondary",
+      alignWithSelector: '[data-testid="collection-name-heading"]',
+    };
+  }
+  if (pathname.startsWith("/dashboard/")) {
+    return {
+      background: "background_page-primary",
+      alignWithSelector: '[data-testid="dashboard-name-heading"]',
+    };
+  }
+  if (/^\/question\/\d+/.test(pathname)) {
+    return {
+      background: "background_page-primary",
+      alignWithSelector: '[data-testid="saved-question-header-title"]',
+      // "Modern nav - C" halves the gap down to the question's title (its
+      // header also drops its top padding).
+      overlapBelowPx: navVariant === "modern-nav-c" ? 8 : undefined,
+    };
+  }
+  const isSecondaryPage =
+    pathname === "/" ||
+    pathname.startsWith("/browse") ||
+    pathname.startsWith("/trash");
+  return {
+    background: isSecondaryPage
+      ? "background_page-secondary"
+      : "background_page-primary",
+  };
+}
+
+export function AppBarContainer({ isMinimal }: { isMinimal?: boolean }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -57,6 +103,10 @@ export function AppBarContainer() {
   const routerProps = { location };
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;
+  const { variant: navVariant } = useNavVariant();
+  const minimalLayout = isMinimal
+    ? getMinimalAppBarLayout(location.pathname, navVariant)
+    : undefined;
 
   const currentUser = useSelector(getUser);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
@@ -149,6 +199,8 @@ export function AppBarContainer() {
         />
       }
       onSearchItemSelect={onSearchItemSelect}
+      isMinimal={isMinimal}
+      minimalLayout={minimalLayout}
     />
   );
 }

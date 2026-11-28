@@ -5,6 +5,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useNavToggleInset } from "metabase/nav/prototype/use-nav-toggle-inset";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -28,6 +29,11 @@ export function DashboardParameterPanel() {
   const hasVisibleParameters = visibleParameters.length > 0;
 
   const parameterPanelRef = useRef<HTMLElement>(null);
+  // PROTOTYPE: in "Modern nav - C" with the nav closed, a full-width
+  // dashboard's filters line up with its title and the open-sidebar button.
+  const navToggleInset = useNavToggleInset();
+  const alignedInset =
+    dashboard?.width !== "fixed" ? navToggleInset : undefined;
   const allowSticky = isParametersWidgetContainersSticky(
     visibleParameters.length,
   );
@@ -62,6 +68,7 @@ export function DashboardParameterPanel() {
             },
           )}
           data-testid="edit-dashboard-parameters-widget-container"
+          pl={alignedInset}
         >
           <FixedWidthContainer
             isFixedWidth={dashboard?.width === "fixed"}
@@ -83,6 +90,7 @@ export function DashboardParameterPanel() {
           [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
         data-testid="dashboard-parameters-widget-container"
+        pl={alignedInset}
       >
         <FixedWidthContainer
           className={DashboardS.ParametersFixedWidthContainer}

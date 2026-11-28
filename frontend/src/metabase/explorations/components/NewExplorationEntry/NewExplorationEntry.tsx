@@ -94,7 +94,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
             flex="none"
             leftSection={<Icon name="arrow_left" />}
           >
-            {t`Explore`}
+            {/* PROTOTYPE: was "Explore"; it goes back to the Ask AI conversation page. */}
+            {t`Conversation`}
           </Button>
         )}
         <Flex align="center" mih="2rem">

@@ -6,8 +6,8 @@ export function SettingsNavItem() {
   return (
     <AdminSettingsNavItem
       path="remote-sync"
-      label={t`Remote sync`}
-      icon="sync"
+      label={t`Git integration`}
+      icon="git_branch"
     />
   );
 }

@@ -48,6 +48,26 @@ type HeaderProps = Omit<
   "name"
 >;
 
+/**
+ * PROTOTYPE: the nav's names for the Library's sections — its published-data
+ * section is "Datasets" (its subfolders keep their names), and the Library
+ * itself "Data". Other items keep their own (translated) names.
+ */
+function getItemDisplayName(
+  item: CollectionItem,
+  tc: (name: string) => string,
+): string {
+  if (item.model === "collection") {
+    if (item.type === "library-data" && item.is_library_root === true) {
+      return t`Datasets`;
+    }
+    if (item.type === "library") {
+      return c("A noun, shown in the sidebar as a navigation link").t`Data`;
+    }
+  }
+  return tc(item.name);
+}
+
 const ItemLinkComponent = ({
   onClick,
   item,
@@ -194,7 +214,7 @@ export const Columns = {
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItemName name={tc(item.name)} />
+            <EntityItemName name={getItemDisplayName(item, tc)} />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}

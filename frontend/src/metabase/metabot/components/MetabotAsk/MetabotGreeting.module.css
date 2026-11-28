@@ -5,7 +5,9 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  background: var(--mb-color-background_page-primary);
+  /* PROTOTYPE: transparent, so the Ask page (secondary) and conversation
+     pages (primary) each show their own background behind the illustration. */
+  background: transparent;
   background-image: url("./metabot-ask-background.svg");
   background-position: right bottom;
   background-repeat: no-repeat;

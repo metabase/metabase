@@ -14,6 +14,8 @@ import {
   useHasTokenFeature,
 } from "metabase/common/hooks";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import { useTenantsEnabled } from "metabase/nav/prototype/use-tenants-enabled";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_LIBRARY,
@@ -37,6 +39,7 @@ import type {
 } from "../types";
 import { shouldShowDataApps } from "../utils";
 
+import { getSyncedContentItem, useSyncedContent } from "./use-synced-content";
 import { getDataAppsRootItem, getRootCollectionItem } from "./utils";
 
 const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
@@ -56,13 +59,18 @@ const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
 export const useRootItems = () => {
   const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasTenants = useSetting("use-tenants");
+  // PROTOTYPE: the prototype controls' Tenants switch also hides tenant
+  // collections here when it's off.
+  const { isEnabled: isTenantsSimulatedOn } = useTenantsEnabled();
+  const hasTenants = useSetting("use-tenants") && isTenantsSimulatedOn;
   const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
+  const { variant: navVariant } = useNavVariant();
+  const { showSyncedContent } = useSyncedContent({ models });
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
-  const tenantsEnabled = useSetting("use-tenants");
+  const tenantsEnabled = hasTenants;
   const showsDataApps = shouldShowDataApps({ options, models });
   const { data: dataApps, isLoading: isLoadingDataApps } =
     PLUGIN_DATA_APPS.useDataApps({ skip: !showsDataApps });
@@ -111,6 +119,7 @@ export const useRootItems = () => {
       currentUser,
       hasTenants,
       dispatch,
+      showSyncedContent,
     })
       .then((rootItems) => {
         setRootItems(rootItems);
@@ -135,6 +144,7 @@ export const useRootItems = () => {
     hasTenants,
     setIsLoadingCollections,
     dispatch,
+    showSyncedContent,
   ]);
 
   const isLoading =
@@ -144,8 +154,32 @@ export const useRootItems = () => {
     isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
 
-  return { items: rootItems, isLoading };
+  // PROTOTYPE: "Modern nav - C" names the first column like its nav tabs.
+  const items =
+    navVariant === "modern-nav-c"
+      ? rootItems.map(getVariantCRootItem)
+      : rootItems;
+
+  return { items, isLoading };
 };
+
+/**
+ * PROTOTYPE: a first-column item as "Modern nav - C"'s nav names it: shared
+ * tenant collections are "External collections". (Synced content, the root
+ * collection and the Library already take the nav's names — "Official
+ * collections", "Collections" and "Data" — wherever they're shown.)
+ */
+function getVariantCRootItem(item: OmniPickerItem): OmniPickerItem {
+  if (
+    item.model === "collection" &&
+    item.id === "root" &&
+    "namespace" in item &&
+    item.namespace === PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+  ) {
+    return { ...item, name: t`External collections` };
+  }
+  return item;
+}
 
 async function getRootItems({
   searchQuery,
@@ -163,6 +197,7 @@ async function getRootItems({
   currentUser,
   hasTenants,
   dispatch,
+  showSyncedContent,
 }: {
   searchQuery?: string;
   personalCollection?: Collection;
@@ -179,6 +214,7 @@ async function getRootItems({
   currentUser: User | null;
   hasTenants: boolean;
   dispatch: DispatchFn;
+  showSyncedContent: boolean;
 }): Promise<OmniPickerCollectionItem[]> {
   const collectionItems: OmniPickerCollectionItem[] = [];
   const validCollectionModels = getValidCollectionItemModels(models);
@@ -258,6 +294,17 @@ async function getRootItems({
       here: ["collection"],
       below: validCollectionModels,
     });
+  }
+
+  // PROTOTYPE: collections synced from git, as their own tree right above the
+  // rest. As a save/move destination, only offered when the instance can
+  // push to git, since otherwise they're read-only (see useSyncedContent).
+  if (
+    showSyncedContent &&
+    options?.hasRootCollection &&
+    namespaces.includes(null)
+  ) {
+    collectionItems.push(getSyncedContentItem(validCollectionModels));
   }
 
   if (options?.hasRootCollection && namespaces.includes(null)) {

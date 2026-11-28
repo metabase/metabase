@@ -91,11 +91,16 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection, { isTenantUser });
+    const collectionIcon = getCollectionIcon(collection, { isTenantUser });
+    // PROTOTYPE: plain folders show as open while expanded.
+    const icon =
+      isExpanded && collectionIcon.name === "folder"
+        ? { ...collectionIcon, name: "folder_open" as const }
+        : collectionIcon;
 
     const content = (
       <>
-        <TreeNode.IconContainer transparent={false} c="core-brand">
+        <TreeNode.IconContainer transparent={false} className={S.icon}>
           <Icon {...icon} />
         </TreeNode.IconContainer>
         <SidebarItemName>{collection.name}</SidebarItemName>
@@ -114,6 +119,8 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
           [S.dropTarget]: isHovered,
         })}
         bdrs="xxs"
+        // PROTOTYPE: nav items use the regular weight.
+        fw={400}
         aria-selected={isSelected}
         onClick={isSelected ? onToggleExpand : undefined}
         ref={ref}

@@ -8,9 +8,14 @@ import { trackAppNewButtonClicked } from "./analytics";
 
 export interface NewItemButtonProps {
   collectionId?: CollectionId;
+  /** PROTOTYPE: leaves out the menu's AI exploration item. */
+  hideAIExploration?: boolean;
 }
 
-const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
+const NewItemButton = ({
+  collectionId,
+  hideAIExploration,
+}: NewItemButtonProps) => {
   return (
     <NewItemMenu
       trigger={
@@ -24,6 +29,7 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
         </Button>
       }
       collectionId={collectionId}
+      hideAIExploration={hideAIExploration}
     />
   );
 };

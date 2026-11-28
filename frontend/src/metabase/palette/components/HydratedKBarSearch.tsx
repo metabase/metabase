@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { KBarSearch, useKBar } from "kbar";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
@@ -8,7 +9,17 @@ import S from "./HydratedKBarSearch.module.css";
  * KBarSearch component wrapper, that initializes the input state based on
  * existing `searchText` value before rendering the component.
  */
-export const HydratedKBarSearch = ({ searchText }: { searchText: string }) => {
+export const HydratedKBarSearch = ({
+  searchText,
+  placeholder = t`Search…`,
+  hasToggle = false,
+}: {
+  searchText: string;
+  /** PROTOTYPE: was always "Search for anything…". */
+  placeholder?: string;
+  /** PROTOTYPE: leaves room for the palette's toggle at the right edge. */
+  hasToggle?: boolean;
+}) => {
   const { query, searchQuery } = useKBar((state) => ({
     searchQuery: state.searchQuery,
   }));
@@ -44,8 +55,8 @@ export const HydratedKBarSearch = ({ searchText }: { searchText: string }) => {
 
   return (
     <KBarSearch
-      className={S.input}
-      defaultPlaceholder={t`Search for anything…`}
+      className={cx(S.input, { [S.inputWithToggle]: hasToggle })}
+      defaultPlaceholder={placeholder}
     />
   );
 };

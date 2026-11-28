@@ -2,8 +2,9 @@ import { t } from "ttag";
 
 import { trackDataReferenceClicked } from "metabase/common/collections/analytics";
 import { Link } from "metabase/common/components/Link";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
-import { Flex, Group, Icon, Text, Title } from "metabase/ui";
+import { Flex, Icon, Text, Title } from "metabase/ui";
 
 import S from "./BrowseContainer.module.css";
 import HeaderS from "./BrowseHeader.module.css";
@@ -19,11 +20,9 @@ export const BrowseDataHeader = () => {
           justify="space-between"
           align="center"
         >
+          {/* PROTOTYPE: no database icon before the heading. */}
           <Title order={1} c="text-primary">
-            <Group gap="sm">
-              <Icon size={24} c="core-brand" name="database" />
-              {t`Databases`}
-            </Group>
+            {t`Databases`}
           </Title>
           <LearnAboutDataLink />
         </Flex>
@@ -43,5 +42,7 @@ const LearnAboutDataLink = () => (
       </Flex>
     </Link>
     <PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu />
+    {/* PROTOTYPE: "No top nav" puts Chat with Metabot last. */}
+    <PageMetabotButton />
   </Flex>
 );

@@ -8,6 +8,11 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
+import {
+  isModernNav,
+  useNavVariant,
+} from "metabase/nav/prototype/use-nav-variant";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { useNavigate } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
@@ -51,7 +56,12 @@ export const MetabotAsk = () => {
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
-  const showHistory = isConfigured && isHistoryEnabledProfile(profile);
+  // PROTOTYPE: "Tabs" and "No top nav" list conversations in the nav's AI
+  // conversations tab, so this page doesn't repeat them.
+  const { variant } = useNavVariant();
+  const hasNavConversations = variant === "tabs" || isModernNav(variant);
+  const showHistory =
+    isConfigured && isHistoryEnabledProfile(profile) && !hasNavConversations;
   const historyAction = showHistory ? (
     <MetabotConversationHistory
       profileId={profile}
@@ -65,11 +75,21 @@ export const MetabotAsk = () => {
       direction="column"
       h="100%"
       w="100%"
-      bg="background_page-primary"
+      // PROTOTYPE: the Ask page sits on the secondary background; conversation
+      // pages keep the primary one.
+      bg={isAskPage ? "background_page-secondary" : "background_page-primary"}
       pos="relative"
     >
       {showGreeting ? (
         <>
+          {/* PROTOTYPE: "No top nav" skips the nav-closed strip here; its
+              open-nav button sits in the page's top-left corner instead, where
+              the strip had it. */}
+          {isModernNav(variant) && (
+            <Box pos="absolute" top={10} left="1rem" style={{ zIndex: 1 }}>
+              <NavOpenButton />
+            </Box>
+          )}
           {historyAction && (
             <Box className={S.historyAction}>{historyAction}</Box>
           )}
@@ -88,6 +108,11 @@ export const MetabotAsk = () => {
             config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}
+            // PROTOTYPE: in "No top nav", the conversation header lines up
+            // with the nav's header and holds the open-nav button, since this
+            // page skips the nav-closed strip.
+            isHeaderNavAligned={isModernNav(variant)}
+            headerLeading={isModernNav(variant) ? <NavOpenButton /> : undefined}
           />
         </Box>
       )}

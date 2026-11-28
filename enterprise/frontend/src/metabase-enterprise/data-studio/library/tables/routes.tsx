@@ -96,9 +96,15 @@ const measureDependenciesPage = () =>
     Component: PublishedTableMeasureDependenciesPage,
   }));
 
+const tableListPage = () =>
+  import(
+    /* webpackChunkName: "data-studio-library" */ "../pages/LibraryPage"
+  ).then(({ LibraryTablesPage }) => ({ Component: LibraryTablesPage }));
+
 export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="tables">
+      <Route index lazy={tableListPage} />
       <Route path=":tableId" lazy={tableOverviewPage} />
       <Route path=":tableId/fields" lazy={tableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" lazy={tableFieldsPage} />

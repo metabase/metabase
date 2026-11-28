@@ -14,3 +14,9 @@
   vertical-align: middle;
   padding-bottom: 1px;
 }
+
+/* PROTOTYPE: "Modern nav - C"'s Datasets icon in the big source crumbs gets
+   one spacing step more before its label (xxs → xs). */
+.WideIconGap {
+  margin-right: calc(var(--mantine-spacing-xs) - var(--mantine-spacing-xxs));
+}

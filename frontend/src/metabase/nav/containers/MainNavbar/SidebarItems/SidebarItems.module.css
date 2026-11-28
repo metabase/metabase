@@ -1,8 +1,12 @@
 .nodeRoot {
-  padding-left: calc(var(--tree-depth) * 1rem);
+  /* One level = chevron (14px) + icon box (24px) + name padding (4px) - the
+     icon's offset within the row (18px), so a child's icon starts where its
+     parent's label does. */
+  padding-left: calc(var(--tree-depth) * 1.5rem);
   color: var(--mb-color-text-primary);
 
-  &:has(.link:focus, .button:focus) {
+  /* Keyboard focus only: clicking a row shouldn't leave a ring on it. */
+  &:has(.link:focus-visible, .button:focus-visible) {
     outline: 2px solid var(--mb-color-input-focus);
     outline-offset: -2px;
   }
@@ -10,12 +14,33 @@
   &:hover {
     color: var(--mb-color-core-brand);
     background-color: var(--mb-color-background_surface-brand-subtle-hover);
+
+    --nav-item-icon-color: var(--mb-color-core-brand);
   }
 }
 
 .selected {
   color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background_surface-brand-subtle);
+
+  --nav-item-icon-color: var(--mb-color-core-brand);
+}
+
+/* PROTOTYPE: a row's icon color. Brand by default; the tab variants' sub-nav
+   lists set it to the secondary icon color (hovered and selected rows go
+   back to brand). */
+.icon {
+  color: var(--nav-item-icon-color, var(--mb-color-core-brand));
+}
+
+/* PROTOTYPE: a selected tab in the tab variants' nav: a solid brand fill with
+   inverse text and icon, so it reads apart from the sub-nav rows. */
+.nodeRoot.tabSelected,
+.nodeRoot.tabSelected:hover {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-brand);
+
+  --nav-item-icon-color: var(--mb-color-text-primary-inverse);
 }
 
 .dropTarget {
