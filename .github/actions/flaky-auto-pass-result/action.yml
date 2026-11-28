@@ -1,0 +1,32 @@
+name: Flaky auto-pass result
+description: >-
+  For a required `*-result` job with a failed job under it: whether the run was
+  auto-passed as confirmed-flaky (flaky-rerun-auto-pass.yml). Outputs `passed`,
+  "true" or "false". Never fails. Needs the repo checked out (`.github` is enough),
+  and `actions: read` and `checks: read`.
+
+inputs:
+  enable-auto-pass:
+    description: The repo variable ENABLE_AUTO_PASS. Nothing passes unless it is "true".
+    required: true
+
+outputs:
+  passed:
+    description: >-
+      "true" when an auto-pass covers every failure in the run, so the result job
+      should pass.
+    value: ${{ steps.check.outputs.passed }}
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/prepare-node-bun
+    - name: Check for a flaky auto-pass
+      id: check
+      shell: bash
+      env:
+        ENABLE_AUTO_PASS: ${{ inputs.enable-auto-pass }}
+        RUN_ID: ${{ github.run_id }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: bun .github/scripts/flaky-auto-pass-result.ts

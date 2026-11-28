@@ -214,9 +214,27 @@ jobs:
       GATE_RESULT: ${{ needs.gate.result }}
       RUN: ${{ needs.gate.outputs.run }}
     steps:
+      # A confirmed-flaky auto-pass (flaky-rerun-auto-pass.yml) re-runs only this job; these steps
+      # let it pass then. They run only when something failed.
+      - uses: actions/checkout@v7
+        if: ${{ github.event_name == 'pull_request' && contains(needs.*.result, 'failure') }}
+        continue-on-error: true
+        with:
+          sparse-checkout: .github
+      - name: Check for a flaky auto-pass
+        id: auto-pass
+        if: ${{ github.event_name == 'pull_request' && contains(needs.*.result, 'failure') }}
+        continue-on-error: true
+        uses: ./.github/actions/flaky-auto-pass-result
+        with:
+          enable-auto-pass: ${{ vars.ENABLE_AUTO_PASS }}
       - name: Test results
+        env:
+          AUTO_PASSED: ${{ steps.auto-pass.outputs.passed }}
         run: | # sh
-          if [ "$GATE_RESULT" != "success" ]; then
+          if [ "$AUTO_PASSED" = "true" ]; then
+            echo "Every failure in this run was confirmed as a flake and auto-passed"
+          elif [ "$GATE_RESULT" != "success" ]; then
             echo "The test gate failed, so the suite never ran"
             exit 1
           elif [ "$RUN" != "true" ]; then

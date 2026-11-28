@@ -1,8 +1,15 @@
 // CI Conductor's "make pass" button dispatches this for a PR's failed "Run
 // tests" run. It asks ci-conductor whether every failure on the PR's head commit
-// is a flake. When it is sure, and a person has confirmed it, it posts a passing
-// check for each job that failed, which includes the required `*-result`
-// checks. It also records the auto-pass in eng-stats and says so on the PR.
+// is a flake. When it is sure, and a person has confirmed it, it marks the run
+// as auto-passed and re-runs only the run's failed `*-result` jobs. It also
+// records the auto-pass in eng-stats and says so on the PR.
+//
+// Why re-run the result jobs instead of posting passing checks: a passing check
+// posted from here lands in its own check suite, and GitHub counts every check
+// suite's copy of a required check, so the run's own failed `*-result` check kept
+// the PR blocked. A re-run job replaces its check in the run's own suite. Each
+// result job asks flaky-auto-pass-result.ts whether a marker covers the run's
+// failures, and passes when one does.
 //
 // Anything short of a clear yes (auto-pass turned off, an unreachable server, an
 // answer about another commit) passes nothing and leaves the run as it is.
@@ -90,11 +97,110 @@ export function autoPassComment(opts: {
   return (
     `All job failures on \`${headSha.slice(0, 7)}\` are likely flaky ` +
     `(${formatPercent(flakeProbability)} flake probability, confirmed in CI Conductor), ` +
-    `so we auto-passed the failed jobs of [this run](${runUrl}) instead of running them again.`
+    `so we auto-passed [this run](${runUrl}) instead of running its tests again: ` +
+    `only its result checks ran again.`
   );
 }
 
 type Job = { name: string; conclusion: string | null };
+
+// The check this leaves on the commit when it auto-passes a run. Its external_id
+// names the run and the attempt it judged (markerExternalId). Not a required
+// check, so it blocks and passes nothing by itself.
+export const MARKER_CHECK_NAME = "flaky-auto-pass";
+
+// The required checks of "Run tests" (master's branch protection), one per
+// suite. Each is a job that sums up its suite's jobs, so these are the only jobs
+// to re-run. Keep in step with branch protection.
+export const RESULT_JOB_NAMES: ReadonlySet<string> = new Set([
+  "app-db-tests / app-db-tests-result",
+  "backend-tests / be-tests-result",
+  "driver-tests / drivers-tests-result",
+  "e2e-tests / e2e-tests-result",
+  "frontend-tests / fe-tests-result",
+  "loki-tests / visual-test",
+  "sdk-tests / embedding-sdk-tests-result",
+]);
+
+export function markerExternalId(runId: number, attempt: number): string {
+  return `${runId}:${attempt}`;
+}
+
+/** The run and attempt a marker judged, or null for anything else. */
+export function parseMarker(
+  externalId: string | null | undefined,
+): { runId: number; attempt: number } | null {
+  const match = /^(\d+):(\d+)$/.exec(externalId ?? "");
+  if (!match) {
+    return null;
+  }
+  return { runId: Number(match[1]), attempt: Number(match[2]) };
+}
+
+/** The failed result jobs of an attempt, each named once: the jobs to re-run. */
+export function failedResultJobNames(jobs: Job[]): string[] {
+  return failedJobNames(jobs).filter((name) => RESULT_JOB_NAMES.has(name));
+}
+
+/** The fields of a job in `GET /actions/runs/{id}/jobs?filter=latest` this reads. */
+export type LatestJob = {
+  name: string;
+  status: string;
+  conclusion: string | null;
+  run_attempt?: number;
+};
+
+/** The fields of a check run in `GET /commits/{sha}/check-runs` this reads. */
+export type CheckRun = {
+  external_id: string | null;
+  conclusion: string | null;
+  app: { slug: string } | null;
+};
+
+/**
+ * Whether an auto-pass covers a run's failures, for its result jobs. It does
+ * when a marker for this run exists, and every test job that hasn't passed
+ * last ran in the attempt the marker judged, or an earlier one. A job re-run
+ * since then has results nobody judged, so it is not covered. The result jobs
+ * are left out: they are what the auto-pass re-runs, and one is running now.
+ */
+export function markerCoverage(opts: {
+  runId: number;
+  checkRuns: CheckRun[];
+  jobs: LatestJob[];
+}): { covered: true; attempt: number } | { covered: false; reason: string } {
+  const { runId, checkRuns, jobs } = opts;
+  const attempts = checkRuns
+    .filter(
+      (check) =>
+        check.app?.slug === "github-actions" && check.conclusion === "success",
+    )
+    .map((check) => parseMarker(check.external_id))
+    .filter((marker) => marker?.runId === runId)
+    .map((marker) => marker!.attempt);
+  if (attempts.length === 0) {
+    return { covered: false, reason: "no auto-pass marker for this run" };
+  }
+  const attempt = Math.max(...attempts);
+  const uncovered = jobs.filter(
+    (job) =>
+      !RESULT_JOB_NAMES.has(job.name) &&
+      !(
+        job.status === "completed" &&
+        PASSING_CONCLUSIONS.has(job.conclusion ?? "")
+      ) &&
+      !(job.status === "completed" && (job.run_attempt ?? Infinity) <= attempt),
+  );
+  if (uncovered.length > 0) {
+    return {
+      covered: false,
+      reason: `jobs ran again after attempt ${attempt} was auto-passed: ${[
+        ...new Set(uncovered.map((job) => job.name)),
+      ].join(", ")}`,
+    };
+  }
+  return { covered: true, attempt };
+}
 
 // Branch protection counts a skipped check as passing.
 const PASSING_CONCLUSIONS = new Set(["success", "skipped", "neutral"]);
@@ -295,7 +401,7 @@ async function decide(
   return decideAutoPass(answer, ctx.headSha);
 }
 
-async function github(
+export async function github(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<Response> {
@@ -325,12 +431,12 @@ async function github(
   return response;
 }
 
-async function attemptJobs(runId: number, attempt: number): Promise<Job[]> {
-  const jobs: Job[] = [];
+async function pagedJobs<T>(path: string): Promise<T[]> {
+  const jobs: T[] = [];
   for (let page = 1; ; page++) {
-    const data: { jobs: Job[] } = await (
+    const data: { jobs: T[] } = await (
       await github(
-        `/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100&page=${page}`,
+        `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`,
       )
     ).json();
     jobs.push(...data.jobs);
@@ -340,23 +446,72 @@ async function attemptJobs(runId: number, attempt: number): Promise<Job[]> {
   }
 }
 
-/** A check from the GitHub Actions app with the same name as a job counts for branch protection. */
-async function postPassingCheck(
+function attemptJobs(runId: number, attempt: number): Promise<Job[]> {
+  return pagedJobs<Job>(`/actions/runs/${runId}/attempts/${attempt}/jobs`);
+}
+
+/** Each job of a run as it last ran, whichever attempt that was. */
+export function latestJobs(
+  runId: number,
+): Promise<Array<LatestJob & { id: number }>> {
+  return pagedJobs(`/actions/runs/${runId}/jobs?filter=latest`);
+}
+
+/** The marker the result jobs look for: this run's `attempt` is auto-passed. */
+async function postMarker(
   ctx: Context,
-  name: string,
+  attempt: number,
+  failed: string[],
   summary: string,
 ): Promise<void> {
   await github("/check-runs", {
     method: "POST",
     body: {
-      name,
+      name: MARKER_CHECK_NAME,
       head_sha: ctx.headSha,
+      external_id: markerExternalId(ctx.runId, attempt),
       status: "completed",
       conclusion: "success",
-      output: { title: "Auto-passed: confirmed flaky", summary },
+      output: {
+        title: "Auto-passed: confirmed flaky",
+        summary,
+        text: `Failed jobs of attempt ${attempt}:\n\n${failed.map((name) => `- ${name}`).join("\n")}`,
+      },
     },
   });
-  console.log(`Passed ${name}.`);
+  console.log(`Marked attempt ${attempt} of run ${ctx.runId} as auto-passed.`);
+}
+
+const RUN_POLL_MS = 10_000;
+const RUN_WAIT_MS = 5 * 60_000;
+
+/**
+ * Re-runs one job and waits for the run to finish. One at a time: GitHub
+ * refuses to re-run a job while the run is re-running another.
+ */
+async function rerunJob(runId: number, name: string): Promise<string> {
+  const job = (await latestJobs(runId)).find((j) => j.name === name);
+  if (!job) {
+    return "not found";
+  }
+  const before: WorkflowRun = await (
+    await github(`/actions/runs/${runId}`)
+  ).json();
+  await github(`/actions/jobs/${job.id}/rerun`, { method: "POST" });
+  console.log(`Re-running ${name}.`);
+  // The run reads "completed" until the re-run starts, so wait for a new attempt.
+  const deadline = Date.now() + RUN_WAIT_MS;
+  while (Date.now() < deadline) {
+    await sleep(RUN_POLL_MS);
+    const run: WorkflowRun = await (
+      await github(`/actions/runs/${runId}`)
+    ).json();
+    if (run.run_attempt > before.run_attempt && run.status === "completed") {
+      const after = (await latestJobs(runId)).find((j) => j.name === name);
+      return after?.conclusion ?? "unknown";
+    }
+  }
+  return "still running";
 }
 
 async function recordAutoPass(
@@ -436,13 +591,25 @@ async function main(): Promise<void> {
   const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${ctx.runId}`;
   const summary =
     `Every failure on \`${ctx.headSha}\` is likely flaky (${percent} flake probability) ` +
-    `and was confirmed in CI Conductor, so the failed jobs of [this run](${runUrl}) were passed.`;
-  for (const name of failed) {
-    await postPassingCheck(ctx, name, summary);
-  }
-  summarize(`### Auto-passed a confirmed-flaky run\n\n${summary}`);
+    `and was confirmed in CI Conductor, so [this run](${runUrl}) was auto-passed.`;
+  await postMarker(ctx, run.run_attempt, failed, summary);
 
-  // Best-effort: the checks are what matter, and they are already in place.
+  const reruns: string[] = [];
+  for (const name of failedResultJobNames(jobs)) {
+    const conclusion = await rerunJob(ctx.runId, name);
+    console.log(`${name}: ${conclusion}.`);
+    reruns.push(`- ${name}: ${conclusion}`);
+    if (conclusion !== "success") {
+      console.log(
+        `::warning::${name} did not pass on its re-run (${conclusion}).`,
+      );
+    }
+  }
+  summarize(
+    `### Auto-passed a confirmed-flaky run\n\n${summary}\n\nRe-ran its failed result checks:\n\n${reruns.join("\n") || "(none failed)"}`,
+  );
+
+  // Best-effort: the result checks are what matter, and they have re-run.
   const results = await Promise.allSettled([
     recordAutoPass(ctx, pr.user?.login ?? "", decision.flakeProbability),
     commentOnPr(
