@@ -2547,3 +2547,31 @@
                       query  (lib/filter stage1 (lib/> cnt 5))]
                   (mt/with-test-user :rasta
                     (is (seq (mt/rows (qp/process-query query))))))))))))))
+
+(deftest legacy-no-self-service-saved-question-test
+  (testing "legacy-no-self-service view-data lets a user run a saved question, but not an ad-hoc query"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :legacy-no-self-service)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection {}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [query (mt/mbql-query venues {:fields [$id $name] :order-by [[:asc $id]] :limit 2})]
+              (mt/with-temp [:model/Card {card-id :id} {:collection_id   (u/the-id collection)
+                                                        :dataset_query   query
+                                                        :result_metadata (mt/cols (qp/process-query query))}]
+                (testing "the saved question runs"
+                  (is (= [[1 "Red Medicine"] [2 "Stout Burgers & Beers"]]
+                         (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
+                (testing "a native saved question runs"
+                  (mt/with-temp [:model/Card {native-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query (mt/native-query
+                                                                                    {:query "SELECT id FROM venues ORDER BY id LIMIT 1"})}]
+                    (is (= [[1]]
+                           (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" native-card-id)))))))
+                (testing "an ad-hoc query is refused"
+                  (is (thrown-with-msg?
+                       ExceptionInfo
+                       perms-error-msg
+                       (check-perms-for-rasta query))))))))))))

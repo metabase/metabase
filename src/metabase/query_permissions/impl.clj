@@ -537,7 +537,8 @@
     (doseq [result-metadata result-metadatas]
       (when (instance? Throwable result-metadata)
         (throw result-metadata))
-      (run! #(when-not (= :unrestricted (get permissions %))
+      ;; `:legacy-no-self-service` views data through saved questions, which is what result_metadata comes from
+      (run! #(when-not (#{:unrestricted :legacy-no-self-service} (get permissions %))
                (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
                                        {database-id {:perms/view-data {% :unrestricted}}})))
             (tables result-metadata)))))
