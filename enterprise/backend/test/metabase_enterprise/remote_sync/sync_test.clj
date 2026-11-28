@@ -107,6 +107,17 @@
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id card))))
             (is (not (t2/exists? :model/Card :id (:id gone))))))))))
 
+(deftest forced-pull-without-changes-reports-no-changes-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-only]
+      (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Card       _      {:name "First card" :collection_id (:id synced)}
+                     :model/Card       _      {:name "Second card" :collection_id (:id synced)}]
+        (let [{v1 :version} (remote-sync.tu/push! url nil)]
+          (testing "a forced pull of a branch that changed nothing reports no pulled changes, not the number of items"
+            (is (=? {:status :success :version v1 :outcome {:kind "pull-skipped"}}
+                    (remote-sync.tu/pull! url v1 {:force? true})))))))))
+
 (deftest pull-keeps-local-changes-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
