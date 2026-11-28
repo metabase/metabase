@@ -1,9 +1,19 @@
+export {};
+
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      isRenderedWithinViewport(): Cypress.Chainable<JQuery<HTMLElement>>;
+    }
+  }
+}
+
 Cypress.Commands.add(
   "isRenderedWithinViewport",
   {
     prevSubject: true,
   },
-  (subject) => {
+  (subject: JQuery<HTMLElement>) => {
     const viewportTop = 0;
 
     // Retry the geometry check: callers assert this right after an action that
@@ -12,7 +22,12 @@ Cypress.Commands.add(
     // races that scroll; wrapping the assertions in `.should()` lets Cypress
     // re-read the rect until it lands within the viewport (or times out).
     cy.wrap(subject).should(($subject) => {
-      const viewportBottom = Cypress.$(cy.state("window")).height();
+      // cy.state is an internal API missing from the public Cypress types.
+      const cyWithState = cy as unknown as {
+        state: (key: "window") => Window;
+      };
+      const viewportBottom =
+        Cypress.$(cyWithState.state("window")).height() ?? 0;
       const element = $subject[0].getBoundingClientRect();
 
       expect(element.top).to.be.greaterThan(viewportTop);
