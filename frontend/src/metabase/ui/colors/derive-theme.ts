@@ -1,5 +1,3 @@
-import omit from "underscore/modules/omit.js";
-
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import type { ColorSettings } from "metabase-types/api/color-settings";
 
@@ -36,12 +34,13 @@ export function deriveFullMetabaseTheme({
 }): MetabaseDerivedThemeV2 {
   // Filter out protected colors from embedding theme overrides.
   // Some colors (such as the Metabase brand color) should not be modifiable.
-  const filteredEmbeddingColors = omit(
-    embeddingThemeOverride?.colors,
-    ...PROTECTED_COLORS,
-  );
-
   const embeddingColors = embeddingThemeOverride?.colors;
+  const filteredEmbeddingColors: Partial<Record<MetabaseColorKey, string>> = {
+    ...embeddingColors,
+  };
+  for (const key of PROTECTED_COLORS) {
+    delete filteredEmbeddingColors[key];
+  }
 
   // When instance doesn't have custom brand color configured, we replace brand
   // ramp (which is generated dynamically using color-mix to work with custom colors)
