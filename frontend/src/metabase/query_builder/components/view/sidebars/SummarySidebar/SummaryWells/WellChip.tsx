@@ -1,8 +1,14 @@
 import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
-import { type KeyboardEvent, type ReactNode, useState } from "react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useState,
+} from "react";
 import { t } from "ttag";
 
+import { useFocusFallback } from "metabase/common/hooks/use-focus-fallback";
 import { ActionIcon, Box, Icon } from "metabase/ui";
 
 import S from "../SummarySidebar.module.css";
@@ -37,10 +43,28 @@ export function WellChip({
   const renameShortcut = rename ? "F2" : undefined;
   const wellFieldRef = useWellFieldRef();
   const [isRenaming, setIsRenaming] = useState(false);
-  const { listeners, setNodeRef, isDragging } = useDraggable({
+  const {
+    listeners,
+    setNodeRef,
+    node: chipRef,
+    isDragging,
+  } = useDraggable({
     id: `chip:${drag.kind}:${key}`,
     data: drag,
   });
+  useFocusFallback(chipRef, wellFieldRef);
+
+  /**
+   * Moves the focus to the well's field after a keyboard click. It can't wait for the chip to
+   * unmount, because a later chip can take over the chip's key and keep it mounted.
+   */
+  const handleRemoveClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isKeyboardClick = event.detail === 0;
+    onRemove();
+    if (isKeyboardClick) {
+      wellFieldRef?.current?.focus();
+    }
+  };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "F2") {
@@ -87,7 +111,7 @@ export function WellChip({
         aria-keyshortcuts={renameShortcut}
         // keeps an open name field from renaming the chip before the click removes it
         onMouseDown={(event) => event.preventDefault()}
-        onClick={onRemove}
+        onClick={handleRemoveClick}
       >
         <Icon name="close" size={12} />
       </ActionIcon>

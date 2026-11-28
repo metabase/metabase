@@ -530,6 +530,120 @@ describe("SummarySidebar", () => {
     ).toBeInTheDocument();
   });
 
+  describe("focus after a chip action", () => {
+    const pickFromMenu = async (buttonName: string, itemName: string) => {
+      screen.getByRole("button", { name: buttonName }).focus();
+      await userEvent.keyboard("{Enter}");
+      (await screen.findByRole("menuitem", { name: itemName })).focus();
+      await userEvent.keyboard("{Enter}");
+    };
+
+    it("moves the focus to the well's field when a chip is removed from the keyboard", async () => {
+      setup({ query: SUMMARIZED_QUERY });
+
+      screen.getByRole("button", { name: "Remove Created At: Month" }).focus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(getChipLabels("columns")).toEqual([]);
+      expect(screen.getByLabelText("Add a grouping by name")).toHaveFocus();
+    });
+
+    it("moves the focus to the well's field when the first of two groupings of a column is removed from the keyboard", async () => {
+      setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "year" },
+                CREATED_AT_BY_MONTH,
+              ],
+            },
+          ],
+        }),
+      });
+
+      screen.getByRole("button", { name: "Remove Created At: Year" }).focus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(getChipLabels("columns")).toEqual(["Created At: Month"]);
+      expect(screen.getByLabelText("Add a grouping by name")).toHaveFocus();
+    });
+
+    it("removes a chip, without its new name, when its Remove button is clicked during a rename", async () => {
+      const { getLastQuery } = setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                { type: "operator", operator: "count" },
+                {
+                  name: "Revenue",
+                  value: {
+                    type: "operator",
+                    operator: "sum",
+                    args: [{ type: "column", name: "TOTAL" }],
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      await userEvent.dblClick(screen.getByText("Revenue"));
+      const input = screen.getByRole("textbox", { name: "Rename Revenue" });
+      await userEvent.clear(input);
+      await userEvent.type(input, "New Revenue");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove Revenue" }),
+      );
+
+      expect(getLastQuery().values).toEqual(["Count"]);
+      expect(getChipLabels("values")).toEqual(["Count"]);
+      expect(screen.getByLabelText("Add a value by name")).toHaveFocus();
+    });
+
+    it("moves the focus to the well's field once a unit is picked from the keyboard", async () => {
+      setup({ query: SUMMARIZED_QUERY });
+
+      await pickFromMenu("Change how Created At: Month is grouped", "Year");
+
+      expect(getChipLabels("columns")).toEqual(["Created At: Year"]);
+      expect(screen.getByLabelText("Add a grouping by name")).toHaveFocus();
+    });
+
+    it("moves the focus to the well's field once a calculation is picked from the keyboard", async () => {
+      setup({ query: SUMMARIZED_QUERY });
+
+      await pickFromMenu(
+        "Change how Sum of Total is calculated",
+        "Average of ...",
+      );
+
+      expect(getChipLabels("values")).toEqual(["Count", "Average of Total"]);
+      expect(screen.getByLabelText("Add a value by name")).toHaveFocus();
+    });
+
+    it("doesn't move the focus into the well's field when a unit is picked with the pointer", async () => {
+      setup({ query: SUMMARIZED_QUERY });
+
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Change how Created At: Month is grouped",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Year" }),
+      );
+
+      expect(getChipLabels("columns")).toEqual(["Created At: Year"]);
+      expect(screen.getByLabelText("Add a grouping by name")).not.toHaveFocus();
+    });
+  });
+
   it("keeps the sort of a grouping, with its direction, when its unit changes (metabase#16770)", async () => {
     const { onQueryChange, getLastQuery } = setup({
       query: Lib.createTestQuery(SAMPLE_PROVIDER, {

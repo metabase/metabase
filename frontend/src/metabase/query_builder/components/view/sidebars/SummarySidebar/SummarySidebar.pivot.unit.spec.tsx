@@ -215,6 +215,84 @@ describe("SummarySidebar", () => {
         expect(getWell("columns").getByText("Group by")).toBeInTheDocument();
       });
 
+      it("moves the focus to the Columns field when Backspace ends the pivot mode that a drop started", async () => {
+        setup({ query });
+        drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
+
+        await userEvent.click(screen.getByLabelText("Add a row by name"));
+        await userEvent.keyboard("{Backspace}");
+
+        expect(
+          screen.queryByTestId("summary-well-rows"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Add a grouping by name")).toHaveFocus();
+      });
+
+      it("keeps a held Backspace from removing the Columns groupings once it ends the pivot mode that a drop started", async () => {
+        const queryWithCategory = Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+                {
+                  type: "column",
+                  sourceFieldId: ORDERS.PRODUCT_ID,
+                  name: "CATEGORY",
+                },
+              ],
+            },
+          ],
+        });
+        const [createdAtGrouping] = getDimensionItems(
+          queryWithCategory,
+          STAGE_INDEX,
+        );
+        setup({ query: queryWithCategory });
+        drop(
+          { kind: "dimension", item: createdAtGrouping, wellId: "columns" },
+          "rows",
+        );
+
+        await userEvent.click(screen.getByLabelText("Add a row by name"));
+        await userEvent.keyboard("{Backspace}");
+        const columnsField = screen.getByLabelText("Add a grouping by name");
+        expect(columnsField).toHaveFocus();
+        fireEvent.keyDown(columnsField, { key: "Backspace", repeat: true });
+
+        expect(getChipLabels("columns")).toEqual(["Product → Category"]);
+      });
+
+      it("moves the focus to the Columns field when the Remove button ends the pivot mode that a drop started", async () => {
+        setup({ query });
+        drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
+
+        screen
+          .getByRole("button", { name: "Remove Created At: Month" })
+          .focus();
+        await userEvent.keyboard("{Enter}");
+
+        expect(
+          screen.queryByTestId("summary-well-rows"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Add a grouping by name")).toHaveFocus();
+      });
+
+      it("keeps the focus in the Rows field when Backspace empties the Rows of the pivot mode that the toggle started", async () => {
+        setup({ query });
+        await userEvent.click(
+          screen.getByRole("button", { name: "Pivot into rows and columns" }),
+        );
+        drop({ kind: "dimension", item: createdAt, wellId: "columns" }, "rows");
+
+        await userEvent.click(screen.getByLabelText("Add a row by name"));
+        await userEvent.keyboard("{Backspace}");
+
+        expect(getChipLabels("rows")).toEqual([]);
+        expect(screen.getByLabelText("Add a row by name")).toHaveFocus();
+      });
+
       it("keeps the pivot mode that the toggle started when Rows is empty", async () => {
         setup({ query });
         await userEvent.click(

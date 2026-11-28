@@ -1,10 +1,12 @@
-import { type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 import S from "../SummarySidebar.module.css";
 import type { SummaryBucketOption, SummaryDimensionItem } from "../types";
+
+import { useWellFieldRef } from "./SummaryWell";
 
 type DimensionBucketMenuProps = {
   item: SummaryDimensionItem;
@@ -19,7 +21,11 @@ export function DimensionBucketMenu({
   onSelect,
 }: DimensionBucketMenuProps) {
   const { bucketOptions, initialBucketOptionCount } = item;
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedBy, setExpandedBy] = useState<"keyboard" | "pointer" | null>(
+    null,
+  );
+  const wellFieldRef = useWellFieldRef();
+  const isExpanded = expandedBy !== null;
   const selectedIndex = bucketOptions.findIndex((option) => option.isSelected);
   // the trailing "Don't bin" doesn't expand the list on its own
   const isHiddenBucketSelected =
@@ -33,8 +39,24 @@ export function DimensionBucketMenu({
     ? bucketOptions.slice(0, initialBucketOptionCount)
     : bucketOptions;
 
+  const handleSelect = (
+    option: SummaryBucketOption,
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    const isKeyboardClick = event.detail === 0;
+    onSelect(option);
+    if (isKeyboardClick) {
+      wellFieldRef?.current?.focus();
+    }
+  };
+
+  const handleMoreClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isKeyboardClick = event.detail === 0;
+    setExpandedBy(isKeyboardClick ? "keyboard" : "pointer");
+  };
+
   return (
-    <Menu position="bottom-start" onClose={() => setIsExpanded(false)}>
+    <Menu position="bottom-start" onClose={() => setExpandedBy(null)}>
       <Menu.Target>
         <ActionIcon
           className={S.chipBucketButton}
@@ -49,13 +71,16 @@ export function DimensionBucketMenu({
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown style={{ overflowY: "auto" }}>
-        {visibleOptions.map((option) => (
+        {visibleOptions.map((option, index) => (
           <Menu.Item
             key={option.displayName}
+            autoFocus={
+              expandedBy === "keyboard" && index === initialBucketOptionCount
+            }
             rightSection={
               option.isSelected ? <Icon name="check" aria-hidden /> : null
             }
-            onClick={() => onSelect(option)}
+            onClick={(event) => handleSelect(option, event)}
           >
             {option.displayName}
           </Menu.Item>
@@ -64,7 +89,7 @@ export function DimensionBucketMenu({
           <Menu.Item
             c="core-brand"
             closeMenuOnClick={false}
-            onClick={() => setIsExpanded(true)}
+            onClick={handleMoreClick}
           >
             {t`More…`}
           </Menu.Item>
