@@ -36,7 +36,7 @@ import {
   getGoalSegmentBounds,
   resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
-import { isString } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isString } from "metabase-lib/v1/types/utils/isa";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import {
@@ -170,9 +170,10 @@ function ScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
-  const fontSize = isString(column)
-    ? getScalarValueFontSize(displayValue, availableWidth, tier.valueFontSize)
-    : tier.valueFontSize;
+  const fontSize =
+    isString(column) || isDate(column)
+      ? getScalarValueFontSize(displayValue, availableWidth, tier.valueFontSize)
+      : tier.valueFontSize;
 
   const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
