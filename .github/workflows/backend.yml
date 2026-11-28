@@ -18,7 +18,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: backend_all mage_tests project_backend_checks project_codeowners_checks project_migration_checks project_ratchet_checks
+      filters: backend_all cljfmt_config mage_tests project_backend_checks project_codeowners_checks project_migration_checks project_ratchet_checks
 
   # Generated static-viz output can shift without any backend source changing, so the suite follows
   # it too. Only worth probing when nothing else has already decided the suite.
@@ -410,16 +410,41 @@ jobs:
 
   be-cljfmt:
     needs: *backend-gate-needs
-    if: *backend-gate
+    if: >-
+      ${{ !cancelled() && needs.gate.result == 'success'
+      && needs.static-viz-files-changed.result != 'failure'
+      && (contains(fromJSON(needs.gate.outputs.matched), 'backend_all')
+      || contains(fromJSON(needs.gate.outputs.matched), 'cljfmt_config')
+      || needs.static-viz-files-changed.outputs.static_viz == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ needs.gate.outputs.diff-base != '' && '0' || '2' }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      # Run the launcher tests only when formatting inputs or CI tooling change, not on source-only PRs.
+      - name: Set up Babashka for launcher tests
+        if: &test-cljfmt-launcher >-
+          ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer'
+          && contains(fromJSON(needs.gate.outputs.matched), 'cljfmt_config') }}
+        uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
+        with:
+          babashka-version: 1.12.212
+      - name: Test cljfmt CI launcher
+        if: *test-cljfmt-launcher
+        run: bb bin/cljfmt-ci/test_check.clj
       - name: Run cljfmt
-        run: ./bin/mage cljfmt-all --force-check
+        env:
+          DIFF_BASE: ${{ needs.gate.outputs.diff-base }}
+          CHECK_CHANGED: ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer' }}
+        run: |
+          if [[ "$CHECK_CHANGED" == true ]]; then
+            exec bash bin/cljfmt-ci/check --pr "$DIFF_BASE"
+          fi
+          exec bash bin/cljfmt-ci/check
 
   be-tests-result:
     needs:

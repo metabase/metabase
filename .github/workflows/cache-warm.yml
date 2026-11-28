@@ -145,6 +145,7 @@ jobs:
           # These commands use nested tools.deps projects; resolving the same alias from the
           # repository root does not warm their dependencies.
           nested_combos=(
+            "bin/cljfmt-ci|"                # backend.yml (cljfmt)
             "bin/lint-migrations-file|:test" # project migration checks
             "bin/load-namespaces|:test"      # build-scripts.yml
           )

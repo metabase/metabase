@@ -181,6 +181,16 @@ backend_all: &backend_all
   - *backend_sources
   - *backend_specs
 
+cljfmt_config:
+  - ".cljfmt.edn"
+  - "cljfmt.edn"
+  - ".cljfmt.clj"
+  - "cljfmt.clj"
+  - "bb.edn"
+  - "**/.gitattributes"
+  - "bin/cljfmt-ci/**"
+  - ".github/workflows/backend.yml"
+
 # Project checks have narrower triggers than the backend matrix.
 # Changes to their shared CI entry points exercise every suite; otherwise each
 # suite follows only the files that can affect its result.

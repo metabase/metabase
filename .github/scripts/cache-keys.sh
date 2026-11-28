@@ -51,6 +51,7 @@ digest() {
 
 shopt -s nullglob
 DEPS_FILES=(deps.edn
+            bin/cljfmt-ci/deps.edn
             bin/lint-migrations-file/deps.edn
             bin/load-namespaces/deps.edn
             modules/drivers/deps.edn
