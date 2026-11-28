@@ -14,6 +14,10 @@
    :output-dir "target/cljs_release/"
    :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
+   ;; Emit only these keys in the metadata of `#'foo` Vars, see metabase.shadow.hooks/trim-var-meta.
+   ;; `:doc` is kept because metabase.lib.schema.id reads a docstring through var metadata.
+   :release    {:compiler-options {:metabase/var-meta-keys #{:ns :name :doc}}}
+   :build-hooks [(metabase.shadow.hooks/trim-var-meta)]
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true
                       :warnings        {:fn-deprecated false}}

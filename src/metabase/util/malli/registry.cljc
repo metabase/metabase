@@ -217,6 +217,10 @@
     :else
     [:schema {:description docstring} schema]))
 
+(defn- remove-descriptions [schema]
+  (match/replace-all schema
+    {:description #'string?} (dissoc &match :description)))
+
 #?(:clj
    (defmacro def
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
@@ -227,7 +231,7 @@
          ~(macros/case
             :clj `(-with-doc ~schema ~docstring)
             ;; Ignore docstring for CLJS.
-            :cljs schema)))))
+            :cljs (remove-descriptions schema))))))
 
 (defn- deref-all-preserving-properties
   "Like [[mc/deref-all]] but preserves properties attached to a `:ref` by wrapping the result in `:schema`."
