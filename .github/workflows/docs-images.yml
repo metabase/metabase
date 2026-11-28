@@ -1,0 +1,78 @@
+name: Docs images
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: docs-images-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  docs-images:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      # The script comes from the merge commit, since PR branches cut before it existed don't have it.
+      - name: List the PR's docs images
+        id: images
+        run: |
+          gh api -H "Accept: application/vnd.github.raw" \
+            "repos/$GITHUB_REPOSITORY/contents/.github/scripts/docs-images.js?ref=$GITHUB_SHA" > "$RUNNER_TEMP/docs-images.js"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" \
+            --jq '.[] | select(.status != "removed") | .filename' \
+            | node "$RUNNER_TEMP/docs-images.js" filter > "$RUNNER_TEMP/images.txt"
+          if [ -s "$RUNNER_TEMP/images.txt" ]; then
+            {
+              echo "patterns<<EOF"
+              sed 's/[][*?\\]/\\&/g; s|^|/|' "$RUNNER_TEMP/images.txt"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.images.outputs.patterns
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN || github.token }}
+          sparse-checkout: ${{ steps.images.outputs.patterns }}
+          sparse-checkout-cone-mode: false
+
+      - name: Check docs images (fork)
+        if: steps.images.outputs.patterns && env.SAME_REPO != 'true'
+        run: node "$RUNNER_TEMP/docs-images.js" check < "$RUNNER_TEMP/images.txt"
+
+      - name: Configure AWS credentials
+        if: steps.images.outputs.patterns && env.SAME_REPO == 'true'
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.DOCS_IMAGES_CDN_IAM_ROLE }}
+          aws-region: ${{ vars.DOCS_IMAGES_CDN_AWS_REGION }}
+
+      - name: Move docs images to the CDN
+        if: steps.images.outputs.patterns && env.SAME_REPO == 'true'
+        env:
+          DOCS_IMAGES_CDN_S3_BUCKET: ${{ vars.DOCS_IMAGES_CDN_S3_BUCKET }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          node "$RUNNER_TEMP/docs-images.js" convert < "$RUNNER_TEMP/images.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+          if ! git diff --quiet; then
+            git config user.name "Metabase Automation"
+            git config user.email "github-automation@metabase.com"
+            git commit -am "Move docs images to the CDN" --no-verify
+            git push origin "HEAD:refs/heads/$HEAD_REF"
+          fi
