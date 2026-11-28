@@ -1,8 +1,15 @@
 (ns metabase-enterprise.data-testing.run-api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -229,3 +236,242 @@
                                   [:last_run :id]))))
               (finally
                 (t2/delete! :model/TransformTest :id old-test-id)))))))))
+
+(defn- people-query
+  "A native query reading `ID` and `NAME` from the people table of the H2 test data."
+  []
+  (lib/native-query (mt/metadata-provider) "SELECT ID, NAME FROM PUBLIC.PEOPLE"))
+
+(def ^:private people-input
+  {:table {:schema "PUBLIC" :name "PEOPLE"} :format :sql :sql "SELECT 1 AS ID, 'abc' AS NAME"})
+
+(def ^:private created-before-its-runs
+  "A `created_at` for a test that runs in a deftest: `created_at` is the JVM's clock and the run's start time is the
+  app DB's, so the test is dated in the past."
+  #t "2025-01-01T00:00:00Z")
+
+(defn- newest-run
+  "The newest run of the `test-type` test `test-id` as `GET /api/ee/data-test-run/:id` returns it."
+  [test-type test-id]
+  (let [run-id (t2/select-one-fn :id :model/DataTestRun :test_type test-type :test_id test-id {:order-by [[:id :desc]]})]
+    (mt/user-http-request :crowberto :get 200 (str "ee/data-test-run/" run-id))))
+
+(deftest run-stores-what-its-caller-received-test
+  (mt/test-driver :h2
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:source {:type :query :query (people-query)}
+                      :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}}]
+        (let [run (fn [expected-status transform-test f]
+                    (mt/with-temp [:model/TransformTest {test-id :id} (assoc transform-test
+                                                                             :transform_id transform-id
+                                                                             :created_at   created-before-its-runs)]
+                      (f (mt/user-http-request :crowberto :post expected-status (format "ee/transform-test/%d/run" test-id))
+                         (newest-run :transform test-id))))]
+          (testing "a passed run stores its result"
+            (run 200
+                 {:inputs       [people-input]
+                  :expectations [{:type :empty :name "one id" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID <> 1"}]}
+                 (fn [response run]
+                   (is (= "passed" (:status response) (:status run)))
+                   (is (= response (:result run))))))
+          (testing "a failed run stores each expectation's result with its rows"
+            (run 200
+                 {:inputs       [people-input]
+                  :expectations [{:type :empty :name "no abc" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE NAME = 'abc'"}
+                                 {:type    :equals
+                                  :name    "rows"
+                                  :format  :rows
+                                  :columns [{:name "ID" :cast_type "INTEGER"} {:name "NAME" :cast_type "VARCHAR"}]
+                                  :rows    [{"ID" 2 "NAME" "def"}]}
+                                 {:type :empty :name "broken" :sql "SELECT NO_SUCH_COLUMN FROM PUBLIC.PEOPLE_SUMMARY"}]}
+                 (fn [response run]
+                   (is (= "failed" (:status response) (:status run)))
+                   (is (=? [{:name "no abc" :status "failed" :sample [{:ID 1 :NAME "abc"}]}
+                            {:name         "rows"
+                             :status       "failed"
+                             :extra-rows   [{:ID 1 :NAME "abc"}]
+                             :missing-rows [{:ID 2 :NAME "def"}]}
+                            {:name "broken" :status "error" :error {:message string?}}]
+                           (:expectations (:result run))))
+                   (is (= response (:result run))))))
+          (testing "a run that is refused after it starts stores the message and error code of the refusal"
+            (run 422
+                 {:inputs       [(assoc people-input :sql "SELECT * FROM NO_SUCH_TABLE")]
+                  :expectations [{:type :empty :name "never reached" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY"}]}
+                 (fn [response run]
+                   (is (= "error" (:status run)))
+                   (is (= "transform-test.setup-failed" (:error-code response)))
+                   (is (= (select-keys response [:message :error-code]) (:result run)))))))))))
+
+(deftest card-test-run-stores-what-its-caller-received-test
+  (mt/test-driver :h2
+    (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+      (mt/with-temp [:model/Card     {card-id :id}  {:dataset_query (people-query)}
+                     :model/CardTest {failed-id :id} {:card_id      card-id
+                                                      :created_at   created-before-its-runs
+                                                      :inputs       [people-input]
+                                                      :expectations [{:type :empty
+                                                                      :name "no abc"
+                                                                      :sql  "SELECT * FROM {{output}} WHERE NAME = 'abc'"}]}
+                     :model/CardTest {error-id :id}  {:card_id      card-id
+                                                      :created_at   created-before-its-runs
+                                                      :inputs       [(assoc people-input :sql "SELECT * FROM NO_SUCH_TABLE")]
+                                                      :expectations [{:type :empty
+                                                                      :name "never reached"
+                                                                      :sql  "SELECT * FROM {{output}}"}]}]
+        (testing "a failed run stores its result"
+          (let [response (mt/user-http-request :crowberto :post 200 (format "ee/card-test/%d/run" failed-id))]
+            (is (=? {:status "failed" :result response}
+                    (newest-run :card failed-id)))))
+        (testing "a refused run stores the error code of its own test type"
+          (let [response (mt/user-http-request :crowberto :post 422 (format "ee/card-test/%d/run" error-id))]
+            (is (= "card-test.setup-failed" (:error-code response)))
+            (is (=? {:status "error" :result (select-keys response [:message :error-code])}
+                    (newest-run :card error-id)))))))))
+
+(deftest get-run-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {transform-id :id} {}
+                   :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                            :created_at   #t "2026-01-01T10:00:00Z"}
+                   :model/DataTestRun   {run-id :id}       {:test_type    :transform
+                                                            :test_id      test-id
+                                                            :initiated_by (mt/user->id :crowberto)
+                                                            :status       :failed
+                                                            :start_time   #t "2026-02-01T10:00:00Z"
+                                                            :end_time     #t "2026-02-01T10:00:02Z"}
+                   :model/DataTestRun   {before-id :id}    {:test_type  :transform
+                                                            :test_id    test-id
+                                                            :status     :failed
+                                                            :start_time #t "2025-12-01T10:00:00Z"}
+                   :model/DataTestRun   {orphan-id :id}    {:test_type :transform, :test_id nil, :status :failed}]
+      (let [path (str "ee/data-test-run/" run-id)]
+        (testing "a run that stored no result, as every run did before results were stored, reads back with none"
+          (is (=? {:id                run-id
+                   :test_type         "transform"
+                   :test_id           test-id
+                   :status            "failed"
+                   :initiated_by_user {:common_name "Crowberto Corv"}
+                   :result            nil}
+                  (mt/user-http-request :crowberto :get 200 path))))
+        (testing "the list and the last run of a test leave the result out"
+          (let [listed (-> (mt/user-http-request :crowberto :get 200 "ee/data-test-run"
+                                                 :test-type "transform" :test-id test-id)
+                           :data
+                           first)]
+            (is (= run-id (:id listed)))
+            (is (not (contains? listed :result))))
+          (is (not (contains? (:last_run (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" test-id)))
+                              :result))))
+        (testing "refuses users who can't read the test"
+          (mt/user-http-request :rasta :get 403 path))
+        (testing "a run that does not exist is not found"
+          (mt/user-http-request :crowberto :get 404 (str "ee/data-test-run/" Integer/MAX_VALUE)))
+        (testing "a run that started before its test was created is not found"
+          (mt/user-http-request :crowberto :get 404 (str "ee/data-test-run/" before-id)))
+        (testing "the run of a deleted test is not found"
+          (mt/user-http-request :crowberto :get 404 (str "ee/data-test-run/" orphan-id)))))))
+
+(deftest get-run-result-only-for-its-initiator-and-admins-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (let [result  {:message "The query under test failed to run." :error-code "transform-test.query-failed"}
+          run-of  (fn [test-id user]
+                    {:test_type    :transform
+                     :test_id      test-id
+                     :initiated_by (some-> user mt/user->id)
+                     :status       :error
+                     :result       result})
+          path    #(str "ee/data-test-run/" %)
+          visible {:result result :can_read_result true}
+          hidden  {:status "error" :result nil :can_read_result false}]
+      (mt/with-temp [:model/Transform     {transform-id :id} (data-testing.test-util/id-transform :people)
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                              :created_at   created-before-its-runs}
+                     :model/DataTestRun   {own-id :id}       (run-of test-id :lucky)
+                     :model/DataTestRun   {admin-id :id}     (run-of test-id :crowberto)
+                     :model/DataTestRun   {nobody-id :id}    (run-of test-id nil)]
+        (testing "an admin gets the stored result of any run"
+          (doseq [run-id [own-id admin-id nobody-id]]
+            (is (=? visible (mt/user-http-request :crowberto :get 200 (path run-id))))))
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (testing "a user who can run the test gets the stored result of a run they started"
+            (is (=? visible (mt/user-http-request :lucky :get 200 (path own-id)))))
+          (testing "but not of a run someone else started, which read rows with that user's database access"
+            (is (=? hidden (mt/user-http-request :lucky :get 200 (path admin-id))))
+            (is (=? hidden (mt/user-http-request :lucky :get 200 (path nobody-id))))))))))
+
+(deftest get-run-result-not-for-its-initiator-who-can-no-longer-run-the-test-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection  {coll-id :id} {}
+                       :model/Card        {card-id :id} {:collection_id coll-id
+                                                         :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                          "SELECT ID FROM PUBLIC.PEOPLE")}
+                       :model/CardTest    {test-id :id} {:card_id card-id :created_at created-before-its-runs}
+                       :model/DataTestRun {run-id :id}  {:test_type    :card
+                                                         :test_id      test-id
+                                                         :initiated_by (mt/user->id :rasta)
+                                                         :status       :error
+                                                         :result       {:message    "The query under test failed to run."
+                                                                        :error-code "card-test.query-failed"}}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+          (let [path (str "ee/data-test-run/" run-id)]
+            (testing "the user who started the run gets its result while they may run the test"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                            :perms/create-queries :query-builder-and-native}
+                (is (=? {:can_read_result true :result {:error-code "card-test.query-failed"}}
+                        (mt/user-http-request :rasta :get 200 path)))))
+            (testing "but not once they can read the test and no longer run it"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                            :perms/create-queries :query-builder}
+                (is (=? {:can_read_result false :result nil}
+                        (mt/user-http-request :rasta :get 200 path)))))))))))
+
+(deftest unreadable-stored-result-reads-as-none-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {transform-id :id} {}
+                   :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                            :created_at   created-before-its-runs}
+                   :model/DataTestRun   {run-id :id}       {:test_type :transform, :test_id test-id, :status :failed}]
+      (doseq [stored ["not json"
+                      "{\"bogus\":1}"
+                      "{\"status\":1,\"expectations\":[{\"type\":1,\"status\":2}],\"tables\":{}}"]]
+        (testing stored
+          (t2/update! :data_test_run :id run-id {:result stored})
+          (is (=? {:id run-id :status "failed" :result nil :can_read_result true}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/data-test-run/" run-id)))))))))
+
+(deftest stored-result-is-bounded-test
+  (let [stored-result #(t2/select-one-fn :result [:model/DataTestRun :result] :id %)]
+    (testing "a long string of a result is cut"
+      (mt/with-temp [:model/DataTestRun {run-id :id} {:status :error
+                                                      :result {:message    (str/join (repeat 5000 "x"))
+                                                               :error-code "transform-test.query-failed"}}]
+        (is (= {:message    (str (str/join (repeat 1000 "x")) "…")
+                :error-code "transform-test.query-failed"}
+               (stored-result run-id)))))
+    (testing "a result that is still too large is not stored"
+      (with-redefs [data-testing.models.data-test-run/max-stored-result-length 10]
+        (mt/with-temp [:model/DataTestRun {run-id :id} {:status :error
+                                                        :result {:message    "The query under test failed to run."
+                                                                 :error-code "transform-test.query-failed"}}]
+          (is (nil? (stored-result run-id))))))))
+
+(deftest run-finishes-without-a-result-that-cannot-be-stored-test
+  (mt/with-temp [:model/Transform     {transform-id :id} {}
+                 :model/TransformTest {test-id :id}      {:transform_id transform-id}]
+    (let [{run-id :id} (data-testing.run-tracking/start-run! :transform test-id)
+          finish!      (mt/original-fn #'data-testing.db/finish-started-test-run!)]
+      (try
+        (mt/with-dynamic-fn-redefs [data-testing.db/finish-started-test-run! (fn [run-id status result]
+                                                                               (when result
+                                                                                 (throw (ex-info "Packet too large" {})))
+                                                                               (finish! run-id status result))]
+          (data-testing.run-tracking/finish-run! run-id :failed {:message    "The query under test failed to run."
+                                                                 :error-code "transform-test.query-failed"}))
+        (is (=? {:status :failed :end_time some? :result nil}
+                (t2/select-one [:model/DataTestRun :*] :id run-id)))
+        (finally
+          (t2/delete! :model/DataTestRun :id run-id))))))
