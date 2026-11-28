@@ -170,6 +170,39 @@
              :json-unfolding             false
              :database-is-auto-increment false})))))
 
+(def ^:private json-metadata
+  (merge default-metadata
+         {:database-type  "jsonb"
+          :base-type      :type/JSON
+          :json-unfolding true}))
+
+(defn- text-metadata [field-id]
+  (merge default-metadata
+         {:id             field-id
+          :database-type  "text"
+          :base-type      :type/Text
+          :json-unfolding false}))
+
+(deftest field-that-becomes-json-gets-json-unfolding-test
+  (testing "a Field that becomes JSON gets the json-unfolding of the driver"
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Text :json_unfolding false}]
+      (perform-updates! json-metadata (text-metadata field-id))
+      (is (=? {:base_type :type/JSON :json_unfolding true}
+              (t2/select-one :model/Field :id field-id)))))
+  (testing "a json-unfolding the user set stays"
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Text :json_unfolding false}]
+      (field-user-settings/upsert-field-user-settings! {:id field-id} {:json_unfolding false})
+      (perform-updates! json-metadata (text-metadata field-id))
+      (is (=? {:base_type :type/JSON :json_unfolding false}
+              (t2/select-one :model/Field :id field-id)))))
+  (testing "a Field that stays JSON keeps its json-unfolding"
+    (is (= []
+           (updates-that-will-be-performed!
+            json-metadata
+            (assoc json-metadata
+                   :id             9999999
+                   :json-unfolding false))))))
+
 (deftest no-op-test
   (testing "no changes should be made (i.e., no calls to `update!`) if nothing changes"
     (is (= []

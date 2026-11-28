@@ -286,3 +286,80 @@ describe("QueryBuilder > last edit info", () => {
     expect(body).toMatchObject({ name: "Orders!" });
   });
 });
+
+describe("QueryBuilder > description", () => {
+  async function setupDescription() {
+    const card = createMockCard({
+      ...TEST_STRUCTURED_CARD,
+      name: "Orders",
+      description: null,
+      can_write: true,
+    });
+    let currentCard: Card = card;
+
+    // Registered before `setup` so these routes win over its static card mocks.
+    fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+    fetchMock.put(`path:/api/card/${card.id}`, (call) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("description" in body) ||
+        typeof body.description !== "string"
+      ) {
+        return { status: 400, body: {} };
+      }
+      currentCard = { ...currentCard, description: body.description };
+      return currentCard;
+    });
+    setupRevertableRevisionsEndpoints({
+      entity: "card",
+      id: card.id,
+      revisions: [CREATION_REVISION],
+      revertRevision: REVERT_REVISION,
+      onRevert: () => undefined,
+    });
+    setupUsersEndpoints([createMockUserListResult()]);
+    setupListNotificationEndpoints({ card_id: card.id }, []);
+
+    await setup({ card });
+
+    return { card };
+  }
+
+  it("saves a description typed into the info sidesheet (metabase#11719)", async () => {
+    const { card } = await setupDescription();
+
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    const sidesheet = await screen.findByTestId("sidesheet");
+    await userEvent.type(
+      within(sidesheet).getByPlaceholderText("Add description"),
+      "foo",
+    );
+    await userEvent.tab();
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(`path:/api/card/${card.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1),
+    );
+    const [putCall] = fetchMock.callHistory.calls(`path:/api/card/${card.id}`, {
+      method: "PUT",
+    });
+    const body: unknown = JSON.parse(String(putCall.options.body));
+    expect(body).toMatchObject({ description: "foo" });
+
+    await userEvent.click(
+      within(sidesheet).getByRole("button", { name: "Close" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    expect(
+      await within(await screen.findByTestId("sidesheet")).findByText("foo"),
+    ).toBeInTheDocument();
+  });
+});

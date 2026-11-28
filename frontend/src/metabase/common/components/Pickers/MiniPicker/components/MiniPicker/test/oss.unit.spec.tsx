@@ -1,10 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import { addLocale, useLocale } from "ttag";
 
-import { findRequests, setupCardEndpoints } from "__support__/server-mocks";
-import { screen, waitFor } from "__support__/ui";
+import {
+  findRequests,
+  setupCardEndpoints,
+  setupCollectionItemsEndpoint,
+} from "__support__/server-mocks";
+import { screen, waitFor, within } from "__support__/ui";
 import type { SearchRequest } from "metabase-types/api";
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
 
@@ -56,6 +65,18 @@ describe("MiniPicker", () => {
     // Should still be able to navigate into collections
     await userEvent.click(await screen.findByText("Collections"));
     expect(await screen.findByText("more things")).toBeInTheDocument();
+  });
+
+  it("lists every database when there are many of them (metabase#15591)", async () => {
+    const extraDatabases = Array.from({ length: 10 }, (_, index) =>
+      createMockDatabase({ id: 100 + index, name: `Sample${index}` }),
+    );
+    await setup({}, { extraDatabases });
+
+    const miniPicker = await screen.findByTestId("mini-picker");
+    expect(await within(miniPicker).findByText("Sample3")).toBeInTheDocument();
+    expect(within(miniPicker).getByText("Sample9")).toBeInTheDocument();
+    expect(within(miniPicker).getByText("Mini Db")).toBeInTheDocument();
   });
 
   describe("tables", () => {
@@ -233,6 +254,52 @@ describe("MiniPicker", () => {
       await userEvent.click(await screen.findByText("Our analytics"));
       expect(await screen.findByText("Brighton")).toBeInTheDocument();
       expect(screen.queryByText("Catherine")).not.toBeInTheDocument();
+    });
+
+    it("shows the questions of a collection with a colon in its name (metabase#14287)", async () => {
+      const COLON_COLLECTION_ID = 150;
+      setupCollectionItemsEndpoint({
+        collection: createMockCollection({ id: COLON_COLLECTION_ID }),
+        collectionItems: [
+          createMockCollectionItem({
+            id: 151,
+            model: "card",
+            name: "Orders",
+            collection_id: COLON_COLLECTION_ID,
+          }),
+        ],
+      });
+      const { onChangeSpy } = await setup(
+        {},
+        {
+          extraRootItems: [
+            createMockCollectionItem({
+              id: COLON_COLLECTION_ID,
+              model: "collection",
+              name: "foo:bar",
+              collection_id: "root",
+              here: ["card"],
+            }),
+          ],
+        },
+      );
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(await screen.findByText("foo:bar"));
+      await userEvent.click(await screen.findByText("Orders"));
+
+      expect(onChangeSpy).toHaveBeenCalledWith({
+        id: 151,
+        model: "card",
+        name: "Orders",
+      });
+      const itemRequests = (await findRequests("GET")).filter(({ url }) =>
+        new URL(url).pathname.endsWith("/items"),
+      );
+      expect(itemRequests.map(({ url }) => new URL(url).pathname)).toEqual([
+        "/api/collection/root/items",
+        `/api/collection/${COLON_COLLECTION_ID}/items`,
+      ]);
     });
 
     describe("with a non-English locale (metabase#25537)", () => {

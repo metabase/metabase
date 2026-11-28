@@ -34,3 +34,27 @@
               (is (= (users.settings/last-used-native-database-id) id2))
               (mt/with-test-user :rasta
                 (is (= (users.settings/last-used-native-database-id) id1))))))))))
+
+(deftest notebook-native-preview-sidebar-width-is-user-local-test
+  (testing "notebook-native-preview-sidebar-width should be a user-local setting"
+    (is (=? {:user-local :only}
+            (setting/resolve-setting :notebook-native-preview-sidebar-width)))))
+
+(deftest notebook-native-preview-sidebar-width-per-user-api-test
+  (testing "PUT /api/setting/notebook-native-preview-sidebar-width saves the width for the current user only"
+    (letfn [(save-width! [user width]
+              (mt/user-http-request user :put 204 "setting/notebook-native-preview-sidebar-width"
+                                    {:value width}))
+            (saved-width [user]
+              (:notebook-native-preview-sidebar-width
+               (mt/user-http-request user :get 200 "session/properties")))]
+      (try
+        (save-width! :rasta 500)
+        (save-width! :crowberto 640)
+        (is (= 500 (saved-width :rasta)))
+        (is (= 640 (saved-width :crowberto)))
+        (testing "a user who has not resized the sidebar gets no saved width"
+          (is (nil? (saved-width :lucky))))
+        (finally
+          (save-width! :rasta nil)
+          (save-width! :crowberto nil))))))

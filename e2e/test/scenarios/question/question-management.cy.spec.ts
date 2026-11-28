@@ -7,7 +7,7 @@ import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
 const { H } = cy;
 
-const PERMISSIONS = {
+const PERMISSIONS: Record<"curate" | "view", (keyof typeof USERS)[]> = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
 };
@@ -34,26 +34,41 @@ describe(
                 H.visitQuestion(ORDERS_QUESTION_ID);
               });
 
-              it("should be able to edit question title and description (metabase#11719-1)", () => {
-                cy.findByTestId("saved-question-header-title")
-                  .click()
-                  .type("1")
-                  .blur();
-                assertRequestNot403("updateQuestion");
-                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Orders1");
-                assertNoPermissionsError();
+              // The other users and the UI are covered in Jest and backend tests
+              onlyOn(user === "nodata", () => {
+                it("should be able to edit question title and description (metabase#11719-1)", () => {
+                  cy.findByTestId("saved-question-header-title")
+                    .click()
+                    .type("1")
+                    .blur();
+                  assertRequestNot403("updateQuestion");
+                  // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+                  cy.findByText("Orders1");
+                  cy.findByTestId("saved-question-header-title").should(
+                    "have.value",
+                    "Orders1",
+                  );
+                  assertNoPermissionsError();
 
-                H.questionInfoButton().click();
+                  H.questionInfoButton().click();
 
-                cy.findByPlaceholderText("Add description")
-                  .type("foo", { delay: 0 })
-                  .blur();
+                  cy.findByPlaceholderText("Add description")
+                    .type("foo", { delay: 0 })
+                    .blur();
 
-                assertRequestNot403("updateQuestion");
-                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("foo");
-                assertNoPermissionsError();
+                  assertRequestNot403("updateQuestion");
+                  H.sidesheet().findByText("foo");
+                  assertNoPermissionsError();
+
+                  cy.log("the title and description are saved");
+                  cy.reload();
+                  cy.findByTestId("saved-question-header-title").should(
+                    "have.value",
+                    "Orders1",
+                  );
+                  H.questionInfoButton().click();
+                  H.sidesheet().findByText("foo").should("be.visible");
+                });
               });
 
               describe("move", () => {
@@ -193,95 +208,6 @@ describe(
                     "have.length",
                     2,
                   );
-                });
-
-                it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
-                  const collectionInRoot = {
-                    name: "Collection in root collection",
-                  };
-                  const dashboardInRoot = {
-                    name: "Dashboard in root collection",
-                  };
-                  H.createCollection(collectionInRoot);
-                  H.createDashboard(dashboardInRoot);
-
-                  cy.request("/api/user/current").then(
-                    ({ body: { personal_collection_id } }) => {
-                      H.createDashboard(
-                        {
-                          name: "Personal Dashboard",
-                          collection_id: personal_collection_id,
-                        },
-                        {
-                          wrapId: true,
-                        },
-                      );
-
-                      // Simulate a couple gets, so that the dashboards appears in recents for various users
-                      cy.get("@dashboardId").then((dashboardId) => {
-                        cy.request(`/api/dashboard/${dashboardId}`);
-                        cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
-                      });
-                    },
-                  );
-
-                  cy.log(
-                    "reload the page so the new collection is in the state",
-                  );
-                  cy.reload();
-
-                  cy.log("Move the question to a personal collection");
-
-                  moveQuestionTo(/Personal Collection/);
-
-                  cy.log("assert public collections are not visible");
-                  H.openQuestionActions();
-                  H.popover().findByText("Add to dashboard").click();
-
-                  H.entityPickerModal().within(() => {
-                    cy.findByText("Add this question to a dashboard").should(
-                      "be.visible",
-                    );
-
-                    cy.findByRole("link", {
-                      name: /Personal Dashboard/,
-                    }).should("exist");
-                    cy.findByRole("link", {
-                      name: /Orders in a dashboard/,
-                    }).should("not.exist");
-
-                    cy.findByText(/'s personal collection/i).should(
-                      "be.visible",
-                    );
-                    cy.findByText(/our analytics/i).should("not.exist");
-                    cy.findByLabelText("Close").click();
-                  });
-
-                  cy.log("Move the question to the root collection");
-                  moveQuestionTo("Our analytics");
-
-                  cy.log("assert all collections are visible");
-                  H.openQuestionActions();
-                  H.popover().findByText("Add to dashboard").click();
-                  H.entityPickerModal().within(() => {
-                    cy.findByText("Add this question to a dashboard").should(
-                      "be.visible",
-                    );
-                    cy.findByText("Recent items").click();
-                    cy.findByRole("link", {
-                      name: /Personal Dashboard/,
-                    }).should("exist");
-                    cy.findByRole("link", {
-                      name: /Orders in a dashboard/,
-                    }).should("exist");
-
-                    H.entityPickerModalLevel(0).within(() => {
-                      cy.findByText(/'s personal collection/i).should(
-                        "be.visible",
-                      );
-                      cy.findByText(/our analytics/i).should("be.visible");
-                    });
-                  });
                 });
 
                 onlyOn(user === "normal", () => {
@@ -472,31 +398,9 @@ describe("question moving", () => {
   });
 });
 
-describe("send snowplow question events", () => {
-  beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
-    cy.signInAsAdmin();
-    H.enableTracking();
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should send event when clicking `Turn into a model`", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openQuestionActions();
-    H.popover().within(() => {
-      cy.findByText("Turn into a model").click();
-    });
-    H.expectUnstructuredSnowplowEvent({ event: "turn_into_model_clicked" });
-  });
-});
-
-function assertRequestNot403(xhr_alias) {
-  cy.wait("@" + xhr_alias).then((xhr) => {
-    expect(xhr.status).not.to.eq(403);
+function assertRequestNot403(xhrAlias: string) {
+  cy.wait("@" + xhrAlias).then((xhr) => {
+    expect(xhr.response?.statusCode).not.to.eq(403);
   });
 }
 
@@ -515,23 +419,23 @@ function turnIntoModel() {
   assertNoPermissionsError();
 }
 
-function findPickerItem(name) {
+function findPickerItem(name: string) {
   return cy.findByTestId("entity-picker-modal").findByText(name).parents("a");
 }
 
-function findActivePickerItem(name) {
+function findActivePickerItem(name: string) {
   return findPickerItem(name).then(($button) => {
     expect($button).to.have.attr("data-active", "true");
   });
 }
 
-function findInactivePickerItem(name) {
+function findInactivePickerItem(name: string) {
   return findPickerItem(name).then(($button) => {
     expect($button).not.to.have.attr("data-active", "true");
   });
 }
 
-function moveQuestionTo(newCollectionName) {
+function moveQuestionTo(newCollectionName: string | RegExp) {
   H.openQuestionActions();
   cy.findByTestId("move-button").click();
   H.entityPickerModal().within(() => {

@@ -28,6 +28,7 @@ function TruncationStatus({ disabled = false }: { disabled?: boolean }) {
 }
 
 function setup() {
+  const observer = new ResizeObserver(() => {});
   const callbacks = new Map<string, () => void>();
   jest
     .spyOn(resizeObserver, "subscribe")
@@ -41,7 +42,7 @@ function setup() {
             borderBoxSize: [],
             devicePixelContentBoxSize: [],
           },
-          resizeObserver.observer,
+          observer,
         ),
       );
     });

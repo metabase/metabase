@@ -27,6 +27,9 @@ describe("QuestionSharingMenu", () => {
       "aria-label",
       "Share",
     );
+
+    await userEvent.hover(screen.getByTestId("sharing-menu-button"));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Share");
   });
 
   it("should not appear for archived questions", async () => {
