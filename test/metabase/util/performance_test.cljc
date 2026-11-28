@@ -199,6 +199,23 @@
                   (is (= (.comparator ^clojure.lang.Sorted c)
                          (.comparator ^clojure.lang.Sorted walked)))))))))
 
+(deftest ^:parallel walk-sets-test
+  (testing "a set whose elements all come back identical is returned as is"
+    (let [s #{[:a] [:b] 1}]
+      (is (identical? s (perf/walk identity identity s)))
+      (is (identical? s (perf/postwalk identity s)))))
+  (testing "every element is kept when one in the middle changes"
+    (let [s (set (range 20))]
+      (is (= (-> s (disj 10) (conj 100))
+             (perf/walk #(if (= % 10) 100 %) identity s)))))
+  (testing "a new element can equal an old one that changes later"
+    (is (= #{2 3 4}
+           (perf/walk inc identity #{1 2 3}))))
+  (testing "a changed set keeps its comparator and metadata"
+    (let [walked (perf/walk #(if (= % 2) 20 %) identity (with-meta (sorted-set-by > 1 2 3) {:x 1}))]
+      (is (= [20 3 1] (seq walked)))
+      (is (= {:x 1} (meta walked))))))
+
 (deftest test-select-keys
   (are [keys result] (= result (perf/select-keys {:a 1 :b 2 :c 3 :d 4 :e 5} keys))
     [] {}

@@ -518,7 +518,43 @@
              (meta (match/replace (with-meta #{1} {:x 1}) 1 2)))))
   (t/testing "elements that are replaced with the same value are merged"
     (t/is (= #{0}
-             (match/replace #{1 2} (n :guard number?) 0)))))
+             (match/replace #{1 2} (n :guard number?) 0))))
+  (t/testing "an untouched form with a set in it comes back identical"
+    (let [form {:a 1, :s #{:x [:y]}}]
+      (t/is (identical? form (match/replace form [:z] nil)))
+      (t/is (identical? form (match/replace form :z nil))))))
+
+(t/deftest ^:parallel scalar-patterns-see-every-value-test
+  (t/testing "a pattern that can match a scalar still sees map keys and scalars next to a vector pattern"
+    (t/is (= [:a [:b]]
+             (match/match-many {:a [:b]} (:or [:b] :a) &match)))
+    (t/is (= [:a [:b] :b]
+             (match/match-all {:a [:b]} (:or [:b] (_ :guard keyword?)) &match)))
+    (t/is (= {:z [:c]}
+             (match/replace {:a [:b]} [:b] [:c] :a :z)))
+    (t/is (= {:c [:c]}
+             (match/replace-all {:b [:b]} :b :c))))
+  (t/testing "a default clause in match-all still sees scalars"
+    (t/is (= [[:a 1] :a 1]
+             (match/match-all [:a 1] [:x] :x _ &match)))))
+
+(t/deftest ^:parallel patterns-without-checks-test
+  (t/testing "patterns without a length or key check give the same answer for a scalar with or without a default"
+    (t/is (= (match/match-one :x [] :hit _ :miss)
+             (match/match-one :x [] :hit)))
+    (t/is (= (match/match-one :x [& _] :hit _ :miss)
+             (match/match-one :x [& _] :hit)))
+    (t/is (= (match/match-one :x {} :hit _ :miss)
+             (match/match-one :x {} :hit)))))
+
+#?(:clj
+   (t/deftest ^:parallel eductions-test
+     (t/testing "match walks look inside eductions, which are sequential but not collections"
+       (let [form {:a (eduction (map identity) [[:field 1 nil]])}]
+         (t/is (= 1 (match/match-one form [:field id _] id)))
+         (t/is (= [1] (match/match-many form (_ :guard int?) &match)))))
+     (t/testing "vector patterns don't match an eduction itself"
+       (t/is (nil? (match/match-one (eduction (map identity) [:x :y]) [a _] a))))))
 
 (t/deftest ^:parallel match-in-map-keys-test
   (t/testing "match-one looks inside map keys, before the values"

@@ -70,6 +70,34 @@
     :else
     (throw (ex-info "Invalid pattern" {:pattern pattern}))))
 
+(defn- colls-only-pattern?
+  "Return true if `pattern` can only match a map or a sequential collection."
+  [pattern]
+  (let [{:keys [clauses] :as parsed} (parse-pattern pattern)]
+    ;; Only the length check of a vector pattern and the key checks of a map pattern reject other values, so `[]`,
+    ;; `[& rest]` and `{}` match anything and don't count.
+    (case (:type parsed)
+      :vector (boolean (seq (:parts parsed)))
+      :map    (boolean (seq (:map parsed)))
+      :and    (boolean (some colls-only-pattern? clauses))
+      :or     (every? colls-only-pattern? clauses)
+      false)))
+
+(defn- colls-only-clauses?
+  "Return true if no pattern in `pairs` can match anything but a collection."
+  [pairs]
+  (every? (comp colls-only-pattern? first) pairs))
+
+(defn- skip-non-colls
+  "Wrap `step`, the code a walk runs on each value `&match`, so it returns `skipped` for a value that
+  [[metabase.util.match.impl/walkable?]] rejects, when `colls-only?` is true."
+  [colls-only? step skipped]
+  ;; When no pattern can match anything but a collection, map keys and the keywords, strings and numbers in clauses
+  ;; can't match, so the walk skips them without calling the match function.
+  (if colls-only?
+    `(if (metabase.util.match.impl/walkable? ~'&match) ~step ~skipped)
+    step))
+
 (declare process-clauses)
 
 (defn- strip-meta [expr]
@@ -249,6 +277,7 @@
                           [pairs nil])
         ;; match-one is always recursive unless there is a default clause
         recursive? (not has-default?)
+        colls-only? (and recursive? (colls-only-clauses? pairs))
         ;; Search for &recur and &parents usage in clauses.
         contains-&recur? (contains-symbol? pairs '&recur)
         contains-&parents? (contains-symbol? pairs '&parents)
@@ -263,7 +292,7 @@
                    recursive? (conj `(metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))))]
     (if (or recursive? contains-&recur?)
       `((fn ~'&recur [~'&match ~'&parents]
-          ~body)
+          ~(skip-non-colls colls-only? body nil))
         ~value
         ;; Only set &parents to [] if user code uses &parents, otherwise keep it `nil` to avoid unnecessary updates.
         ~(when contains-&parents? []))
@@ -362,6 +391,8 @@
                           [pairs nil])
         ;; match-many is always recursive unless there is a default clause and it's not all?
         recursive? (or all? (not has-default?))
+        ;; A default clause matches anything, so it rules the shortcut out.
+        colls-only? (and recursive? (not has-default?) (colls-only-clauses? pairs))
         ;; Search for &recur and &parents usage in clauses.
         contains-&recur? (contains-symbol? pairs '&recur)
         contains-&parents? (contains-symbol? pairs '&parents)
@@ -370,27 +401,26 @@
         value (if (nil? value) `(identity nil) value)
         value-binding (when-not (or recursive? contains-&recur?) value)
         acc (gensym "acc_")
-        body (process-clauses pairs '&match value-binding)]
+        result-expr (expand-or-some
+                     (cond-> [(process-clauses pairs '&match value-binding)]
+                       (some? default) (conj default)))
+        step (if all?
+               `(do (when-some [result# ~result-expr]
+                      ;; See note below. For [[match-all]] it makes less sense because we always continue the
+                      ;; recursion anyway, but we still don't want to collect nils.
+                      (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj)))
+                    (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))
+               `(if-some [result# ~result-expr]
+                  ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that
+                  ;; nil to wind up in results.
+                  (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj))
+                      nil)
+                  (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))]
     `(let [~acc (volatile! [])]
        ((fn ~'&recur [~'&match ~'&parents]
           ;; When all? is true, always recur down regardless if the current level matched. Otherwise, stop at the
           ;; first matched level.
-          ~(if all?
-             `(do (when-some [result# ~(expand-or-some
-                                        (cond-> [body]
-                                          (some? default) (conj default)))]
-                    ;; See note below. For [[match-all]] it makes less sense because we always continue the recursion
-                    ;; anyway, but we still don't want to collect nils.
-                    (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj)))
-                  (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))
-             `(if-some [result# ~(expand-or-some
-                                  (cond-> [body]
-                                    (some? default) (conj default)))]
-                ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that
-                ;; nil to wind up in results.
-                (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj))
-                    nil)
-                (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))))
+          ~(skip-non-colls colls-only? step nil))
         ~value
         ~(when contains-&parents? []))
        (perf/not-empty @~acc))))
@@ -456,29 +486,41 @@
   walked too, so make sure that a pattern doesn't replace a map key by accident."
   [form & clauses]
   (let [replace-fn-symb (gensym "replace-")
-        contains-&parents? (contains-symbol? clauses '&parents)]
+        contains-&parents? (contains-symbol? clauses '&parents)
+        colls-only? (colls-only-clauses? (partition 2 clauses))
+        replace-body (fn [walk]
+                       (skip-non-colls colls-only?
+                                       `(match-one ~'&match
+                                          ~@clauses
+                                          ~'_ ~walk)
+                                       '&match))]
     (if contains-&parents?
       `((fn ~replace-fn-symb [~'&match ~'&parents]
-          (match-one ~'&match
-            ~@clauses
-            ~'_ (metabase.util.match.impl/replace-in-collection ~replace-fn-symb ~'&match ~'&parents)))
+          ~(replace-body `(metabase.util.match.impl/replace-in-collection ~replace-fn-symb ~'&match ~'&parents)))
         ~form
         [])
       `((fn ~replace-fn-symb [~'&match]
-          (match-one ~'&match
-            ~@clauses
-            ~'_ (perf/walk ~replace-fn-symb identity ~'&match)))
+          ~(replace-body `(perf/walk ~replace-fn-symb identity ~'&match)))
         ~form))))
 
 (defmacro replace-all
   "Like [[replace]], but walks the `form` from the inside outwards, thus applying the transform multiple times (in a
   \"postwalk\" fashion). Doesn't support `&parents` anaphora yet."
   [form & clauses]
-  (let [replace-fn-symb (gensym "replace-")
-        contains-&parents? (contains-symbol? clauses '&parents)]
-    (when contains-&parents?
-      (throw (ex-info "&parents is not supported by replace-all." {})))
-    `(perf/postwalk (fn ~replace-fn-symb [~'&match]
+  (when (contains-symbol? clauses '&parents)
+    (throw (ex-info "&parents is not supported by replace-all." {})))
+  (if (colls-only-clauses? (partition 2 clauses))
+    (let [walk-fn-symb (gensym "replace-all-")]
+      ;; Like `perf/postwalk`, but returns a value that isn't a collection as is, without a call.
+      `((fn ~walk-fn-symb [~'&match]
+          (if (coll? ~'&match)
+            (let [~'&match (perf/walk ~walk-fn-symb identity ~'&match)]
+              (match-one ~'&match
+                ~@clauses
+                ~'_ ~'&match))
+            ~'&match))
+        ~form))
+    `(perf/postwalk (fn ~(gensym "replace-") [~'&match]
                       (match-one ~'&match
                         ~@clauses
                         ~'_ ~'&match))

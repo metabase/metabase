@@ -560,10 +560,15 @@
 (defn- walk*
   [inner inner-val outer form]
   (cond
+    ;; Most nodes in a query are keywords, strings and numbers, so they get one check instead of one per branch.
+    (not (coll? form))
+    (outer form)
+
     ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
     ;; entries through `seq` instead of `reduce-kv`.
     (record? form)
-    (let [new-keys (volatile! (transient #{}))]
+    ;; `new-keys` holds the keys written so far, and is only created once a key changes.
+    (let [new-keys (volatile! nil)]
       (-> (reduce (fn [r e]
                     (let [k  (key e)
                           v  (val e)
@@ -573,7 +578,7 @@
                         (if (identical? v' v)
                           r
                           (assoc r k v'))
-                        (do (vswap! new-keys conj! k')
+                        (do (vswap! new-keys #(conj! (or % (transient #{})) k'))
                             (if (contains? @new-keys k)
                               (assoc r k' v')
                               (-> r (dissoc k) (assoc k' v')))))))
@@ -582,7 +587,8 @@
           outer))
 
     (map? form)
-    (let [new-keys (volatile! (transient #{}))]
+    ;; `new-keys` holds the keys written so far, and is only created once a key changes.
+    (let [new-keys (volatile! nil)]
       (-> (reduce-kv (fn [m k v]
                        (let [k' (inner k)
                              v' (if inner-val (inner-val k v) (inner v))]
@@ -590,7 +596,7 @@
                            (if (identical? v' v)
                              m
                              (assoc+ m k' v'))
-                           (do (vswap! new-keys conj! k')
+                           (do (vswap! new-keys #(conj! (or % (transient #{})) k'))
                                (if (contains? @new-keys k)
                                  (assoc+ m k' v')
                                  (-> m (dissoc+ k) (assoc+ k' v')))))))
@@ -606,8 +612,23 @@
 
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
     (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
-    (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
-    :else (outer form)))
+
+    ;; Rebuild a set only once an element changes, so an untouched set comes back identical. The `n` elements before
+    ;; the first change came back as themselves, so the new set starts from those.
+    (set? form)
+    (let [first-change (reduce (fn [n x]
+                                 (let [x' (inner x)]
+                                   (if (identical? x' x) (inc n) (reduced [n x']))))
+                               0 form)]
+      (outer (if (vector? first-change)
+               (let [[n x'] first-change]
+                 (-> (into (empty form) (take n) form)
+                     (conj x')
+                     (into (comp (drop (inc n)) (map inner)) form)
+                     (add-original-meta form)))
+               form)))
+
+    :else (outer (add-original-meta (into (empty form) (map inner) form) form))))
 
 (defn walk
   "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
