@@ -1,9 +1,10 @@
 const { execSync, spawn } = require("child_process");
 
-const chalk = require("chalk");
-const cypress = require("cypress");
+// `chalk` and `cypress` are required where they're used, so the backend helpers below work before `bun install`:
+// CI starts the backend while the front-end environment is still being prepared (see run_backend_ci.js).
 
 function printBold(message) {
+  const chalk = require("chalk");
   console.log(`\n${chalk.bold(chalk.magenta(message.trim()))}\n`);
 }
 
@@ -17,6 +18,7 @@ async function parseArguments(cliArgs) {
     cliArgs.splice(1, 0, "run");
   }
 
+  const cypress = require("cypress");
   return await cypress.cli.parseRunArguments(cliArgs);
 }
 
@@ -91,30 +93,41 @@ async function isReady(host) {
   }
 }
 
-async function waitUntilReady(backend, attempt = 0) {
+/**
+ * Wait until the backend at `backend.host` reports it's healthy.
+ *
+ * `isAlive`, if given, is called before each attempt; when it returns false the backend process has exited, so this
+ * fails right away instead of waiting for the timeout.
+ */
+async function waitUntilReady(backend, { isAlive } = {}) {
   const { dbFile, host } = backend;
   const TIMEOUT_MS = 1000;
   const MAX_MINUTES = 5;
   const MAX_ATTEMPTS = 60 * MAX_MINUTES;
 
-  if (attempt === 0) {
-    process.stdout.write(
-      `\nWaiting for backend (host=${host}, dbFile=${dbFile})`,
-    );
-  }
+  process.stdout.write(
+    `\nWaiting for backend (host=${host}, dbFile=${dbFile})`,
+  );
 
-  if (await isReady(host)) {
-    console.log(`\nBackend ready host=${host}, dbFile=${dbFile}`);
-    return;
-  }
+  for (let attempt = 0; ; attempt++) {
+    if (await isReady(host)) {
+      console.log(`\nBackend ready host=${host}, dbFile=${dbFile}`);
+      return;
+    }
 
-  if (attempt >= MAX_ATTEMPTS) {
-    throw new Error(`\nBackend failed to start within ${MAX_MINUTES} minutes`);
-  }
+    if (isAlive && !isAlive()) {
+      throw new Error("\nBackend process exited before it was ready");
+    }
 
-  process.stdout.write(".");
-  await delay(TIMEOUT_MS);
-  return waitUntilReady(backend, attempt + 1);
+    if (attempt >= MAX_ATTEMPTS) {
+      throw new Error(
+        `\nBackend failed to start within ${MAX_MINUTES} minutes`,
+      );
+    }
+
+    process.stdout.write(".");
+    await delay(TIMEOUT_MS);
+  }
 }
 
 module.exports = {
