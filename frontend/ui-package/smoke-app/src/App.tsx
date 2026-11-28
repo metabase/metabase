@@ -5,6 +5,7 @@ import {
   Button,
   Drawer,
   Ellipsified,
+  EntityNameCell,
   Group,
   Icon,
   MetabaseUIProvider,
@@ -17,6 +18,9 @@ import {
   color,
   useColorScheme,
 } from "@metabase/ui";
+import TableIcon from "@metabase/ui/icons/table";
+import { buttonOverrides } from "@metabase/ui/overrides/buttons/Button/Button.config";
+import { SlimMetabaseUIProvider } from "@metabase/ui/slim";
 import { useState } from "react";
 
 const initialColorScheme =
@@ -50,6 +54,18 @@ export const App = () => {
   const [drawerOpened, setDrawerOpened] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
+  if (params.has("slim")) {
+    return (
+      <SlimMetabaseUIProvider
+        colorScheme={colorScheme}
+        components={params.has("no-overrides") ? undefined : buttonOverrides}
+      >
+        <Button variant="filled" data-testid="button-filled">
+          Filled
+        </Button>
+      </SlimMetabaseUIProvider>
+    );
+  }
   const highOverlay = params.has("high-overlay");
   const tooltipOverride = params.has("tooltip-override")
     ? { Tooltip: { defaultProps: { zIndex: 11000 } } }
@@ -93,6 +109,12 @@ export const App = () => {
             Open modal
           </Button>
           <Icon name="table" size={24} data-testid="icon-table" />
+          <TableIcon
+            width={18}
+            height={18}
+            role="img"
+            aria-label="Packed table icon"
+          />
         </Group>
 
         {params.has("theme-controls") && (
@@ -120,11 +142,21 @@ export const App = () => {
           </Ellipsified>
         </Box>
 
-        <Select
+        <Select<string>
           label="Select"
-          data={["One", "Two", "Three"]}
+          data={[
+            { label: "One", value: "One", icon: TableIcon },
+            { label: "Two", value: "Two", icon: "table" },
+            { label: "Three", value: "Three" },
+          ]}
           data-testid="select"
           w={200}
+        />
+
+        <EntityNameCell
+          name="Table"
+          icon={TableIcon}
+          data-testid="entity-with-icon"
         />
 
         <Tooltip label="Tooltip label" opened position="right">

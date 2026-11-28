@@ -8,7 +8,7 @@ Metabase's UI components, theme, colors and icons, built from [`frontend/src/met
 bun add @metabase/ui react react-dom dayjs @mantine/core@~8.3.18 @mantine/hooks@~8.3.18 @mantine/dates@~8.3.18
 ```
 
-Peer dependencies: `react` and `react-dom` `^19.0.0`, `dayjs` `^1.11.18`, and `@mantine/core`, `@mantine/hooks`, `@mantine/dates` `~8.3.18` (`styles.css` embeds that Mantine version's CSS). Peer warnings from `kbar` and its dependencies are expected.
+Peer dependencies: `react` and `react-dom` `^19.0.0`, `dayjs` `^1.11.18`, and `@mantine/core`, `@mantine/hooks`, `@mantine/dates` `~8.3.18` (`styles.css` embeds that Mantine version's CSS).
 
 ## Use
 
@@ -26,6 +26,24 @@ createRoot(document.getElementById("root")!).render(
 ```
 
 Do not also import `@mantine/core/styles.css` or `@mantine/dates/styles.css`.
+
+For a smaller JavaScript bundle, import `SlimMetabaseUIProvider` from `@metabase/ui/slim` and opt into each component's overrides. The base theme and global stylesheet stay the same. The default provider still registers all overrides.
+
+```tsx
+import { Button } from "@metabase/ui";
+import { SlimMetabaseUIProvider } from "@metabase/ui/slim";
+import { buttonOverrides } from "@metabase/ui/overrides/buttons/Button/Button.config";
+
+<SlimMetabaseUIProvider components={buttonOverrides}>
+  <Button>Save</Button>
+</SlimMetabaseUIProvider>;
+```
+
+For a nonce-based `style-src` Content Security Policy, install `get-nonce` in the host and call `setNonce(nonce)` before mounting the provider. Use the same server-generated nonce as the one in your response policy. Mantine and the modal scroll lock use that shared nonce for their generated style tags.
+
+The package can be imported in Node.js without browser globals. This does not imply support for server-side rendering or hydration.
+
+For one icon without the full icon registry, import the SVG component directly, for example `import TableIcon from "@metabase/ui/icons/table"`. These are raw SVG components. Pass standard SVG sizing and accessibility props instead of the legacy `Icon` component's `size`, `name` or `tooltip` props. `Icon` remains available for name-based lookup.
 
 The provider sets up the theme, the color variables, the font variable and what overlays (modals, tooltips, popovers) need. Wrap your app in it once.
 

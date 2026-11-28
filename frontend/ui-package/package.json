@@ -27,6 +27,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./slim": {
+      "types": "./dist/types/ui-package/src/SlimMetabaseUIProvider.d.ts",
+      "import": "./dist/slim.js"
+    },
+    "./overrides/*.config": {
+      "types": "./dist/types/src/metabase/ui/components/*.config.d.ts",
+      "import": "./dist/src/metabase/ui/components/*.config.js"
+    },
+    "./icons/*": {
+      "types": "./dist/icons/*.d.ts",
+      "import": "./dist/icons/*.js"
+    },
     "./styles.css": {
       "types": "./dist/css.d.ts",
       "default": "./dist/styles.css"
@@ -58,10 +70,8 @@
     "color": "^5.0.3",
     "csv-parse": "^7.0.2",
     "get-nonce": "^1.0.1",
-    "kbar": "0.1.0-beta.45",
     "react-use": "^17.5.1",
-    "ttag": "1.7.21",
-    "underscore": "^1.13.8"
+    "ttag": "1.7.21"
   },
   "peerDependencies": {
     "@mantine/core": "~8.3.18",

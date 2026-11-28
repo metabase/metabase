@@ -7,7 +7,8 @@ import {
   useCallback,
 } from "react";
 
-import { Icon } from "../../icons";
+import { StaticIcon } from "../../icons/Icon/StaticIcon";
+import CloseIcon from "../../icons/Icon/icons/close.svg?component";
 
 import S from "./Tab.module.css";
 
@@ -74,7 +75,11 @@ export const TabsTab = forwardRef<HTMLButtonElement, TabsTabProps>(
                 aria-hidden
                 onClick={handleCloseClick}
               >
-                <Icon name="close" size={CLOSE_ICON_SIZE} />
+                <StaticIcon
+                  component={CloseIcon}
+                  name="close"
+                  size={CLOSE_ICON_SIZE}
+                />
               </span>
             </>
           ) : (

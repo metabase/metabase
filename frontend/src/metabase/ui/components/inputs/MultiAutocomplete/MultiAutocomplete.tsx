@@ -19,7 +19,8 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Icon } from "../../icons";
+import { StaticIcon } from "../../icons/Icon/StaticIcon";
+import InfoIcon from "../../icons/Icon/icons/info.svg?component";
 
 import S from "./MultiAutocomplete.module.css";
 import { useMultiAutocomplete } from "./use-multi-autocomplete";
@@ -158,7 +159,7 @@ export function MultiAutocomplete({
         </Text>
       }
     >
-      <Icon c="text-secondary" name="info" />
+      <StaticIcon component={InfoIcon} c="text-secondary" name="info" />
     </Tooltip>
   );
 

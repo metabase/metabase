@@ -1,7 +1,8 @@
 import type { AccordionProps, MantineThemeComponent } from "@mantine/core";
 import { Accordion } from "@mantine/core";
 
-import { Icon } from "../../icons";
+import { StaticIcon } from "../../icons/Icon/StaticIcon";
+import ChevronDownIcon from "../../icons/Icon/icons/chevrondown.svg?component";
 
 import AccordionStyles from "./Accordion.module.css";
 
@@ -16,7 +17,14 @@ const CHEVRON_SIZE = 12;
 const getDefaultProps = (): Partial<AccordionProps> => ({
   variant: "separated",
   radius: "sm",
-  chevron: <Icon name="chevrondown" size={CHEVRON_SIZE} aria-hidden />,
+  chevron: (
+    <StaticIcon
+      component={ChevronDownIcon}
+      name="chevrondown"
+      size={CHEVRON_SIZE}
+      aria-hidden
+    />
+  ),
   chevronSize: CHEVRON_SIZE,
 });
 
