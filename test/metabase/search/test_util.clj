@@ -4,6 +4,7 @@
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -51,6 +52,16 @@
        ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (with-sync-search-indexing
          ~@body))))
+
+(defn index-labelled-documents!
+  "Insert `docs`, a map from a label to card attributes, into the active app-db search index.
+  Each document becomes a card, with the id that `label->id` gives its label."
+  [docs label->id]
+  (#'specialization/batch-upsert!
+   (search.index/active-table)
+   (for [[label attrs] docs]
+     (#'search.index/document->entry
+      (#'search.ingestion/->document (merge {:model "card", :id (label->id label)} attrs))))))
 
 (defmacro with-temp-index-table-if-supported
   "Like [[with-temp-index-table]], but always runs `body`, even when the app DB cannot support an index.
