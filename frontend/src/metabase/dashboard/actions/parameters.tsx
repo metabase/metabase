@@ -21,6 +21,10 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import {
+  getMappingOptionByTarget,
+  getParameterMappingOptions,
+} from "metabase/parameters/utils/mapping-options";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
@@ -767,7 +771,11 @@ export const setParameterType = createThunkAction(
             sectionId,
           );
       } else if (parameter.type !== type) {
-        resetNativeCardParameterMappings(getState, dispatch, parameterId);
+        removeIncompatibleNativeCardParameterMappings(
+          getState,
+          dispatch,
+          setParamType(parameter, type, sectionId),
+        );
       }
 
       if (!haveRestoredParameterMappingsToPristine) {
@@ -783,14 +791,18 @@ export const setParameterType = createThunkAction(
     },
 );
 
-function resetNativeCardParameterMappings(
+function removeIncompatibleNativeCardParameterMappings(
   getState: GetState,
   dispatch: Dispatch,
-  parameterId: ParameterId,
+  parameter: Parameter,
 ) {
   const dashboard = getDashboardComplete(getState());
   const dashcards = dashboard?.dashcards ?? [];
   const questionById = getQuestions(getState());
+  const parameterDashcard = findDashCardForInlineParameter(
+    parameter.id,
+    dashcards,
+  );
 
   const newAttributes = dashcards.reduce(
     (attributes: SetDashCardAttributesOpts[], dashcard) => {
@@ -802,10 +814,27 @@ function resetNativeCardParameterMappings(
       const newParameterMappings = parameterMappings.filter(
         (parameterMapping) => {
           const question = questionById[parameterMapping.card_id];
-          return (
-            parameterMapping.parameter_id !== parameterId ||
+          if (
+            parameterMapping.parameter_id !== parameter.id ||
             !question ||
             !Lib.queryDisplayInfo(question.query()).isNative
+          ) {
+            return true;
+          }
+          const mappingOptions = getParameterMappingOptions(
+            question,
+            parameter,
+            question.card(),
+            dashcard,
+            parameterDashcard,
+          );
+          return (
+            getMappingOptionByTarget(
+              mappingOptions,
+              parameterMapping.target,
+              question,
+              parameter,
+            ) != null
           );
         },
       );

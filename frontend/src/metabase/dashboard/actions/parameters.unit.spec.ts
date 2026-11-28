@@ -5,6 +5,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import { getDashboardDrillParameters } from "metabase/dashboard/click-behavior/dashboard-click-drill";
 import { getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
@@ -24,6 +25,7 @@ import {
   createMockField,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { PEOPLE, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   MATCHING_TARGET,
@@ -158,6 +160,84 @@ describe("setParameterType", () => {
         },
       },
     });
+  });
+});
+
+describe("setParameterType with native template tags", () => {
+  const nativeQuery = Lib.toJsQuery(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM PEOPLE WHERE {{source}} AND NAME = {{name}}",
+      templateTags: {
+        source: {
+          "display-name": "Source",
+          type: "dimension",
+          "field-id": PEOPLE.SOURCE,
+          "widget-type": "string/=",
+        },
+        name: { "display-name": "Name", type: "text" },
+      },
+    }),
+  );
+
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+    dashboard: createMockDashboardState({
+      dashboardId: 1,
+      dashboards: {
+        "1": createMockStoreDashboard({
+          id: 1,
+          dashcards: [1],
+          parameters: [
+            createMockParameter({
+              id: "1",
+              type: "string/=",
+              sectionId: "string",
+            }),
+          ],
+        }),
+      },
+      dashcards: {
+        "1": createMockDashboardCard({
+          id: 1,
+          card_id: 1,
+          card: createMockCard({ id: 1, dataset_query: nativeQuery }),
+          parameter_mappings: [
+            {
+              parameter_id: "1",
+              card_id: 1,
+              target: [
+                "dimension",
+                ["template-tag", "source"],
+                { "stage-number": 0 },
+              ],
+            },
+            {
+              parameter_id: "1",
+              card_id: 1,
+              target: ["variable", ["template-tag", "name"]],
+            },
+          ],
+        }),
+      },
+    }),
+  });
+
+  it("should keep native mappings that new operator can still target (metabase#86918)", async () => {
+    const store = setup(state);
+    await store.dispatch(setParameterType("1", "string/contains", "string"));
+    expect(store.getState().dashboard.dashcards[1].parameter_mappings).toEqual([
+      {
+        parameter_id: "1",
+        card_id: 1,
+        target: [
+          "dimension",
+          ["template-tag", "source"],
+          { "stage-number": 0 },
+        ],
+      },
+    ]);
   });
 });
 
