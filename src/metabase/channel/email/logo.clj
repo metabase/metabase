@@ -27,7 +27,7 @@
     nil
 
     (= logo-url "app/assets/img/logo.svg")
-    {:image-src  "http://static.metabase.com/email_logo.png"
+    {:image-src  "https://static.metabase.com/email_logo.png"
      :attachment nil}
 
     (str/starts-with? logo-url "data:")
