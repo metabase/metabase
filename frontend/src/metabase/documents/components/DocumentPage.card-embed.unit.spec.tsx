@@ -253,7 +253,7 @@ const setupDocumentPage = ({ cards }: SetupOpts) => {
   });
 
   return renderWithProviders(
-    <Route path="/document/:entityId" element={<DocumentPage />} />,
+    <Route path="/document/:documentId" element={<DocumentPage />} />,
     { withRouter: true, initialRoute: `/document/${DOCUMENT_ID}` },
   );
 };

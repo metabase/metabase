@@ -119,7 +119,7 @@ const setup = ({
   );
 
   const view = renderWithProviders(
-    <Route path="/document/:entityId" element={<DocumentPageOuter />} />,
+    <Route path="/document/:documentId" element={<DocumentPageOuter />} />,
     {
       withRouter: true,
       initialRoute,

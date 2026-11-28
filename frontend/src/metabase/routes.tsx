@@ -306,7 +306,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               { path: "trash", lazy: trashCollectionLanding },
 
               {
-                path: "document/:entityId",
+                path: "document/:documentId",
                 lazy: documentPage,
                 children: [
                   lazyModalRoute("comments/:childTargetId", commentsSidesheet),

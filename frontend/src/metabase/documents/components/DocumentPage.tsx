@@ -94,10 +94,11 @@ const DocumentPrintContextProvider = ({
 
 export const DocumentPage = () => {
   const location = useLocation();
-  const { entityId, childTargetId: paramsChildTargetId } = useParams<{
-    entityId: string;
-    childTargetId: string;
-  }>();
+  const { documentId: paramsDocumentId, childTargetId: paramsChildTargetId } =
+    useParams<{
+      documentId: string;
+      childTargetId: string;
+    }>();
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
@@ -114,7 +115,8 @@ export const DocumentPage = () => {
     "duplicate" | "leave" | null
   >(null);
 
-  const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
+  const documentId =
+    paramsDocumentId === "new" ? "new" : extractEntityId(paramsDocumentId);
 
   const {
     editorInstance,

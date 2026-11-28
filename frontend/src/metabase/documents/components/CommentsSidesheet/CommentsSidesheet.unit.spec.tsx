@@ -484,7 +484,7 @@ describe("CommentsSidesheet", () => {
 
       const { router } = renderWithProviders(
         <Route
-          path="/document/:entityId/comments/:childTargetId"
+          path="/document/:documentId/comments/:childTargetId"
           element={<RoutedCommentsSidesheet />}
         />,
         {
@@ -892,7 +892,7 @@ function setupCommentLinks({
 
   renderWithProviders(
     <Route
-      path="/document/:entityId/comments/:childTargetId"
+      path="/document/:documentId/comments/:childTargetId"
       element={
         <CommentsSidesheet
           params={{ childTargetId: HEADING_ID }}
