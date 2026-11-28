@@ -18,9 +18,9 @@ import type { Dataset } from "metabase-types/api";
 
 import {
   CANCEL_QUERY,
-  QUERY_COMPLETED as QUERY_COMPLETED_TYPE,
-  QUERY_ERRORED as QUERY_ERRORED_TYPE,
-  RUN_QUERY as RUN_QUERY_TYPE,
+  QUERY_COMPLETED,
+  QUERY_ERRORED,
+  RUN_QUERY,
   SET_DOCUMENT_TITLE,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
@@ -162,6 +162,13 @@ export const runQuestionQuery = ({
       );
     }
 
+    // If there is an in-flight query, abort it *silently* and synchronously
+    // replace it with the new request
+    const prevCancel = getState().qb.cancelQueryController;
+    if (prevCancel) {
+      prevCancel.abort();
+    }
+
     const startTime = new Date();
     const cancelQueryController = new AbortController();
 
@@ -172,9 +179,15 @@ export const runQuestionQuery = ({
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
-      .catch((error) => dispatch(queryErrored(startTime, error)));
+      .catch((error) => {
+        if (isAbortError(error)) {
+          return;
+        }
 
-    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryController } });
+        return dispatch(queryErrored(startTime, error));
+      });
+
+    dispatch({ type: RUN_QUERY, payload: { cancelQueryController } });
   };
 };
 
@@ -272,7 +285,7 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     const wasUntouchedMetabotCard = getIsUntouchedMetabotCard(getState());
 
     dispatch({
-      type: QUERY_COMPLETED_TYPE,
+      type: QUERY_COMPLETED,
       payload: {
         card,
         queryResults,
@@ -292,17 +305,15 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 };
 
 export const queryErrored = createThunkAction(
-  QUERY_ERRORED_TYPE,
-  (startTime, error) => {
-    return async (dispatch) => {
-      if (isAbortError(error)) {
-        return null;
-      } else {
-        dispatch(loadErrorUIControls());
+  QUERY_ERRORED,
+  (startTime, error) => (dispatch) => {
+    if (isAbortError(error)) {
+      return null;
+    } else {
+      dispatch(loadErrorUIControls());
 
-        return { error: error, duration: Date.now() - startTime };
-      }
-    };
+      return { error: error, duration: Date.now() - startTime };
+    }
   },
 );
 

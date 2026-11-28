@@ -551,7 +551,7 @@ describe("ViewFooterCopyWidget", () => {
 
       const { store } = setup({ card, result, lastRunCard, isRunning: true });
       await act(async () => {
-        await store.dispatch(
+        store.dispatch(
           queryErrored(
             Date.now(),
             new DOMException("The operation was aborted.", "AbortError"),
