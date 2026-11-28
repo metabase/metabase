@@ -67,6 +67,11 @@ export function SummaryWellInput({
   const fieldRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mergedInputRef = useMergedRef(inputRef, useWellFieldRef());
+  /**
+   * True from a Backspace press in this field until its release. A held Backspace keeps
+   * repeating into a field that gets the focus when another well goes away.
+   */
+  const isBackspaceHeldRef = useRef(false);
   const [dropdownFrame, setDropdownFrame] = useState<DropdownFrame | null>(
     null,
   );
@@ -215,14 +220,25 @@ export function SummaryWellInput({
   }, [isFormulaEnabled, handleSearchChangeRef]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (
-      event.key === "Backspace" &&
-      searchText.length === 0 &&
-      hasItems &&
-      !formulaInput?.isPending()
-    ) {
+    if (event.key !== "Backspace") {
+      return;
+    }
+    if (!event.repeat) {
+      isBackspaceHeldRef.current = true;
+    }
+    if (!isBackspaceHeldRef.current) {
+      event.preventDefault();
+      return;
+    }
+    if (searchText.length === 0 && hasItems && !formulaInput?.isPending()) {
       event.preventDefault();
       onRemoveLast();
+    }
+  };
+
+  const handleKeyUp = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Backspace") {
+      isBackspaceHeldRef.current = false;
     }
   };
 
@@ -261,7 +277,9 @@ export function SummaryWellInput({
                 handleSearchChange(event.currentTarget.value)
               }
               onKeyDown={handleKeyDown}
+              onKeyUp={handleKeyUp}
               onBlur={() => {
+                isBackspaceHeldRef.current = false;
                 if (!isGenerating) {
                   combobox.closeDropdown();
                 }

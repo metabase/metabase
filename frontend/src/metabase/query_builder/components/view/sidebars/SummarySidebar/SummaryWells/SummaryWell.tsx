@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 
+import { useFocusFallback } from "metabase/common/hooks/use-focus-fallback";
 import { Card, Flex, Text } from "metabase/ui";
 
 import S from "../SummarySidebar.module.css";
@@ -30,6 +31,10 @@ type SummaryWellProps = {
   title: string;
   dropState: WellDropState | null;
   action?: ReactNode;
+  /** The well's typeahead field, for a caller that focuses it from outside the well. */
+  fieldRef?: RefObject<HTMLInputElement | null>;
+  /** Takes the focus when the well goes away while the focus is in it. */
+  focusFallbackRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
 };
 
@@ -38,15 +43,23 @@ export function SummaryWell({
   title,
   dropState,
   action,
+  fieldRef: externalFieldRef,
+  focusFallbackRef,
   children,
 }: SummaryWellProps) {
-  const fieldRef = useRef<HTMLInputElement>(null);
-  const { setNodeRef, isOver } = useDroppable({
+  const ownFieldRef = useRef<HTMLInputElement>(null);
+  const fieldRef = externalFieldRef ?? ownFieldRef;
+  const {
+    setNodeRef,
+    node: cardRef,
+    isOver,
+  } = useDroppable({
     id: `well:${wellId}`,
     data: { wellId },
   });
   const effectiveDropState =
     dropState === "accepts" && isOver ? "over" : dropState;
+  useFocusFallback(cardRef, focusFallbackRef);
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
     if (

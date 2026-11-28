@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { Ellipsified, Icon, Menu, UnstyledButton } from "metabase/ui";
@@ -6,6 +7,8 @@ import type * as Lib from "metabase-lib";
 import S from "../SummarySidebar.module.css";
 import type { SummaryValueItem } from "../types";
 import { changeValueOperator } from "../utils";
+
+import { useWellFieldRef } from "./SummaryWell";
 
 type ColumnValueMenuProps = {
   query: Lib.Query;
@@ -23,6 +26,19 @@ export function ColumnValueMenu({
   hasLabel = true,
   onChange,
 }: ColumnValueMenuProps) {
+  const wellFieldRef = useWellFieldRef();
+
+  const handleSelect = (
+    operator: Lib.AggregationOperator,
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    const isKeyboardClick = event.detail === 0;
+    onChange(changeValueOperator(query, stageIndex, item, operator));
+    if (isKeyboardClick) {
+      wellFieldRef?.current?.focus();
+    }
+  };
+
   return (
     <Menu position="bottom-start">
       <Menu.Target>
@@ -41,11 +57,7 @@ export function ColumnValueMenu({
             rightSection={
               option.isSelected ? <Icon name="check" aria-hidden /> : null
             }
-            onClick={() =>
-              onChange(
-                changeValueOperator(query, stageIndex, item, option.operator),
-              )
-            }
+            onClick={(event) => handleSelect(option.operator, event)}
           >
             {option.displayName}
           </Menu.Item>

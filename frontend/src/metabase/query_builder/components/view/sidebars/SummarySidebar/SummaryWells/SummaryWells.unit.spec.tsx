@@ -306,6 +306,22 @@ describe("SummaryWells", () => {
       expect(getLastChange().dimensions).toEqual(["Created At"]);
     });
 
+    it("moves the focus to the first unit that More shows", async () => {
+      setup();
+
+      await openBucketMenu("Created At: Month");
+      (await screen.findByRole("menuitem", { name: "More…" })).focus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(
+        screen.getByRole("menuitem", { name: "Minute of hour" }),
+      ).toHaveFocus();
+      await userEvent.keyboard("{ArrowDown}");
+      expect(
+        screen.getByRole("menuitem", { name: "Hour of day" }),
+      ).toHaveFocus();
+    });
+
     it("opens with every unit when the one in use is a less common one", async () => {
       setup({
         spec: {
@@ -571,6 +587,15 @@ describe("SummaryWells", () => {
       values: ["Count"],
       dimensions: ["Created At: Month"],
     });
+  });
+
+  it("keeps taking off chips while Backspace is held in an empty field", () => {
+    const { onChange } = setup();
+
+    fireEvent.keyDown(getValuesField(), { key: "Backspace" });
+    fireEvent.keyDown(getValuesField(), { key: "Backspace", repeat: true });
+
+    expect(onChange).toHaveBeenCalledTimes(2);
   });
 
   it("leaves Backspace alone in an empty well", async () => {

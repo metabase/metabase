@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
@@ -84,6 +84,7 @@ export function SummaryWells({
     () => getWellFieldSections(sections, "columns"),
     [sections],
   );
+  const columnsFieldRef = useRef<HTMLInputElement>(null);
 
   const handleRemove = (clause: Lib.AggregationClause | Lib.BreakoutClause) =>
     onChange(Lib.removeClause(query, stageIndex, clause));
@@ -146,6 +147,7 @@ export function SummaryWells({
         wellId="columns"
         title={isPivotMode ? t`Columns` : t`Group by`}
         dropState={dropStates?.columns ?? null}
+        fieldRef={columnsFieldRef}
         action={
           canPivot && (
             <PivotToggle isPivotMode={isPivotMode} onToggle={onPivotToggle} />
@@ -189,6 +191,7 @@ export function SummaryWells({
           wellId="rows"
           title={t`Rows`}
           dropState={dropStates?.rows ?? null}
+          focusFallbackRef={columnsFieldRef}
         >
           <SummaryWellInput
             wellId="rows"
