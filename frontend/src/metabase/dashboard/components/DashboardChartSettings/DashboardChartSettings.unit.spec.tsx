@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
@@ -194,5 +199,48 @@ describe("DashboardChartSettings trend line customization", () => {
     });
     expect(Object.keys(settings.series_settings)).toEqual(["count"]);
     expect(settings).not.toHaveProperty("graph.trendline_style");
+  });
+
+  it("should paginate the table preview when the pagination setting is turned on", async () => {
+    // the data grid renders no rows at zero size, and the page size follows the height
+    mockGetBoundingClientRect({ width: 1000, height: 400 });
+    const onChange = jest.fn();
+    const tableCard = createMockCard({
+      display: "table",
+      visualization_settings: {},
+    });
+    const series: Series = [
+      createMockSingleSeries(
+        tableCard,
+        createMockDataset({
+          row_count: 2000,
+          data: createMockDatasetData({
+            cols: [createMockColumn({ name: "ID", display_name: "ID" })],
+            rows: Array.from({ length: 2000 }, (_, index) => [index + 1]),
+          }),
+        }),
+      ),
+    ];
+    setup({
+      series,
+      dashcard: createMockDashboardCard({ card: tableCard }),
+      settings: tableCard.visualization_settings,
+      onChange,
+    });
+
+    expect(
+      await screen.findByText("Showing first 2,000 rows"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Rows \d+-\d+ of/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("Paginate results"));
+
+    expect(
+      await screen.findByText(/^Rows 1-\d+ of first 2,000$/),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onChange.mock.lastCall?.[0]).toMatchObject({
+      "table.pagination": true,
+    });
   });
 });
