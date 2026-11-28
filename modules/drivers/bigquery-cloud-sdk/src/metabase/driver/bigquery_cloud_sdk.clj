@@ -41,6 +41,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
+   (com.google.api.services.bigquery.model JobConfiguration JobConfigurationQuery QueryRequest)
    (com.google.auth.oauth2 ImpersonatedCredentials GoogleCredentials)
    (com.google.cloud.bigquery
     BigQuery
@@ -52,6 +53,7 @@
     BigQuery$TableOption
     BigQueryException
     BigQueryOptions
+    BigQueryOptions$Builder
     Clustering
     ConnectionProperty
     Dataset
@@ -70,10 +72,12 @@
     TableDefinition$Type
     TableId
     TableResult)
+   (com.google.cloud.bigquery.spi BigQueryRpcFactory)
+   (com.google.cloud.bigquery.spi.v2 HttpBigQueryRpc)
    (com.google.cloud.http HttpTransportOptions)
    (com.google.common.collect ImmutableMap)
    (com.google.gson JsonParser)
-   (java.util Iterator)))
+   (java.util Iterator Map)))
 
 (set! *warn-on-reflection* true)
 
@@ -143,8 +147,124 @@
       (.createScoped base-creds bigquery-scopes)
       base-creds)))
 
+(defn- checkout-database
+  "Mirror of [[metabase.driver.sql-jdbc.connection/checkout-database]]: resolves the target BigQuery Database for
+  [[driver.conn/set-role-if-supported!]] from `::driver.conn/database-id` (stamped by
+  [[driver.conn/effective-details]] after Database Routing), preferring the running query's
+  [[driver-api/metadata-provider]] Database when its id matches."
+  [details]
+  (when-let [target-db-id (::driver.conn/database-id details)]
+    (or (when (driver-api/initialized?)
+          (let [current (driver-api/database (driver-api/metadata-provider))]
+            (when (= (:id current) target-db-id)
+              current)))
+        (driver.u/lib-database target-db-id))))
+
+(def ^:private ^:const max-secure-context-custom-keys
+  "BigQuery permits up to 32 entries in `secureContext.secureParameterEntries`. Reserve 4 system keys (`email`,
+  `impersonation_role`, `metabase_user_id`, `metabase_unrestricted`) plus 1 spare slot, capping custom keys at 27."
+  27)
+
+(def ^:private ^:const max-secure-context-key-bytes 128)
+(def ^:private ^:const max-secure-context-value-bytes 512)
+
+(def ^:private secure-context-key-re #"^[A-Za-z_][A-Za-z0-9_]*$")
+
+(def ^:private reserved-secure-context-keys
+  #{"email" "impersonation_role" "metabase_user_id" "metabase_unrestricted"})
+
+(defn- secure-context-custom-keys
+  [raw-attrs error-data & {:keys [reject-reserved?]}]
+  (when-not (str/blank? raw-attrs)
+    (let [parsed-keys (into [] (comp (map str/trim) (remove str/blank?) (distinct)) (str/split raw-attrs #","))]
+      (when-let [reserved (and reject-reserved? (perf/some reserved-secure-context-keys parsed-keys))]
+        (throw (ex-info
+                (tru "BigQuery SECURE_CONTEXT attribute key {0} is reserved and managed automatically by Metabase."
+                     reserved)
+                error-data)))
+      (let [custom-keys (into [] (remove reserved-secure-context-keys) parsed-keys)]
+        (when (> (count custom-keys) max-secure-context-custom-keys)
+          (throw (ex-info (tru "BigQuery SECURE_CONTEXT supports at most {0} additional user attributes (found {1})."
+                               max-secure-context-custom-keys
+                               (count custom-keys))
+                          error-data)))
+        (doseq [k custom-keys]
+          (when-not (re-matches secure-context-key-re k)
+            (throw (ex-info
+                    (tru "BigQuery SECURE_CONTEXT key {0} must start with a letter or _ and use only [A-Za-z0-9_]."
+                         k)
+                    error-data)))
+          (when (> (u/string-byte-count k) max-secure-context-key-bytes)
+            (throw (ex-info (tru "BigQuery SECURE_CONTEXT attribute key exceeds {0} UTF-8 bytes: {1}"
+                                 max-secure-context-key-bytes
+                                 k)
+                            error-data))))
+        custom-keys))))
+
+(defn- check-secure-context-value-length!
+  [k ^String v]
+  (when (> (u/string-byte-count v) max-secure-context-value-bytes)
+    (throw (ex-info (tru "BigQuery SECURE_CONTEXT value for key {0} exceeds {1} UTF-8 bytes."
+                         k
+                         max-secure-context-value-bytes)
+                    {:type driver-api/qp.error-type.invalid-parameter, :key k})))
+  v)
+
+(defmethod driver/validate-db-details! :bigquery-cloud-sdk
+  [_driver {:keys [enable-secure-context secure-context-attributes]}]
+  (when enable-secure-context
+    (secure-context-custom-keys secure-context-attributes {::driver/can-connect-message? true} :reject-reserved? true)
+    nil))
+
+(defn- attach-secure-context-to-job!
+  ^com.google.api.services.bigquery.model.Job [^com.google.api.services.bigquery.model.Job job ^Map payload]
+  (when-let [^JobConfiguration config (.getConfiguration job)]
+    (when-let [^JobConfigurationQuery query-config (.getQuery config)]
+      (.set query-config "secureContext" payload)))
+  job)
+
+(defn- secure-context-rpc-factory
+  ;; TODO (merlau 2026-11-18) -- Remove this Stage-1 `GenericJson` RPC shim and set `secureContext` via
+  ;; `QueryJobConfiguration$Builder.setSecureContext` in `build-bigquery-request` and `execute-raw-queries!` once
+  ;; `com.google.cloud:google-cloud-bigquery` promotes `SecureContext` from the Stage-1 REST model to Stage-2.
+  ;; Also remove `attach-secure-context-to-job!` and the shim-only imports above (`JobConfiguration`,
+  ;; `JobConfigurationQuery`, `QueryRequest`, `BigQueryRpcFactory`, `HttpBigQueryRpc`, and `java.util.Map`).
+  ^BigQueryRpcFactory [entries]
+  (let [payload {"secureParameterEntries" (u/update-keys-vals entries str str)}]
+    (reify BigQueryRpcFactory
+      (create [_ options]
+        (let [^BigQueryOptions bq-opts options]
+          (proxy [HttpBigQueryRpc] [bq-opts]
+            (createSkipExceptionTranslation [entity ^Map opts]
+              (let [^HttpBigQueryRpc this this]
+                (condp instance? entity
+                  com.google.api.services.bigquery.model.Job
+                  (let [job (attach-secure-context-to-job! ^com.google.api.services.bigquery.model.Job entity payload)]
+                    (proxy-super createSkipExceptionTranslation job opts))
+                  com.google.api.services.bigquery.model.Dataset
+                  (proxy-super createSkipExceptionTranslation
+                               ^com.google.api.services.bigquery.model.Dataset entity
+                               opts)
+                  com.google.api.services.bigquery.model.Table
+                  (proxy-super createSkipExceptionTranslation
+                               ^com.google.api.services.bigquery.model.Table entity
+                               opts)
+                  com.google.api.services.bigquery.model.Routine
+                  (proxy-super createSkipExceptionTranslation
+                               ^com.google.api.services.bigquery.model.Routine entity
+                               opts)
+                  (throw (IllegalArgumentException. (str "Unsupported BigQuery entity: " (class entity)))))))
+            (createJobForQuerySkipExceptionTranslation [^com.google.api.services.bigquery.model.Job job]
+              (let [^HttpBigQueryRpc this this]
+                (proxy-super createJobForQuerySkipExceptionTranslation (attach-secure-context-to-job! job payload))))
+            (queryRpcSkipExceptionTranslation [^String project-id ^QueryRequest request]
+              (let [^HttpBigQueryRpc this this]
+                (.set request "secureContext" payload)
+                (proxy-super queryRpcSkipExceptionTranslation project-id request)))))))))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
+  (driver/validate-db-details! :bigquery-cloud-sdk details)
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->credentials details)
         ;; Check if we should impersonate a different service account
@@ -194,6 +314,8 @@
     (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
       ;; Jobs are created and billed in this project; queried tables can live elsewhere.
       (.setProjectId bq-bldr billing-project-id))
+    (when-let [database (checkout-database details)]
+      (driver.conn/set-role-if-supported! :bigquery-cloud-sdk bq-bldr database))
     (-> bq-bldr .build .getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -281,7 +403,8 @@
           dataset-id)))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details]
+  [driver details]
+  (driver/validate-db-details! driver details)
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
@@ -852,7 +975,10 @@
              (.. bq-table getDefinition getType))
             ;; if the table is partitioned by ingestion time, using .list or .listTableData won't return values for
             ;; the _PARTITIONTIME field, so we need to fall back to using sql
-            (ingestion-time-partitioned-table? (:id table)))
+            (ingestion-time-partitioned-table? (:id table))
+            ;; BigQuery's `tabledata.list` REST endpoint does not accept `secureContext` and fails with 403 on tables
+            ;; protected by Row Access Policies, so fall back to SQL when connection impersonation is enabled.
+            (driver.u/supports? driver :connection-impersonation database))
       (do (log/debugf "%s.%s is a view or a table partitioned by ingestion time, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
@@ -1216,6 +1342,64 @@
                               :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
+(defn- policy-database
+  [db]
+  (if-let [router-id (and (map? db) (:router-database-id db))]
+    (driver.u/lib-database router-id)
+    db))
+
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :connection-impersonation]
+  [_driver _feature db]
+  (boolean (and (map? db)
+                (:enable-secure-context (driver.conn/default-details (policy-database db))))))
+
+(defn- policy-custom-keys
+  [database]
+  (when (map? database)
+    (-> database
+        policy-database
+        driver.conn/default-details
+        :secure-context-attributes
+        (secure-context-custom-keys {:type driver-api/qp.error-type.invalid-parameter}))))
+
+(defmethod driver.sql/default-database-role :bigquery-cloud-sdk
+  [_driver database]
+  (json/encode
+   (into (sorted-map "email" "" "impersonation_role" "" "metabase_unrestricted" "true" "metabase_user_id" "")
+         (map (fn [k] [k ""]))
+         (policy-custom-keys database))))
+
+(defn- encode-custom-attribute
+  [user-attributes k]
+  (let [v (get user-attributes k)]
+    [k (check-secure-context-value-length!
+        k (cond (nil? v) "" (coll? v) (json/encode v) :else (str v)))]))
+
+(defmethod driver.sql/format-impersonation-role :bigquery-cloud-sdk
+  [driver database role {:keys [user-id user-email user-attributes]}]
+  (when-not (driver.u/supports? driver :connection-impersonation database)
+    (throw (ex-info
+            (tru "Connection impersonation policies exist for this database, but BigQuery SECURE_CONTEXT is disabled.")
+            {:type driver-api/qp.error-type.invalid-parameter, :database-id (:id database)})))
+  (let [email (or (u/trimmed-string user-email)
+                  (throw (ex-info
+                          (tru "Current user lacks a verified email address required for BigQuery SECURE_CONTEXT.")
+                          {:type driver-api/qp.error-type.invalid-parameter, :user-id user-id})))]
+    (json/encode
+     (-> (into (sorted-map) (map #(encode-custom-attribute user-attributes %)) (policy-custom-keys database))
+         (assoc "email"                 (check-secure-context-value-length! "email" email)
+                "impersonation_role"    (check-secure-context-value-length! "impersonation_role" role)
+                "metabase_user_id"      (str user-id)
+                "metabase_unrestricted" "false")))))
+
+(defmethod driver/set-role! :bigquery-cloud-sdk
+  [_driver ^BigQueryOptions$Builder bq-bldr ^String role]
+  (let [entries (json/decode role)]
+    (when-not (and (map? entries) (seq entries))
+      (throw (ex-info (tru "Invalid BigQuery SECURE_CONTEXT role payload.")
+                      {:type driver-api/qp.error-type.driver})))
+    (.setServiceRpcFactory bq-bldr (secure-context-rpc-factory entries))))
+
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
   [_driver]
   ;; BigQuery emits three-part identifiers in compiled SQL: `project.dataset.table`.
@@ -1573,7 +1757,9 @@
 
 (defmethod driver/connection-spec :bigquery-cloud-sdk
   [_driver database]
-  (driver.conn/effective-details database))
+  (let [database (driver.u/ensure-lib-database database)]
+    (driver-api/check-allowed-access! database)
+    (driver.conn/effective-details database)))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
   [_driver _database]

@@ -172,6 +172,12 @@
   [_database]
   nil)
 
+(defenterprise set-role-if-supported!
+  "Sets the connection impersonation role of the current user, or the default role, on the connection or client
+  builder `conn` for `database`; OSS has no connection impersonation, so this is a no-op."
+  metabase-enterprise.impersonation.driver
+  [_driver _conn _database])
+
 (defn connection-database
   "The Database that a connection for `database` goes to in the current context: the current user's routing
   destination when `database` is a router, otherwise `database` itself."
