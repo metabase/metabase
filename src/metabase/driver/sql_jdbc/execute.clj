@@ -30,6 +30,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
@@ -58,7 +59,11 @@
     ;; true for large results we want to *stream* (a server-side cursor) rather than buffer in memory
     [:stream? {:optional true} [:maybe :boolean]]
     ;; don't autoclose the connection
-    [:keep-open? {:optional true} [:maybe :boolean]]]])
+    [:keep-open? {:optional true} [:maybe :boolean]]
+    ;; the query about to run on the connection, when it is checked out by [[execute-reducible-query]]; lets a driver
+    ;; derive session state from the query, e.g. Databricks query tags. Absent for sync, DDL and other uses.
+    ;; A deliberately open map: validating the whole query schema on every connection checkout would be expensive.
+    [:query {:optional true} [:maybe [:map {::mr/deliberately-open true, :description "the compiled query"}]]]]])
 
 (defmulti do-with-connection-with-options
   "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-spec`, and invoke
@@ -944,7 +949,8 @@
        {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
         :download? (download? (-> query :info :context))
         :stream?   (or (download? (-> query :info :context))
-                       (= :table-rows-sample (-> query :info :context)))}
+                       (= :table-rows-sample (-> query :info :context)))
+        :query     query}
        (fn [^Connection conn]
          ;; whether a cancelation was issued is only knowable inside the Statement's scope, but the Connection can
          ;; only be dealt with once the Statement and ResultSet are closed, so it is carried out past both

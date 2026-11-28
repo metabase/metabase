@@ -149,6 +149,24 @@
                     (run-query-for-dashcard dashboard-id card-id dashcard-id
                                             {:parameters (assoc-in params [0 :value] 3)}))))))))))
 
+(deftest query-info-identifies-the-dashboard-test
+  (testing "the runner's `info` names the Dashboard by id, name and entity id, so drivers can tag or log queries"
+    (mt/with-temp [:model/Dashboard     dashboard {:name "Sales"}
+                   :model/Card          card {:dataset_query (mt/mbql-query venues)}
+                   :model/DashboardCard dashcard {:card_id (:id card) :dashboard_id (:id dashboard)}]
+      (is (=? {:context             :dashboard
+               :card-id             (:id card)
+               :card-entity-id      (:entity_id card)
+               :dashboard-id        (:id dashboard)
+               :dashboard-name      "Sales"
+               :dashboard-entity-id (:entity_id dashboard)}
+              (mt/as-admin
+                (qp.dashboard/process-query-for-dashcard
+                 :dashboard dashboard
+                 :card      card
+                 :dashcard  dashcard
+                 :make-run  (constantly (fn [_query info] info)))))))))
+
 (deftest card-and-dashcard-id-validation-test
   (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:parameters []}
                  :model/Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}

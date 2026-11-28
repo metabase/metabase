@@ -72,6 +72,20 @@ summary: Changes to the Metabase driver interface, listed by release.
   `:rename`, and `:test/python-transforms-without-renames` if it doesn't. Better, implement
   `metabase.driver/rename-tables!*` and support `:atomic-renames`.
 
+- `metabase.driver.sql-jdbc.execute/ConnectionOptions` has a new optional `:query` key: the query about to run on the
+  connection, set when [[metabase.driver.sql-jdbc.execute/execute-reducible-query]] checks the connection out and
+  absent for sync, DDL and other uses. A driver that implements `do-with-connection-with-options` can derive session
+  state from it, as the Databricks driver does for query tags.
+
+- The query `:info` map now also carries `:card-entity-id`, `:collection-id`, `:dashboard-name` and
+  `:dashboard-entity-id` when a query runs for a Card or a dashboard card, next to the existing `:card-id`, `:card-name`
+  and `:dashboard-id`.
+
+- `driver-api/current-user-details` has been added. It returns the `:id`, `:email` and `:attributes` of the user
+  running the query, or nil when there is none, e.g. for public or static embeds.
+
+- `driver-api/site-url` has been added; it returns the instance's site URL setting.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of

@@ -73,7 +73,11 @@
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:collection-id           {:optional true} [:maybe pos-int?]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:dashboard-name          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:dashboard-entity-id     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:lens-id                 {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:lens-params             {:optional true} [:maybe [:map {:closed true}

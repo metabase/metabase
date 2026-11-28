@@ -53,6 +53,20 @@
                 (mt/as-admin
                   (qp.card/process-query-for-card card :api :make-run (constantly (fn [query _info] query))))))))))
 
+(deftest query-info-identifies-the-card-test
+  (testing "the runner's `info` names the Card by id, name, entity id and collection, so drivers can tag or log queries"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card       card {:name          "Venues"
+                                           :collection_id collection-id
+                                           :dataset_query (mt/mbql-query venues)}]
+      (is (=? {:context        :question
+               :card-id        (:id card)
+               :card-name      "Venues"
+               :card-entity-id (:entity_id card)
+               :collection-id  collection-id}
+              (mt/as-admin
+                (qp.card/process-query-for-card card :api :make-run (constantly (fn [_query info] info)))))))))
+
 (defn field-filter-query
   "An MBQL 5 native query with a Field Filter (`:dimension`) parameter."
   []

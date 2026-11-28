@@ -175,6 +175,7 @@
  system/ensure-readable-path!
  system/ensure-writable-path!
  system/readable-path?
+ system/site-url
  system/site-uuid
  upload.db/current-database)
 
@@ -182,6 +183,13 @@
   "Fetch the user making the request."
   []
   api/*current-user*)
+
+(defn current-user-details
+  "`:id`, `:email` and `:attributes` (login, JWT and SSO attributes) of the user making the request, or nil when there
+  is no user, e.g. for public or static embeds."
+  []
+  (when-let [{:keys [id email attributes]} (some-> api/*current-user* deref)]
+    {:id id, :email email, :attributes attributes}))
 
 (defn canceled-chan
   "If this channel is bound you can check if it has received a message

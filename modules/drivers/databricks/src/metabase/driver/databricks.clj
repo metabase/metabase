@@ -1,7 +1,8 @@
 (ns metabase.driver.databricks
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [get-in not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -23,7 +24,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]]
+   [metabase.util.performance :refer [get-in not-empty]]
    [ring.util.codec :as codec])
   (:import
    [java.sql
@@ -392,6 +393,211 @@
                               (h2x/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
+;;; ----------------------------------------------- Query tags ------------------------------------------------------
+
+;; Databricks query tags are key/value pairs attached to every statement of a session and exposed in
+;; `system.query.history.query_tags`. We set them with `SET QUERY_TAGS[...]` right before a query runs on a (pooled)
+;; connection. See https://docs.databricks.com/aws/en/sql/user/queries/query-tags
+
+(def ^:private max-query-tags 20)
+
+(def ^:private max-query-tag-key-length 32)
+
+(def ^:private max-query-tag-value-length 128)
+
+(def ^:private invalid-query-tag-key-regex
+  "Characters Databricks does not allow in tag keys."
+  #"[,:\-/=.]")
+
+(def ^:private query-tags-comment-regex
+  "A `-- query_tags: team:data, env:prod, experiment` line comment in native SQL."
+  #"(?im)^[ \t]*--[ \t]*query[_-]tags[ \t]*:[ \t]*(.+?)[ \t]*$")
+
+(def ^:private query-tag-template-variable-regex
+  "`{{dashboard.id}}` in a tag template."
+  #"\{\{\s*([^{}\s]+)\s*\}\}")
+
+(defn- valid-query-tag-key? [k]
+  (and (string? k)
+       (not (str/blank? k))
+       (<= (count k) max-query-tag-key-length)
+       (not (re-find invalid-query-tag-key-regex k))
+       (not (str/starts-with? k "@@"))))
+
+(defn- tag-value
+  "Tag value for a context value; multiple values are joined with `,`."
+  [v]
+  (cond
+    (nil? v)        nil
+    (sequential? v) (str/join "," (map tag-value v))
+    (keyword? v)    (name v)
+    :else           (str v)))
+
+(defn- user-query-tags
+  "Tags the user asked for in a native query with a `-- query_tags: key:value, key2:value2, key_only` comment. Uses the
+  same `key:value,key:value` format as the Databricks `query_tags` connection parameter. A key without a value becomes a
+  key-only tag. Invalid keys are dropped with a warning instead of failing the query."
+  [sql]
+  (when (string? sql)
+    (not-empty
+     (into {}
+           (comp (mapcat (fn [[_ tags]] (str/split tags #",")))
+                 (map str/trim)
+                 (remove str/blank?)
+                 (keep (fn [tag]
+                         (let [[k v] (map str/trim (str/split tag #":" 2))]
+                           (if (valid-query-tag-key? k)
+                             [k (not-empty v)]
+                             (log/warnf "Ignoring invalid Databricks query tag key %s" (pr-str k)))))))
+           (re-seq query-tags-comment-regex sql)))))
+
+(defn- parameter-names
+  "Names a query parameter can be referred to by in a template: its slug (dashboard filter or template tag) and the
+  template tag it targets, e.g. `[:variable [:template-tag \"company_id\"]]`."
+  [{:keys [slug target]}]
+  (let [[_ [clause tag-name]] (when (sequential? target) target)]
+    (cond-> #{}
+      slug                                                    (conj slug)
+      (and (= clause :template-tag) (string? tag-name))       (conj tag-name)
+      (and (= clause :template-tag) (string? (:id tag-name))) (conj (:id tag-name)))))
+
+(defn- stringify-keys [m]
+  (into {} (map (fn [[k v]] [(name k) v])) m))
+
+(defn- query-tag-context
+  "Everything a tag template can refer to, as nested maps with string keys: `{{card.id}}` is `[\"card\" \"id\"]`.
+  Parameters come from `:user-parameters`, which the query processor keeps on the query it hands to the driver."
+  [query]
+  (let [{:keys [executed-by context card-id card-name card-entity-id collection-id dashboard-id dashboard-name
+                dashboard-entity-id pulse-id action-id transform-id]} (:info query)
+        {:keys [query-hash query-type]} (driver-api/query->remark-data query)
+        user                            (driver-api/current-user-details)]
+    {"query"     {"hash" query-hash, "type" query-type, "context" context}
+     "card"      {"id" card-id, "name" card-name, "entity_id" card-entity-id, "collection_id" collection-id}
+     "dashboard" {"id" dashboard-id, "name" dashboard-name, "entity_id" dashboard-entity-id}
+     "pulse"     {"id" pulse-id}
+     "action"    {"id" action-id}
+     "transform" {"id" transform-id}
+     "database"  {"id" (:database query)}
+     "user"      {"id"         (or executed-by (:id user))
+                  "email"      (:email user)
+                  "attributes" (stringify-keys (:attributes user))}
+     "parameter" (into {}
+                       (for [{:keys [value] :as param} (:user-parameters query)
+                             :when (some? value)
+                             param-name (parameter-names param)]
+                         [param-name value]))
+     "instance"  {"uuid" (driver-api/site-uuid), "url" (driver-api/site-url)}}))
+
+(defn- render-query-tag-template
+  "`template` with its `{{a.b}}` variables replaced from `context`, or nil when any variable has no value, so that a
+  tag like `company: {{parameter.company_id}}` is left out of queries that have no such parameter."
+  [template context]
+  (let [missing? (volatile! false)
+        rendered (str/replace template query-tag-template-variable-regex
+                              (fn [[_ path]]
+                                (let [value (get-in context (str/split path #"\."))]
+                                  (if (nil? value)
+                                    (do (vreset! missing? true) "")
+                                    (tag-value value)))))]
+    (when-not @missing?
+      (str/trim rendered))))
+
+(defn- parse-query-tags-template
+  "The `Query tags` connection detail: one `key: value template` per line, `#` lines are comments. A key without a
+  value becomes a key-only tag."
+  [template]
+  (for [line  (str/split-lines (str template))
+        :let  [line (str/trim line)]
+        :when (and (seq line) (not (str/starts-with? line "#")))
+        :let  [[k v] (str/split line #":" 2)]]
+    [(str/trim k) (some-> v str/trim not-empty)]))
+
+(defn- template-query-tags
+  "Tags from the `Query tags` connection detail rendered against the context of `query`. Invalid keys are dropped with
+  a warning instead of failing the query."
+  [template query]
+  (let [context (query-tag-context query)]
+    (into {}
+          (keep (fn [[k v]]
+                  (cond
+                    (not (valid-query-tag-key? k))
+                    (log/warnf "Ignoring invalid Databricks query tag key %s" (pr-str k))
+
+                    (nil? v)
+                    [k nil]
+
+                    :else
+                    (when-some [rendered (render-query-tag-template v context)]
+                      [k (not-empty rendered)]))))
+          (parse-query-tags-template template))))
+
+(defn- query-tags
+  "Map of tag key -> value (nil for key-only tags) to attach to `query`: the `-- query_tags:` comment of a native
+  query, overridden by the `Query tags` template of the connection. At most [[max-query-tags]] tags."
+  [query template]
+  (->> (merge (user-query-tags (-> query :stages peek :native))
+              (template-query-tags template query))
+       (take max-query-tags)
+       (into {})))
+
+(defn- sql-string-literal
+  "Spark SQL string literal; backslash is the escape character."
+  [s]
+  (str "'" (-> (str s)
+               (str/replace "\\" "\\\\")
+               (str/replace "'" "\\'"))
+       "'"))
+
+(defn- set-query-tags-sql
+  "`SET QUERY_TAGS[...] = ...` statement that sets `tags` and removes `unset-keys`."
+  [tags unset-keys]
+  (str "SET "
+       (str/join ", "
+                 (concat (for [[k v] tags]
+                           (format "QUERY_TAGS[%s] = %s"
+                                   (sql-string-literal k)
+                                   (if (nil? v)
+                                     "NULL"
+                                     (sql-string-literal (subs v 0 (min (count v) max-query-tag-value-length))))))
+                         (for [k unset-keys]
+                           (format "QUERY_TAGS[%s] = UNSET" (sql-string-literal k)))))))
+
+(def ^:private ^java.util.Map connection->query-tag-keys
+  "Physical connection -> keys of the tags we last set on its session. Tags live on the Databricks session, and pooled
+  connections are reused, so we need to know what to UNSET before the next query."
+  (java.util.Collections/synchronizedMap (java.util.WeakHashMap.)))
+
+(defn- physical-connection
+  "The connection behind a pool proxy, so the same session maps to the same key across checkouts."
+  ^Connection [^Connection conn]
+  (try
+    (or (.unwrap conn Connection) conn)
+    (catch Throwable _
+      conn)))
+
+(defn- apply-query-tags!
+  "Make the session of `conn` carry exactly `tags`: set them, and UNSET whatever we set on this session before."
+  [^Connection conn tags]
+  (let [conn-key   (physical-connection conn)
+        prev-keys  (or (.get connection->query-tag-keys conn-key) #{})
+        new-keys   (set (keys tags))
+        unset-keys (set/difference prev-keys new-keys)]
+    (when (or (seq tags) (seq unset-keys))
+      (with-open [^Statement stmt (.createStatement conn)]
+        (.execute stmt (set-query-tags-sql tags unset-keys)))
+      (if (seq new-keys)
+        (.put connection->query-tag-keys conn-key new-keys)
+        (.remove connection->query-tag-keys conn-key)))))
+
+(defn- query-tags-for-connection
+  "Tags for the query the connection is checked out for (see `:query` in [[sql-jdbc.execute/ConnectionOptions]]), or
+  nil when there is no query or the database has no `Query tags` template."
+  [db-or-id-or-spec {:keys [query]}]
+  (when (and query (map? db-or-id-or-spec))
+    (when-let [template (not-empty (str/trim (str (:query-tags (driver.conn/effective-details db-or-id-or-spec)))))]
+      (query-tags query template))))
+
 (defmethod sql-jdbc.execute/do-with-connection-with-options :databricks
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
@@ -406,6 +612,7 @@
          ;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
          (with-open [^Statement stmt (.createStatement conn)]
            (.execute stmt "set legacy_time_parser_policy = legacy"))
+         (apply-query-tags! conn (query-tags-for-connection db-or-id-or-spec options))
          (finally
            (.setReadOnly conn read-only?))))
      (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)

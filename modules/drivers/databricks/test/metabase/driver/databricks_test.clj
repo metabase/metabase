@@ -917,3 +917,110 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest ^:parallel user-query-tags-test
+  (testing "tags are parsed from a `-- query_tags:` line comment"
+    (is (= {"team" "data", "env" "prod", "experiment" nil}
+           (#'databricks/user-query-tags
+            "-- query_tags: team:data, env : prod,experiment\nselect 1"))))
+  (testing "several comments are merged"
+    (is (= {"team" "data", "env" "prod"}
+           (#'databricks/user-query-tags
+            "-- query_tags: team:data\nselect 1\n  --query-tags:env:prod"))))
+  (testing "invalid keys are dropped"
+    (is (= {"ok" "1"}
+           (#'databricks/user-query-tags
+            "-- query_tags: ok:1, bad-key:2, bad.key:3, @@reserved:4, :5"))))
+  (testing "no comment, no tags"
+    (is (nil? (#'databricks/user-query-tags "select 1 -- query_tags are not here")))
+    (is (nil? (#'databricks/user-query-tags nil)))))
+
+(deftest ^:parallel set-query-tags-sql-test
+  (is (= "SET QUERY_TAGS['team'] = 'data', QUERY_TAGS['experiment'] = NULL, QUERY_TAGS['old'] = UNSET"
+         (#'databricks/set-query-tags-sql (array-map "team" "data", "experiment" nil) ["old"])))
+  (testing "values are escaped and truncated"
+    (is (= "SET QUERY_TAGS['k'] = 'it\\'s a \\\\ value'"
+           (#'databricks/set-query-tags-sql {"k" "it's a \\ value"} nil)))
+    (is (= (str "SET QUERY_TAGS['k'] = '" (apply str (repeat 128 "x")) "'")
+           (#'databricks/set-query-tags-sql {"k" (apply str (repeat 200 "x"))} nil)))))
+
+(deftest ^:parallel query-tags-template-test
+  (let [sql   "-- query_tags: team:data, card:spoofed\nselect {{company_id}}, {{region}}"
+        query (-> (lib/native-query (mt/metadata-provider) sql)
+                  (assoc :info {:executed-by         1
+                                :query-hash          (byte-array [1 2 3])
+                                :card-id             7
+                                :card-name           "Orders"
+                                :card-entity-id      "abcdefghijklmnopqrstu"
+                                :dashboard-id        9
+                                :dashboard-name      "Sales"
+                                :dashboard-entity-id "ABCDEFGHIJKLMNOPQRSTU"
+                                :context             :embedded-dashboard})
+                  (assoc :user-parameters [{:type   :number/=
+                                            :slug   "company_id"
+                                            :target [:variable [:template-tag "company_id"]]
+                                            :value  42}
+                                           {:type   :string/=
+                                            :target [:dimension [:template-tag "region"]]
+                                            :value  ["eu" "us"]}]))
+        template (str/join "\n" ["# static and templated tags"
+                                 "app: metabase"
+                                 "trigger: {{query.context}}"
+                                 "hash: {{query.hash}}"
+                                 "user: {{user.id}}"
+                                 "card: {{card.id}} {{card.name}}"
+                                 "card_entity: {{card.entity_id}}"
+                                 "dashboard: {{dashboard.entity_id}}"
+                                 "company_id: {{parameter.company_id}}"
+                                 "region: {{parameter.region}}"
+                                 "pulse: {{pulse.id}}"
+                                 "plan: {{user.attributes.plan}}"
+                                 "experiment"
+                                 "bad-key: 1"
+                                 "this_key_is_way_too_long_for_a_tag: 1"])]
+    (testing "tags render from the query context; tags with a missing variable are skipped"
+      (is (= {"team"        "data"
+              "app"         "metabase"
+              "trigger"     "embedded-dashboard"
+              "hash"        "010203"
+              "user"        "1"
+              "card"        "7 Orders"
+              "card_entity" "abcdefghijklmnopqrstu"
+              "dashboard"   "ABCDEFGHIJKLMNOPQRSTU"
+              "company_id"  "42"
+              "region"      "eu,us"
+              "experiment"  nil}
+             (#'databricks/query-tags query template))))
+    (testing "at most 20 tags"
+      (is (= 20
+             (count (#'databricks/query-tags query (str/join "\n" (for [i (range 30)] (str "k" i ": " i))))))))))
+
+(deftest user-attributes-in-query-tags-test
+  (mt/with-temp-vals-in-db :model/User (mt/user->id :rasta) {:login_attributes {"customer_id" 7}}
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "user id, email and attributes come from the current user"
+        (is (= {"customer" "7", "email" "rasta@metabase.com", "user" (str (mt/user->id :rasta))}
+               (#'databricks/query-tags (lib/native-query (mt/metadata-provider) "select 1")
+                                        "customer: {{user.attributes.customer_id}}\nemail: {{user.email}}\nuser: {{user.id}}"))))))
+  (testing "no current user, no user tags"
+    (is (= {"app" "x"}
+           (#'databricks/query-tags (lib/native-query (mt/metadata-provider) "select 1")
+                                    "app: x\nuser: {{user.id}}")))))
+
+(deftest ^:synchronized query-tags-live-test
+  (mt/test-driver :databricks
+    (testing "queries run with query tags enabled, and the session is cleaned up for the next checkout"
+      (mt/with-temp [:model/Database db {:engine  :databricks
+                                         :details (assoc (:details (mt/db))
+                                                         :query-tags "app: metabase_tests\ncard: {{card.id}}")}]
+        (mt/with-db db
+          (is (= [[1]]
+                 (->> "-- query_tags: team:metabase_tests\nselect 1"
+                      (lib/native-query (mt/metadata-provider))
+                      (qp/process-query)
+                      (mt/rows))))
+          (is (= [[2]]
+                 (->> "select 2"
+                      (lib/native-query (mt/metadata-provider))
+                      (qp/process-query)
+                      (mt/rows)))))))))
