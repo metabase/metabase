@@ -1,6 +1,13 @@
 /* eslint-disable no-console -- build script */
 import { spawnSync } from "child_process";
-import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from "fs";
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "fs";
 import { tmpdir } from "os";
 import { basename, join, resolve } from "path";
 
@@ -87,6 +94,10 @@ try {
     recursive: true,
     withFileTypes: true,
   });
+  assert(
+    !dependencies.some((entry) => entry.name === "kbar"),
+    "the standalone package must not install kbar",
+  );
   for (const name of ["react", "react-dom"]) {
     const paths = dependencies
       .filter(
@@ -99,6 +110,11 @@ try {
     assert(paths.length === 1, `expected one ${name}, got ${paths}`);
   }
 
+  must(
+    "node",
+    ["--input-type=module", "-e", 'await import("@metabase/ui")'],
+    appDir,
+  );
   must("bun", ["run", "type-check"], appDir);
   must("bun", ["run", "build"], appDir);
 
@@ -117,19 +133,34 @@ try {
     must("bun", ["run", releaseOnly ? "test:release" : "test"], appDir);
   }
 
+  const installedDist = join(appDir, "node_modules/@metabase/ui/dist");
+  const fontUrls = Array.from(
+    readFileSync(join(installedDist, "fonts.css"), "utf8").matchAll(
+      /url\("([^"]+)"\)/g,
+    ),
+    ([, url]) => url,
+  );
+  assert(
+    fontUrls.length === 3 && fontUrls.every((url) => url.endsWith(".woff2")),
+    `expected three WOFF2 references in packed fonts.css, got ${fontUrls}`,
+  );
+  for (const url of fontUrls) {
+    assert(existsSync(join(installedDist, url)), `missing packed font ${url}`);
+  }
+
   const assets = readdirSync(join(appDir, "dist/assets"));
   for (const weight of ["regular", "700", "900"]) {
     assert(
       assets.some(
-        (f) => f.startsWith(`lato-v16-latin-${weight}`) && f.endsWith(".woff2"),
+        (file) =>
+          file.startsWith(`lato-v16-latin-${weight}`) &&
+          file.endsWith(".woff2"),
       ),
-      `built output is missing Lato ${weight} .woff2`,
+      `built output is missing Lato ${weight} WOFF2`,
     );
   }
   assert(
-    existsSync(
-      join(appDir, "node_modules/@metabase/ui/dist/fonts/Lato/OFL.txt"),
-    ),
+    existsSync(join(installedDist, "fonts/Lato/OFL.txt")),
     "installed package is missing fonts/Lato/OFL.txt",
   );
 

@@ -11,8 +11,10 @@ const tryOrDefault = <T>(fn: () => T, defaultValue: T): T => {
   }
 };
 
-// @ts-expect-error window.Cypress is not typed
-export const isCypressActive = tryOrDefault(() => !!window.Cypress, false);
+export const isCypressActive =
+  typeof window !== "undefined" &&
+  // @ts-expect-error window.Cypress is not typed
+  !!window.Cypress;
 
 export const isStorybookActive = tryOrDefault(
   () => !!process.env.STORYBOOK,

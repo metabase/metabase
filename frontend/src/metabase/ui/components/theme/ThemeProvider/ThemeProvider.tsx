@@ -1,19 +1,12 @@
-import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
-import { MantineProvider, getPrimaryShade } from "@mantine/core";
-import { type ReactNode, useContext, useMemo } from "react";
+import type { MantineThemeOverride } from "@mantine/core";
+import type { ReactNode } from "react";
 
-import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
-import { getCspNonce } from "metabase/utils/csp";
-import { deepMerge } from "metabase/utils/deep-merge";
 import type { ColorSettings } from "metabase-types/api/color-settings";
 
 import { getThemeOverrides } from "../../../theme";
 import "../../overlays/Popover/register-popover-dropdown";
-import { useColorScheme } from "../ColorSchemeProvider";
-import { DatesProvider } from "../DatesProvider";
-
-import { ThemeProviderContext } from "./context";
+import { ThemeProviderBase } from "./ThemeProviderBase";
 
 export interface ThemeProviderProps {
   children: ReactNode;
@@ -52,72 +45,6 @@ export interface ThemeProviderProps {
   forceDynamicBrandRamp?: boolean;
 }
 
-export const ThemeProvider = ({
-  children,
-  theme: themeOverride,
-  resolvedColorScheme: resolvedColorSchemeProp,
-  whitelabelColors,
-  onUpdateWhitelabelColors,
-  cssVariablesSelector,
-  forceDynamicBrandRamp,
-}: ThemeProviderProps) => {
-  const colorSchemeContext = useColorScheme();
-  const resolvedColorScheme =
-    resolvedColorSchemeProp ?? colorSchemeContext.resolvedColorScheme;
-
-  const theme = useMemo(() => {
-    // Unjustified type cast. FIXME
-    const baseTheme = deepMerge(
-      getThemeOverrides({
-        colorScheme: resolvedColorScheme,
-        whitelabelColors,
-        forceDynamicBrandRamp,
-      }),
-      themeOverride,
-    ) as MantineTheme;
-
-    // Unjustified type cast. FIXME
-    return {
-      ...baseTheme,
-      other: {
-        ...baseTheme.other,
-        ...(onUpdateWhitelabelColors && {
-          updateColorSettings: onUpdateWhitelabelColors,
-        }),
-      },
-      fn: {
-        themeColor: (color: ColorName): string => {
-          const shade = getPrimaryShade(baseTheme, resolvedColorScheme);
-
-          return color in baseTheme.colors
-            ? baseTheme.colors[color][shade]
-            : // Unjustified type cast. FIXME
-              baseTheme.colors[baseTheme.primaryColor as ColorName][shade];
-        },
-      },
-    } as MantineTheme;
-  }, [
-    themeOverride,
-    forceDynamicBrandRamp,
-    resolvedColorScheme,
-    whitelabelColors,
-    onUpdateWhitelabelColors,
-  ]);
-
-  const { withCssVariables, withGlobalClasses } =
-    useContext(ThemeProviderContext);
-
-  return (
-    <MantineProvider
-      theme={theme}
-      forceColorScheme={resolvedColorScheme}
-      getStyleNonce={() => getCspNonce() ?? "metabase"}
-      classNamesPrefix="mb-mantine"
-      cssVariablesSelector={cssVariablesSelector}
-      withCssVariables={withCssVariables}
-      withGlobalClasses={withGlobalClasses}
-    >
-      <DatesProvider>{children}</DatesProvider>
-    </MantineProvider>
-  );
-};
+export const ThemeProvider = (props: ThemeProviderProps) => (
+  <ThemeProviderBase {...props} getThemeOverrides={getThemeOverrides} />
+);

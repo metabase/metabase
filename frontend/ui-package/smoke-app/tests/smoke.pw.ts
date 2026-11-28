@@ -245,6 +245,82 @@ for (const scheme of SCHEMES) {
   });
 }
 
+test("@release a native Mantine Select works outside the Metabase provider", async ({
+  page,
+}) => {
+  await page.goto("/?native-select");
+  const select = page.getByRole("textbox", { name: "Native select" });
+  await expect(select).toBeVisible();
+  await select.click();
+  await page.getByRole("option", { name: "Native option" }).click();
+  await expect(select).toHaveValue("Native option");
+});
+
+test("@release a Drawer opened from a custom-layer Modal can be used", async ({
+  page,
+}) => {
+  await page.goto("/?high-overlay&drawer");
+  await page.getByTestId("open-modal").click();
+  await page.getByRole("button", { name: "Open drawer" }).click();
+  const drawer = page.getByRole("dialog", { name: "Nested drawer" });
+  await expect(drawer).toBeVisible();
+  await expect.poll(() => isOnTop(drawer)).toBe(true);
+  await drawer.getByRole("button", { name: "Close nested drawer" }).click();
+  await expect(drawer).toBeHidden();
+  const modal = page.getByRole("dialog", { name: "Modal title" });
+  await expect(modal).toBeVisible();
+
+  const trigger = page.getByRole("button", { name: "Open drawer" });
+  await trigger.click();
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(modal).toBeVisible();
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(modal).toBeHidden();
+});
+
+test("the slim provider applies opted-in Button styles in both schemes", async ({
+  page,
+}) => {
+  for (const scheme of ["light", "dark"]) {
+    const button = page.getByTestId("button-filled");
+    await page.goto(`/?scheme=${scheme}`);
+    await expect(button).toBeVisible();
+    const expectedColor = await button.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    );
+    await page.goto(`/?slim&scheme=${scheme}`);
+    await expect(button).toHaveCSS("background-color", expectedColor);
+    await expect(button).toHaveCSS("font-family", /Lato/);
+  }
+});
+
+test("the slim provider can render a Button without component overrides", async ({
+  page,
+}) => {
+  await page.goto("/?slim&no-overrides");
+  await expect(page.getByRole("button", { name: "Filled" })).toBeVisible();
+});
+
+test("renders an individually imported SVG icon", async ({ page }) => {
+  await page.goto("/");
+  const icon = page.getByRole("img", { name: "Packed table icon" });
+  await expect(icon.locator("path").first()).toBeVisible();
+  await expect(icon).toHaveAttribute("width", "18");
+  await expect(
+    page.getByTestId("entity-with-icon").locator("svg path").first(),
+  ).toBeVisible();
+  await page.getByTestId("select").click();
+  await expect(
+    page.getByRole("option", { name: "One" }).locator("svg path").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("option", { name: /Two/ }).locator("svg path").first(),
+  ).toBeVisible();
+});
+
 test("a portalled Select can be used inside a custom modal layer", async ({
   page,
 }) => {
@@ -304,6 +380,48 @@ test("a floating tooltip stays above a custom modal layer", async ({
   const tooltip = page.getByText("Floating tooltip", { exact: true });
   await expect(tooltip).toBeVisible();
   await expect.poll(() => isOnTop(tooltip)).toBe(true);
+});
+
+test("@release renders with a nonce-only inline style policy", async ({
+  page,
+}) => {
+  const nonce = "test-style-nonce";
+  const violations: string[] = [];
+  page.on("console", (message) => {
+    if (message.text().includes("Content Security Policy")) {
+      violations.push(message.text());
+    }
+  });
+  await page.route(`/?nonce=${nonce}`, async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      headers: {
+        ...response.headers(),
+        "content-security-policy": `style-src 'self' 'nonce-${nonce}'`,
+      },
+    });
+  });
+
+  await page.goto(`/?nonce=${nonce}`);
+  await expect(page.getByTestId("button-filled")).toBeVisible();
+  await page.getByTestId("open-modal").click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+  const styles = await page.locator("style").evaluateAll((elements) =>
+    elements.map((element) => ({
+      nonce: element.nonce,
+      css: element.textContent,
+    })),
+  );
+  expect(
+    styles.some(({ css }) => css?.includes("--mb-color-core-brand:")),
+  ).toBe(true);
+  expect(styles.some(({ css }) => css?.includes("--mantine-color-"))).toBe(
+    true,
+  );
+  expect(styles.map((style) => style.nonce)).toEqual(styles.map(() => nonce));
+  expect(violations).toEqual([]);
 });
 
 test("@release light and dark resolve different colors", async ({ page }) => {

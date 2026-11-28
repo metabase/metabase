@@ -10,8 +10,7 @@
     "../../node_modules/@testing-library/jest-dom/types/jest.d.ts",
     "../src/metabase/ui/mantine.d.ts",
     "../src/types/dayjs.d.ts",
-    "../src/types/react.d.ts",
-    "../src/types/underscore.d.ts"
+    "../src/types/react.d.ts"
   ],
   "exclude": []
 }

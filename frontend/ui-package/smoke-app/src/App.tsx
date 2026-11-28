@@ -1,8 +1,11 @@
 /* eslint-disable i18next/no-literal-string -- smoke app, not translated */
+import { MantineProvider, Select as MantineSelect } from "@mantine/core";
 import {
   Box,
   Button,
+  Drawer,
   Ellipsified,
+  EntityNameCell,
   Group,
   Icon,
   MetabaseUIProvider,
@@ -15,6 +18,9 @@ import {
   color,
   useColorScheme,
 } from "@metabase/ui";
+import TableIcon from "@metabase/ui/icons/table";
+import { buttonOverrides } from "@metabase/ui/overrides/buttons/Button/Button.config";
+import { SlimMetabaseUIProvider } from "@metabase/ui/slim";
 import { useState } from "react";
 
 const initialColorScheme =
@@ -45,8 +51,21 @@ export const App = () => {
     initialColorScheme,
   );
   const [modalOpened, setModalOpened] = useState(false);
+  const [drawerOpened, setDrawerOpened] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
+  if (params.has("slim")) {
+    return (
+      <SlimMetabaseUIProvider
+        colorScheme={colorScheme}
+        components={params.has("no-overrides") ? undefined : buttonOverrides}
+      >
+        <Button variant="filled" data-testid="button-filled">
+          Filled
+        </Button>
+      </SlimMetabaseUIProvider>
+    );
+  }
   const highOverlay = params.has("high-overlay");
   const tooltipOverride = params.has("tooltip-override")
     ? { Tooltip: { defaultProps: { zIndex: 11000 } } }
@@ -60,7 +79,7 @@ export const App = () => {
           },
         }
       : undefined;
-  return (
+  const metabase = (
     <MetabaseUIProvider
       colorScheme={colorScheme}
       fontFamily={
@@ -90,6 +109,12 @@ export const App = () => {
             Open modal
           </Button>
           <Icon name="table" size={24} data-testid="icon-table" />
+          <TableIcon
+            width={18}
+            height={18}
+            role="img"
+            aria-label="Packed table icon"
+          />
         </Group>
 
         {params.has("theme-controls") && (
@@ -117,11 +142,21 @@ export const App = () => {
           </Ellipsified>
         </Box>
 
-        <Select
+        <Select<string>
           label="Select"
-          data={["One", "Two", "Three"]}
+          data={[
+            { label: "One", value: "One", icon: TableIcon },
+            { label: "Two", value: "Two", icon: "table" },
+            { label: "Three", value: "Three" },
+          ]}
           data-testid="select"
           w={200}
+        />
+
+        <EntityNameCell
+          name="Table"
+          icon={TableIcon}
+          data-testid="entity-with-icon"
         />
 
         <Tooltip label="Tooltip label" opened position="right">
@@ -145,6 +180,20 @@ export const App = () => {
           {highOverlay && (
             <Select label="Modal select" data={["Alpha", "Beta"]} />
           )}
+          {params.has("drawer") && (
+            <>
+              <Button onClick={() => setDrawerOpened(true)}>Open drawer</Button>
+              <Drawer
+                opened={drawerOpened}
+                onClose={() => setDrawerOpened(false)}
+                title="Nested drawer"
+              >
+                <Button onClick={() => setDrawerOpened(false)}>
+                  Close nested drawer
+                </Button>
+              </Drawer>
+            </>
+          )}
           {highOverlay && (
             <Tooltip.Floating label="Floating tooltip">
               <Button>Floating tooltip target</Button>
@@ -158,5 +207,20 @@ export const App = () => {
         </Modal>
       </Stack>
     </MetabaseUIProvider>
+  );
+
+  return (
+    <>
+      {metabase}
+      {params.has("native-select") && (
+        <MantineProvider
+          withCssVariables={false}
+          withGlobalClasses={false}
+          getRootElement={() => undefined}
+        >
+          <MantineSelect label="Native select" data={["Native option"]} />
+        </MantineProvider>
+      )}
+    </>
   );
 };
