@@ -136,11 +136,11 @@ function getFilterValues(
 
 /** Answers a query with the orders that match its filters on Quantity and ID */
 function getOrdersDataset(query: unknown) {
-  const quantities = getFilterValues(query, ORDERS.QUANTITY) ?? [];
+  const quantities = getFilterValues(query, ORDERS.QUANTITY);
   const ids = getFilterValues(query, ORDERS.ID);
   const rows = ORDER_ROWS.filter(
     (row) =>
-      quantities.includes(row[ORDERS_QUANTITY_INDEX]) &&
+      (quantities == null || quantities.includes(row[ORDERS_QUANTITY_INDEX])) &&
       (ids == null || ids.includes(row[0])),
   );
   return createMockDataset({
@@ -738,21 +738,7 @@ describe("QueryBuilder > object detail", () => {
       display: "table",
       dataset_query: Lib.toJsQuery(
         Lib.createTestQuery(SAMPLE_PROVIDER, {
-          stages: [
-            {
-              source: { type: "table", id: ORDERS_ID },
-              filters: [
-                {
-                  type: "operator",
-                  operator: "=",
-                  args: [
-                    { type: "column", name: "QUANTITY" },
-                    { type: "literal", value: 2 },
-                  ],
-                },
-              ],
-            },
-          ],
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
         }),
       ),
     });
@@ -761,7 +747,20 @@ describe("QueryBuilder > object detail", () => {
       database: AUTO_RUN_DATABASE,
       dataset: getOrdersDataset(card.dataset_query),
     });
-    await screen.findByText("Showing 6 rows");
+    await screen.findByText("Showing 9 rows");
+
+    await userEvent.click(
+      within(screen.getByTestId("table-root")).getByText("Quantity"),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Filter by this column/ }),
+    );
+    const addPopover = await screen.findByTestId("number-filter-picker");
+    await userEvent.click(await within(addPopover).findByLabelText("2"));
+    await userEvent.click(
+      within(addPopover).getByRole("button", { name: "Add filter" }),
+    );
+    expect(await screen.findByText("Showing 6 rows")).toBeInTheDocument();
 
     await userEvent.click(within(getRow(5)).getByTestId("detail-shortcut"));
     const detail = await screen.findByTestId("object-detail");
@@ -787,7 +786,11 @@ describe("QueryBuilder > object detail", () => {
       ),
     ).toBeInTheDocument();
     await waitFor(() =>
-      expect(getRunQuantityFilterValues().slice(0, 2)).toEqual([[2], [2, 3]]),
+      expect(getRunQuantityFilterValues().slice(0, 3)).toEqual([
+        null,
+        [2],
+        [2, 3],
+      ]),
     );
     // the row count is hidden while the detail view is open
     await userEvent.keyboard("{Escape}");
