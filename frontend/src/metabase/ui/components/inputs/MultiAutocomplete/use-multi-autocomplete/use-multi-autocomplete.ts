@@ -7,7 +7,7 @@ import {
   useCombobox,
 } from "@mantine/core";
 import { useWindowEvent } from "@mantine/hooks";
-import { parse } from "csv-parse/browser/esm/sync";
+import type { parse } from "csv-parse/browser/esm/sync";
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -17,6 +17,10 @@ import {
   useMemo,
   useState,
 } from "react";
+
+import { csvParseLibrary } from "metabase/utils/lazy-libraries";
+import { useLazyModule } from "metabase/utils/lazy-module";
+type CsvParse = typeof parse;
 
 const DELIMITERS = [",", "\t", "\n"];
 const QUOTE_CHAR = '"';
@@ -63,6 +67,8 @@ export function useMultiAutocomplete({
   onDropdownClose,
   onOptionSubmit,
 }: UseMultiAutocompleteProps) {
+  const csvParse = useLazyModule(csvParseLibrary)?.parse;
+  const parseCsv = (rawValue: string) => parseCsvValues(rawValue, csvParse);
   const combobox = useCombobox({
     opened: dropdownOpened,
     defaultOpened: defaultDropdownOpened,
@@ -76,7 +82,10 @@ export function useMultiAutocomplete({
   const [_fieldSelection, setFieldSelection] = useState<FieldSelection>();
   const [fieldMinWidth, setFieldMinWidth] = useState<number>();
   const fieldSelection = _fieldSelection ?? { index: values.length, length: 0 };
-  const searchValue = useMemo(() => getSearchValue(fieldValue), [fieldValue]);
+  const searchValue = useMemo(
+    () => getSearchValue(fieldValue, csvParse),
+    [fieldValue, csvParse],
+  );
   const options = useMemo(() => getParsedComboboxData(data), [data]);
 
   const setFieldState = ({
@@ -88,7 +97,7 @@ export function useMultiAutocomplete({
     setFieldSelection(fieldSelection);
     setFieldMinWidth(fieldMinWidth);
 
-    const newSearchValue = getSearchValue(fieldValue);
+    const newSearchValue = getSearchValue(fieldValue, csvParse);
     onSearchChange?.(newSearchValue);
   };
 
@@ -299,8 +308,8 @@ export function useMultiAutocomplete({
   };
 }
 
-function getSearchValue(fieldValue: string) {
-  const parsedValues = parseCsv(fieldValue);
+function getSearchValue(fieldValue: string, csvParse?: CsvParse) {
+  const parsedValues = parseCsvValues(fieldValue, csvParse);
   return parsedValues.length === 1 ? parsedValues[0] : fieldValue;
 }
 
@@ -435,9 +444,17 @@ function getParsedValuesCombinedWithFieldValue(
   ];
 }
 
-function parseCsv(rawValue: string): string[] {
+// Until the CSV parser has loaded, split on the delimiters without quote handling,
+// which gives the same result for unquoted values.
+function parseCsvValues(rawValue: string, csvParse?: CsvParse): string[] {
+  if (!csvParse) {
+    return rawValue
+      .split(new RegExp(`[${DELIMITERS.join("")}]`))
+      .map((value) => value.trim())
+      .filter((value) => value !== "");
+  }
   try {
-    return parse(rawValue, {
+    return csvParse(rawValue, {
       delimiter: DELIMITERS,
       skip_empty_lines: true,
       relax_column_count: true,

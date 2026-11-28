@@ -1,19 +1,23 @@
-import { Lexer } from "marked";
+import type { Lexer } from "marked";
 
 const FOOTNOTE_PATTERN = /\[\^[^\]\s]+\]/;
 
 // Splits markdown into top-level block sources for memoized rendering.
-export const splitMarkdownBlocks = (source: string): string[] => {
+// Without a lexer (before `marked` has loaded), the source is one block.
+export const splitMarkdownBlocks = (
+  source: string,
+  MarkdownLexer?: typeof Lexer,
+): string[] => {
   if (source === "") {
     return [];
   }
 
-  if (FOOTNOTE_PATTERN.test(source)) {
+  if (!MarkdownLexer || FOOTNOTE_PATTERN.test(source)) {
     return [source];
   }
 
   try {
-    const tokens = new Lexer({ gfm: true }).lex(source);
+    const tokens = new MarkdownLexer({ gfm: true }).lex(source);
 
     // Reference definitions are document-scoped, so blocks can't resolve them alone.
     if (tokens.links && Object.keys(tokens.links).length > 0) {

@@ -80,11 +80,9 @@ declare module "*.css" {
 
 declare module "iframe-resizer/js/iframeResizer.contentWindow.js";
 
-declare module "simple-statistics" {
-  const ss: {
-    ckmeans: (data: number[], nClusters: number) => number[][];
-  };
-  export default ss;
+declare module "simple-statistics/src/ckmeans" {
+  const ckmeans: (data: number[], nClusters: number) => number[][];
+  export default ckmeans;
 }
 
 type Nullable<T> = T | null;

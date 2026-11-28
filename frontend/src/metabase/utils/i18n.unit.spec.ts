@@ -1,8 +1,10 @@
-import { dayjs } from "metabase/dayjs";
+import { dayjs, loadDayjsLocale } from "metabase/dayjs";
 
 import { type LocaleDataWithLanguage, setLocalization } from "./i18n";
 
-function setup(language: string) {
+async function setup(language: string) {
+  // In the app, `loadLocaleCatalog` loads the dayjs locale before `setLocalization` runs.
+  await loadDayjsLocale(language);
   setLocalization({
     headers: { language, "plural-forms": "nplurals=2; plural=(n != 1);" },
     translations: { "": {} },
@@ -10,22 +12,22 @@ function setup(language: string) {
 }
 
 describe("setLocalization", () => {
-  it("should preserve latin numbers when formatting dates in 'ar' locale", () => {
-    setup("ar");
+  it("should preserve latin numbers when formatting dates in 'ar' locale", async () => {
+    await setup("ar");
     const date = dayjs.utc("2023-10-12T21:07:33.476Z");
 
     expect(date.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
   });
 
-  it("should preserve latin numbers when formatting dates in 'ar-sa' locale", () => {
-    setup("ar-sa");
+  it("should preserve latin numbers when formatting dates in 'ar-sa' locale", async () => {
+    await setup("ar-sa");
     const date = dayjs.utc("2023-10-12T21:07:33.476Z");
 
     expect(date.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
   });
 
-  it("should preserve latin numbers in the 'en' locale", () => {
-    setup("en");
+  it("should preserve latin numbers in the 'en' locale", async () => {
+    await setup("en");
     const date = dayjs.utc("2023-10-12T21:07:33.476Z");
 
     expect(date.format("MMMM D, YYYY, h:mm A")).toBe(

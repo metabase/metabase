@@ -1,8 +1,6 @@
-import type { JSX } from "react";
-import ReactDOMServer from "react-dom/server";
 import { t } from "ttag";
 
-import BrandingLogo from "metabase/embedding/components/LogoBadge/metabase_logo_with_text.svg?component";
+import brandingLogoSource from "metabase/embedding/components/LogoBadge/metabase_logo_with_text.svg?source";
 
 type BrandingSize = "xs" | "s" | "m" | "l" | "xl" | "xxl" | "xxxl";
 
@@ -25,10 +23,16 @@ export const getBrandingSize = (width: number): BrandingSize => {
   return "xxxl";
 };
 
-const svgComponentToBase64 = (Component: JSX.Element): string => {
-  const svgString = ReactDOMServer.renderToStaticMarkup(Component);
-  const encoded = Buffer.from(svgString, "utf-8").toString("base64");
-  return `data:image/svg+xml;base64,${encoded}`;
+// Uses the raw SVG source, so exports don't pull `react-dom/server` and the `Buffer` polyfill
+// into the main bundle. The logo is ASCII-only, so `btoa` can encode it. The root element gets
+// the target size, as when the logo was rendered as a React component, so it draws the same.
+const getBrandingLogoDataUrl = (width: number, height: number) => {
+  const sizedSource = brandingLogoSource.replace(
+    /<svg\b([^>]*)>/,
+    (_match, attributes: string) =>
+      `<svg${attributes.replace(/\s(width|height)="[^"]*"/g, "")} width="${width}" height="${height}">`,
+  );
+  return `data:image/svg+xml;base64,${btoa(sizedSource)}`;
 };
 
 type BrandingConfig = {
@@ -78,10 +82,6 @@ export const createBrandingElement = (size: BrandingSize) => {
   const LOGO_HEIGHT = ly;
   const LOGO_WIDTH = LOGO_HEIGHT * LOGO_ASCPECT_RATIO;
 
-  const LogoComponent = (
-    <BrandingLogo width={LOGO_WIDTH} height={LOGO_HEIGHT} />
-  );
-
   const container = document.createElement("div");
   container.style.cssText = `
     height: ${h}px;
@@ -108,10 +108,8 @@ export const createBrandingElement = (size: BrandingSize) => {
     container.appendChild(brandingCopy);
   }
 
-  const logoDataUrl = svgComponentToBase64(LogoComponent);
-
   const logo = document.createElement("img");
-  logo.src = logoDataUrl;
+  logo.src = getBrandingLogoDataUrl(LOGO_WIDTH, LOGO_HEIGHT);
   logo.width = LOGO_WIDTH;
   logo.height = LOGO_HEIGHT;
 
