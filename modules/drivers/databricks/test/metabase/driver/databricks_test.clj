@@ -375,7 +375,19 @@
         (is (= 1 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
                                                                            details))))
         (is (= 0 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
-                                                                           details2))))))))
+                                                                           details2))))
+        (testing "with other options"
+          (doseq [[options expected] {"UseThriftClient=1;EnableQueryResultDownload=0"                    1
+                                      "EnableQueryResultDownload=0;UseThriftClient=1"                    1
+                                      ";EnableQueryResultDownload=0;UseThriftClient=1;"                  1
+                                      "UseThriftClient=0;EnableQueryResultDownload=0;UseBoundedSeaApi=1" 0
+                                      "EnableQueryResultDownload=0;UseBoundedSeaApi=1"                   0
+                                      "MyUseThriftClient=1"                                              0}]
+            (testing options
+              (is (= expected
+                     (:UseThriftClient (sql-jdbc.conn/connection-details->spec
+                                        :databricks
+                                        (assoc details :additional-options options))))))))))))
 
 (deftest multi-level-schema-test
   (mt/test-driver :databricks
