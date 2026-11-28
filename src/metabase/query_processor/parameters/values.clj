@@ -382,6 +382,12 @@
     [_metadata-providerable tag params]
     (param-value-for-raw-value-tag tag params)))
 
+(mu/defn- current-user-id-param-value :- [:maybe ::lib.schema.id/user]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (or (when (map? metadata-providerable)
+        (get-in metadata-providerable [:info :executed-by]))
+      api/*current-user-id*))
+
 ;;; Parsing Values
 
 (mu/defn- parse-number :- number?
@@ -488,7 +494,9 @@
    tag                   :- ::lib.schema.template-tag/template-tag
    params                :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (try
-    (parse-value-for-type (:type tag) (parse-tag metadata-providerable tag params))
+    (parse-value-for-type (:type tag) (if (lib/current-user-id-template-tag? tag)
+                                        (current-user-id-param-value metadata-providerable)
+                                        (parse-tag metadata-providerable tag params)))
     (catch Throwable e
       (throw (ex-info (tru "Error determining value for parameter {0}: {1}"
                            (pr-str (:name tag))

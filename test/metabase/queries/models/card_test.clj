@@ -433,6 +433,21 @@
                     (lib/native-query meta/metadata-provider sql)
                     template-tags)})
 
+(deftest ^:parallel template-tag-parameters-current-user-id-tag-test
+  (testing "Built-in current user id tags are resolved at runtime and do not become card parameters"
+    (let [card (native-query-card
+                "SELECT {{current_user_id}} AS current_user_id, {{current-user-id}} AS current_user_id_2"
+                {"current_user_id" {:id           "_CURRENT_USER_ID_"
+                                    :name         "current_user_id"
+                                    :display-name "Current User ID"
+                                    :type         :number}
+                 "current-user-id" {:id           "_CURRENT_USER_ID_2"
+                                    :name         "current-user-id"
+                                    :display-name "Current User ID"
+                                    :type         :text}})]
+      (is (= []
+             (qp.card/template-tag-parameters card))))))
+
 (deftest ^:parallel template-tag-parameters-text-tag-test
   (testing ":text template tag without widget-type produces :string/= parameter type (QUE2-326)"
     (let [card (native-query-card

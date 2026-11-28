@@ -255,6 +255,18 @@ describe("parameters/utils/cards", () => {
           "snippet-id": 1,
           "snippet-name": "C",
         }),
+        createMockTemplateTag({
+          type: "number",
+          id: "4",
+          name: "current_user_id",
+          "display-name": "Current User ID",
+        }),
+        createMockTemplateTag({
+          type: "text",
+          id: "5",
+          name: "current-user-id",
+          "display-name": "Current User ID",
+        }),
       ];
       expect(getTemplateTagParameters(tags)).toEqual([
         {

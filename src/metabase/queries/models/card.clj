@@ -403,6 +403,10 @@
     (throw (ex-info (tru "You cannot save a native query that targets the audit database.")
                     {:status-code 400}))))
 
+(defn- supported-model-template-tag? [tag]
+  (or (contains? #{:card :snippet} (keyword (:type tag)))
+      (lib/current-user-id-template-tag? tag)))
+
 (defn- check-model-query
   "Throws a 400 when `card` is a model whose native query has a variable or a field filter."
   [{query :dataset_query, :as card}]
@@ -410,7 +414,7 @@
     (let [stage (lib-be/query-first-stage query)
           tags  (:template-tags stage)]
       (when (and (= :mbql.stage/native (:lib/type stage))
-                 (some #(not (contains? #{:card :snippet} (keyword (:type %)))) (if (map? tags) (vals tags) tags)))
+                 (not-every? supported-model-template-tag? (if (map? tags) (vals tags) tags)))
         (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
                         {:status-code 400}))))))
 
