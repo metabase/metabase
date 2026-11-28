@@ -28,6 +28,7 @@ import { getEmptyResultsMessage, shouldSearch } from "./utils";
 
 type SearchValuePickerProps = {
   canRemapValues: boolean;
+  canFetchSearchValues: boolean;
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
@@ -46,6 +47,7 @@ type SearchValuePickerProps = {
 
 export function SearchValuePicker({
   canRemapValues,
+  canFetchSearchValues,
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
@@ -59,7 +61,7 @@ export function SearchValuePicker({
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
-  const canSearch = searchQuery.length > 0;
+  const canSearch = canFetchSearchValues && searchQuery.length > 0;
 
   const {
     data: searchFieldValues,

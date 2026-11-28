@@ -17,6 +17,13 @@ export function canSearchFieldValues({
   return searchFieldId != null && hasFieldValues === "search";
 }
 
+export function canFetchFieldSearchValues({
+  fieldId,
+  searchFieldId,
+}: FieldSearchInfo): boolean {
+  return fieldId != null && searchFieldId != null;
+}
+
 export function canRemapFieldValues({
   fieldId,
   searchFieldId,

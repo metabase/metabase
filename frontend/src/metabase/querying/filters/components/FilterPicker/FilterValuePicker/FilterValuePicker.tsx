@@ -17,6 +17,7 @@ import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
 import {
+  canFetchFieldSearchValues,
   canListFieldValues,
   canRemapFieldValues,
   canSearchFieldValues,
@@ -70,6 +71,7 @@ function FilterValuePicker({
   const canListValues = canListFieldValues(fieldInfo);
   const canSearchValues = canSearchFieldValues(fieldInfo);
   const canRemapValues = canRemapFieldValues(fieldInfo);
+  const canFetchSearchValues = canFetchFieldSearchValues(fieldInfo);
 
   const useGetFieldValues = ({ skip }: UseGetFieldValuesArgs) => {
     return useGetFieldValuesQuery(
@@ -125,6 +127,7 @@ function FilterValuePicker({
       canListValues={canListValues}
       canSearchValues={canSearchValues}
       canRemapValues={canRemapValues}
+      canFetchSearchValues={canFetchSearchValues}
       comboboxProps={comboboxProps}
       parseValue={parseValue}
       useGetFieldValues={useGetFieldValues}

@@ -1123,6 +1123,97 @@ describe("NumberFilterValuePicker", () => {
       expect(checkboxes[3]).toHaveAccessibleName("Completed");
       expect(checkboxes[3]).not.toBeChecked();
     });
+
+    it("should filter the stored values while typing when there are more values", async () => {
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldId,
+        fieldValues: createMockFieldValues({
+          field_id: fieldId,
+          values: [[10], [20], [30]],
+          has_more_values: true,
+        }),
+      });
+
+      const input = screen.getByLabelText("Filter value");
+      await userEvent.click(input);
+      expect(screen.getByText("10")).toBeInTheDocument();
+      expect(screen.getByText("20")).toBeInTheDocument();
+
+      await userEvent.type(input, "2");
+      expect(await screen.findByText("20")).toBeInTheDocument();
+      expect(screen.queryByText("10")).not.toBeInTheDocument();
+      expect(screen.queryByText("30")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("20"));
+      expect(onChange).toHaveBeenLastCalledWith([20]);
+    });
+
+    it("should allow a value that is not stored when there are more values", async () => {
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldId,
+        fieldValues: createMockFieldValues({
+          field_id: fieldId,
+          values: [[10], [20], [30]],
+          has_more_values: true,
+        }),
+      });
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "25{enter}");
+      expect(onChange).toHaveBeenLastCalledWith([25]);
+    });
+
+    it("should search on the server when there are more values and a text search field", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: [],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.PRODUCT_ID,
+          values: [
+            [1, "Aerodynamic Bag"],
+            [2, "Awesome Shoes"],
+          ],
+          has_more_values: true,
+        }),
+        searchValues: {
+          z: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [[3, "Zen Table"]],
+          }),
+        },
+      });
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "z");
+      await userEvent.click(await screen.findByText("Zen Table"));
+      expect(onChange).toHaveBeenLastCalledWith([3]);
+    });
   });
 
   describe("search values", () => {

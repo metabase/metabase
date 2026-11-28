@@ -24,6 +24,8 @@ export interface FieldValuePickerProps {
   canListValues?: boolean;
   canSearchValues?: boolean;
   canRemapValues?: boolean;
+  /** Whether typed text can be searched on the server. When false, the stored values are filtered on the page. */
+  canFetchSearchValues?: boolean;
   comboboxProps?: ComboboxProps;
   parseValue?: (rawValue: string) => string | null;
   useGetFieldValues: (args: UseGetFieldValuesArgs) => UseGetFieldValuesResult;
@@ -45,6 +47,7 @@ export function FieldValuePicker({
   canListValues = false,
   canSearchValues = false,
   canRemapValues = false,
+  canFetchSearchValues = true,
   comboboxProps,
   parseValue,
   useGetFieldValues,
@@ -80,6 +83,7 @@ export function FieldValuePicker({
     return (
       <SearchValuePicker
         canRemapValues={canRemapValues}
+        canFetchSearchValues={canFetchSearchValues}
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={searchPlaceholder}
