@@ -1,64 +1,14 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ADMIN_USER_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-  });
-
-  it("keeps the notebook editor mounted when opening the question info sidebar (UXW-224)", () => {
-    H.activateToken("pro-self-hosted");
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openNotebook();
-
-    // The Visualize button only renders while the notebook editor is mounted.
-    cy.location("pathname").should("include", "/notebook");
-    cy.button("Visualize").should("be.visible");
-
-    // Open the question info sidesheet — the notebook should stay mounted behind it.
-    H.questionInfoButton().click();
-    H.sidesheet().should("be.visible");
-    cy.button("Visualize").should("be.visible");
-
-    // Closing the sidesheet should leave us in notebook mode with the editor intact.
-    H.sidesheet().findByLabelText("Close").click();
-    cy.location("pathname").should("include", "/notebook");
-    cy.button("Visualize").should("be.visible");
-
-    // Open Edit settings from the actions menu — same expectation.
-    // ("Edit settings" only appears with granular caching enabled, so this
-    // step requires EE.)
-    H.openQuestionActions("Edit settings");
-    H.sidesheet().should("be.visible");
-    cy.location("pathname").should("include", "/notebook");
-    cy.button("Visualize").should("be.visible");
-  });
-
-  it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
-    H.openOrdersTable();
-    // save question initially
-    H.saveQuestion(undefined, undefined, {
-      path: ["Our analytics"],
-    });
-
-    // enter "notebook" and visualize without changing anything
-    H.openNotebook();
-
-    cy.button("Visualize").click();
-
-    cy.location("pathname").should("not.include", "/notebook");
-    H.tableInteractive().should("be.visible");
-    // there were no changes to the question, so we shouldn't have the option to "Save"
-    H.queryBuilderHeader().button("Save").should("not.exist");
   });
 
   it("should allow post-aggregation filters", () => {
@@ -98,84 +48,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.contains("Showing 1 row"); // ensure only one user was returned
   });
 
-  it("should render preview without detail view column, pick custom aggregation expressions, and hide FK sub-dimensions (metabase#63070, metabase#16787)", () => {
-    function openPreview() {
-      cy.findByTestId("step-preview-button").click();
-    }
-
-    function verifyPreviewIsRendered() {
-      cy.findByTestId("table-scroll-container").should("contain", "37.65");
-    }
-
-    function verifyIndexColumnsNotRendered() {
-      cy.findAllByTestId("row-id-cell").should("have.length", 0);
-    }
-
+  it("should render a step preview without the detail view column (metabase#63070)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
-    openPreview();
-    verifyPreviewIsRendered();
-    verifyIndexColumnsNotRendered();
-
-    H.summarize({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Find...").type("Distinc");
-      cy.findByText("Number of distinct values of ...").should("be.visible");
-      cy.findByText("DistinctIf").click();
-      H.CustomExpressionEditor.value().should(
-        "equal",
-        "DistinctIf(column, condition)",
-      );
-    });
-    H.expressionEditorWidget().button("Cancel").click();
-    H.popover().findByPlaceholderText("Find...").should("be.visible");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.exist");
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-
-    H.popover().within(() => {
-      H.getDimensionByName({ name: "Created At" })
-        .findByLabelText("Temporal bucket")
-        .should("exist");
-      H.getDimensionByName({ name: "Subtotal" })
-        .findByLabelText("Binning strategy")
-        .should("exist");
-
-      H.getDimensionByName({ name: "User ID" })
-        .findByLabelText("Binning strategy")
-        .should("not.exist");
-      H.getDimensionByName({ name: "User ID" })
-        .findByLabelText("Temporal bucket")
-        .should("not.exist");
-    });
-  });
-
-  it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          filter: ["between", ["field", ORDERS.ID, null], 96, 97],
-        },
-        type: "query",
-      },
-      display: "table",
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ID is between 96 and 97").click();
-    H.popover().findByDisplayValue("96").should("be.visible");
-    H.popover().findByDisplayValue("97").should("be.visible");
-    H.popover().findByText("Between").click();
-    cy.findByRole("menu").within(() => {
-      cy.findByText("Is not").should("be.visible");
-      cy.findByText("Greater than").should("be.visible");
-      cy.findByText("Less than").should("be.visible");
-    });
+    cy.findByTestId("step-preview-button").click();
+    cy.findByTestId("table-scroll-container").should("contain", "37.65");
+    cy.findAllByTestId("row-id-cell").should("have.length", 0);
   });
 
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
@@ -224,46 +102,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.contains("Showing 175 rows");
   });
 
-  it("should show an info card for filter columns in the popover and the custom expression editor", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filters to narrow your answer").click();
-
-    cy.findByRole("tree")
-      .findByText("User ID")
-      .parents("[data-testid='dimension-list-item']")
-      .findByLabelText("More info")
-      .realHover();
-
-    H.hovercard().within(() => {
-      cy.contains("Foreign Key");
-      cy.findByText(/The id of the user/);
-    });
-
-    // Move the mouse off the info icon so the hovercard can't cover the next click
-    cy.findByTestId("step-data-0-0").realHover();
-    cy.get("body").should("not.contain", "The id of the user");
-
-    H.popover().contains("Custom Expression").click();
-
-    H.CustomExpressionEditor.type("[Cre");
-
-    // hover over option in the suggestion list
-    H.CustomExpressionEditor.completion("Created At")
-      .parents("li")
-      .findByLabelText("More info")
-      .realHover();
-
-    H.hovercard().within(() => {
-      cy.contains("The date and time an order was submitted.");
-      cy.contains("Creation timestamp");
-    });
-  });
-
   describe("popover rendering issues (metabase#15502)", () => {
     beforeEach(() => {
       cy.viewport(1280, 720);
@@ -274,7 +112,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
     });
 
-    it('popover should render within the viewport and not cover the button that invoked it, and "median" is not offered for databases without "percentile-aggregations" (metabase#15502-1, metabase#15502-2)', () => {
+    it("popover should render within the viewport and not cover the button that invoked it (metabase#15502-1, metabase#15502-2)", () => {
       H.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
         .click();
@@ -292,10 +130,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .findByText("Pick a function or metric")
         .click();
 
-      H.popover().within(() => {
-        cy.findByText("Average of ...").should("be.visible");
-        cy.findByText("Median of ...").should("not.exist");
-      });
+      H.popover().findByText("Average of ...").should("be.visible");
 
       // Click outside to close this popover
       H.getProfileLink().click();
@@ -308,81 +143,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .click();
       H.popover().findByText("Average of ...").should("be.visible");
     });
-  });
-
-  // intentional simplification of "Select none" to quickly
-  // fix users' pain caused by the inability to unselect all columns
-  it("select no columns select the first one", () => {
-    H.openTable({
-      table: ORDERS_ID,
-      mode: "notebook",
-    });
-
-    cy.findByTestId("fields-picker").click();
-
-    H.popover().within(() => {
-      cy.findByText("Select all").click();
-      cy.findByLabelText("ID").should("have.attr", "aria-disabled", "true");
-      cy.findByText("Tax").click();
-      cy.findByLabelText("ID").should("not.have.attr", "aria-disabled");
-      cy.findByLabelText("ID").click();
-    });
-
-    H.popover().findAllByLabelText("More info").first().realHover();
-    H.hovercard().contains("This is a unique ID");
-
-    cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ID").should("not.exist");
-  });
-
-  it("should treat max/min on a name as a string filter (metabase#21973)", () => {
-    const questionDetails = {
-      name: "21973",
-      query: {
-        "source-table": PEOPLE_ID,
-        aggregation: [["max", ["field", PEOPLE.NAME, null]]],
-        breakout: [["field", PEOPLE.SOURCE, null]],
-      },
-      display: "table",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Summaries").click();
-      cy.findByText("Max of Name").click();
-    });
-    H.selectFilterOperator("Starts with");
-    H.popover().findByPlaceholderText("Enter some text").should("be.visible");
-  });
-
-  it("should treat max/min on a category as a string filter (metabase#22154)", () => {
-    const questionDetails = {
-      name: "22154",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["min", ["field", PRODUCTS.VENDOR, null]]],
-        breakout: [["field", PRODUCTS.CATEGORY, null]],
-      },
-      display: "table",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.filter();
-    H.popover().within(() => {
-      cy.findByText("Summaries").click();
-      cy.findByText("Min of Vendor").click();
-    });
-    H.selectFilterOperator("Ends with");
-    H.popover().findByPlaceholderText("Enter some text").should("be.visible");
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
@@ -434,7 +194,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body }) => {
-          const tableId = body.find((table) => table.name === "products").id;
+          const tableId = body.find(
+            (table: { id: number; name: string }) => table.name === "products",
+          ).id;
           H.openTable({
             database: WRITABLE_DB_ID,
             table: tableId,
@@ -533,7 +295,23 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should be able to drag-n-drop query clauses", () => {
-    function moveElement({ name, horizontal, vertical, index }) {
+    type MoveElementOpts = {
+      name: string;
+      horizontal?: number;
+      vertical?: number;
+      index: number;
+    };
+
+    type MoveElementInStepOpts = MoveElementOpts & {
+      type: Parameters<typeof H.getNotebookStep>[0];
+    };
+
+    function moveElement({
+      name,
+      horizontal,
+      vertical,
+      index,
+    }: MoveElementOpts) {
       cy.findByText(name).as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         horizontal,
@@ -572,7 +350,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       index,
       horizontal,
       vertical,
-    }) {
+    }: MoveElementInStepOpts) {
       H.getNotebookStep(type).findByText(name).click();
       H.popover().within(() => {
         cy.findByText("Is").as("dragElement");
@@ -595,7 +373,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       index,
       horizontal,
       vertical,
-    }) {
+    }: MoveElementInStepOpts) {
       H.getNotebookStep(type).within(() => {
         cy.findByText(name).click();
       });
@@ -653,60 +431,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should open only one bucketing popover at a time (metabase#45036)", () => {
-    H.visitQuestionAdhoc(
-      {
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: { "source-table": PRODUCTS_ID, aggregation: [["count"]] },
-          parameters: [],
-        },
-      },
-      { mode: "notebook" },
-    );
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-
-    H.popover()
-      .findByRole("option", { name: "Created At" })
-      .findByText("by month")
-      .realHover()
-      .click();
-
-    H.popover()
-      .eq(1)
-      .within(() => {
-        cy.findByText("Year").should("be.visible");
-        cy.findByText("Hour of day").should("not.exist");
-        cy.findByText("More…").click();
-        cy.findByText("Hour of day").should("be.visible");
-      });
-
-    H.popover()
-      .eq(0)
-      .findByRole("option", { name: "Price" })
-      .findByText("Auto bin")
-      .realHover()
-      .click();
-
-    H.popover()
-      .eq(1)
-      .within(() => {
-        cy.findByText("Auto bin").should("be.visible");
-        cy.findByText("50 bins").should("be.visible");
-        cy.findByText("Don't bin").should("be.visible");
-
-        cy.findByText("Year").should("not.exist");
-        cy.findByText("Hour of day").should("not.exist");
-        cy.findByText("More…").should("not.exist");
-      });
-
-    H.popover().should("have.length", 2);
-  });
-
   it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
     cy.visit("/");
     H.newButton("Question").click();
@@ -726,7 +450,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
 
     cy.findByTestId("loading-indicator").should("not.exist");
-    H.NativeEditor.get(".ace_line")
+    H.NativeEditor.get()
       .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');
@@ -803,57 +527,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     );
     H.modal().should("be.visible").contains("Discard changes").click();
     cy.findByTestId("greeting-message").should("be.visible");
-  });
-
-  it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
-    cy.visit("/");
-    H.newButton("Question").click();
-    H.miniPicker().findByText("Sample Database").click();
-    H.miniPicker().findByText("Orders").click();
-    H.join();
-    H.joinTable("Reviews", "Product ID", "Product ID");
-    H.addSummaryField({ metric: "Count of rows" });
-    H.addSummaryGroupingField({ field: "Created At" });
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByRole("button", { name: "Join data" }).last().click();
-    H.joinTable("Reviews", "Created At: Month", "Created At");
-    cy.button("Summarize").click();
-    H.addSummaryField({ metric: "Count of rows", stage: 1 });
-
-    cy.log("adding a new breakout");
-    H.getNotebookStep("summarize", { stage: 1 })
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Summaries").should("be.visible");
-      cy.findByText("Created At: Month").should("be.visible");
-      cy.findByText("Count").should("be.visible");
-
-      cy.findByText("Reviews").click();
-      cy.findByText("Created At: Month").should("not.exist");
-      cy.findByText("Count").should("not.exist");
-
-      cy.findByText("Summaries").click();
-      cy.findByText("Created At: Month").should("be.visible");
-      cy.findByText("Count").should("be.visible");
-
-      cy.findByText("Reviews").click();
-      cy.findByText("Rating").click();
-    });
-
-    cy.log("editing an existing breakout");
-    H.getNotebookStep("summarize", { stage: 1 })
-      .findByText("Reviews - Created At: Month → Rating: Auto binned")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Summaries").should("be.visible");
-      cy.findByText("Created At: Month").should("not.exist");
-      cy.findByText("Count").should("not.exist");
-
-      cy.findByText("Summaries").click();
-      cy.findByText("Created At: Month").should("be.visible");
-      cy.findByText("Count").should("be.visible");
-    });
   });
 
   it("Correctly translates aggregations", () => {
@@ -1043,9 +716,35 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // );
     });
   });
+
+  it("should render a newly added custom column when previewing Detail visualization (metabase#63181)", () => {
+    const CUSTOM_COLUMN_NAME = "Tax custom column";
+
+    H.createQuestion(
+      {
+        name: "Detail viz with custom column (preview)",
+        query: { "source-table": ORDERS_ID },
+        display: "object",
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "[Tax]", name: CUSTOM_COLUMN_NAME });
+    cy.button("Done").click();
+
+    // Click Visualize without saving the question
+    cy.button("Visualize").click();
+
+    cy.findByTestId("object-detail").should("be.visible");
+    cy.findByTestId("object-detail")
+      .findByText(CUSTOM_COLUMN_NAME)
+      .should("exist");
+  });
 });
 
-function assertTableRowCount(expectedCount) {
+function assertTableRowCount(expectedCount: number) {
   cy.get(".test-Table-ID:not(.test-Table-FK)").should(
     "have.length",
     expectedCount,

@@ -81,6 +81,20 @@ jest.mock("metabase/dashboard/containers/DashboardApp/DashboardApp", () => ({
   DashboardApp: () => <div>dashboard app</div>,
 }));
 
+let mockRenderRealQueryBuilder = false;
+
+jest.mock("metabase/query_builder/containers/QueryBuilder", () => ({
+  QueryBuilder: () => {
+    if (mockRenderRealQueryBuilder) {
+      const { QueryBuilder } = jest.requireActual(
+        "metabase/query_builder/containers/QueryBuilder",
+      );
+      return <QueryBuilder />;
+    }
+    return <div>query builder</div>;
+  },
+}));
+
 function setupAppRoutes({
   initialRoute,
   user = createMockUser({ is_superuser: true }),
@@ -399,5 +413,73 @@ describe("dashboard entity-id deep links", () => {
     expect(
       await screen.findByText("We're a little lost..."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("question entity-id deep links", () => {
+  const CARD_EID = createMockEntityId("wvy0RDfFnzqhjvS6lUsVU");
+  const OTHER_CARD_EID = createMockEntityId("C2xb1oSn8NYuYaMbTZJJx");
+  const CARD_ID = 12;
+  const OTHER_CARD_ID = 7;
+  const TRANSLATE_URL = "path:/api/eid-translation/translate";
+  const WRONG_CARD_URL = "path:/api/card/12";
+
+  afterEach(() => {
+    mockRenderRealQueryBuilder = false;
+  });
+
+  function setup({ initialRoute }: { initialRoute: string }) {
+    setupEntityIdEndpoint({
+      card: { [CARD_EID]: CARD_ID, [OTHER_CARD_EID]: OTHER_CARD_ID },
+    });
+    fetchMock.get(WRONG_CARD_URL, 404);
+    const { router } = setupAppRoutes({ initialRoute });
+    return router;
+  }
+
+  async function getTranslateRequestBody() {
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls(TRANSLATE_URL)).toHaveLength(1),
+    );
+    const [call] = fetchMock.callHistory.calls(TRANSLATE_URL);
+    return JSON.parse(String(call.options.body));
+  }
+
+  it.each([
+    { suffix: "", entityId: OTHER_CARD_EID, id: OTHER_CARD_ID },
+    { suffix: "/notebook", entityId: OTHER_CARD_EID, id: OTHER_CARD_ID },
+    { suffix: "/notebook", entityId: CARD_EID, id: CARD_ID },
+  ])(
+    "redirects /question/entity/$entityId$suffix to /question/$id$suffix",
+    async ({ suffix, entityId, id }) => {
+      const router = setup({
+        initialRoute: `/question/entity/${entityId}${suffix}`,
+      });
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(`/question/${id}${suffix}`),
+      );
+      expect(await screen.findByText("query builder")).toBeInTheDocument();
+      expect(await getTranslateRequestBody()).toEqual({
+        entity_ids: { card: [entityId] },
+      });
+    },
+  );
+
+  it("shows a 404 without requesting /api/card/12 when the entity id starts with 12", async () => {
+    // the real query builder would request the card if the route took the
+    // entity id for a question slug
+    mockRenderRealQueryBuilder = true;
+    const entityId = "12".padEnd(21, "x");
+    const router = setup({ initialRoute: `/question/entity/${entityId}` });
+
+    expect(await getTranslateRequestBody()).toEqual({
+      entity_ids: { card: [entityId] },
+    });
+    expect(
+      await screen.findByText("We're a little lost..."),
+    ).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(`/question/entity/${entityId}`);
+    expect(fetchMock.callHistory.calls(WRONG_CARD_URL)).toHaveLength(0);
   });
 });

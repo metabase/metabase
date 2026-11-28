@@ -8,6 +8,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
@@ -19,12 +20,23 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { FieldReference, TemporalUnit } from "metabase-types/api";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockFingerprint,
+  createMockNumberFieldFingerprint,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS_ID,
+  REVIEWS_ID,
   createOrdersIdField,
   createOrdersTable,
+  createOrdersUserIdField,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -211,6 +223,83 @@ function createQueryWithCustomColumns() {
   });
 }
 
+/**
+ * Orders where User ID has a number range, as in the real sample database, so
+ * only its foreign key type can rule out binning.
+ */
+function createOrdersQueryWithBinnableUserId() {
+  const ordersTable = createOrdersTable();
+  const userIdField = createOrdersUserIdField({
+    fingerprint: createMockFingerprint({
+      type: {
+        "type/Number": createMockNumberFieldFingerprint({ min: 1, max: 2500 }),
+      },
+    }),
+  });
+  const database = createSampleDatabase({
+    tables: [
+      createOrdersTable({
+        fields: ordersTable.fields?.map((field) =>
+          field.id === ORDERS.USER_ID ? userIdField : field,
+        ),
+      }),
+      createPeopleTable(),
+      createProductsTable(),
+      createReviewsTable(),
+    ],
+  });
+  const metadata = createMockMetadata({ databases: [database] });
+  return Lib.createTestQuery(
+    createMetadataProvider({ metadata }),
+    DEFAULT_TEST_QUERY,
+  );
+}
+
+/**
+ * Orders joined with Reviews and counted by month, then joined with Reviews
+ * again on the month and counted in a second stage.
+ */
+function createSecondStageQueryWithJoin() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "PRODUCT_ID" },
+                right: { type: "column", name: "PRODUCT_ID" },
+              },
+            ],
+          },
+        ],
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+        breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+      },
+      {
+        joins: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "CREATED_AT" },
+                right: { type: "column", name: "CREATED_AT" },
+              },
+            ],
+          },
+        ],
+        aggregations: [{ type: "operator", operator: "count", args: [] }],
+      },
+    ],
+  });
+}
+
 interface SetupOpts {
   step?: NotebookStep;
   readOnly?: boolean;
@@ -342,7 +431,180 @@ describe("BreakoutStep", () => {
     expect(Lib.breakouts(nextQuery, 0)).toHaveLength(0);
   });
 
+  describe("second stage with a join (metabase#46832)", () => {
+    function getBreakoutNames(query: Lib.Query, stageIndex: number) {
+      return Lib.breakouts(query, stageIndex).map(
+        (breakout) =>
+          Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
+      );
+    }
+
+    it("should list the previous stage columns and the joined columns in separate groups", async () => {
+      const query = createSecondStageQueryWithJoin();
+      const { getNextQuery } = setup({
+        step: createMockNotebookStep({ query, stageIndex: 1 }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      expect(await screen.findByText("Summaries")).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Created At: Month" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Count" })).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Reviews"));
+      expect(
+        screen.queryByRole("option", { name: "Created At: Month" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Count" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "Rating" }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Summaries"));
+      expect(
+        screen.getByRole("option", { name: "Created At: Month" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Count" })).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Reviews"));
+      await userEvent.click(screen.getByText("Rating"));
+
+      expect(getBreakoutNames(getNextQuery(), 1)).toEqual([
+        "Reviews - Created At: Month → Rating: Auto binned",
+      ]);
+    });
+
+    it("should open the group of an edited breakout and keep the previous stage columns in their group", async () => {
+      const baseQuery = createSecondStageQueryWithJoin();
+      const rating = checkNotNull(
+        Lib.breakoutableColumns(baseQuery, 1).find(
+          (column) =>
+            Lib.displayInfo(baseQuery, 1, column).displayName === "Rating" &&
+            Lib.displayInfo(baseQuery, 1, column).isFromJoin,
+        ),
+      );
+      const query = Lib.breakout(
+        baseQuery,
+        1,
+        Lib.withDefaultBinning(baseQuery, 1, rating),
+      );
+      setup({ step: createMockNotebookStep({ query, stageIndex: 1 }) });
+
+      await userEvent.click(
+        screen.getByText("Reviews - Created At: Month → Rating: Auto binned"),
+      );
+      expect(await screen.findByText("Summaries")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Created At: Month" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Count" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Rating" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await userEvent.click(screen.getByText("Summaries"));
+      expect(
+        screen.getByRole("option", { name: "Created At: Month" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Count" })).toBeInTheDocument();
+    });
+  });
+
   describe("bucketing", () => {
+    it("should offer bucketing for date and number columns but not for a foreign key (metabase#16787)", async () => {
+      setup({
+        step: createMockNotebookStep({
+          query: createOrdersQueryWithBinnableUserId(),
+        }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+
+      const createdAtOption = await screen.findByRole("option", {
+        name: "Created At",
+      });
+      expect(
+        within(createdAtOption).getByLabelText("Temporal bucket"),
+      ).toBeInTheDocument();
+      const subtotalOption = screen.getByRole("option", { name: "Subtotal" });
+      expect(
+        within(subtotalOption).getByLabelText("Binning strategy"),
+      ).toBeInTheDocument();
+      const userIdOption = screen.getByRole("option", { name: "User ID" });
+      expect(
+        within(userIdOption).queryByLabelText("Binning strategy"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(userIdOption).queryByLabelText("Temporal bucket"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should open only one bucketing menu at a time (metabase#45036)", async () => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
+      });
+      setup({ step: createMockNotebookStep({ query }) });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      const createdAtOption = await screen.findByRole("option", {
+        name: "Created At",
+      });
+      const temporalBucketButton =
+        within(createdAtOption).getByLabelText("Temporal bucket");
+      expect(temporalBucketButton).toHaveTextContent("by month");
+      await userEvent.click(temporalBucketButton);
+
+      let menu = await screen.findByRole("menu");
+      expect(
+        within(menu).getByRole("menuitem", { name: "Year" }),
+      ).toBeInTheDocument();
+      expect(
+        within(menu).queryByRole("menuitem", { name: "Hour of day" }),
+      ).not.toBeInTheDocument();
+      await userEvent.click(within(menu).getByText("More…"));
+      expect(
+        await within(menu).findByRole("menuitem", { name: "Hour of day" }),
+      ).toBeInTheDocument();
+
+      const priceOption = screen.getByRole("option", { name: "Price" });
+      const binningButton =
+        within(priceOption).getByLabelText("Binning strategy");
+      expect(binningButton).toHaveTextContent("Auto bin");
+      await userEvent.click(binningButton);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("menuitem", { name: "Year" }),
+        ).not.toBeInTheDocument(),
+      );
+      menu = screen.getByRole("menu");
+      expect(
+        within(menu).getByRole("menuitem", { name: "Auto bin" }),
+      ).toBeInTheDocument();
+      expect(
+        within(menu).getByRole("menuitem", { name: "50 bins" }),
+      ).toBeInTheDocument();
+      expect(
+        within(menu).getByRole("menuitem", { name: "Don't bin" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: "Hour of day" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("More…")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("menu")).toHaveLength(1);
+    });
+
     it("should apply default binning strategy", async () => {
       const { getNextBreakouts } = setup();
 

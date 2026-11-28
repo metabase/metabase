@@ -32,7 +32,8 @@ export function setupSearchEndpoints(
       const limit = Number(url.searchParams.get("limit")) || 50;
       const offset = Number(url.searchParams.get("offset"));
       const table_db_id = url.searchParams.get("table_db_id") || null;
-      const queryText = url.searchParams.get("q")?.toLowerCase();
+      // the backend trims `q` (metabase.search.api)
+      const queryText = url.searchParams.get("q")?.trim().toLowerCase();
       const searchNativeQuery =
         url.searchParams.get("search_native_query") === "true";
 
