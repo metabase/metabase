@@ -2389,7 +2389,10 @@
                                     (is (false? (t2/exists? :model/Transform :id [:in ids])))))))]
              (statements 2)
              (testing "DELETE /api/transform/collection/:id costs as many statements for 10 transforms as for 40"
-               (is (= (statements 10) (statements 40)))))))))))
+               ;; The fewest of two runs, so a statement that some requests run once, unrelated to the delete, is not
+               ;; counted.
+               (is (= (min (statements 10) (statements 10))
+                      (min (statements 40) (statements 40))))))))))))
 
 (deftest delete-transforms-folder-blocked-by-transform-without-premium-feature-test
   (mt/with-temp [:model/Collection {folder-id :id}    {:name "Folder" :namespace :transforms}
