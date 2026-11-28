@@ -60,7 +60,7 @@
         (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
                                      :stale [{:column :last_heartbeat :age 5 :unit :minute}]
                                      :set-terminal! (set-terminal-fn :model/TransformRun [:is_active true]
-                                                                     {:status "timeout" :is_active nil :end_time :%now
+                                                                     {:status "timeout" :is_active nil :end_time [:now]
                                                                       :message "reaped"})})]
           (is (= [stale] (mapv :id reaped)))
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id stale)))
@@ -71,7 +71,7 @@
           (is (empty? (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
                                       :stale [{:column :last_heartbeat :age 5 :unit :minute}]
                                       :set-terminal! (set-terminal-fn :model/TransformRun [:is_active true]
-                                                                      {:status "timeout" :is_active nil :end_time :%now})}))))))))
+                                                                      {:status "timeout" :is_active nil :end_time [:now]})}))))))))
 
 (deftest reap-rows!-or-stale-test
   (testing "an :or stale predicate reaps on either branch (fresh heartbeat, old start_time)"
@@ -84,7 +84,7 @@
                                      :stale [{:column :last_heartbeat :age 5 :unit :minute}
                                              {:column :start_time :age 60 :unit :minute}]
                                      :set-terminal! (set-terminal-fn :model/TransformRun [:is_active true]
-                                                                     {:status "timeout" :is_active nil :end_time :%now})})]
+                                                                     {:status "timeout" :is_active nil :end_time [:now]})})]
           (is (= [old-start] (mapv :id reaped)))
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-start))))))))
 

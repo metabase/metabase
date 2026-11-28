@@ -713,7 +713,7 @@
                                                              :model_id    card-id
                                                              :object      "{}"
                                                              :user_id     (mt/user->id :rasta)
-                                                             :timestamp   :%now
+                                                             :timestamp   [:now]
                                                              :most_recent true}))
       (try
         ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.

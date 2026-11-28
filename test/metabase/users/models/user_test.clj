@@ -119,7 +119,7 @@
   to `f`, then let `mt/with-temp` clean them up."
   [f]
   (mt/with-temp [:model/User admin {:is_superuser true, :email "accepted-admin@example.com"}]
-    (t2/update! :model/User :id (:id admin) {:last_login :%now})
+    (t2/update! :model/User :id (:id admin) {:last_login [:now]})
     (f admin)))
 
 (deftest new-user-invite-email-test
@@ -182,8 +182,8 @@
       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
         (mt/with-temp [:model/User admin-1 {:is_superuser true, :email "accepted-admin-1@example.com"}
                        :model/User admin-2 {:is_superuser true, :email "accepted-admin-2@example.com"}]
-          (t2/update! :model/User :id (:id admin-1) {:last_login :%now})
-          (t2/update! :model/User :id (:id admin-2) {:last_login :%now})
+          (t2/update! :model/User :id (:id admin-1) {:last_login [:now]})
+          (t2/update! :model/User :id (:id admin-2) {:last_login [:now]})
           (is (= {(:email admin-1) ["<New User> created a Metabase account"]
                   (:email admin-2) ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)

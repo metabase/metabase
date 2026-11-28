@@ -447,7 +447,7 @@
              :is_audit false
              :is_stub false
              :router_database_id nil
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 ;;; ------------------------------------------------- Tables -------------------------------------------------
 
@@ -613,7 +613,7 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
              :db_id database-id
              :active true
-             {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
+             {:order-by [[[:lower :schema] :asc] [[:lower :name] :asc]]}))
 
 (mu/defn active-tables-in-schema
   "The presentable columns of the active Tables in `schema` of the Database with `database-id`, ordered by name."
@@ -623,7 +623,7 @@
              :db_id database-id
              :schema schema
              :active true
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn active-schemas-for-database
   "The distinct `:schema` rows of the active Tables in the Database with `database-id`, ordered by schema."
@@ -893,7 +893,7 @@
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
-              :order-by [[:%lower.name :asc]]}))
+              :order-by [[[:lower :name] :asc]]}))
 
 (mu/defn cards-for-table
   "The presentable columns of the unarchived Cards on the Table with `table-id`, ordered by name."
@@ -901,7 +901,7 @@
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :table_id table-id
              :archived false
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn models-for-database
   "The presentable columns of the unarchived model Cards on the Database with `database-id`, ordered by name."
@@ -910,7 +910,7 @@
              :type :model
              :database_id database-id
              :archived false
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn saved-cards-for-conversation
   "The ID and chart ID of the unarchived Cards saved from the MetabotConversation with `conversation-id`, in ID order."
@@ -982,7 +982,7 @@
                                  [:= :namespace nil]
                                  [:or [:= :type nil] [:!= :type "trash"]]]
                           (not include-nested?) (conj [:= :location "/"]))
-              :order-by [[:location :asc] [:%lower.name :asc]]}))
+              :order-by [[:location :asc] [[:lower :name] :asc]]}))
 
 (mu/defn unarchived-collections-at-location
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
@@ -991,7 +991,7 @@
               :is_remote_synced]
              :location location
              :archived false
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn root-collections-of-types
   "The top-level Collections whose type is one of `types`."
@@ -1026,7 +1026,7 @@
   (t2/select [:model/Dashboard :id :name :description :collection_id]
              :collection_id collection-id
              :archived false
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn dashboard-tabs
   "The ID and name of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
@@ -1051,7 +1051,7 @@
              :collection_id collection-id
              :archived false
              :exploration_id nil
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn documents-in-archived-state
   "The Documents with `document-ids` whose archived flag matches `archived?`. The flag is the
@@ -1073,7 +1073,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Transform :id :name :description :source_database_id :source]
              :source_database_id database-id
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn verified-item-ids
   "The subset of `item-ids` of `item-type` whose most recent moderation review is verified."

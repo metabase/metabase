@@ -284,7 +284,7 @@
                            (t2/insert! (t2/table-name :model/Session) {:id         id
                                                                        :key_hashed (session/hash-session-key (session/generate-session-key))
                                                                        :user_id    user-id
-                                                                       :created_at :%now})
+                                                                       :created_at [:now]})
                            id)))
           counted (fn [ids] (events.tu/statement-count! #(session/end-sessions! ids "admin" nil)))]
       (counted (subvec ids 0 1))

@@ -355,7 +355,7 @@
                   ;; but it is bounded! it's less than the max fingerprint count PLUS the number of fields in the
                   ;; biggest table in (mt/db).
                   (+ @#'sync.fingerprint/max-refingerprint-field-count
-                     (:count (t2/query-one {:select [[:%count.* :count]]
+                     (:count (t2/query-one {:select [[[:count :*] :count]]
                                             :from (t2/table-name :model/Field)
                                             :join [[(t2/table-name :model/Table) :table] [:= :table.id :table_id]]
                                             :where [:= :table.db_id (mt/id)]

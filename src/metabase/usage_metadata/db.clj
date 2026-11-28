@@ -15,7 +15,7 @@
   `started-before`, grouped by hash."
   [started-at     :- ms/TemporalInstant
    started-before :- ms/TemporalInstant]
-  (t2/select [:model/QueryExecution :hash [:%count.* :n]]
+  (t2/select [:model/QueryExecution :hash [[:count :*] :n]]
              {:where    [:and
                          [:>= :started_at started-at]
                          [:<  :started_at started-before]]

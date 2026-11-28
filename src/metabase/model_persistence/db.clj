@@ -63,7 +63,7 @@
                            ;; Buffer deletions for an hour if the prune job happens soon after setting
                            ;; state: 1. so people have a chance to change their mind, 2. so a query
                            ;; running against the cache doesn't get ripped out.
-                           [:< :state_change_at [:date-add :%now -1 :hour]]]
+                           [:< :state_change_at [:date-add [:now] -1 :hour]]]
                           [:= :c.type "question"]
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
@@ -180,7 +180,7 @@
   [:map {:closed true}
    [:active          {:optional true} :boolean]
    [:state           {:optional true} :string]
-   [:state_change_at {:optional true} [:= :%now]]])
+   [:state_change_at {:optional true} [:= [:now]]]])
 
 (defn- update-persisted-info-rows!
   "Apply `changes` to the PersistedInfos `rows`, each with its `:id`, with one plain update through the model."
@@ -218,7 +218,7 @@
 (mu/defn reset-persisted-info-to-creating!
   "Deactivate the PersistedInfo with `id` and move it back to creating, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/PersistedInfo :id id {:active false, :state "creating", :state_change_at :%now}))
+  (t2/update! :model/PersistedInfo :id id {:active false, :state "creating", :state_change_at [:now]}))
 
 (mu/defn ready-deletable-persisted-infos!
   "Move the deletable PersistedInfos of the Database with `database-id` to `state`, returning the number updated."
@@ -231,7 +231,7 @@
             [:= :state "deletable"]]
     :set {:active false,
           :state state,
-          :state_change_at :%now}}))
+          :state_change_at [:now]}}))
 
 (mu/defn unpersisted-models-for-database
   "The model Cards of the Database with `database-id` that have no PersistedInfo."

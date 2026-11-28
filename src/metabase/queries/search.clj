@@ -29,7 +29,7 @@
                   :collection-id        true
                   :creator-id           true
                   :dashboard-id         true
-                  :dashboardcard-count  ^:allow-subquery {:select [:%count.*]
+                  :dashboardcard-count  ^:allow-subquery {:select [[[:count :*]]]
                                                           :from   [(t2/table-name :model/DashboardCard)]
                                                           :where  [:= (u/qualified-key (t2/table-name :model/DashboardCard) :card_id) :this.id]}
                   :database-id          true

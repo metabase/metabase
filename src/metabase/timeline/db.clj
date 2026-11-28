@@ -39,7 +39,7 @@
              {:where    [:and
                          [:= :archived archived]
                          (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Timeline) :collection_id) (api/current-user-info) {:root-namespace nil})]
-              :order-by [[:%lower.name :asc]]}))
+              :order-by [[[:lower :name] :asc]]}))
 
 (mu/defn timeline
   "The Timeline with `id`, or nil."

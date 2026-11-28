@@ -386,7 +386,7 @@
       (mt/with-model-cleanup [:model/User]
         (letfn
          [(new-user-exists? []
-            (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
+            (boolean (seq (t2/select :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))]
           (is (false? (new-user-exists?)))
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -434,7 +434,7 @@
       (mt/with-model-cleanup [:model/User]
         (letfn
          [(new-user-exists? []
-            (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
+            (boolean (seq (t2/select :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))]
           (is
            (= false
               (new-user-exists?)))

@@ -75,7 +75,7 @@
                           [:= :namespace namespace]
                           [:= :key k]
                           [:or
-                           [:>= :expires_at :%now]
+                           [:>= :expires_at [:now]]
                            [:= :expires_at nil]]]}))
 
 (mu/defn unexpired-user-key-values
@@ -89,5 +89,5 @@
                       [:= :user_id (long user-id)]
                       [:= :namespace namespace]
                       [:or
-                       [:>= :expires_at :%now]
+                       [:>= :expires_at [:now]]
                        [:= :expires_at nil]]]}))

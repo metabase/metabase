@@ -130,7 +130,7 @@
   `:lower_schema`."
   [database-id :- ::lib.schema.id/database
    lower-names :- [:sequential {:min 1} :string]]
-  (app-db/select-batched #(t2/select [:model/Table (u/qualified-key (t2/table-name :model/Table) :*) [:%lower.name :lower_name] [:%lower.schema :lower_schema]]
+  (app-db/select-batched #(t2/select [:model/Table (u/qualified-key (t2/table-name :model/Table) :*) [[:lower :name] :lower_name] [[:lower :schema] :lower_schema]]
                                      {:where [:and
                                               [:= :db_id database-id]
                                               [:in [:lower :name] %]
@@ -155,7 +155,7 @@
              :active false
              :archived_at nil
              :transform_target false
-             :deactivated_at [:< [:date-add :%now amount unit]]))
+             :deactivated_at [:< [:date-add [:now] amount unit]]))
 
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
@@ -254,7 +254,7 @@
               :database_partitioned :json_unfolding :position :preview_display]
              :table_id table-id
              :active true
-             {:order-by [[:position :asc] [:%lower.name :asc]]}))
+             {:order-by [[:position :asc] [[:lower :name] :asc]]}))
 
 (mu/defn active-fields-metadata-for-tables
   "The sync metadata columns of the active Fields of the Tables with `table-ids`, with their `:table_id`."
@@ -277,9 +277,9 @@
    lower-names :- [:sequential :string]]
   (app-db/select-batched #(t2/select :model/Field
                                      :table_id table-id
-                                     :%lower.name [:in %]
                                      :parent_id parent-id
-                                     :active false)
+                                     :active false
+                                     {:where [:in [:lower :name] %]})
                          (distinct lower-names)))
 
 (mu/defn inactive-top-level-fields-by-lower-name-for-tables
@@ -289,7 +289,7 @@
    lower-names :- [:sequential {:min 1} :string]]
   (app-db/select-batched
    (fn [table-ids]
-     (app-db/select-batched #(t2/select [:model/Field (u/qualified-key (t2/table-name :model/Field) :*) [:%lower.name :lower_name]]
+     (app-db/select-batched #(t2/select [:model/Field (u/qualified-key (t2/table-name :model/Field) :*) [[:lower :name] :lower_name]]
                                         {:where [:and
                                                  [:in :table_id table-ids]
                                                  [:in [:lower :name] %]

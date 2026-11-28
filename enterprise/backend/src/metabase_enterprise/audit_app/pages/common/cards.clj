@@ -22,7 +22,7 @@
                :from   [[(t2/table-name :model/QueryExecution) :qe]]
                ;; Join on BOTH card_id and started_at, because some cards share the same timestamp.
                :join   [[^:allow-subquery
-                         {:select   [:card_id [:%max.started_at :started_at]]
+                         {:select   [:card_id [[:max :started_at] :started_at]]
                           :from     [(t2/table-name :model/QueryExecution)]
                           :where    (queries/not-referenced-run :context)
                           :group-by [:card_id]} :inner_qe]
@@ -38,7 +38,7 @@
   don't count."
   []
   [:query_runs ^:allow-subquery {:select   [:card_id
-                                            [:%count.* :count]]
+                                            [[:count :*] :count]]
                                  :from     [(t2/table-name :model/QueryExecution)]
                                  :where    (queries/not-referenced-run :context)
                                  :group-by [:card_id]}])
@@ -46,6 +46,6 @@
 (defn dashboards-count
   "HoneySQL for a CTE to enumerate the dashboards for a Card."
   []
-  [:dash_card ^:allow-subquery {:select [:card_id [:%count.* :count]]
+  [:dash_card ^:allow-subquery {:select [:card_id [[:count :*] :count]]
                                 :from [(t2/table-name :model/DashboardCard)]
                                 :group-by [:card_id]}])

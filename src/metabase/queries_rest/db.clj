@@ -9,7 +9,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private order-by-name {:order-by [[:%lower.name :asc]]})
+(def ^:private order-by-name {:order-by [[[:lower :name] :asc]]})
 
 (mu/defn unarchived-cards
   "The unarchived Cards, in case-insensitive name order."
@@ -125,7 +125,7 @@
                (sql.helpers/where [:not [:in :id exclude-ids]])
 
                name-pattern
-               (sql.helpers/where [:like :%lower.name name-pattern])
+               (sql.helpers/where [:like [:lower :name] name-pattern])
 
                limit
                (assoc :limit limit))))
@@ -138,7 +138,7 @@
 (mu/defn max-collection-position
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))
+  (t2/select-one [:model/Card [[:max :collection_position] :max_position]] :collection_id collection-id))
 
 (mu/defn cards-to-move-to-collection
   "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in

@@ -53,11 +53,11 @@
                  :model/AuthIdentity _            {:user_id      user-a
                                                    :provider     "password"
                                                    :credentials  {:password_hash "hash" :password_salt "salt"}
-                                                   :last_used_at :%now}
+                                                   :last_used_at [:now]}
                  :model/AuthIdentity _            {:user_id      user-c
                                                    :provider     "password"
                                                    :credentials  {:password_hash "hash" :password_salt "salt"}
-                                                   :last_used_at :%now}]
+                                                   :last_used_at [:now]}]
     (let [user-ids #{user-a user-b user-c (mt/user->id :rasta) (mt/user->id :lucky)}
           single   (auth-identity.db/user-ids-with-used-password user-ids)]
       (is (contains? single user-a))

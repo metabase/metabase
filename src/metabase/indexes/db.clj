@@ -78,7 +78,7 @@
   [:map {:closed true}
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
    [:error_message    {:optional true} [:maybe :string]]
-   [:last_executed_at {:optional true} [:= :%now]]])
+   [:last_executed_at {:optional true} [:= [:now]]]])
 
 (mu/defn table-index-statuses
   "The id, status and error message of each of the TableIndexes with `ids`."
@@ -124,4 +124,4 @@
    error-message :- :string]
   (t2/update! :model/TableIndex
               :transform_id transform-id :index_name index-name
-              {:status :failed :error_message error-message :last_executed_at :%now}))
+              {:status :failed :error_message error-message :last_executed_at [:now]}))

@@ -27,7 +27,7 @@
 (mu/defn proxied-ai-usage-tokens-by-model
   "The model and total tokens of the proxied AiUsageLog rows on `date`, grouped by model."
   [date :- ms/TemporalInstant]
-  (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
+  (t2/select [:model/AiUsageLog :model [[:sum :total_tokens] :tokens]]
              {:where    [:and
                          :ai_proxied
                          [:= [:cast :created_at :date] [:cast date :date]]]
@@ -37,7 +37,7 @@
   "The total tokens of the proxied AiUsageLog rows on `date`, or nil."
   [date :- ms/TemporalInstant]
   (t2/select-one-fn :sum
-                    [:model/AiUsageLog [:%sum.total_tokens :sum]]
+                    [:model/AiUsageLog [[:sum :total_tokens] :sum]]
                     {:where [:and
                              :ai_proxied
                              [:= [:cast :created_at :date] [:cast date :date]]]}))
@@ -46,7 +46,7 @@
   "The number of proxied, unforked user MetabotMessages on `date`."
   [date :- ms/TemporalInstant]
   (t2/select-one-fn :cnt
-                    [:model/MetabotMessage [:%count.id :cnt]]
+                    [:model/MetabotMessage [[:count :id] :cnt]]
                     :role "user"
                     :forked_from_message_id nil
                     {:where [:and
@@ -169,7 +169,7 @@
   (let [json-supported? (contains? #{:mysql :postgres} (mdb/db-type))]
     (t2/select-one
      (into [:model/Card]
-           (cond-> [[:%count.* :total]
+           (cond-> [[[:count :*] :total]
                     [(u/count-case [:= "native" :query_type])
                      :native]
                     [(u/count-case [:!= "native" :query_type])
@@ -207,7 +207,7 @@
   (let [domain-expr (condp contains? (mdb/db-type)
                       #{:postgres}  [:split_part :email "@" [:inline 2]]
                       #{:h2 :mysql} [:substring :email [:locate "@" :email]])]
-    (t2/query-one {:select [[:%count.* :count]]
+    (t2/query-one {:select [[[:count :*] :count]]
                    :from [[^:allow-subquery
                            {:select-distinct [[domain-expr]]
                             :from [(t2/table-name :model/User)]

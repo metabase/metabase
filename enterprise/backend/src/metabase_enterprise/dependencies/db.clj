@@ -344,7 +344,7 @@
   and limit); throws when `user-id` is missing."
   [{:keys [entity-types] :as params} :- ::dependency-item-filter-params]
   (if-let [union-query (dependency-item-union entity-types params)]
-    (-> (t2/query {:select [[:%count.* :total]] :from [[union-query :subquery]]})
+    (-> (t2/query {:select [[[:count :*] :total]] :from [[union-query :subquery]]})
         first
         :total)
     0))

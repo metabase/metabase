@@ -772,7 +772,7 @@
                                                :is_creation false
                                                :is_reversion false
                                                :most_recent true
-                                               :timestamp :%now}]}))]
+                                               :timestamp [:now]}]}))]
         (insert-rev!)
         (insert-rev!)
         (testing "two revision rows with most_recent=true exist for the card"

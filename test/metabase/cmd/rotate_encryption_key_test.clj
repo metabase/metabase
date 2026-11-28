@@ -201,7 +201,7 @@
                                                                 :last_name     "Body"
                                                                 :password      "nopassword"
                                                                 :password_salt "nosalt"
-                                                                :date_joined   :%now
+                                                                :date_joined   [:now]
                                                                 :is_superuser  false
                                                                 :is_active     true
                                                                 ;; NOT NULL, and the model hook that fills it is bypassed
@@ -215,8 +215,8 @@
                                                                    :type       "channel/http"
                                                                    :details    raw-details
                                                                    :active     true
-                                                                   :created_at :%now
-                                                                   :updated_at :%now})))
+                                                                   :created_at [:now]
+                                                                   :updated_at [:now]})))
 
 (deftest decrypt-db-undecryptable-values-test
   (let [k1        "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="

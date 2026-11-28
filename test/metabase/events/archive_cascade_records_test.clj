@@ -12,7 +12,7 @@
 
 (defn- max-id
   [table]
-  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [table]})) 0))
+  (or (:id (t2/query-one {:select [[[:max :id] :id]] :from [table]})) 0))
 
 (defn- records
   "The audit rows and Revisions, `[topic model model-id]` and `[model model-id]`, written by `thunk` for `entities`,

@@ -1851,7 +1851,7 @@
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:authority_level :asc-nulls-last]
               [:type :asc-nulls-first]
-              [:%lower.name :asc]
+              [[:lower :name] :asc]
               [:id :asc]]
              (collection-items/children-sort-clause {:official-collections-first? true} app-db))))))
 
@@ -1859,9 +1859,9 @@
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc-nulls-last]
             [:type :asc-nulls-first]
-            [:%isnull.last_edit_timestamp]
+            [[:isnull :last_edit_timestamp]]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]
+            [[:lower :name] :asc]
             [:id :asc]]
            (collection-items/children-sort-clause {:sort-column :last-edited-at
                                                    :sort-direction :asc
@@ -1873,7 +1873,7 @@
             [:type :asc-nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
-            [:%lower.name :asc]
+            [[:lower :name] :asc]
             [:id :asc]]
            (collection-items/children-sort-clause {:sort-column :last-edited-at
                                                    :sort-direction :asc
@@ -1887,7 +1887,7 @@
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]
+            [[:lower :name] :asc]
             [:id :asc]]
            (collection-items/children-sort-clause {:sort-column :last-edited-by
                                                    :sort-direction :asc
@@ -1897,11 +1897,11 @@
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc-nulls-last]
             [:type :asc-nulls-first]
-            [:%isnull.last_edit_last_name]
+            [[:isnull :last_edit_last_name]]
             [:last_edit_last_name :asc]
-            [:%isnull.last_edit_first_name]
+            [[:isnull :last_edit_first_name]]
             [:last_edit_first_name :asc]
-            [:%lower.name :asc]
+            [[:lower :name] :asc]
             [:id :asc]]
            (collection-items/children-sort-clause {:sort-column :last-edited-by
                                                    :sort-direction :asc
@@ -1912,7 +1912,7 @@
     (is (= [[:authority_level :asc-nulls-last]
             [:type :asc-nulls-first]
             [:model_ranking :asc]
-            [:%lower.name :asc]
+            [[:lower :name] :asc]
             [:id :asc]]
            (collection-items/children-sort-clause {:sort-column :model
                                                    :sort-direction :asc
@@ -1923,7 +1923,7 @@
     (is (= [[:authority_level :asc-nulls-last]
             [:type :asc-nulls-first]
             [:model_ranking :desc]
-            [:%lower.name :asc]
+            [[:lower :name] :asc]
             [:id :asc]]
            (collection-items/children-sort-clause {:sort-column :model
                                                    :sort-direction :desc
@@ -1934,8 +1934,8 @@
     (testing "ascending"
       (is (= [[:authority_level :asc-nulls-last]
               [:type :asc-nulls-first]
-              [:%lower.description :asc-nulls-last]
-              [:%lower.name :asc]
+              [[:lower :description] :asc-nulls-last]
+              [[:lower :name] :asc]
               [:id :asc]]
              (collection-items/children-sort-clause {:sort-column :description
                                                      :sort-direction :asc
@@ -1943,8 +1943,8 @@
     (testing "descending"
       (is (= [[:authority_level :asc-nulls-last]
               [:type :asc-nulls-first]
-              [:%lower.description :desc-nulls-last]
-              [:%lower.name :asc]
+              [[:lower :description] :desc-nulls-last]
+              [[:lower :name] :asc]
               [:id :asc]]
              (collection-items/children-sort-clause {:sort-column :description
                                                      :sort-direction :desc

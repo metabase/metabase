@@ -283,7 +283,7 @@
                                                :semantic_type :type/PK))
             source-field      (t2/select-one :model/Field
                                              :table_id (:id table)
-                                             :%lower.name (u/lower-case-en field-name))]
+                                             {:where [:= [:lower :name] (u/lower-case-en field-name)]})]
         (if (and source-field target-pk-field)
           (let [changes {:fk_target_field_id (:id target-pk-field)}]
             (t2/update! :model/Field :id (:id source-field) changes)

@@ -15,8 +15,8 @@
                                   :entity_id   (u/generate-nano-id)
                                   :name        "App"
                                   :bundle_path "data_apps/app/index.js"
-                                  :created_at  :%now
-                                  :updated_at  :%now}
+                                  :created_at  [:now]
+                                  :updated_at  [:now]}
                                  extra))
     app-name))
 

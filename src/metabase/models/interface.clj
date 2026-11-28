@@ -551,7 +551,7 @@
     nil
 
     (true? (:enable_embedding changes))
-    [:coalesce :initially_published_at :%now]
+    [:coalesce :initially_published_at [:now]]
 
     (contains? changes :enable_embedding)
     nil
@@ -559,7 +559,7 @@
     :else
     [:case
      [:and [:= :enable_embedding true] [:= :initially_published_at nil]]
-     :%now
+     [:now]
      :else :initially_published_at]))
 
 (defn add-initially-published-at

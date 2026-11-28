@@ -33,7 +33,7 @@
 (mu/defn unarchived-segments
   "The unarchived Segments, in case-insensitive name order."
   []
-  (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
+  (t2/select :model/Segment :archived false {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

@@ -80,7 +80,7 @@
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/Segment     {other-id :id}   (data-testing.test-util/from-google-segment)
                    :model/SegmentTest {test-id :id}    (body segment-id)]
-      (let [missing-id (inc (t2/select-one-fn :max-id [:model/Segment [:%max.id :max-id]]))
+      (let [missing-id (inc (t2/select-one-fn :max-id [:model/Segment [[:max :id] :max-id]]))
             before     (segment-tests-state)]
         (testing "even for an admin, the permission check refuses a segment that does not exist"
           (mt/user-http-request :crowberto :post 403 "ee/segment-test" (body missing-id))

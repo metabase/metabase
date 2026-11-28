@@ -413,8 +413,8 @@
                                                                             :engine    "h2"
                                                                             :is_sample true
                                                                             :name      "populate-collection-created-at-test-db-1"
-                                                                            :created_at :%now
-                                                                            :updated_at :%now
+                                                                            :created_at [:now]
+                                                                            :updated_at [:now]
                                                                             :metadata_sync_schedule "0 43 * * * ? *"})
             before (t2/select-one :model/Database :id db-id)]
         (#'task.sync-databases/randomize-db-schedules-if-needed!)

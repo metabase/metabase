@@ -1,7 +1,9 @@
 (ns metabase.funnysql.schema
   "Malli schemas for the Honey SQL-shaped app-DB queries Funny SQL compiles, and for what it compiles them to."
   (:require
+   [clojure.string :as str]
    [honey.sql.pg-ops]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -383,8 +385,11 @@
    [:fn {:error/message "a whitelisted function call"} #(mr/validate ::expr.call (vec (rest %)))]])
 
 (mr/def ::expr.identifier
-  "A keyword: a table or column name, or a `:%f.arg` shorthand call."
-  :keyword)
+  "A keyword: a table or column name. Honey SQL's `:%f.arg` call shorthand is not one; a call is the vector `[:f arg]`."
+  [:and
+   :keyword
+   [:fn {:error/message "a keyword that is not a :%f.arg call shorthand"}
+    #(not (str/starts-with? (u/qualified-name %) "%"))]])
 
 (mr/def ::expr.value
   "A literal value: `nil`, a boolean, a number (integers are spliced, others bound), or a [[::bound-value]]."

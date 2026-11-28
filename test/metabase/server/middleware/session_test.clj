@@ -46,7 +46,7 @@
                     {:id         (session/generate-session-id)
                      :key_hashed (session/hash-session-key session-key)
                      :user_id    user-id
-                     :created_at :%now})
+                     :created_at [:now]})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
         (user/update-users! [{:id user-id :is_active false}])
@@ -62,10 +62,10 @@
     (mt/with-temporary-setting-values [mfa-enforcement :off]
       (with-redefs [env/env (assoc env/env :max-session-age "1")]
         (doseq [[created-at expected msg]
-                [[:%now                                                            false "brand-new session"]
+                [[[:now]                                                            false "brand-new session"]
                  [#t "1970-01-01T00:00:01Z"                                        true  "really old session"]
-                 [[:date-add :%now -61 :second] true  "session that is 61 seconds old"]
-                 [[:date-add :%now -59 :second] false "session that is 59 seconds old"]]]
+                 [[:date-add [:now] -61 :second] true  "session that is 61 seconds old"]
+                 [[:date-add [:now] -59 :second] false "session that is 59 seconds old"]]]
           (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
             (mt/with-temp [:model/User {user-id :id}]
               (let [session-id (session/generate-session-id)
@@ -579,8 +579,8 @@
                                                                        {:user_id     user-id
                                                                         :provider    provider
                                                                         :provider_id (str user-id "-" provider)
-                                                                        :created_at  :%now
-                                                                        :updated_at  :%now})))
+                                                                        :created_at  [:now]
+                                                                        :updated_at  [:now]})))
                   session-key (session/generate-session-key)
                   session-id  (session/generate-session-id)]
               (try
@@ -589,7 +589,7 @@
                              :key_hashed        (session/hash-session-key session-key)
                              :user_id           user-id
                              :auth_identity_id  (:id ai)
-                             :created_at        :%now})
+                             :created_at        [:now]})
                 (is (= (or provider "session")
                        (:embedding/auth-method (#'mw.session/current-user-info-for-session session-key nil))))
                 (finally
@@ -662,7 +662,7 @@
             (let [session-id (session/generate-session-id)
                   session-key (str (random-uuid))
                   session-key-hashed (session/hash-session-key session-key)]
-              (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at :%now})
+              (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at [:now]})
               (is (= "es_MX"
                      (session-locale session-key)))
               (testing "w/ X-Metabase-Locale header"
@@ -726,8 +726,8 @@
               session-key (str (random-uuid))
               key-hashed  (session/hash-session-key session-key)]
           (t2/insert! (t2/table-name :model/Session)
-                      {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
-                       :last_active_at [:date-add :%now -600 :second]})
+                      {:id session-id :key_hashed key-hashed :user_id user-id :created_at [:now]
+                       :last_active_at [:date-add [:now] -600 :second]})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
 (defn session-valid?

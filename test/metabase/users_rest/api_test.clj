@@ -999,12 +999,12 @@
                                    :last_name "Era"
                                    :email email
                                    :user_group_memberships (group-or-ids->user-group-memberships [group])})
-            (is (not (t2/exists? :model/User :%lower.email (u/lower-case-en email))))))))))
+            (is (not (t2/exists? :model/User {:where [:= [:lower :email] (u/lower-case-en email)]})))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
-  {:is-superuser? (t2/select-one-fn :is_superuser :model/User :%lower.email (u/lower-case-en email))
+  {:is-superuser? (t2/select-one-fn :is_superuser :model/User {:where [:= [:lower :email] (u/lower-case-en email)]})
    :pgm-exists? (t2/exists? :model/PermissionsGroupMembership
-                            :user_id (t2/select-one-pk :model/User :%lower.email (u/lower-case-en email))
+                            :user_id (t2/select-one-pk :model/User {:where [:= [:lower :email] (u/lower-case-en email)]})
                             :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
@@ -2077,7 +2077,7 @@
 
 (deftest deactivate-missing-user-fails
   (testing "DELETE /api/user/:id"
-    (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
+    (let [max-id (:max_id (t2/query-one {:select [[[:max :id] :max_id]]
                                          :from (t2/table-name :model/User)}))]
       (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
 

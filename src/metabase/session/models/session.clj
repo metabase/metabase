@@ -158,7 +158,7 @@
                                              :user_id          user-id
                                              :anti_csrf_token  nil
                                              :auth_identity_id auth-identity-id
-                                             :created_at       :%now}))
+                                             :created_at       [:now]}))
           (catch Exception e
             (or (session.db/mcp-session key-hashed user-id)
                 (throw e)))))))

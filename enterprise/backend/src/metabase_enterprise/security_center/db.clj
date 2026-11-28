@@ -73,12 +73,12 @@
   updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :acknowledged_by :acknowledged_at])]
-  (t2/update! :model/SecurityAdvisory :id id (assoc changes :last_evaluated_at :%now)))
+  (t2/update! :model/SecurityAdvisory :id id (assoc changes :last_evaluated_at [:now])))
 
 (mu/defn record-advisory-notification!
   "Set `last_notified_at` of the SecurityAdvisory with `id` to now, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/SecurityAdvisory :id id {:last_notified_at :%now}))
+  (t2/update! :model/SecurityAdvisory :id id {:last_notified_at [:now]}))
 
 (mu/defn upsert-advisory!
   "Insert or update a SecurityAdvisory by `:advisory_id`. On insert, `:match_status` starts as `:unknown` until the

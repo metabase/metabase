@@ -26,7 +26,7 @@
 
 (t2/define-before-insert :model/ViewLog
   [log-entry]
-  (let [defaults {:timestamp :%now}]
+  (let [defaults {:timestamp [:now]}]
     (->> log-entry
          (merge defaults)
          analytics/include-sdk-info)))

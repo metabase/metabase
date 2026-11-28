@@ -186,11 +186,30 @@
     x))
 
 (defn- clause-using
-  "The `:using` source `x` of a MERGE sandboxed by `ctx`."
+  "The `:using` source `x` of a MERGE, a subquery or `[subquery alias]`, sandboxed by `ctx`, throwing for a table source,
+  whose rows it would read unfiltered."
   [ctx x]
-  (if (vector? x)
-    (update x 0 #(expr-subquery ctx %))
-    (expr-subquery ctx x)))
+  (let [[source] (item-parts x)]
+    (when-not (map? source)
+      (throw (ex-info "sandbox-query doesn't support a USING source other than a subquery" {:using x})))
+    (if (vector? x)
+      (update x 0 #(expr-subquery ctx %))
+      (expr-subquery ctx x))))
+
+(defn- check-column-specs
+  "Throws when the `CREATE TABLE` columns `specs` hold a subquery, such as a column `DEFAULT`, which the sandbox does not
+  rewrite."
+  [specs]
+  (when (some map? (tree-seq coll? seq specs))
+    (throw (ex-info "sandbox-query doesn't support a subquery in CREATE TABLE columns" {:with-columns specs}))))
+
+(defn- check-ddl-table
+  "Throws when the statement `statement` creates or drops `table`, a table `ctx` filters or substitutes, since its rows
+  are not all the sandbox's to remove."
+  [ctx statement table]
+  (when (or (row-filter ctx table) (substitute ctx table))
+    (throw (ex-info (format "sandbox-query doesn't support %s of a filtered or substituted table" statement)
+                    {:table table}))))
 
 (defn- clause
   "The clause `k` of a query, holding `v`, with every query in it sandboxed by `ctx`."
@@ -221,9 +240,20 @@
              :when-not-matched-insert)
     (expr ctx v)
 
-    (:update :delete-from :merge-into :columns :key :on-conflict :do-nothing :for :limit :offset :create-table
-             :with-columns :engine :character-set :collate :drop-table
-             :analyze-table)
+    :create-table
+    (do (check-ddl-table ctx "CREATE TABLE" (if (vector? v) (first v) v))
+        v)
+
+    :drop-table
+    (do (check-ddl-table ctx "DROP TABLE" (if (vector? v) (peek v) v))
+        v)
+
+    :with-columns
+    (do (check-column-specs v)
+        v)
+
+    (:update :delete-from :merge-into :columns :key :on-conflict :do-nothing :for :limit :offset :engine :character-set
+             :collate :analyze-table)
     v
 
     (throw (ex-info (format "sandbox-query doesn't support the clause %s" (pr-str k)) {:clause k}))))
@@ -286,7 +316,7 @@
   [ctx f relation assignments]
   (check-assignments f assignments)
   (reduce-kv (fn [acc k v]
-               (when-not (simple-keyword? k)
+               (when-not (and (simple-keyword? k) (not (str/includes? (name k) ".")))
                  (throw (ex-info (format "sandbox-query doesn't support the upsert column %s" (pr-str k)) {:column k})))
                (assoc acc k [:case (in-filter ctx f relation) v :else (u/qualified-key relation k)]))
              assignments

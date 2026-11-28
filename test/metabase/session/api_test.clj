@@ -551,7 +551,7 @@
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
             (mt/with-temp [:model/User {:keys [id]} {}]
-              (t2/update! :model/User :id id {:last_login :%now})
+              (t2/update! :model/User :id id {:last_login [:now]})
               (let [token       (auth-identity/create-password-reset! id)
                     reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
@@ -1094,10 +1094,10 @@
           (is (=? {:errors {:username #"Too many attempts!.*"}}
                   (mt/client :post 401 "session" {:username "sbrown20", :password "1234"})))
           (testing "refused login creates no user"
-            (is (not (t2/exists? :model/User :%lower.email "sally.brown@metabase.com"))))
+            (is (not (t2/exists? :model/User {:where [:= [:lower :email] "sally.brown@metabase.com"]}))))
           (finally
             (api.session/reset-throttlers-for-testing!)
-            (t2/delete! :model/User :%lower.email "sally.brown@metabase.com")))))))
+            (t2/delete! :model/User {:where [:= [:lower :email] "sally.brown@metabase.com"]})))))))
 
 (deftest ldap-login-deactivated-user-test
   (testing "LDAP login - deactivated user cannot login"

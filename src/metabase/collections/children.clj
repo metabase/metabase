@@ -101,7 +101,7 @@
                    [:= :type nil] 0
                    [:= :type collection/trash-collection-type] 1
                    :else 2]] :asc]
-                [:%lower.name :asc]]})
+                [[:lower :name] :asc]]})
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 

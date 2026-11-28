@@ -545,7 +545,7 @@
          (fn []
            (with-saml-default-setup!
              (try
-               (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+               (is (not (t2/exists? :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))
                (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
@@ -569,7 +569,7 @@
                  (is (= (some-saml-attributes "newuser")
                         (saml-login-attributes "newuser@metabase.com"))))
                (finally
-                 (t2/delete! :model/User :%lower.email "newuser@metabase.com"))))))))))
+                 (t2/delete! :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))))))))
 
 (deftest login-update-account-test
   (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
@@ -578,7 +578,7 @@
        (fn []
          (with-saml-default-setup!
            (try
-             (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+             (is (not (t2/exists? :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))
              ;; login with a user with no givenname or surname attributes
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
@@ -610,7 +610,7 @@
                        (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                             (map #(dissoc % :last_login))))))
              (finally
-               (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
+               (t2/delete! :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))))))))
 
 (deftest existing-user-reactivated-if-provisioning-is-on
   (testing "An existing user will be reactivated upon login"
@@ -619,20 +619,20 @@
        (fn []
          (with-saml-default-setup!
            (try
-             (is (not (t2/exists? :model/User :%lower.email "newuser@metabase.com")))
+             (is (not (t2/exists? :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))
              ;; login once to create the user
              (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                           default-redirect-uri)]
                (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options))))
              ;; deactivate the user
-             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
+             (t2/update! :model/User :id (t2/select-one-pk :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}) {:is_active false})
              (testing "We can reactivate a user with a new login"
                (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
                                                             default-redirect-uri)]
                  (is (successful-login? (client/client-real-response :post 302 "/auth/sso" req-options)))
                  (is (t2/select-one-fn :is_active [:model/User :is_active] :email "newuser@metabase.com"))))
              ;; deactivate the user again
-             (t2/update! :model/User :%lower.email "newuser@metabase.com" {:is_active false})
+             (t2/update! :model/User :id (t2/select-one-pk :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}) {:is_active false})
              (testing "We can't reactivate the user if user provisioning is disabled."
                ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
                ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
@@ -645,7 +645,7 @@
                    (is (client/client-real-response :post 401 "/auth/sso" req-options))
                    (is (not (t2/select-one-fn :is_active [:model/User :is_active] :email "newuser@metabase.com"))))))
              (finally
-               (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))
+               (t2/delete! :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))))))))
 
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
@@ -663,7 +663,7 @@
                                                 saml-attribute-group "GroupMembership"]
                (try
                  ;; user doesn't exist until SAML request
-                 (is (not (t2/select-one-pk :model/User :%lower.email "newuser@metabase.com")))
+                 (is (not (t2/select-one-pk :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))
                  (let [req-options (saml-post-request-options (new-user-with-single-group-saml-test-response)
                                                               default-redirect-uri)
                        response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -672,7 +672,7 @@
                             ":metabase-enterprise.sso.integrations.saml-test/group-1"}
                           (group-memberships (t2/select-one-pk :model/User :email "newuser@metabase.com")))))
                  (finally
-                   (t2/delete! :model/User :%lower.email "newuser@metabase.com")))))))))))
+                   (t2/delete! :model/User {:where [:= [:lower :email] "newuser@metabase.com"]})))))))))))
 
 (deftest login-should-sync-multiple-group-membership
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
@@ -689,7 +689,7 @@
                                                   saml-attribute-group "GroupMembership"]
                  (try
                    (testing "user doesn't exist until SAML request"
-                     (is (not (t2/select-one-pk :model/User :%lower.email "newuser@metabase.com"))))
+                     (is (not (t2/select-one-pk :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))
                    (let [req-options (saml-post-request-options (new-user-with-groups-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -699,7 +699,7 @@
                               ":metabase-enterprise.sso.integrations.saml-test/group-2"}
                             (group-memberships (t2/select-one-pk :model/User :email "newuser@metabase.com")))))
                    (finally
-                     (t2/delete! :model/User :%lower.email "newuser@metabase.com"))))))))))))
+                     (t2/delete! :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))))))))))
 
 (deftest login-should-sync-multiple-group-membership-2
   (testing "saml group sync works when there are multiple groups, which gets interpreted as a list of strings"
@@ -716,7 +716,7 @@
                                                   saml-attribute-group "GroupMembership"]
                  (try
                    (testing "user doesn't exist until SAML request"
-                     (is (not (t2/select-one-pk :model/User :%lower.email "newuser@metabase.com"))))
+                     (is (not (t2/select-one-pk :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))
                    (let [req-options (saml-post-request-options (new-user-with-groups-in-separate-attribute-nodes-saml-test-response)
                                                                 default-redirect-uri)
                          response    (client/client-real-response :post 302 "/auth/sso" req-options)]
@@ -726,7 +726,7 @@
                               ":metabase-enterprise.sso.integrations.saml-test/group-2"}
                             (group-memberships (t2/select-one-pk :model/User :email "newuser@metabase.com")))))
                    (finally
-                     (t2/delete! :model/User :%lower.email "newuser@metabase.com"))))))))))))
+                     (t2/delete! :model/User {:where [:= [:lower :email] "newuser@metabase.com"]}))))))))))))
 
 (deftest relay-state-e2e-test
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"

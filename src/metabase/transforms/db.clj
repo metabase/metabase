@@ -604,7 +604,7 @@
                                                           :id [:in %]
                                                           :is_active true
                                                           {:status    :canceled
-                                                           :end_time  :%now
+                                                           :end_time  [:now]
                                                            :is_active nil
                                                            :message   "Canceled by user but could not guarantee run stopped."}) run-ids))
 
@@ -643,7 +643,7 @@
   [age  :- ms/PositiveInt
    unit :- :keyword]
   (t2/select [:model/TransformRunCancelation :run_id :time]
-             :time [:< [:date-add :%now (- age) unit]]))
+             :time [:< [:date-add [:now] (- age) unit]]))
 
 (mu/defn delete-cancelation-for-inactive-run!
   "Delete the TransformRunCancelation of the TransformRun with `run-id` if that run is no longer active."
@@ -660,12 +660,12 @@
 (mu/defn touch-active-job-run!
   "Stamp `updated_at` on the active TransformJobRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJobRun :id run-id :is_active true {:updated_at :%now}))
+  (t2/update! :model/TransformJobRun :id run-id :is_active true {:updated_at [:now]}))
 
 (mu/defn touch-active-dag-run!
   "Stamp `updated_at` on the active TransformDagRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformDagRun :id run-id :is_active true {:updated_at :%now}))
+  (t2/update! :model/TransformDagRun :id run-id :is_active true {:updated_at [:now]}))
 
 (mu/defn finish-active-job-run!
   "Apply `changes` to the TransformJobRun with `run-id` if it is still active, returning the number of rows
@@ -1093,8 +1093,8 @@
    run-ids  :- [:sequential ms/PositiveInt]
    terminal :- [:map {:closed true}
                 [:status    {:optional true} [:maybe [:or :string :keyword]]]
-                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
-                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string [:= [:now]]]]]
+                [:ended_at  {:optional true} [:maybe [:or :string [:= [:now]]]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
   [(mdb/sum-batched mdb/update-partition-size #(first (t2/query (rt/terminal-statement model [:is_active true] % terminal))) run-ids)])

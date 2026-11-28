@@ -258,7 +258,7 @@
 (t2/define-before-insert :model/Revision
   [revision]
   (assoc revision
-         :timestamp (or (:timestamp revision) :%now)
+         :timestamp (or (:timestamp revision) [:now])
          :metabase_version config/mb-version-string
          :most_recent true))
 

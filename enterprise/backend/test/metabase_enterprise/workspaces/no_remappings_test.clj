@@ -146,7 +146,7 @@
                                             :to_db           ""
                                             :to_schema       "ws_other"
                                             :to_table_name   "VENUES"
-                                            :created_at      :%now}]})
+                                            :created_at      [:now]}]})
               (is (true? (ws.remapping/enabled-for-db? (mt/id))))
               (finally
                 (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))))
@@ -273,7 +273,7 @@
                                             :to_db           ""
                                             :to_schema       "ws_kept"
                                             :to_table_name   "PUBLIC__VENUES"
-                                            :created_at      :%now}]})
+                                            :created_at      [:now]}]})
               (testing "control: in workspace mode the row remaps reads"
                 (is (true? (ws.remapping/enabled-for-db? db-id)))
                 (is (re-find #"(?i)ws_kept" (rewritten))))
@@ -307,7 +307,7 @@
                                       :to_db           ""
                                       :to_schema       "ws_expire"
                                       :to_table_name   "VENUES"
-                                      :created_at      :%now}]})
+                                      :created_at      [:now]}]})
         (is (false? (ws.remapping/enabled-for-db? db-id)) "premise: a fresh cache misses the row")
         (swap! @#'table-remapping/database-ids-cache update :read-at - (* 61 1000 1000 1000))
         (is (true? (ws.remapping/enabled-for-db? db-id)))
@@ -325,7 +325,7 @@
                                 :to_db           ""
                                 :to_schema       to-schema
                                 :to_table_name   (str "PUBLIC__" table)
-                                :created_at      :%now}]}))
+                                :created_at      [:now]}]}))
 
 (deftest lagging-node-pickup-of-turn-off-deletes-no-remapping-test
   (testing "a node that picks up workspaces-enabled=false from its settings cache, maybe inside another request's

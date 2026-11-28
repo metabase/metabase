@@ -160,7 +160,7 @@
   high level, or `off`, which keeps automatic processes from picking them up again."
   [ids state]
   (when (seq ids)
-    (model-persistence.db/update-persisted-infos! ids {:active false, :state state, :state_change_at :%now})))
+    (model-persistence.db/update-persisted-infos! ids {:active false, :state state, :state_change_at [:now]})))
 
 (defn mark-persisted-infos-for-pruning-for-databases!
   "Marks every PersistedInfo of the Databases with `database-ids` as `deletable`, inactive, for the PersistPrune task;
@@ -168,12 +168,12 @@
   [database-ids]
   (when (seq database-ids)
     (model-persistence.db/update-persisted-infos-for-databases!
-     database-ids {:active false, :state "deletable", :state_change_at :%now})))
+     database-ids {:active false, :state "deletable", :state_change_at [:now]})))
 
 (defn mark-persisted-infos-for-pruning-for-disabling!
   "Marks every PersistedInfo as `deletable`, inactive, which disabling model persistence for the instance does."
   []
-  (model-persistence.db/update-all-persisted-infos! {:active false, :state "deletable", :state_change_at :%now}))
+  (model-persistence.db/update-all-persisted-infos! {:active false, :state "deletable", :state_change_at [:now]}))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the Cards with `card-ids`. Equivalent to toggling the caching off and
@@ -183,7 +183,7 @@
   ;; TODO perhaps we should immediately kick off a recalculation of these caches
   (when (seq card-ids)
     (model-persistence.db/update-active-persisted-infos-for-cards!
-     card-ids {:active false, :state "creating", :state_change_at :%now})))
+     card-ids {:active false, :state "creating", :state_change_at [:now]})))
 
 (defn ready-unpersisted-models!
   "Looks for all new models in database and creates a persisted-info ready to be synced."

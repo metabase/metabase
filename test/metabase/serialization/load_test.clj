@@ -78,7 +78,7 @@
         (is (some? coll))))))
 
 (defn- max-id [table]
-  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [table]})) 0))
+  (or (:id (t2/query-one {:select [[[:max :id] :id]] :from [table]})) 0))
 
 (deftest continue-on-error-records-only-what-loads-test
   (testing "a batch that fails after writing rows and reloads one entity at a time records only the rows that stay"

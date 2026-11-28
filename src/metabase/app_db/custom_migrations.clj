@@ -928,14 +928,14 @@
                            :from   [:information_schema.columns]
                            :where  [:and
                                     [:= :data_type "timestamp without time zone"]
-                                    [:= :table_schema :%current_schema]
-                                    [:= :table_catalog :%current_database]]}
+                                    [:= :table_schema [:current_schema]]
+                                    [:= :table_catalog [:current_database]]]}
 
                 :mysql    {:select [:table_name :column_name :is_nullable]
                            :from   [:information_schema.columns]
                            :where  [:and
                                     [:= :data_type "datetime"]
-                                    [:= :table_schema :%database]]}
+                                    [:= :table_schema [:database]]]}
                 :h2      {:select [:table_name :column_name :is_nullable]
                           :from   [:information_schema.columns]
                           :where  [:= :data_type "TIMESTAMP"]})]
@@ -1061,7 +1061,7 @@
       (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
 (defn- internal-user-exists? []
-  (pos? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
+  (pos? (first (vals (t2/query-one {:select [[[:count :*]]] :from :core_user :where [:= :id config/internal-mb-user-id]})))))
 
 (define-migration CreateInternalUser
   ;; the internal user may have been created in a previous version for Metabase Analytics, so don't add it again if it
@@ -1087,7 +1087,7 @@
                 :login_attributes nil
                 :reset_token      nil
                 :last_name        "Internal"
-                :date_joined      :%now
+                :date_joined      [:now]
                 :sso_source       nil
                 :is_datasetnewb   true}]
       (t2/query {:insert-into :core_user :values [user]}))
@@ -1104,7 +1104,7 @@
 (defn- no-user?
   "If there is a user that is not the internal user, we know it's not a fresh install."
   []
-  (zero? (first (vals (t2/query-one {:select [:%count.*] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
+  (zero? (first (vals (t2/query-one {:select [[[:count :*]]] :from :core_user :where [:not= :id config/internal-mb-user-id]})))))
 
 (defn- no-db?
   "We check there is no database is not present, because the sample database could have been installed from a previous version and be out of
@@ -1124,7 +1124,7 @@
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
-    :%now
+    [:now]
     v))
 
 (defn- table-name->rows [data table-name]
@@ -2106,8 +2106,8 @@
                                                         :data_source         "metabase-transform"
                                                         :data_authority      "computed"
                                                         :initial_sync_status "complete"
-                                                        :created_at          :%now
-                                                        :updated_at          :%now}]})
+                                                        :created_at          [:now]
+                                                        :updated_at          [:now]}]})
                               (find-table-id db-id schema table-name)
                               (catch Exception _
                                 (find-table-id db-id schema table-name)))))]
@@ -2268,7 +2268,7 @@
                                                                       :location   "/"
                                                                       :namespace  "data-apps"
                                                                       :entity_id  (u/generate-nano-id)
-                                                                      :created_at :%now})]
+                                                                      :created_at [:now]})]
             (t2/query {:update :data_app
                        :set    {:resource_collection_id collection-id}
                        :where  [:= :id id]})))
@@ -2332,7 +2332,7 @@
   (doseq [{tag-name :name} (t2/query {:select   [:name]
                                       :from     [:transform_tag]
                                       :group-by [:name]
-                                      :having   [:> :%count.* 1]})
+                                      :having   [:> [:count :*] 1]})
           id               (rest (t2/select-pks-vec :transform_tag :name tag-name {:order-by [[:id :asc]]}))]
     (t2/query {:update :transform_tag
                :set    {:name (unused-tag-name tag-name)}
@@ -2344,7 +2344,7 @@
                             (t2/query {:select   [:dashboardcard_id]
                                        :from     [:dashboardcard_series]
                                        :group-by [:dashboardcard_id :position]
-                                       :having   [:> :%count.* 1]}))
+                                       :having   [:> [:count :*] 1]}))
           [position id] (map-indexed vector (t2/select-pks-vec :dashboardcard_series
                                                                :dashboardcard_id dashcard-id
                                                                {:order-by [[:position :asc] [:id :asc]]}))]

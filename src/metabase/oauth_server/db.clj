@@ -78,12 +78,12 @@
 (mu/defn revoke-access-tokens-for-users!
   "Revoke the unrevoked OAuthAccessTokens of the Users with `user-ids`, returning the number revoked."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/OAuthAccessToken {:user_id [:in %], :revoked_at nil} {:revoked_at :%now}) user-ids))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/OAuthAccessToken {:user_id [:in %], :revoked_at nil} {:revoked_at [:now]}) user-ids))
 
 (mu/defn revoke-refresh-tokens-for-users!
   "Revoke the unrevoked OAuthRefreshTokens of the Users with `user-ids`, returning the number revoked."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/OAuthRefreshToken {:user_id [:in %], :revoked_at nil} {:revoked_at :%now}) user-ids))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/OAuthRefreshToken {:user_id [:in %], :revoked_at nil} {:revoked_at [:now]}) user-ids))
 
 (mu/defn authorization-code-ids-of-users :- [:sequential ms/PositiveInt]
   "The ids of every OAuthAuthorizationCode of the Users with `user-ids`."
@@ -172,14 +172,14 @@
   [token :- :string]
   (when-not (string? token)
     (throw (ex-info "token must be a string" {:token token})))
-  (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now}))
+  (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at [:now]}))
 
 (mu/defn revoke-refresh-token!
   "Revoke the OAuthRefreshToken `token`, returning the number revoked."
   [token :- :string]
   (when-not (string? token)
     (throw (ex-info "token must be a string" {:token token})))
-  (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now}))
+  (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at [:now]}))
 
 (mu/defn authorization-code-ids-expired-before :- [:sequential ms/PositiveInt]
   "The ids of the OAuthAuthorizationCodes that expired before `now`."

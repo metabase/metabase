@@ -58,7 +58,7 @@
               :model
               :model_id
               [[:max [:coalesce :d.view_count :t.view_count]] :cnt]
-              [:%max.timestamp :max_ts]]
+              [[:max :timestamp] :max_ts]]
              {:group-by  [:model :model_id]
               :where     [:and
                           [:= :context "view"]
@@ -80,10 +80,10 @@
   "Up to `limit` most recently run question Cards with their run counts and last runner."
   [limit :- ms/PositiveInt]
   (t2/select [:model/QueryExecution
-              [:%min.executor_id :user_id]
+              [[:min :executor_id] :user_id]
               [(u/qualified-key (t2/table-name :model/QueryExecution) :card_id) :model_id]
-              [:%count.* :cnt]
-              [:%max.started_at :max_ts]]
+              [[:count :*] :cnt]
+              [[:max :started_at] :max_ts]]
              {:group-by [(u/qualified-key (t2/table-name :model/QueryExecution) :card_id) :context]
               :where    [:and
                          [:= :context [:literal :question]]]

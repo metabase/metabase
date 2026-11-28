@@ -52,14 +52,14 @@
    error-message :- :string]
   (t2/update! :model/ModelIndex :id id {:state      "error"
                                         :error      error-message
-                                        :indexed_at :%now}))
+                                        :indexed_at [:now]}))
 
 (mu/defn mark-model-index-indexed!
   "Set the ModelIndex with `id` to `state`, clear its error, and stamp its indexing time, returning the number
   updated."
   [id    :- ms/PositiveInt
    state :- :string]
-  (t2/update! :model/ModelIndex :id id {:indexed_at :%now
+  (t2/update! :model/ModelIndex :id id {:indexed_at [:now]
                                         :error      nil
                                         :state      state}))
 

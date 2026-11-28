@@ -138,7 +138,7 @@
    [:user_id                     {:optional true} [:maybe :int]]
    [:model                       {:optional true} [:maybe [:or :keyword :string]]]
    [:model_id                    {:optional true} [:maybe :int]]
-   [:timestamp                   {:optional true} [:maybe [:or ms/TemporalInstant :keyword]]]
+   [:timestamp                   {:optional true} [:maybe [:or ms/TemporalInstant [:= [:now]]]]]
    [:metadata                    {:optional true} [:maybe [:map {:closed true}]]]
    [:has_access                  {:optional true} [:maybe :boolean]]
    [:hash                        {:optional true} [:maybe [:or bytes? :string]]]

@@ -111,7 +111,7 @@
   (testing "a Database id checked before it exists is refused once a destination Database takes it"
     (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
                    :model/Database         {router-db-id :id} {}]
-      (let [db-id (+ 1000000 (t2/select-one-fn :max-id [:model/Database [:%max.id :max-id]]))
+      (let [db-id (+ 1000000 (t2/select-one-fn :max-id [:model/Database [[:max :id] :max-id]]))
             row   {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}]
         (is (nil? (data-permissions/assert-no-destination-db-permissions! [row])))
         (mt/with-temp [:model/Database _ {:id db-id :router_database_id router-db-id}]
@@ -1361,11 +1361,11 @@
                                                                          :last_name   "Hughes"
                                                                          :email       "howard@aircraft.com"
                                                                          :password    "superstrong"
-                                                                         :date_joined :%now})
+                                                                         :date_joined [:now]})
           db-id    (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
                                                                              :engine     "h2"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
+                                                                             :created_at [:now]
+                                                                             :updated_at [:now]
                                                                              :details    "{}"})
           table-id (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "orders"
                                                                           :active     true
@@ -1388,11 +1388,11 @@
                                                                              :last_name   "Hughes"
                                                                              :email       "howard@aircraft.com"
                                                                              :password    "superstrong"
-                                                                             :date_joined :%now})
+                                                                             :date_joined [:now]})
           db-id        (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
                                                                                  :engine     "h2"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
+                                                                                 :created_at [:now]
+                                                                                 :updated_at [:now]
                                                                                  :details    "{}"})
           table-id     (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "orders"
                                                                               :active     true

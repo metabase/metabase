@@ -49,7 +49,7 @@
           (let [db-id  (t2/insert-returning-pk! :model/Database
                                                 {:name "pre-delete-refuse-initialized-db"
                                                  :engine :h2 :details {}
-                                                 :created_at :%now :updated_at :%now})
+                                                 :created_at [:now] :updated_at [:now]})
                 _      (track-db! db-id)
                 ws-id  (t2/insert-returning-pk! :model/Workspace
                                                 {:name "pre-delete-refuse-initialized-ws"})
@@ -84,7 +84,7 @@
           (let [db-id  (t2/insert-returning-pk! :model/Database
                                                 {:name "pre-delete-cleanup-uninitialized-db"
                                                  :engine :h2 :details {}
-                                                 :created_at :%now :updated_at :%now})
+                                                 :created_at [:now] :updated_at [:now]})
                 _      (track-db! db-id)
                 ws-id  (t2/insert-returning-pk! :model/Workspace
                                                 {:name "pre-delete-cleanup-uninitialized-ws"})
@@ -115,7 +115,7 @@
           (let [db-id  (t2/insert-returning-pk! :model/Database
                                                 {:name "fk-restrict-defense-db"
                                                  :engine :h2 :details {}
-                                                 :created_at :%now :updated_at :%now})
+                                                 :created_at [:now] :updated_at [:now]})
                 _      (track-db! db-id)
                 ws-id  (t2/insert-returning-pk! :model/Workspace
                                                 {:name "fk-restrict-defense-ws"})

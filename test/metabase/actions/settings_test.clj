@@ -44,8 +44,8 @@
                                         :name        "destination-table"
                                         :is_writable true
                                         :active      true
-                                        :created_at  :%now
-                                        :updated_at  :%now})
+                                        :created_at  [:now]
+                                        :updated_at  [:now]})
               (is (= [:setting/database-routing]
                      (disabled-reasons router-db)))
               (is (= [:setting/database-routing]

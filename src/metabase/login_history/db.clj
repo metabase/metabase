@@ -56,7 +56,7 @@
   (t2/count :model/LoginHistory
             {:where [:and
                      [:= :user_id user-id]
-                     [:> :timestamp [:date-add :%now (- window-hours) :hour]]
+                     [:> :timestamp [:date-add [:now] (- window-hours) :hour]]
                      [:not [:exists
                             ^:allow-subquery
                             {:select [1]

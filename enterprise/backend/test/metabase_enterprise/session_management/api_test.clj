@@ -39,7 +39,7 @@
                 (merge {:id         id
                         :key_hashed (session/hash-session-key (str (random-uuid)))
                         :user_id    user-id
-                        :created_at :%now}
+                        :created_at [:now]}
                        extra-cols))
     id))
 
@@ -313,7 +313,7 @@
       (let [before (:expires_at (first (:data (list-sessions user-id))))]
         ;; this is what `touch-session!` does on every authenticated request
         (t2/query {:update (t2/table-name :model/Session)
-                   :set    {:last_active_at :%now}
+                   :set    {:last_active_at [:now]}
                    :where  [:= :user_id user-id]})
         (is (= before (:expires_at (first (:data (list-sessions user-id))))))))))
 

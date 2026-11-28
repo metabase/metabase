@@ -31,7 +31,7 @@
   (t2/query (cond-> {:select   select-columns
                      :from     (stale-content-union union-queries)
                      :order-by [[(case sort-column
-                                   :name         :%lower.name
+                                   :name         [:lower :name]
                                    :last_used_at :last_used_at)
                                  sort-direction]]}
               (some? limit)  (assoc :limit limit)
@@ -40,5 +40,5 @@
 (mu/defn stale-content-count
   "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
   [union-queries :- [:sequential ::funnysql.schema/query.select]]
-  (:count (t2/query-one {:select [[:%count.* :count]]
+  (:count (t2/query-one {:select [[[:count :*] :count]]
                          :from   (stale-content-union union-queries)})))

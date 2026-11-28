@@ -771,8 +771,8 @@
                        :values      [{:name       "raw-insert-probe"
                                       :db_id      db-id
                                       :active     true
-                                      :created_at :%now
-                                      :updated_at :%now}]})
+                                      :created_at [:now]
+                                      :updated_at [:now]}]})
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))

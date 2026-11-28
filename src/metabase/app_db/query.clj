@@ -24,6 +24,13 @@
   (update-in (next-method query-type model parsed-args resolved-query)
              [:select 0 0 1] vary-meta assoc :allow-subquery true))
 
+(methodical/defmethod t2.pipeline/build :around [:toucan.query-type/select.count :default clojure.lang.IPersistentMap]
+  "Select the `count(*)` that `t2/count` builds as the call `[:count :*]`, since Funny SQL refuses Toucan's
+  `:%count.*` shorthand."
+  [query-type model parsed-args resolved-query]
+  (update (next-method query-type model parsed-args resolved-query)
+          :select (partial mapv #(if (= [:%count.* :count] %) [[:count :*] :count] %))))
+
 (methodical/defmethod t2.pipeline/compile :around [:default :default clojure.lang.IPersistentMap]
   "Keep a Honey SQL query, but no record such as Toucan's identity query, to the rows of the remote sync worktree this
   thread works in before Funny SQL compiles it."

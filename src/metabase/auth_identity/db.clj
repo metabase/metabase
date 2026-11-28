@@ -77,7 +77,7 @@
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
   matching AuthIdentity), which updates nothing."
   [id :- [:maybe ms/PositiveInt]]
-  (t2/update! :model/AuthIdentity :id id {:last_used_at :%now}))
+  (t2/update! :model/AuthIdentity :id id {:last_used_at [:now]}))
 
 (mu/defn auth-identity-ids :- [:sequential ms/PositiveInt]
   "The ids of every AuthIdentity of the User with `user-id` at `provider`."
@@ -97,7 +97,7 @@
   [email :- :string]
   (when-not (string? email)
     (throw (ex-info "email must be a string" {:email email})))
-  (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
+  (t2/select-one :model/User {:where [:= [:lower :email] (u/lower-case-en email)]}))
 
 (mu/defn user-login-columns
   "Return login details for the user with `user-id`, or nil.
@@ -113,7 +113,7 @@
   [email :- :string]
   (when-not (string? email)
     (throw (ex-info "email must be a string" {:email email})))
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :%lower.email (u/lower-case-en email)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] {:where [:= [:lower :email] (u/lower-case-en email)]}))
 
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."

@@ -83,7 +83,7 @@
   [columns browsable-where]
   (t2/select (into [:model/Database] columns)
              {:where    browsable-where
-              :order-by [[:%lower.name :asc]]}))
+              :order-by [[[:lower :name] :asc]]}))
 
 (defn browsable-database-ids
   "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
@@ -95,7 +95,7 @@
 (defn unarchived-models-in-database
   "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
   [columns database-id]
-  (t2/select columns :type :model :database_id database-id :archived false {:order-by [[:%lower.name :asc]]}))
+  (t2/select columns :type :model :database_id database-id :archived false {:order-by [[[:lower :name] :asc]]}))
 
 (defn active-tables-by-ids
   "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
@@ -137,7 +137,7 @@
   [archived?]
   (t2/select [:model/NativeQuerySnippet :id :name :description :collection_id]
              :archived (boolean archived?)
-             {:order-by [[:%lower.name :asc]]}))
+             {:order-by [[[:lower :name] :asc]]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -159,7 +159,7 @@
 (mu/defn end-session-log!
   "Stamp `ended_at` on the McpSessionLog with `session-id`."
   [session-id :- :string]
-  (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
+  (t2/update! :model/McpSessionLog :id session-id {:ended_at [:now]}))
 
 (mu/defn session-log-ids-created-before :- [:sequential :string]
   "The ids of the McpSessionLogs created before `cutoff`."

@@ -10,7 +10,7 @@
   2 months, with at least 10 Cards (2 native), and at least 1 Dashboard. When `only-superusers?` is true, only
   superusers are considered."
   [only-superusers? :- :boolean]
-  (let [created-after [:date-add :%now -2 :month]]
+  (let [created-after [:date-add [:now] -2 :month]]
     (t2/query {:select [[:u.email :email]
                         [:u.date_joined :created_at]
                         [:u.first_name :first_name]

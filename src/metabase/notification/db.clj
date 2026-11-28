@@ -419,7 +419,7 @@
   "The earliest `started_at` considered for the admin notification list/detail run history:
   [[admin-run-lookback-days]] days before now, as a Honey SQL form."
   []
-  [:date-add :%now (- admin-run-lookback-days) :day])
+  [:date-add [:now] (- admin-run-lookback-days) :day])
 
 (mu/defn terminal-alert-runs
   "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`

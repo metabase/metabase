@@ -14,7 +14,7 @@
 (mu/defn first-user-date-joined
   "The earliest join date among all Users, or nil."
   []
-  (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
+  (t2/select-one-fn :min [:model/User [[:min :date_joined] :min]]))
 
 (mu/defn sample-database-exists?
   "Whether a sample Database exists."
@@ -84,7 +84,7 @@
 
 (defn- notification-frequencies-by-column*
   [model column alerts? left-join?]
-  (t2/select [model [column :k] [:%count.* :count]]
+  (t2/select [model [column :k] [[:count :*] :count]]
              (cond-> {:group-by [column]
                       :where    [(if alerts? :not= :=) (u/qualified-key (t2/table-name :model/Pulse) :alert_condition) nil]}
                left-join? (assoc :left-join [(t2/table-name :model/Pulse) [:= (u/qualified-key (t2/table-name :model/Pulse) :id) :pulse_id]]))))
@@ -236,7 +236,7 @@
 (mu/defn query-cache-stats
   "The average result `:length` and `:count` of the QueryCache entries."
   []
-  (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]]))
+  (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [[:count :*] :count]]))
 
 (mu/defn user-count-joined-before
   "The number (up to `limit`) of non-internal Users who joined at or before `joined-before`."

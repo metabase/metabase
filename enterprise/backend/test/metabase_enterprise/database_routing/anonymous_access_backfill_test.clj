@@ -17,11 +17,11 @@
                                                                         :email       "router-owner@metabase.com"
                                                                         :password    "superstrong"
                                                                         :entity_id   (u/generate-nano-id)
-                                                                        :date_joined :%now})
+                                                                        :date_joined [:now]})
           db!     (fn [db-name]
                     (t2/insert-returning-pk! (t2/table-name :model/Database) {:details    "{}"
-                                                                              :created_at :%now
-                                                                              :updated_at :%now
+                                                                              :created_at [:now]
+                                                                              :updated_at [:now]
                                                                               :engine     "h2"
                                                                               :is_sample  false
                                                                               :name       db-name}))
@@ -39,8 +39,8 @@
                                                                           :database_id            db-id
                                                                           :enable_embedding       enable-embedding
                                                                           :archived               false
-                                                                          :created_at             :%now
-                                                                          :updated_at             :%now}))
+                                                                          :created_at             [:now]
+                                                                          :updated_at             [:now]}))
           embedded-db (db! "router-with-guest-embeds")
           _           (router! embedded-db)
           _           (card! embedded-db true)

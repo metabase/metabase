@@ -82,7 +82,7 @@
                    :model/CardTest  {test-id :id
                                      eid     :entity_id}      {:card_id card-id}
                    :model/TestSuite {suite-id :id}            {}]
-      (let [missing-id (inc (t2/select-one-fn :max-id [:model/CardTest [:%max.id :max-id]]))
+      (let [missing-id (inc (t2/select-one-fn :max-id [:model/CardTest [[:max :id] :max-id]]))
             path       (str "ee/test-suite/" suite-id)
             suites     (t2/count :model/TestSuite)]
         (testing "a test id that names no test is refused"
@@ -155,7 +155,7 @@
                           (filter #(= suite-id (:id %)))
                           first :members (keep #(when (= hidden-eid (:test_entity_id %)) (:status %)))))))
             (testing "a test the user cannot read cannot be added by id, and the refusal does not say it exists"
-              (let [missing-id (inc (t2/select-one-fn :max-id [:model/CardTest [:%max.id :max-id]]))]
+              (let [missing-id (inc (t2/select-one-fn :max-id [:model/CardTest [[:max :id] :max-id]]))]
                 (is (= (mt/user-http-request :lucky :put 400 path {:members [{:test_type "card" :test_id missing-id}]})
                        (-> (mt/user-http-request :lucky :put 400 path {:members [{:test_type "card" :test_id hidden-id}]})
                            (str/replace (str hidden-id) (str missing-id)))))))

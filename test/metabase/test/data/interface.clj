@@ -375,9 +375,9 @@
 (defmethod metabase-instance FieldDefinition
   [this table]
   (t2/select-one :model/Field
-                 :table_id    (u/the-id table)
-                 :%lower.name (u/lower-case-en (:field-name this))
-                 {:order-by [[:id :asc]]}))
+                 :table_id (u/the-id table)
+                 {:where    [:= [:lower :name] (u/lower-case-en (:field-name this))]
+                  :order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
   [this database]
@@ -385,9 +385,9 @@
   ;; like Oracle
   (letfn [(table-with-name [table-name]
             (t2/select-one :model/Table
-                           :db_id       (:id database)
-                           :%lower.name table-name
-                           {:order-by [[:id :asc]]}))]
+                           :db_id (:id database)
+                           {:where    [:= [:lower :name] table-name]
+                            :order-by [[:id :asc]]}))]
     (or (table-with-name (u/lower-case-en (:table-name this)))
         (when-let [dataset-name (get-in database [:settings :database-source-dataset-name])]
           (table-with-name (db-qualified-table-name dataset-name (:table-name this)))))))

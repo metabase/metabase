@@ -55,7 +55,7 @@
   [email :- :string]
   (when-not (string? email)
     (throw (ex-info "email must be a string" {:email email})))
-  (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
+  (t2/select-one :model/User :is_active true {:where [:= [:lower :email] (u/lower-case-en email)]}))
 
 (mu/defn call-log-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the AgentApiCallLogs created before `cutoff`."
