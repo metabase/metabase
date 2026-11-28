@@ -39,10 +39,7 @@ export function MissingScopesAlert({
               </>
             }
           />
-          <ButtonLink href={slackUrl}>
-            <span>{t`Open Slack settings`}</span>
-            <Icon name="external" size={16} ml="sm" />
-          </ButtonLink>
+          <ButtonLink href={slackUrl}>{t`Open Slack settings`}</ButtonLink>
         </Group>
       </Stack>
     </Alert>

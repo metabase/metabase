@@ -246,7 +246,7 @@ describe("Cloud settings section", () => {
     cy.visit("/admin/settings");
     cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
     cy.findByTestId("admin-layout-content")
-      .findByText("Go to the Metabase Store")
+      .findByRole("link", { name: "Go to the Metabase Store" })
       .should("have.attr", "href", "https://test-store.metabase.com/");
   });
 
@@ -558,7 +558,7 @@ describe("scenarios > admin > license and billing", () => {
     it("should show the user a link to the store for an unlincensed enterprise instance", () => {
       cy.visit("/admin/settings/license");
       cy.findByTestId("license-and-billing-content")
-        .findByText("Go to the Metabase Store")
+        .findByRole("link", { name: "Go to the Metabase Store" })
         .should("have.prop", "tagName", "A");
     });
   });
