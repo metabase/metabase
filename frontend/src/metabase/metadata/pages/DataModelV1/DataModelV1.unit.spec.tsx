@@ -11,8 +11,10 @@ import {
   setupUnauthorizedFieldEndpoint,
   setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   act,
+  createMockDOMRect,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -22,6 +24,19 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { Link } from "metabase/common/components/Link";
+import {
+  dismissToasts,
+  findShownListbox,
+  findToast,
+  flushRequests,
+  selectOption,
+  undo,
+} from "metabase/metadata/pages/shared/tests/helpers";
+import {
+  getLastRequestBody,
+  getRequestBodies,
+  setupDataModelBackend,
+} from "metabase/metadata/pages/shared/tests/setup-data-model-backend";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -38,9 +53,17 @@ import {
   createMockFieldValues,
   createMockSearchResult,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+  REVIEWS_ID,
   SAMPLE_DB_FIELD_VALUES,
+  SAMPLE_DB_ID,
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
@@ -941,6 +964,781 @@ describe("DataModelV1", () => {
     });
   });
 });
+
+const HIDDEN_TABLE_NAMES = [
+  "Accounts",
+  "Analytic Events",
+  "Feedback",
+  "Invoices",
+] as const;
+
+const VISIBLE_TABLE_NAMES = ["Orders", "People", "Products", "Reviews"];
+
+const ALL_TABLE_NAMES = [...HIDDEN_TABLE_NAMES, ...VISIBLE_TABLE_NAMES];
+
+const FULL_SAMPLE_DB = createSampleDatabase({
+  tables: [
+    ...HIDDEN_TABLE_NAMES.map((displayName, index) =>
+      createMockTable({
+        id: 100 + index,
+        db_id: SAMPLE_DB.id,
+        schema: "PUBLIC",
+        name: displayName.toUpperCase().replace(" ", "_"),
+        display_name: displayName,
+        visibility_type: "hidden",
+        fields: [],
+      }),
+    ),
+    createOrdersTable(),
+    createPeopleTable(),
+    createProductsTable({ field_order: "database" }),
+    createReviewsTable(),
+  ],
+});
+
+const WRITABLE_DB_ID = 2000;
+
+const createWritableNameField = (tableId: number) =>
+  createMockField({
+    id: tableId * 10,
+    table_id: tableId,
+    name: "name",
+    display_name: "Name",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+  });
+
+const DOMESTIC_ANIMALS_TABLE = createMockTable({
+  id: 2001,
+  db_id: WRITABLE_DB_ID,
+  schema: "Domestic",
+  name: "Animals",
+  display_name: "Animals",
+  fields: [createWritableNameField(2001)],
+});
+
+const WILD_ANIMALS_TABLE = createMockTable({
+  id: 2002,
+  db_id: WRITABLE_DB_ID,
+  schema: "Wild",
+  name: "Animals",
+  display_name: "Animals",
+  fields: [createWritableNameField(2002)],
+});
+
+const WILD_BIRDS_TABLE = createMockTable({
+  id: 2003,
+  db_id: WRITABLE_DB_ID,
+  schema: "Wild",
+  name: "Birds",
+  display_name: "Birds",
+  fields: [createWritableNameField(2003)],
+});
+
+const MULTI_SCHEMA_DB = createMockDatabase({
+  id: WRITABLE_DB_ID,
+  name: "Writable Postgres12",
+  engine: "postgres",
+  tables: [DOMESTIC_ANIMALS_TABLE, WILD_ANIMALS_TABLE, WILD_BIRDS_TABLE],
+});
+
+const SegmentListStub = () => <span>Segment list</span>;
+
+interface BackendSetupOpts {
+  databases?: Database[];
+  params?: ParsedRouteParams;
+}
+
+/**
+ * Renders the data model with a backend that keeps state, so a control shows
+ * a change only after the request that makes it.
+ */
+async function setupWithBackend({
+  databases = [FULL_SAMPLE_DB],
+  params = DEFAULT_ROUTE_PARAMS,
+}: BackendSetupOpts = {}) {
+  const backend = setupDataModelBackend({
+    tables: databases.flatMap((database) => database.tables ?? []),
+    fieldValues: {
+      [ORDERS.PRODUCT_ID]: [[1], [2], [3]],
+    },
+  });
+  setupDatabasesEndpoints(databases);
+  setupCardDataset();
+  setupSearchEndpoints(
+    databases.flatMap((database) =>
+      (database.tables ?? []).map((table) =>
+        createMockSearchResult({
+          id: table.id,
+          model: "table",
+          name: table.display_name,
+          table_name: table.name,
+          table_schema: table.schema,
+          database_id: database.id,
+          database_name: database.name,
+          initial_sync_status: "complete",
+        }),
+      ),
+    ),
+  );
+
+  const view = renderWithProviders(
+    <Route path="admin/datamodel">
+      <Route index element={redirect("database")} />
+      <Route path="database" element={<DataModelV1 />} />
+      <Route path="database/:databaseId" element={<DataModelV1 />} />
+      <Route
+        path="database/:databaseId/schema/:schemaId"
+        element={<DataModelV1 />}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId"
+        element={<DataModelV1 />}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        element={<DataModelV1 />}
+      />
+      <Route element={<DataModelV1 />}>
+        <Route path="segments" element={<SegmentListStub />} />
+      </Route>
+    </Route>,
+    {
+      withRouter: true,
+      withUndos: true,
+      initialRoute: Urls.dataModel(params),
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
+  );
+
+  expect(await findTablePickerDatabase(databases[0].name)).toBeInTheDocument();
+  await waitForLoaderToBeRemoved();
+
+  return { ...view, backend, router: checkNotNull(view.router) };
+}
+
+describe("DataModelV1 (backend that keeps state)", () => {
+  beforeEach(() => {
+    // rows are short and the list is tall, so the virtual list renders every row
+    jest
+      .spyOn(window.Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        return createMockDOMRect({
+          height: this.getAttribute("data-testid") === "tree-item" ? 30 : 1000,
+        });
+      });
+  });
+
+  afterEach(async () => {
+    await flushRequests();
+    jest.restoreAllMocks();
+  });
+
+  describe("table picker", () => {
+    it("should keep the selected table when collapsing and expanding its database (SEM-435) and open a table from the segments page (SEM-484)", async () => {
+      const ordersPath = Urls.dataModel({
+        databaseId: FULL_SAMPLE_DB.id,
+        schemaName: "PUBLIC",
+        tableId: ORDERS_ID,
+        fieldId: undefined,
+      });
+      const { router } = await setupWithBackend({
+        params: {
+          databaseId: FULL_SAMPLE_DB.id,
+          schemaName: "PUBLIC",
+          tableId: ORDERS_ID,
+          fieldId: undefined,
+        },
+      });
+      expect(await findTablePickerTable("Orders")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+
+      await userEvent.click(await findTablePickerDatabase("Sample Database"));
+      await waitFor(() => expect(queryTablePickerTables()).toHaveLength(0));
+      expect(router.location.pathname).toBe(ordersPath);
+
+      await userEvent.click(await findTablePickerDatabase("Sample Database"));
+      expect(await findTablePickerTable("Orders")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(router.location.pathname).toBe(ordersPath);
+      expect(getTableNameInput()).toHaveValue("Orders");
+
+      await userEvent.click(screen.getByRole("link", { name: /Segments/ }));
+      expect(await screen.findByText("Segment list")).toBeInTheDocument();
+      expect(router.location.pathname).toBe("/admin/datamodel/segments");
+
+      await userEvent.click(await findTablePickerTable("Reviews"));
+      await waitFor(() =>
+        expect(router.location.pathname).toBe(
+          Urls.dataModel({
+            databaseId: FULL_SAMPLE_DB.id,
+            schemaName: "PUBLIC",
+            tableId: REVIEWS_ID,
+            fieldId: undefined,
+          }),
+        ),
+      );
+      await waitFor(() => expect(getTableNameInput()).toHaveValue("Reviews"));
+      expect(screen.queryByText("Segment list")).not.toBeInTheDocument();
+    });
+
+    it("should search for tables in a single database, open a result, and go back to browsing", async () => {
+      const { router } = await setupWithBackend();
+      await waitFor(() => expect(queryTablePickerTables()).toHaveLength(8));
+
+      await userEvent.type(getTableSearchInput(), "ts");
+      await waitFor(() =>
+        expect(getTablePickerItemNames("table")).toEqual([
+          "Accounts",
+          "Analytic Events",
+          "Products",
+        ]),
+      );
+      expect(getTablePickerItemNames("database")).toEqual(["Sample Database"]);
+      expect(getTablePickerItemNames("schema")).toEqual(["PUBLIC"]);
+      await waitFor(() =>
+        expect(getSearchRequestParams()).toContainEqual({
+          q: "ts",
+          models: "table",
+          context: "data-picker",
+        }),
+      );
+
+      await userEvent.click(await findTablePickerTable("Products"));
+      await waitFor(() =>
+        expect(router.location.pathname).toBe(
+          Urls.dataModel({
+            databaseId: FULL_SAMPLE_DB.id,
+            schemaName: "PUBLIC",
+            tableId: PRODUCTS_ID,
+            fieldId: undefined,
+          }),
+        ),
+      );
+      await waitFor(() => expect(getTableNameInput()).toHaveValue("Products"));
+
+      await userEvent.clear(getTableSearchInput());
+      await userEvent.type(getTableSearchInput(), "xyz");
+      expect(
+        await within(screen.getByTestId("table-picker")).findByText(
+          "No results.",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.clear(getTableSearchInput());
+      await waitFor(() =>
+        expect(getTablePickerItemNames("table")).toEqual(ALL_TABLE_NAMES),
+      );
+      expect(getTablePickerItemNames("database")).toEqual(["Sample Database"]);
+      expect(getTablePickerItemNames("schema")).toEqual([]);
+    });
+
+    it("should search for tables across databases and schemas, and restore the selected table when expanding the tree (SEM-435)", async () => {
+      const { router, unmount } = await setupWithBackend({
+        databases: [FULL_SAMPLE_DB, MULTI_SCHEMA_DB],
+      });
+
+      await userEvent.type(getTableSearchInput(), "rd");
+      await waitFor(() =>
+        expect(getTablePickerItemNames("table")).toEqual(["Orders", "Birds"]),
+      );
+      expect(getTablePickerItemNames("database")).toEqual([
+        "Sample Database",
+        "Writable Postgres12",
+      ]);
+      expect(getTablePickerItemNames("schema")).toEqual(["PUBLIC", "Wild"]);
+
+      await userEvent.type(getTableSearchInput(), "s");
+      await waitFor(() =>
+        expect(getTablePickerItemNames("table")).toEqual(["Birds"]),
+      );
+      expect(getTablePickerItemNames("database")).toEqual([
+        "Writable Postgres12",
+      ]);
+      expect(getTablePickerItemNames("schema")).toEqual(["Wild"]);
+
+      await userEvent.click(await findTablePickerTable("Birds"));
+      await waitFor(() =>
+        expect(router.location.pathname).toBe(
+          `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/${WILD_BIRDS_TABLE.id}`,
+        ),
+      );
+      await waitFor(() => expect(getTableNameInput()).toHaveValue("Birds"));
+
+      await userEvent.clear(getTableSearchInput());
+      await waitFor(() =>
+        expect(getTablePickerItemNames("table")).toEqual(["Animals", "Birds"]),
+      );
+      expect(getTablePickerItemNames("database")).toEqual([
+        "Sample Database",
+        "Writable Postgres12",
+      ]);
+      expect(getTablePickerItemNames("schema")).toEqual(["Domestic", "Wild"]);
+
+      // start again with a collapsed tree, as the tree state is not persisted
+      unmount();
+      fetchMock.removeRoutes();
+      fetchMock.clearHistory();
+      await setupWithBackend({
+        databases: [FULL_SAMPLE_DB, MULTI_SCHEMA_DB],
+      });
+      await waitFor(() =>
+        expect(getTablePickerItemNames("database")).toEqual([
+          "Sample Database",
+          "Writable Postgres12",
+        ]),
+      );
+      expect(getTablePickerItemNames("table")).toEqual([]);
+
+      await userEvent.click(
+        await findTablePickerDatabase("Writable Postgres12"),
+      );
+      await userEvent.click(await findTablePickerSchema("Domestic"));
+      await userEvent.click(await findTablePickerTable("Animals"));
+      await waitFor(() => expect(getTableNameInput()).toHaveValue("Animals"));
+      await userEvent.click(await findTablePickerSchema("Wild"));
+      await userEvent.click(await findTablePickerTable("Birds"));
+      await waitFor(() => expect(getTableNameInput()).toHaveValue("Birds"));
+
+      await userEvent.click(
+        await findTablePickerDatabase("Writable Postgres12"),
+      );
+      await waitFor(() =>
+        expect(getTablePickerItemNames("schema")).toEqual([]),
+      );
+      await userEvent.click(
+        await findTablePickerDatabase("Writable Postgres12"),
+      );
+
+      expect(await findTablePickerTable("Birds")).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(getTableNameInput()).toHaveValue("Birds");
+    });
+  });
+
+  describe("table visibility", () => {
+    it("should hide all tables of a single-schema database, undo it, and unhide them all", async () => {
+      const visibleTableIds = [ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID];
+      const allTableIds = [100, 101, 102, 103, ...visibleTableIds];
+      await setupWithBackend({
+        params: {
+          databaseId: FULL_SAMPLE_DB.id,
+          schemaName: "PUBLIC",
+          tableId: ORDERS_ID,
+          fieldId: undefined,
+        },
+      });
+      await verifyTablesHidden([...HIDDEN_TABLE_NAMES]);
+      await verifyTablesVisible(VISIBLE_TABLE_NAMES);
+
+      await userEvent.click(
+        await getBulkVisibilityButton("database", "Sample Database", "Hide"),
+      );
+      await verifyTablesHidden(ALL_TABLE_NAMES);
+      expect(getRequestBodies("stateful-tables-put")).toEqual([
+        { ids: visibleTableIds, visibility_type: "hidden" },
+      ]);
+
+      await undo("Tables hidden");
+      expect(getRequestBodies("stateful-tables-put")).toEqual([
+        { ids: visibleTableIds, visibility_type: "hidden" },
+        { ids: visibleTableIds, visibility_type: null },
+      ]);
+      await verifyTablesHidden([...HIDDEN_TABLE_NAMES]);
+      await verifyTablesVisible(VISIBLE_TABLE_NAMES);
+
+      await userEvent.click(
+        await getBulkVisibilityButton("database", "Sample Database", "Hide"),
+      );
+      await findToast("Tables hidden");
+      await dismissToasts();
+      await verifyTablesHidden(ALL_TABLE_NAMES);
+
+      await userEvent.click(
+        await getBulkVisibilityButton("database", "Sample Database", "Unhide"),
+      );
+      await findToast("Tables unhidden");
+      await dismissToasts();
+      expect(getLastRequestBody("stateful-tables-put")).toEqual({
+        ids: allTableIds,
+        visibility_type: null,
+      });
+      await verifyTablesVisible(ALL_TABLE_NAMES);
+    });
+
+    it("should hide all tables of an expanded schema only, in a multi-schema database", async () => {
+      await setupWithBackend({ databases: [MULTI_SCHEMA_DB] });
+      const database = await findTablePickerDatabase("Writable Postgres12");
+
+      expect(await findTablePickerSchema("Domestic")).toBeInTheDocument();
+      expect(queryBulkVisibilityButton(database)).not.toBeInTheDocument();
+      expect(
+        queryBulkVisibilityButton(await findTablePickerSchema("Domestic")),
+      ).not.toBeInTheDocument();
+      expect(
+        queryBulkVisibilityButton(await findTablePickerSchema("Wild")),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(await findTablePickerSchema("Wild"));
+      await verifyTablesVisible(["Animals", "Birds"]);
+      expect(
+        queryBulkVisibilityButton(
+          await findTablePickerDatabase("Writable Postgres12"),
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        queryBulkVisibilityButton(await findTablePickerSchema("Domestic")),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        await getBulkVisibilityButton("schema", "Wild", "Hide"),
+      );
+      await verifyTablesHidden(["Animals", "Birds"]);
+      expect(getRequestBodies("stateful-tables-put")).toEqual([
+        {
+          ids: [WILD_ANIMALS_TABLE.id, WILD_BIRDS_TABLE.id],
+          visibility_type: "hidden",
+        },
+      ]);
+
+      await undo("Tables hidden");
+      expect(getLastRequestBody("stateful-tables-put")).toEqual({
+        ids: [WILD_ANIMALS_TABLE.id, WILD_BIRDS_TABLE.id],
+        visibility_type: null,
+      });
+      await verifyTablesVisible(["Animals", "Birds"]);
+    });
+
+    it("should update the table picker when changing the visibility of a branch other than the selected one", async () => {
+      await setupWithBackend({
+        databases: [MULTI_SCHEMA_DB, FULL_SAMPLE_DB],
+      });
+
+      await userEvent.click(await findTablePickerDatabase("Sample Database"));
+      await userEvent.click(
+        await findTablePickerDatabase("Writable Postgres12"),
+      );
+      await userEvent.click(await findTablePickerSchema("Wild"));
+      await userEvent.click(await findTablePickerTable("Birds"));
+      await waitFor(() => expect(getTableNameInput()).toHaveValue("Birds"));
+
+      await userEvent.click(
+        within(await findTablePickerTable("Accounts")).getByRole("button", {
+          name: "Unhide table",
+        }),
+      );
+      await verifyTablesVisible(["Accounts"]);
+      expect(getRequestBodies("stateful-table-100-put")).toEqual([
+        { visibility_type: null },
+      ]);
+
+      await userEvent.click(
+        await getBulkVisibilityButton("database", "Sample Database", "Hide"),
+      );
+      await verifyTablesHidden(ALL_TABLE_NAMES);
+      expect(getRequestBodies("stateful-tables-put")).toEqual([
+        {
+          ids: [100, ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID],
+          visibility_type: "hidden",
+        },
+      ]);
+      expect(getTableNameInput()).toHaveValue("Birds");
+    });
+  });
+
+  describe("table section", () => {
+    it("should sort fields alphabetically and smartly", async () => {
+      const { backend } = await setupWithBackend({
+        params: {
+          databaseId: FULL_SAMPLE_DB.id,
+          schemaName: "PUBLIC",
+          tableId: PRODUCTS_ID,
+          fieldId: undefined,
+        },
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: /Sorting/ }));
+      expect(
+        within(getSortOrderInput()).getByDisplayValue("database"),
+      ).toBeChecked();
+
+      await userEvent.click(
+        within(getSortOrderInput()).getByLabelText("Alphabetical order"),
+      );
+      await findToast("Field order updated");
+      await dismissToasts();
+      expect(getRequestBodies(`stateful-table-${PRODUCTS_ID}-put`)).toEqual([
+        { field_order: "alphabetical" },
+      ]);
+      await waitFor(() =>
+        expect(
+          within(getSortOrderInput()).getByDisplayValue("alphabetical"),
+        ).toBeChecked(),
+      );
+
+      await userEvent.click(
+        within(getSortOrderInput()).getByLabelText("Auto order"),
+      );
+      await findToast("Field order updated");
+      await dismissToasts();
+      expect(getRequestBodies(`stateful-table-${PRODUCTS_ID}-put`)).toEqual([
+        { field_order: "alphabetical" },
+        { field_order: "smart" },
+      ]);
+      await waitFor(() =>
+        expect(
+          within(getSortOrderInput()).getByDisplayValue("smart"),
+        ).toBeChecked(),
+      );
+      expect(backend.getTable(PRODUCTS_ID).field_order).toBe("smart");
+    });
+  });
+
+  describe("preview section", () => {
+    const ORDERS_PRODUCT_ID_PARAMS: ParsedRouteParams = {
+      databaseId: SAMPLE_DB_ID,
+      schemaName: "PUBLIC",
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    };
+
+    it("should not close the preview on Esc while a modal is open, and close it on Esc otherwise", async () => {
+      await setupWithBackend({ params: ORDERS_PRODUCT_ID_PARAMS });
+      expect(screen.queryByTestId("preview-section")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Sync options" }),
+      );
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Field values" }),
+      );
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
+
+      // focus returns to the "Field values" button, so Esc is not typed into an input
+      await userEvent.keyboard("{Escape}");
+      expect(screen.queryByTestId("preview-section")).not.toBeInTheDocument();
+    });
+
+    it("should not close the preview on Esc while a popover is open", async () => {
+      await setupWithBackend({ params: ORDERS_PRODUCT_ID_PARAMS });
+      await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
+
+      await userEvent.click(getFieldSemanticTypeInput());
+      expect(await findShownListbox()).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+      );
+      expect(screen.getByTestId("preview-section")).toBeInTheDocument();
+    });
+
+    it("should not auto-focus the inputs of the filtering preview", async () => {
+      await setupWithBackend({ params: ORDERS_PRODUCT_ID_PARAMS });
+
+      await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+      await userEvent.click(
+        within(screen.getByTestId("preview-section")).getByText("Filtering"),
+      );
+      const idInput = await within(
+        screen.getByTestId("preview-section"),
+      ).findByPlaceholderText("Enter an ID");
+      expect(idInput).not.toHaveFocus();
+
+      await selectOption(getFieldFilteringInput(), "A list of all values");
+      expect(
+        getLastRequestBody(`stateful-field-${ORDERS.PRODUCT_ID}-put`),
+      ).toEqual({ has_field_values: "list" });
+      const listInput = await within(
+        screen.getByTestId("preview-section"),
+      ).findByPlaceholderText("Search the list");
+      expect(listInput).not.toHaveFocus();
+
+      await clickTableSectionField("Tax");
+      const minInput = await within(
+        screen.getByTestId("preview-section"),
+      ).findByPlaceholderText("Min");
+      expect(minInput).not.toHaveFocus();
+
+      await selectOption(getFieldFilteringInput(), "Search box");
+      expect(getLastRequestBody(`stateful-field-${ORDERS.TAX}-put`)).toEqual({
+        has_field_values: "search",
+      });
+      const numberInput = await within(
+        screen.getByTestId("preview-section"),
+      ).findByPlaceholderText("Enter a number");
+      expect(numberInput).not.toHaveFocus();
+    });
+
+    it("should show the filtering preview of a field of a hidden table", async () => {
+      await setupWithBackend({ params: ORDERS_PRODUCT_ID_PARAMS });
+
+      await userEvent.click(
+        within(await findTablePickerTable("Orders")).getByRole("button", {
+          name: "Hide table",
+        }),
+      );
+      await findToast("Hid Orders");
+      expect(getRequestBodies(`stateful-table-${ORDERS_ID}-put`)).toEqual([
+        { visibility_type: "hidden" },
+      ]);
+      await waitFor(async () =>
+        expect(
+          within(await findTablePickerTable("Orders")).getByRole("button", {
+            name: "Unhide table",
+          }),
+        ).toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+      await userEvent.click(
+        within(screen.getByTestId("preview-section")).getByText("Filtering"),
+      );
+      expect(
+        await within(
+          screen.getByTestId("preview-section"),
+        ).findByPlaceholderText("Enter an ID"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Something’s gone wrong"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("should open the field properties when another table of the database is hidden (metabase#18384)", async () => {
+    const database = createSampleDatabase({
+      tables: [
+        createOrdersTable(),
+        createPeopleTable(),
+        createProductsTable(),
+        createReviewsTable({ visibility_type: "hidden" }),
+      ],
+    });
+    const { router } = await setupWithBackend({
+      databases: [database],
+      params: {
+        databaseId: database.id,
+        schemaName: "PUBLIC",
+        tableId: PEOPLE_ID,
+        fieldId: undefined,
+      },
+    });
+    expect(
+      within(await findTablePickerTable("Reviews")).getByRole("button", {
+        name: "Unhide table",
+      }),
+    ).toBeInTheDocument();
+
+    await clickTableSectionField("Address");
+
+    await waitFor(() =>
+      expect(router.location.pathname).toBe(
+        `/admin/datamodel/database/${database.id}/schema/${database.id}:PUBLIC/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
+      ),
+    );
+    expect(await screen.findByTestId("field-section")).toBeInTheDocument();
+    expect(getFieldNameInput()).toHaveValue("Address");
+  });
+});
+
+function getSearchRequestParams() {
+  return fetchMock.callHistory
+    .calls("search")
+    .map((call) => Object.fromEntries(new URL(call.url).searchParams));
+}
+
+function queryTablePickerTables() {
+  return screen
+    .queryAllByTestId("tree-item")
+    .filter((item) => item.getAttribute("data-type") === "table");
+}
+
+function getTablePickerItemNames(type: "database" | "schema" | "table") {
+  return screen
+    .queryAllByTestId("tree-item")
+    .filter((item) => item.getAttribute("data-type") === type)
+    .map((item) => item.textContent);
+}
+
+function queryBulkVisibilityButton(item: HTMLElement) {
+  return within(item).queryByRole("button", {
+    name: /^(Hide|Unhide) all tables$/,
+  });
+}
+
+async function getBulkVisibilityButton(
+  type: "database" | "schema",
+  name: string,
+  action: "Hide" | "Unhide",
+) {
+  return await waitFor(async () =>
+    within(
+      type === "database"
+        ? await findTablePickerDatabase(name)
+        : await findTablePickerSchema(name),
+    ).getByRole("button", { name: `${action} all tables` }),
+  );
+}
+
+async function verifyTablesVisible(names: string[]) {
+  for (const name of names) {
+    await waitFor(async () =>
+      expect(
+        within(await findTablePickerTable(name)).getByRole("button", {
+          name: "Hide table",
+        }),
+      ).toBeInTheDocument(),
+    );
+  }
+}
+
+async function verifyTablesHidden(names: string[]) {
+  for (const name of names) {
+    await waitFor(async () =>
+      expect(
+        within(await findTablePickerTable(name)).getByRole("button", {
+          name: "Unhide table",
+        }),
+      ).toBeInTheDocument(),
+    );
+  }
+}
+
+function getSortOrderInput() {
+  return within(getTableSection()).getByRole("radiogroup", {
+    name: "Column order",
+  });
+}
+
+function getFieldFilteringInput() {
+  return within(getFieldSection()).getByPlaceholderText(
+    "Select field filtering",
+  );
+}
 
 function getTableSearchInput() {
   return screen.getByPlaceholderText("Search tables");

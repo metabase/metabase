@@ -27,6 +27,10 @@ type SetupDataModelBackendOpts = {
  * fields whose `has_field_values` is "list"
  * (warehouse_schema_rest/api/field_test.clj).
  *
+ * `GET /api/database/:id/schema/:schema` lists the stored tables of a schema,
+ * hidden ones only with `include_hidden=true`, and `PUT /api/table` changes
+ * every table in `ids` (warehouse_schema_rest/api/table_test.clj).
+ *
  * Call it before the generic server mocks: fetch-mock uses the first route
  * that matches a request.
  */
@@ -59,6 +63,49 @@ export function setupDataModelBackend({
     }
     return field;
   };
+
+  const schemaKeys = new Set(
+    tables
+      .filter((table) => table.schema !== "")
+      .map((table) => JSON.stringify([table.db_id, table.schema])),
+  );
+  schemaKeys.forEach((key) => {
+    const [databaseId, schema] = JSON.parse(key);
+
+    fetchMock.get({
+      url: `path:/api/database/${databaseId}/schema/${encodeURIComponent(schema)}`,
+      name: `stateful-database-${databaseId}-schema-${schema}`,
+      response: (call) => {
+        const includeHidden =
+          new URL(call.url).searchParams.get("include_hidden") === "true";
+        return [...tablesById.values()]
+          .filter(
+            (table) =>
+              table.db_id === databaseId &&
+              table.schema === schema &&
+              (includeHidden || table.visibility_type == null),
+          )
+          .map((table) => structuredClone(table));
+      },
+    });
+  });
+
+  fetchMock.put({
+    url: "path:/api/table",
+    name: "stateful-tables-put",
+    response: (call) => {
+      const body = getRequestBody(call);
+      if (!isObject(body) || !isTableIds(body.ids)) {
+        return { status: 400 };
+      }
+      const { ids, ...changes } = body;
+      return ids.map((id) => {
+        const storedTable = getStoredTable(id);
+        Object.assign(storedTable, changes);
+        return structuredClone(storedTable);
+      });
+    },
+  });
 
   tablesById.forEach((table) => {
     const tableId = table.id;
@@ -198,6 +245,12 @@ function getRequestBody(call: CallLog): unknown {
 }
 
 function isFieldIds(value: unknown): value is FieldId[] {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "number")
+  );
+}
+
+function isTableIds(value: unknown): value is TableId[] {
   return (
     Array.isArray(value) && value.every((item) => typeof item === "number")
   );

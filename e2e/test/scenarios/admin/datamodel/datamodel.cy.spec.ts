@@ -9,8 +9,15 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID, PEOPLE_ID, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  REVIEWS,
+  REVIEWS_ID,
+  PRODUCTS_ID,
+} = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const { FieldSection, PreviewSection, TablePicker, TableSection } = H.DataModel;
 
@@ -34,47 +41,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
     cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
-    cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-  });
-
-  it("should restore previously selected table when expanding the tree (SEM-435) and allow to navigate to a table when on a segments page (SEM-484)", () => {
-    H.DataModel.visit({
-      databaseId: SAMPLE_DB_ID,
-      schemaId: SAMPLE_DB_SCHEMA_ID,
-      tableId: ORDERS_ID,
-    });
-
-    cy.log(
-      "should restore previously selected table when expanding the tree (SEM-435)",
-    );
-    H.DataModel.TablePicker.getDatabase("Sample Database").click();
-    cy.location("pathname").should(
-      "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-    );
-
-    H.DataModel.TablePicker.getDatabase("Sample Database").click();
-    cy.location("pathname").should(
-      "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-    );
-
-    cy.log(
-      "should allow to navigate to a table when on a segments page (SEM-484)",
-    );
-    cy.findByRole("link", { name: /Segments/ }).click();
-    cy.location("pathname").should("eq", "/admin/datamodel/segments");
-    cy.wait("@schema");
-
-    H.DataModel.TablePicker.getTable("Reviews").click();
-    H.DataModel.TableSection.getNameInput()
-      .should("be.visible")
-      .and("have.value", "Reviews");
-    cy.location("pathname").should(
-      "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`,
-    );
   });
 
   describe("Table picker", () => {
@@ -83,91 +50,14 @@ describe("scenarios > admin > datamodel", () => {
         H.DataModel.visit();
 
         TablePicker.getSearchInput().type("or");
-        TablePicker.getDatabases().should("have.length", 1);
-        TablePicker.getSchemas().should("have.length", 1);
-        TablePicker.getTables().should("have.length", 2);
         TablePicker.getTable("Orders").should("be.visible").click();
         cy.location("pathname").should(
           "eq",
           `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
         TableSection.getNameInput().should("have.value", "Orders");
-
-        cy.log("no results");
-        TablePicker.getSearchInput().clear().type("xyz");
-        TablePicker.get().findByText("No results.").should("be.visible");
-
-        cy.log("go back to browsing");
-        TablePicker.getSearchInput().clear();
-        TablePicker.getDatabases().should("have.length", 1);
-        TablePicker.getSchemas().should("have.length", 0);
-        TablePicker.getTables().should("have.length", 8);
       });
     });
-
-    describe(
-      "mutliple databases, with single and multiple schemas",
-      { tags: "@external" },
-      () => {
-        beforeEach(() => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-        });
-
-        it("should allow to search for tables and restore previously selected table when expanding the tree (SEM-435)", () => {
-          H.DataModel.visit();
-
-          TablePicker.getSearchInput().type("rd");
-          TablePicker.getDatabases().should("have.length", 2);
-          TablePicker.getSchemas().should("have.length", 2);
-          TablePicker.getTables().should("have.length", 2);
-          TablePicker.getTable("Orders").should("be.visible");
-          TablePicker.getTable("Birds").should("be.visible");
-
-          TablePicker.getSearchInput().clear().type("rds");
-          TablePicker.getDatabases().should("have.length", 1);
-          TablePicker.getSchemas().should("have.length", 1);
-          TablePicker.getTables().should("have.length", 1);
-          TablePicker.getTable("Birds").should("be.visible").click();
-
-          cy.location("pathname").should((pathname) => {
-            return pathname.startsWith(
-              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Wild/table/`,
-            );
-          });
-          TableSection.getNameInput().should("have.value", "Birds");
-
-          cy.log("go back to browsing");
-          TablePicker.getSearchInput().clear();
-          TablePicker.getDatabases().should("have.length", 2);
-          TablePicker.getSchemas().should("have.length", 2);
-          TablePicker.getTables().should("have.length", 2);
-
-          cy.log(
-            "should restore previously selected table when expanding the tree (SEM-435)",
-          );
-          // Reload so the tree starts fully collapsed, as the tree state is not persisted
-          H.DataModel.visit();
-
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getSchema("Domestic").click();
-          TablePicker.getTable("Animals").click();
-          TablePicker.getSchema("Wild").click();
-          TablePicker.getTable("Birds").click();
-
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-
-          TableSection.getNameInput().should("have.value", "Birds");
-          TablePicker.getTable("Birds").should(
-            "have.attr",
-            "aria-selected",
-            "true",
-          );
-        });
-      },
-    );
 
     describe("Table visibility", () => {
       it("should allow changing the table visibility and not prevent editing related question after turning table visibility off (metabase#15947)", () => {
@@ -176,6 +66,11 @@ describe("scenarios > admin > datamodel", () => {
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
         });
+
+        cy.log("an unselected hidden table shows its button without hover");
+        TablePicker.getTable("Accounts")
+          .button("Unhide table")
+          .should("be.visible");
 
         TablePicker.getTable("Orders").button("Hide table").click();
         cy.wait("@updateTable");
@@ -213,165 +108,6 @@ describe("scenarios > admin > datamodel", () => {
           cy.findByText("Orders").should("be.visible");
         });
       });
-
-      it("should allow hiding and restoring all tables in a single-schema database", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-        ]);
-        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
-
-        TablePicker.getDatabase("Sample Database")
-          .button("Hide all tables")
-          .click();
-        cy.wait("@updateTables");
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-          "Orders",
-          "People",
-          "Products",
-          "Reviews",
-        ]);
-        verifyToastAndUndo("Tables hidden");
-        cy.wait("@updateTables");
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-        ]);
-        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
-
-        TablePicker.getDatabase("Sample Database")
-          .button("Hide all tables")
-          .click();
-        cy.wait("@updateTables");
-        verifyAndCloseToast("Tables hidden");
-
-        verifyTablesHidden([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-          "Orders",
-          "People",
-          "Products",
-          "Reviews",
-        ]);
-
-        TablePicker.getDatabase("Sample Database")
-          .button("Unhide all tables")
-          .click();
-        cy.wait("@updateTables");
-        verifyAndCloseToast("Tables unhidden");
-
-        verifyTablesVisible([
-          "Accounts",
-          "Analytic Events",
-          "Feedback",
-          "Invoices",
-          "Orders",
-          "People",
-          "Products",
-          "Reviews",
-        ]);
-      });
-
-      it(
-        "should allow hiding and restoring all tables in a multi-schema database",
-        { tags: ["@external"] },
-        () => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-          H.DataModel.visit();
-
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .button("Hide all tables")
-            .should("not.exist");
-          TablePicker.getSchema("Domestic")
-            .button("Hide all tables")
-            .should("not.exist");
-          TablePicker.getSchema("Wild")
-            .button("Hide all tables")
-            .should("not.exist");
-
-          TablePicker.getSchema("Wild").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .button("Hide all tables")
-            .should("not.exist");
-          TablePicker.getSchema("Domestic")
-            .button("Hide all tables")
-            .should("not.exist");
-          verifyTablesVisible(["Animals", "Birds"]);
-
-          TablePicker.getSchema("Wild")
-            .button("Hide all tables")
-            .should("exist")
-            .click();
-          cy.wait("@updateTables");
-          verifyTablesHidden(["Animals", "Birds"]);
-
-          verifyToastAndUndo("Tables hidden");
-          cy.wait("@updateTables");
-          verifyTablesVisible(["Animals", "Birds"]);
-        },
-      );
-
-      it(
-        "should update the table picker state when toggling visibility of not currently selected branch",
-        { tags: ["@external"] },
-        () => {
-          H.restore("postgres-writable");
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
-          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-
-          H.DataModel.visit();
-
-          TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getSchema("Wild").click();
-          TablePicker.getTable("Animals").click();
-
-          TablePicker.getTable("Accounts")
-            .button("Unhide table")
-            .should("exist")
-            .click();
-          cy.wait("@updateTable");
-          verifyTablesVisible(["Accounts"]);
-
-          TablePicker.getDatabase("Sample Database")
-            .button("Hide all tables")
-            .should("exist")
-            .click();
-          cy.wait("@updateTables");
-          verifyTablesHidden([
-            "Accounts",
-            "Analytic Events",
-            "Feedback",
-            "Invoices",
-            "Orders",
-            "People",
-            "Products",
-            "Reviews",
-          ]);
-        },
-      );
 
       it("hidden table should not show up in various places in UI", () => {
         cy.signInAsAdmin();
@@ -518,86 +254,6 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     describe("Sorting", () => {
-      it("should allow sorting fields alphabetically and smartly", () => {
-        cy.log("fields are sorted as in the database by default");
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "ID",
-            "Ean",
-            "Title",
-            "Category",
-            "Vendor",
-            "Price",
-            "Rating",
-            "Created At",
-          ],
-        });
-
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
-        TableSection.getSortOrderInput()
-          .findByLabelText("Alphabetical order")
-          .click();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Field order updated");
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("alphabetical")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "Category",
-            "Created At",
-            "Ean",
-            "ID",
-            "Price",
-            "Rating",
-            "Title",
-            "Vendor",
-          ],
-        });
-
-        cy.log("should allow sorting fields smartly");
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput().findByLabelText("Auto order").click();
-        cy.wait("@updateTable");
-        verifyAndCloseToast("Field order updated");
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("smart")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "ID",
-            "Created At",
-            "Category",
-            "Ean",
-            "Price",
-            "Rating",
-            "Title",
-            "Vendor",
-          ],
-        });
-      });
-
       it("should allow sorting fields in a custom order and switching back to predefined order (metabase#56482)", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
@@ -735,49 +391,6 @@ describe("scenarios > admin > datamodel", () => {
 
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
-    });
-
-    describe("Name and description", () => {
-      it("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
-        setDataModelPermissions({ tableIds: [ORDERS_ID] });
-        cy.signIn("none");
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.TOTAL,
-        });
-
-        FieldSection.getNameInput().clear().type("New total").blur();
-        cy.wait("@updateField");
-        verifyAndCloseToast("Name of Total updated");
-        FieldSection.getNameInput().should("have.value", "New total");
-        TableSection.getFieldNameInput("New total")
-          .scrollIntoView()
-          .should("be.visible");
-
-        cy.log("verify preview");
-        TableSection.clickField("New total");
-        FieldSection.getPreviewButton().click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        cy.wait("@dataset");
-        PreviewSection.get()
-          .findByText("Sorry, you don’t have permission to see that.")
-          .should("be.visible");
-
-        cy.log("verify viz as normal user");
-        cy.signInAsNormalUser();
-        H.openOrdersTable();
-        H.tableHeaderColumn("New total").should("be.visible");
-        H.tableHeaderColumn("Total", { scrollIntoView: false }).should(
-          "not.exist",
-        );
-      });
     });
 
     describe("Metadata", () => {
@@ -949,95 +562,7 @@ describe("scenarios > admin > datamodel", () => {
   });
 
   describe("Preview section", () => {
-    describe("Esc key", () => {
-      it("should not close the preview when hitting Esc key while modal is open, and allow closing it with Esc key otherwise", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.PRODUCT_ID,
-        });
-
-        PreviewSection.get().should("not.exist");
-
-        FieldSection.getPreviewButton().click();
-        PreviewSection.get().should("be.visible");
-
-        TableSection.getSyncOptionsButton().click();
-        H.modal().should("be.visible");
-
-        cy.realPress("Escape");
-        H.modal().should("not.exist");
-        PreviewSection.get().should("be.visible");
-
-        FieldSection.getFieldValuesButton().click();
-        H.modal().should("be.visible");
-
-        cy.realPress("Escape");
-        H.modal().should("not.exist");
-        PreviewSection.get().should("be.visible");
-
-        cy.log("should allow closing the preview with Esc key");
-        // Focus returns to the "Field values" button once the modal closes. Esc is
-        // ignored while an input is focused, so this must not follow the popover case.
-        cy.realPress("Escape");
-        PreviewSection.get().should("not.exist");
-      });
-
-      it("should not close the preview when hitting Esc key while command palette or popover is open", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.PRODUCT_ID,
-        });
-
-        FieldSection.getPreviewButton().click();
-        PreviewSection.get().should("be.visible");
-
-        H.openCommandPalette();
-        H.commandPalette().should("be.visible");
-
-        cy.realPress("Escape");
-        H.commandPalette().should("not.exist");
-        PreviewSection.get().should("be.visible");
-
-        cy.log(
-          "should not close the preview when hitting Esc key while popover is open",
-        );
-        FieldSection.getSemanticTypeInput().click();
-        H.popover().should("be.visible");
-
-        cy.realPress("Escape");
-        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-        PreviewSection.get().should("be.visible");
-      });
-    });
-
-    describe("Empty states", { tags: "@external" }, () => {
-      beforeEach(() => {
-        H.restore("postgres-writable");
-        H.resetTestTable({ type: "postgres", table: "multi_schema" });
-        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-        H.queryWritableDB('delete from "Domestic"."Animals"');
-      });
-
-      it("should show empty state when there is no data", () => {
-        H.DataModel.visit();
-
-        TablePicker.getDatabase("Writable Postgres12").click();
-        TablePicker.getSchema("Domestic").click();
-        TablePicker.getTable("Animals").click();
-        TableSection.clickField("Name");
-        FieldSection.getPreviewButton().click();
-
-        PreviewSection.get().findByText("No data to show").should("be.visible");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        PreviewSection.get().findByText("No data to show").should("be.visible");
-      });
-    });
-
-    it("should not auto-focus inputs in filtering preview", () => {
+    it("should not close the preview when hitting Esc key while command palette is open", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1046,54 +571,14 @@ describe("scenarios > admin > datamodel", () => {
       });
 
       FieldSection.getPreviewButton().click();
-      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get().should("be.visible");
 
-      PreviewSection.get()
-        .findByPlaceholderText("Enter an ID")
-        .should("be.visible")
-        .and("not.be.focused");
+      H.openCommandPalette();
+      H.commandPalette().should("be.visible");
 
-      FieldSection.getFilteringInput().click();
-      H.popover().findByText("A list of all values").click();
-
-      PreviewSection.get()
-        .findByPlaceholderText("Search the list")
-        .should("be.visible")
-        .and("not.be.focused");
-
-      TableSection.clickField("Tax");
-
-      PreviewSection.get()
-        .findByPlaceholderText("Min")
-        .should("be.visible")
-        .and("not.be.focused");
-
-      FieldSection.getFilteringInput().click();
-      H.popover().findByText("Search box").click();
-
-      PreviewSection.get()
-        .findByPlaceholderText("Enter a number")
-        .should("be.visible")
-        .and("not.be.focused");
-    });
-
-    it("should not crash when viewing filtering preview of a hidden table", () => {
-      H.DataModel.visit({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
-      });
-
-      TablePicker.getTable("Orders").button("Hide table").click();
-      cy.wait("@updateTable");
-
-      FieldSection.getPreviewButton().click();
-      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
-      PreviewSection.get()
-        .findByPlaceholderText("Enter an ID")
-        .should("be.visible");
-      H.main().findByText("Something’s gone wrong").should("not.exist");
+      cy.realPress("Escape");
+      H.commandPalette().should("not.exist");
+      PreviewSection.get().should("be.visible");
     });
   });
 
@@ -1166,6 +651,277 @@ describe("scenarios > admin > datamodel", () => {
   });
 });
 
+describe("issue 21984", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
+
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+    });
+    cy.wait("@tableMetadata");
+
+    cy.findByDisplayValue("ID");
+  });
+
+  it('should not show data model visited tables in search or in "Pick up where you left off" items on homepage (metabase#21984)', () => {
+    cy.visit("/");
+
+    cy.findByTestId("home-page").within(() => {
+      // the table should not be in the recents results
+      cy.findByText("Reviews").should("not.exist");
+    });
+
+    H.commandPaletteButton().click();
+    H.commandPalette().within(() => {
+      cy.findByText("Recents").should("not.exist");
+    });
+  });
+});
+
+describe("issue 15542", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
+  });
+
+  function openOrdersTable() {
+    // Navigate without reloading the page
+    H.navigationSidebar().findByText("Databases").click({
+      // force the click because the sidebar might be closed but
+      // that is not what we are testing here.
+      force: true,
+    });
+
+    cy.findByText("Sample Database").click();
+    cy.findByText("Orders").click();
+  }
+
+  function openOrdersProductIdSettings() {
+    // Navigate without reloading the page
+    H.goToAdmin();
+
+    H.appBar().findByText("Table Metadata").click();
+    H.DataModel.TablePicker.getTable("Orders").click();
+    H.DataModel.TableSection.clickField("Product ID");
+  }
+
+  it("should be possible to use the foreign key field display values immediately when changing the setting", () => {
+    // This test does manual naviation instead of using openOrdersTable and similar
+    // helpers because they use cy.visit under the hood and that reloads the page,
+    // clearing the in-browser cache, which is what we are testing here.
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
+
+    H.DataModel.FieldSection.getFilteringInput().click();
+    H.popover().findByText("A list of all values").click();
+
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
+    H.popover().findByText("Use foreign key").click();
+    H.popover().findByText("Title").click();
+
+    cy.wait("@fieldDimensionUpdate");
+
+    H.goToMainApp();
+    openOrdersTable();
+
+    H.tableHeaderClick("Product ID");
+    H.popover().findByText("Filter by this column").click();
+
+    H.popover().within(() => {
+      cy.findByText("1").should("not.exist");
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+    });
+
+    openOrdersProductIdSettings();
+
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
+    H.popover().findByText("Use original value").click();
+
+    H.goToMainApp();
+    openOrdersTable();
+
+    H.tableHeaderClick("Product ID");
+    H.popover().findByText("Filter by this column").click();
+
+    H.popover().within(() => {
+      cy.findByText("1").should("be.visible");
+      cy.findByText("Rustic Paper Wallet").should("not.exist");
+    });
+  });
+});
+
+describe("issue 52411", { tags: "@external" }, () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/database").as("getDatabases");
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "multi_schema" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+  });
+
+  it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
+    cy.visit("/admin/datamodel/segments");
+    cy.wait("@getDatabases");
+    cy.findByTestId("segment-list-table").findByText("Filter by table").click();
+    // with several databases, the picker opens on the database list
+    H.popover().within(() => {
+      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Wild").click();
+      cy.findByText("Birds").click();
+    });
+    cy.findByTestId("segment-list-table")
+      .findByText("Birds")
+      .should("be.visible");
+  });
+});
+
+describe("issues 55617, 55618", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/segment").as("getSegments");
+    H.createSegment({
+      name: "My segment",
+      definition: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      },
+    });
+  });
+
+  it("should allow changing the FK target of segment fields in the list and the detail view (metabase#55617, metabase#55618)", () => {
+    cy.visit("/reference/segments");
+    cy.wait("@getSegments");
+    cy.findByRole("link", { name: /My segment/ }).click();
+    cy.findByRole("link", { name: /Fields in this segment/ }).click();
+
+    cy.button(/Edit/).should("be.visible").realClick();
+    cy.findAllByPlaceholderText("Select a target").should("have.length", 2);
+    cy.findAllByDisplayValue("People → ID").first().click();
+    H.popover().findByText("Reviews → ID").click();
+    cy.findAllByDisplayValue("Reviews → ID").should("have.length", 1);
+
+    cy.button("Cancel").click();
+    cy.findByRole("link", { name: /User ID/ }).click();
+    cy.button(/Edit/).should("be.visible").realClick();
+    cy.findByPlaceholderText("Select a target")
+      .should("have.value", "People → ID")
+      .click();
+    H.popover().findByText("Reviews → ID").click();
+    cy.findByPlaceholderText("Select a target").should(
+      "have.value",
+      "Reviews → ID",
+    );
+  });
+});
+
+describe("issue 53595", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("GET", "/api/database/*/schema/*").as("getSchema");
+  });
+
+  it("all options are visibile while filtering the list of entity types (metabase#53595)", () => {
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.ID,
+    });
+
+    H.DataModel.FieldSection.getSemanticTypeInput().focus().clear().type("cu");
+
+    H.popover().findByText("Currency").should("be.visible");
+    H.popover().then(($popover) => {
+      expect(H.isScrollableVertically($popover[0])).to.be.false;
+    });
+  });
+});
+
+describe("issue 55619", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow you to change the currency where you can set a semantic type (metabase#55619)", () => {
+    cy.log("set a non-default value");
+    cy.request("PUT", `/api/field/${ORDERS.DISCOUNT}`, {
+      settings: { currency: "CAD" },
+    });
+
+    cy.log("data reference - field list");
+    cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields`);
+    H.main().within(() => {
+      cy.button(/Edit/).click();
+      cy.findByDisplayValue("Canadian Dollar").click();
+    });
+    H.popover().findByText("Euro").click();
+    H.main().within(() => {
+      cy.findByDisplayValue("Euro").should("be.visible");
+      cy.button(/Save/).click();
+      cy.button(/Edit/).should("be.visible");
+    });
+
+    cy.log("data reference - field details");
+    H.main().within(() => {
+      cy.findByRole("link", { name: /Discount/ }).click();
+      cy.button(/Edit/).click();
+      cy.findByDisplayValue("Euro").click();
+    });
+    H.popover().findByText("Australian Dollar").click();
+    H.main().within(() => {
+      cy.findByDisplayValue("Australian Dollar").should("be.visible");
+      cy.button(/Save/).click();
+      cy.button(/Edit/).should("be.visible");
+    });
+
+    cy.log("model metadata");
+    H.navigationSidebar().findByText("Models").click();
+    H.main().within(() => {
+      cy.findByLabelText("Create a new model").click();
+      cy.findByText("Use the notebook editor").click();
+    });
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    H.runButtonOverlay().click();
+    H.tableInteractive().should("contain", "37.65");
+    cy.findByTestId("editor-tabs-columns-name").click();
+    H.openColumnOptions("Discount");
+    cy.findByTestId("sidebar-content")
+      .findByDisplayValue("Australian Dollar")
+      .click();
+    H.popover().findByText("Euro").click();
+    cy.findByTestId("sidebar-content")
+      .findByDisplayValue("Euro")
+      .should("be.visible");
+    H.datasetEditBar().button("Save").click();
+    H.modal().button("Save").click();
+    H.modal().should("not.exist"); // wait for modal to disappear
+    H.queryBuilderHeader().findByText("Orders").should("be.visible"); // wait for qb to turn into view-mode
+    cy.findByTestId("loading-indicator").should("not.exist"); // wait for query to complete
+    H.tableHeaderColumn("Discount (€)").should("be.visible");
+  });
+});
+
 const setDataModelPermissions = ({
   tableIds = [],
 }: {
@@ -1218,23 +974,4 @@ function verifyTablePreview({
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
-}
-
-function verifyToastAndUndo(message: string) {
-  H.undoToast().should("contain.text", message);
-  H.undoToast().button("Undo").click();
-  H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click({ force: true });
-}
-
-function verifyTablesVisible(tables: string[]) {
-  for (const table of tables) {
-    TablePicker.getTable(table).button("Hide table").should("exist");
-  }
-}
-
-function verifyTablesHidden(tables: string[]) {
-  for (const table of tables) {
-    TablePicker.getTable(table).button("Unhide table").should("be.visible");
-  }
 }
