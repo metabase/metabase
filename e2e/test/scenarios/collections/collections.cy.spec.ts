@@ -587,6 +587,12 @@ describe("scenarios > collections > entity id support", () => {
   });
 
   it("/collection/entity/${entity_id} and /collection/entity/${entity_id}/move should redirect to /collection/${id} and /collection/${id}/move", () => {
+    // the collection is loaded once, by its entity id, and the collection page reuses it
+    cy.intercept({
+      method: "GET",
+      pathname: `/api/collection/${FIRST_COLLECTION_ID}`,
+    }).as("collectionByNumericId");
+
     cy.log("/collection/entity/${entity_id}");
     cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}`);
     cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
@@ -600,6 +606,8 @@ describe("scenarios > collections > entity id support", () => {
 
     H.main().findByText("First collection").should("be.visible");
     H.modal().findByText('Move "First collection"?').should("be.visible");
+
+    cy.get("@collectionByNumericId.all").should("have.length", 0);
   });
 });
 

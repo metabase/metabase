@@ -12,6 +12,12 @@ describe("scenarios > questions > entity id support", () => {
   });
 
   it("/question/entity/${entity_id} and /question/entity/${entity_id}/notebook should redirect to /question/${id} and /question/${id}/notebook", () => {
+    // the question is loaded once, by its entity id, and the query builder reuses it
+    cy.intercept({
+      method: "GET",
+      pathname: `/api/card/${ORDERS_QUESTION_ID}`,
+    }).as("cardByNumericId");
+
     cy.visit(`/question/entity/${ORDERS_QUESTION_ENTITY_ID}`);
     cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}`);
 
@@ -24,6 +30,8 @@ describe("scenarios > questions > entity id support", () => {
     cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}/notebook`);
 
     H.queryBuilderHeader().should("contain", "Orders");
+
+    cy.get("@cardByNumericId.all").should("have.length", 0);
   });
 
   it("should not make requests to `/api/card/12` when the entity id starts with `12`", () => {
@@ -32,9 +40,7 @@ describe("scenarios > questions > entity id support", () => {
     // this is a request that could be made by mistake if some paths of the code think that the entity id is a slug of a question
     cy.intercept("GET", "/api/card/12").as("wrongCardRequest");
 
-    cy.intercept("POST", "/api/eid-translation/translate").as(
-      "entityIdRequest",
-    );
+    cy.intercept("GET", `/api/card/${entityId}`).as("entityIdRequest");
 
     cy.visit(`/question/entity/${entityId}`);
 
