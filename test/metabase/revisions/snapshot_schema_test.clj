@@ -193,3 +193,31 @@
           (let [revision-id (insert-revision! "Transform" transform-id {:name 42})]
             (is (= 400 (refused-status! :model/Transform transform-id revision-id)))
             (is (= "Current" (t2/select-one-fn :name :model/Transform :id transform-id)))))))))
+
+(deftest read-card-snapshot-with-id-test
+  (testing "A Card snapshot of an older format that still holds the `:id` of the Card is read as a snapshot, not as a Card"
+    (mt/with-model-cleanup [:model/Revision]
+      (mt/with-temp [:model/Card {card-id :id} {:name "Current" :type :question}]
+        (let [legacy-query {:database (mt/id)
+                            :type     "query"
+                            :query    {:source-table (mt/id :venues)}}
+              revision-id  (insert-revision! "Card" card-id {:id            card-id
+                                                             :name          "Older"
+                                                             :dataset_query legacy-query})]
+          (testing "the Revision reads"
+            (is (=? {:object {:name          "Older"
+                              :dataset_query {:lib/type :mbql/query
+                                              :stages   [{:source-table (mt/id :venues)}]}}}
+                    (t2/select-one :model/Revision :id revision-id))))
+          (testing "the history of the Card loads"
+            (is (=? [{:id revision-id}]
+                    (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
+          (testing "an update of the Card records a Revision"
+            (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "Newer"})
+            (is (=? {:object {:name "Newer"}}
+                    (t2/select-one :model/Revision :model "Card" :model_id card-id
+                                   {:order-by [[:id :desc]]}))))
+          (testing "the Card reverts to the snapshot"
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "card" :id card-id :revision_id revision-id})
+            (is (= "Older" (t2/select-one-fn :name :model/Card :id card-id)))))))))

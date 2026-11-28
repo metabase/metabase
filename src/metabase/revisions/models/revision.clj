@@ -278,6 +278,11 @@
   (let [model    (u/ignore-exceptions (t2.model/resolve-model (symbol model)))
         defaults (:defaults (revisions.spec/spec model))]
     (cond-> revision
+      ;; No snapshot records the `:id` of its row (see `revisions.spec/implicit-columns`), but one stored by an older
+      ;; Metabase may still hold it. Drop it so that the after-select of the model sees a snapshot, not a row.
+      (and (revisions.spec/schema model) (map? (:object revision)))
+      (update :object dissoc :id)
+
       (and (seq defaults) (map? (:object revision)))
       (update :object #(reduce-kv (fn [object k v] (cond-> object (nil? (get object k)) (assoc k v))) % defaults))
 
