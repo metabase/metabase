@@ -90,7 +90,7 @@
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
   (boolean
-   (and (= request-method :get)
+   (and (#{:get :head} request-method)
         uri
         (re-matches cache-busted-asset-pattern uri))))
 
