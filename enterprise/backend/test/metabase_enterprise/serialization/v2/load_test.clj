@@ -147,6 +147,41 @@
               (is (some (partial re-find #"does not match this Metabase's query schema") messages))
               (is (not-any? (partial re-find #"Invalid Card ") messages)))))))))
 
+(deftest public-links-stay-on-their-instance-test
+  (testing "public links of dashboards and cards are not exported, and older exports holding them load without them"
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [user (ts/create! :model/User :first_name "Test" :last_name "User" :email "user@example.com")
+              db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name              "Native"
+                               :collection_id     (:id coll)
+                               :public_uuid       "6c4a7a2e-0a9d-4f6b-9a39-3d1c1d9b2b11"
+                               :made_public_by_id (:id user)
+                               :dataset_query     {:database (:id db) :type :native :native {:query "SELECT 1"}})
+              dash (ts/create! :model/Dashboard
+                               :name              "Shared"
+                               :collection_id     (:id coll)
+                               :public_uuid       "0f0e7c55-3d4b-4bb4-8d0e-6a2b5e6a9c22"
+                               :made_public_by_id (:id user))]
+          (reset! extracted {:db   (ts/extract-one "Database" (:id db))
+                             :coll (ts/extract-one "Collection" (:id coll))
+                             :card (ts/extract-one "Card" (:id card))
+                             :dash (ts/extract-one "Dashboard" (:id dash))})))
+      (let [{:keys [db coll card dash]} @extracted]
+        (doseq [entity [card dash]]
+          (is (not-any? #(contains? entity %) [:public_uuid :made_public_by_id])))
+        (mt/with-empty-h2-app-db!
+          (serdes.load/load-metabase!
+           (ts/ingestion-in-memory [db coll
+                                    (assoc card :public_uuid "6c4a7a2e-0a9d-4f6b-9a39-3d1c1d9b2b11"
+                                           :made_public_by_id "user@example.com")
+                                    (assoc dash :public_uuid "0f0e7c55-3d4b-4bb4-8d0e-6a2b5e6a9c22"
+                                           :made_public_by_id "user@example.com")]))
+          (is (= [nil] (t2/select-fn-vec :public_uuid :model/Card :name "Native")))
+          (is (= [nil] (t2/select-fn-vec :public_uuid :model/Dashboard :name "Shared"))))))))
+
 (deftest http-action-dashcards-are-dropped-test
   (testing "an older export's HTTP action does not load, and only the dashboard buttons that ran it are dropped"
     (let [serialized (atom nil)]
