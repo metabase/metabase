@@ -1,0 +1,32 @@
+name: Build cljs
+description: |
+  Puts the development cljs build in target/cljs_dev. Takes it from the cache when the cache holds a
+  build of exactly these sources, and compiles it otherwise. Run prepare-frontend first: the compile
+  needs node_modules.
+runs:
+  using: "composite"
+  steps:
+    - name: Cache spec
+      id: cache-spec
+      shell: bash
+      run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
+
+    # Only cache-warm writes this entry, on each push to a merge target. A pull request that changes
+    # none of the build's inputs has the same key as its target and gets the build from there. One that
+    # does change them misses and compiles, as every job did before.
+    - name: Restore the cljs build
+      id: restore
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.cache-spec.outputs.cljs-dev-path }}
+        key: ${{ steps.cache-spec.outputs.cljs-dev-key }}
+
+    # The JVM and the Clojure CLI are needed for the compile and for nothing after it.
+    - name: Prepare back-end environment
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: ./.github/actions/prepare-backend
+
+    - name: Compile cljs
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: bun run build-pure:cljs
