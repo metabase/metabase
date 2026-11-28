@@ -76,6 +76,7 @@ export function keepPivotColumnSplitOfChangedQuery(
 export function getAdHocQuestionWithVizSettings(options: {
   question: Question;
   currentQuestion?: Question;
+  isInPlaceColumnChange?: boolean;
   shouldStartAdHocQuestion?: boolean;
   onCloseQuestionInfo?: () => void;
 }) {
@@ -83,6 +84,7 @@ export function getAdHocQuestionWithVizSettings(options: {
     shouldStartAdHocQuestion = false,
     currentQuestion,
     onCloseQuestionInfo,
+    isInPlaceColumnChange,
   } = options;
   let { question } = options;
 
@@ -108,6 +110,7 @@ export function getAdHocQuestionWithVizSettings(options: {
         question.settings(),
         question.query(),
         currentQuestion.query(),
+        { isInPlaceColumnChange },
       ),
     );
   }

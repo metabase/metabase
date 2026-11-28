@@ -64,7 +64,10 @@ export function DimensionChip({
             expression,
             Lib.withExpressionName(expression, nextName),
           ),
-          { renamedFormula: { name: displayName, nextName } },
+          {
+            isInPlaceColumnChange: true,
+            renamedFormula: { name: displayName, nextName },
+          },
         );
       },
     };

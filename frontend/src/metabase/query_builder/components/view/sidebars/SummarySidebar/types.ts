@@ -19,6 +19,8 @@ export type SummaryQueryChangeOptions = {
   renamedFormula?: { name: string; nextName: string };
   /** A formula of the stage changed its definition. */
   editedFormula?: boolean;
+  /** The change kept each result column in its position. */
+  isInPlaceColumnChange?: boolean;
 };
 
 export type SummaryField =

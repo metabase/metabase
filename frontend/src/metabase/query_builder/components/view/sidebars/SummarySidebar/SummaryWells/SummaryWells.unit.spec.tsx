@@ -690,6 +690,9 @@ describe("SummaryWells", () => {
       expect(getValuesField()).toHaveFocus();
 
       await renameChip("Revenue", "Revenue", "{Enter}");
+      expect(onChange.mock.calls[0][1]).toEqual({
+        isInPlaceColumnChange: true,
+      });
       expect(getLastChange().values).toEqual(["Count", "New Revenue"]);
       expect(getValuesField()).toHaveFocus();
     });
@@ -744,6 +747,7 @@ describe("SummaryWells", () => {
         "New Next day: Month",
       ]);
       expect(onChange.mock.calls[0][1]).toEqual({
+        isInPlaceColumnChange: true,
         renamedFormula: { name: "Next day", nextName: "New Next day" },
       });
     });

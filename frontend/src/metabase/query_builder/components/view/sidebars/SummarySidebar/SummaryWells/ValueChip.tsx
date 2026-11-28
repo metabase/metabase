@@ -3,7 +3,7 @@ import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
-import type { SummaryValueItem } from "../types";
+import type { SummaryQueryChangeOptions, SummaryValueItem } from "../types";
 import { isFormulaValue } from "../utils";
 
 import { ColumnValueMenu } from "./ColumnValueMenu";
@@ -29,7 +29,7 @@ type ValueChipProps = {
   isEditing: boolean;
   /** Absent when the database can't take formulas in this well. */
   formulaInput?: SummaryFormulaInput;
-  onChange: (nextQuery: Lib.Query) => void;
+  onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
   onRemove: () => void;
 };
 
@@ -52,6 +52,7 @@ export function ValueChip({
         item.clause,
         Lib.withExpressionName(item.clause, name),
       ),
+      { isInPlaceColumnChange: true },
     );
   const handleEdit =
     isFormula && formulaInput

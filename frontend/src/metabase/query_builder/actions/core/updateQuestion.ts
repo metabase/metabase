@@ -66,6 +66,7 @@ function shouldTemplateTagEditorBeVisible({
 }
 
 export type UpdateQuestionOpts = {
+  isInPlaceColumnChange?: boolean;
   run?: boolean;
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
@@ -78,6 +79,7 @@ export const updateQuestion = (
   newQuestion: Question,
   {
     run = false,
+    isInPlaceColumnChange,
     shouldStartAdHocQuestion = true,
     shouldUpdateUrl = false,
   }: UpdateQuestionOpts = {},
@@ -89,6 +91,7 @@ export const updateQuestion = (
     newQuestion = getAdHocQuestionWithVizSettings({
       question: newQuestion,
       currentQuestion,
+      isInPlaceColumnChange,
       onCloseQuestionInfo: () => dispatch(onCloseQuestionInfo()),
       shouldStartAdHocQuestion:
         shouldStartAdHocQuestion && queryBuilderMode !== "dataset",

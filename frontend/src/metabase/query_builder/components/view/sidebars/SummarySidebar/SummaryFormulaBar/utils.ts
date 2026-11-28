@@ -198,18 +198,18 @@ function rebucketFormulaBreakouts(
   stageIndex: number,
   name: string,
   nextName: string,
-): Lib.Query {
+): { query: Lib.Query; isInPlace: boolean } {
   const column = findFormulaColumn(query, stageIndex, name);
   const nextColumn = findFormulaColumn(nextQuery, stageIndex, nextName);
   if (!column || !nextColumn) {
-    return nextQuery;
+    return { query: nextQuery, isInPlace: false };
   }
   const isSameType =
     Lib.displayInfo(query, stageIndex, column).effectiveType ===
     Lib.displayInfo(nextQuery, stageIndex, nextColumn).effectiveType;
   if (isSameType) {
     // Lib already kept each grouping, its bucket, and the references to it in later stages.
-    return nextQuery;
+    return { query: nextQuery, isInPlace: true };
   }
   // A new type can drop the old bucket and leave groupings that duplicate each other, which
   // Lib removes. A clause, not a column, keeps the references to the grouping in later stages.
@@ -237,7 +237,7 @@ function rebucketFormulaBreakouts(
     },
     nextQuery,
   );
-  return previousBreakouts
+  const result = previousBreakouts
     .slice(currentBreakouts.length)
     .reduce((currentQuery, previousBreakout) => {
       const column = findFormulaColumn(currentQuery, stageIndex, nextName);
@@ -250,6 +250,7 @@ function rebucketFormulaBreakouts(
         withPreviousBucket(currentQuery, stageIndex, column, previousBreakout),
       );
     }, rebucketedQuery);
+  return { query: result, isInPlace: false };
 }
 
 export function editSummaryFormula(
@@ -271,7 +272,10 @@ export function editSummaryFormula(
       formula.clause,
       Lib.withExpressionName(expression.clause, name),
     );
-    return { query: nextQuery, options: { editedFormula: true } };
+    return {
+      query: nextQuery,
+      options: { editedFormula: true, isInPlaceColumnChange: true },
+    };
   }
   const { query: nextQuery, name: nextName } = editExpression(
     query,
@@ -282,14 +286,19 @@ export function editSummaryFormula(
   );
   const renamedFormula =
     nextName === formula.name ? undefined : { name: formula.name, nextName };
+  const result = rebucketFormulaBreakouts(
+    query,
+    nextQuery,
+    stageIndex,
+    formula.name,
+    nextName,
+  );
   return {
-    query: rebucketFormulaBreakouts(
-      query,
-      nextQuery,
-      stageIndex,
-      formula.name,
-      nextName,
-    ),
-    options: { editedFormula: true, renamedFormula },
+    query: result.query,
+    options: {
+      editedFormula: true,
+      isInPlaceColumnChange: result.isInPlace,
+      renamedFormula,
+    },
   };
 }

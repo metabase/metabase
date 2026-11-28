@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 
 import type Question from "metabase-lib/v1/Question";
 
+import type { UpdateQuestionOpts } from "../../../../actions";
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
 import {
@@ -21,7 +22,7 @@ interface StructuredQueryRightSidebarProps {
   isShowingTimelineSidebar: boolean;
   onSave: (question: Question) => Promise<void>;
   question: Question;
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (question: Question, opts?: UpdateQuestionOpts) => void;
 }
 
 export const StructuredQueryRightSidebar = ({
@@ -51,9 +52,10 @@ export const StructuredQueryRightSidebar = ({
         query={query}
         canPivot={canPivotSummary(question, summaryStageIndex)}
         pivotColumnSplit={pivotColumnSplit}
-        onQueryChange={(nextQuery, pivotChange) =>
+        onQueryChange={(nextQuery, pivotChange, isInPlaceColumnChange) =>
           updateQuestion(getSummaryQuestion(question, nextQuery, pivotChange), {
             run: true,
+            isInPlaceColumnChange,
           })
         }
         stageIndex={summaryStageIndex}

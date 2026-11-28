@@ -29,6 +29,7 @@ export function syncVizSettingsWithQuery(
   settings: VisualizationSettings,
   newQuery: Lib.Query,
   oldQuery: Lib.Query,
+  options: Pick<SyncVizSettingsOpts, "isInPlaceColumnChange"> = {},
 ): VisualizationSettings {
   if (isNativeQuery(newQuery) || isNativeQuery(oldQuery)) {
     return settings;
@@ -36,7 +37,7 @@ export function syncVizSettingsWithQuery(
 
   const newColumns = getReturnedColumns(newQuery);
   const oldColumns = getReturnedColumns(oldQuery);
-  return syncVizSettings(settings, newColumns, oldColumns);
+  return syncVizSettings(settings, newColumns, oldColumns, options);
 }
 
 export function syncVizSettingsWithSeries(
@@ -63,6 +64,8 @@ export function syncVizSettingsWithSeries(
 }
 
 export type SyncVizSettingsOpts = {
+  /** The change kept each result column in its position, so a renamed column keeps its settings. */
+  isInPlaceColumnChange?: boolean;
   placeNewColumnsInQueryOrder?: boolean;
 };
 
@@ -72,15 +75,19 @@ export function syncVizSettings(
   oldColumns: ColumnInfo[],
   options: SyncVizSettingsOpts = {},
 ): VisualizationSettings {
+  const matchedColumns = options.isInPlaceColumnChange
+    ? matchColumnsByPosition(newColumns, oldColumns)
+    : newColumns;
   let nextSettings = settings;
   nextSettings = syncTableColumns(
     nextSettings,
-    newColumns,
+    matchedColumns,
     oldColumns,
     options,
   );
-  nextSettings = syncColumnSettings(nextSettings, newColumns, oldColumns);
-  nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
+  nextSettings = syncColumnSettings(nextSettings, matchedColumns, oldColumns);
+  nextSettings = syncGraphMetrics(nextSettings, matchedColumns, oldColumns);
+  // The summary sidebar already accounts for renamed columns when it prepares the pivot split.
   nextSettings = syncPivotColumnSplit(nextSettings, newColumns, oldColumns);
   nextSettings = syncPivotCollapsedRows(nextSettings, newColumns, oldColumns);
   return nextSettings;
@@ -224,6 +231,23 @@ function syncTableColumns(
       placeNewColumnsInQueryOrder,
     }),
   };
+}
+
+/**
+ * Gives each new column the key of the old column in the same position. A rename can also
+ * change the suffix of a sibling with the same name.
+ */
+function matchColumnsByPosition(
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+) {
+  if (oldColumns.length !== newColumns.length) {
+    return newColumns;
+  }
+  return newColumns.map((column, index) => ({
+    ...column,
+    key: oldColumns[index].key,
+  }));
 }
 
 function syncColumnSettings(

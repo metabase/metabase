@@ -26,6 +26,7 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import type { UpdateQuestionOpts } from "../../../../actions";
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { useColumnFormulaBar } from "../../ColumnFormulaBar";
@@ -87,7 +88,7 @@ interface ViewMainContainerProps {
   isLiveResizable: boolean;
   parameters: UiParameter[];
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (question: Question, opts?: UpdateQuestionOpts) => void;
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
@@ -124,7 +125,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       if (isNewColumn) {
         dispatch(setUIControls({ scrollToLastColumn: true }));
       }
-      updateQuestion(nextQuestion, { run: true });
+      updateQuestion(nextQuestion, {
+        run: true,
+        isInPlaceColumnChange: !isNewColumn,
+      });
     },
     onEditSummaryFormula: handleEditSummaryFormula,
   });
