@@ -21,12 +21,6 @@ declare module "underscore/modules/omit.js" {
   export = omit;
 }
 
-declare module "underscore/modules/unzip.js" {
-  import { unzip } from "underscore";
-
-  export = unzip;
-}
-
 declare namespace _ {
   interface UnderscoreStatic {
     compose<TArgs extends any[], R1>(
