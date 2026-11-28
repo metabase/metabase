@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
@@ -342,6 +343,35 @@
            (metabot-persistence/parts->storable-content
             [{:type :tool-input :id "c1" :function "search" :arguments {}}
              {:type :tool-output :id "c1" :result nil}])))))
+
+(deftest ^:parallel parts->storable-content-stores-the-failure-class-and-code-test
+  (testing "a failed call stores its text, class and code, and not the message for the user"
+    (is (= [{:type       "tool-search"
+             :toolCallId "c1"
+             :state      "output-error"
+             :input      {:q "x"}
+             :errorText  "Table 7 was not found."
+             :errorClass "recoverable"
+             :errorCode  "metabase.metabot.tools.recoverable.common/not-found"}]
+           (metabot-persistence/parts->storable-content
+            [{:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}
+             {:type   :tool-output :id "c1"
+              :result {:output "Table 7 was not found."
+                       :error  {:class        :recoverable
+                                :code         :metabase.metabot.tools.recoverable.common/not-found
+                                :user-message "That table does not exist."}}}]))))
+  (testing "a failure with an unknown class or a code that is not a keyword stores only its text"
+    (doseq [error [{:class :fatal :code :x}
+                   {:class :recoverable :code "x"}]]
+      (testing (pr-str error)
+        (is (= [{:type       "tool-search"
+                 :toolCallId "c1"
+                 :state      "output-error"
+                 :input      {:q "x"}
+                 :errorText  "Table 7 was not found."}]
+               (metabot-persistence/parts->storable-content
+                [{:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}
+                 {:type :tool-output :id "c1" :result {:output "Table 7 was not found." :error error}}])))))))
 
 (deftest ^:parallel parts->storable-content-drops-reasoning-test
   (testing "reasoning parts are dropped and don't warn as unknown"
@@ -1637,7 +1667,8 @@
         (is (= [{:role :assistant :content "on it"}
                 (call "c1") (result "c1")
                 {:role :assistant :tool_calls [{:id "c2" :name "search" :arguments (json/encode {:q "c2"})}]}
-                {:role :tool :tool_call_id "c2" :content "You don't have access to that table." :is_error true}
+                {:role :tool :tool_call_id "c2" :content "You don't have access to that table." :is_error true
+                 :error {:class :unrecoverable :code :permission-denied}}
                 {:role :assistant :content "You don't have permission to see that table."}]
                (replay (concat [{:type :start} {:type :text :text "on it"}]
                                (parts "c1")
@@ -1785,6 +1816,56 @@
       (is (= [call result {:role :assistant :content "\n\n"}]
              (replay {:finish_reason "tool-calls"
                       :data          [{:type "step-start"} part {:type "text" :text "\n\n"}]}))))))
+
+(deftest failed-tool-part-stores-and-replays-qualified-code-test
+  (testing "a failed call stores its class and code in the app DB, and history replays them as keywords"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            failures        {"c1" {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}
+                             "c2" {:class :unrecoverable :code :internal}
+                             "c3" {:class :validation :code :invalid-arguments}}
+            msg-id          (seed-turn! conversation-id "look it up"
+                                        (into []
+                                              (mapcat (fn [[id error]]
+                                                        [{:type :tool-input :id id :function "search" :arguments {}}
+                                                         {:type   :tool-output :id id
+                                                          :result {:output "failed" :error error}}]))
+                                              failures))]
+        (testing "the stored parts hold the class and the code as strings"
+          (is (= [{:toolCallId "c1" :errorClass "recoverable"
+                   :errorCode "metabase.metabot.tools.recoverable.common/not-found"}
+                  {:toolCallId "c2" :errorClass "unrecoverable" :errorCode "internal"}
+                  {:toolCallId "c3" :errorClass "validation" :errorCode "invalid-arguments"}]
+                 (->> (:data (t2/select-one :model/MetabotMessage :id msg-id))
+                      (filter :toolCallId)
+                      (map #(select-keys % [:toolCallId :errorClass :errorCode]))))))
+        (testing "history replays each class and code as the keywords that the turn stored"
+          (is (= failures
+                 (into {}
+                       (comp (filter #(= :tool (:role %)))
+                             (map (juxt :tool_call_id :error)))
+                       (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))))
+
+(deftest ^:parallel history-replays-invalid-stored-failure-as-the-fixed-failure-test
+  (testing "a stored failure without a valid class and code replays no :error, so the agent uses its fixed one"
+    (let [tool-result-schema @#'self.core/ToolResult
+          part               {:type "tool-search" :toolCallId "c1" :state "output-error" :input {}
+                              :errorText "failed"}]
+      (doseq [[label extra] [["an old row with neither key" {}]
+                             ["a class outside the three classes" {:errorClass "fatal" :errorCode "x"}]
+                             ["a number as the code" {:errorClass "recoverable" :errorCode 42}]
+                             ["a JSON object as the code" {:errorClass "recoverable" :errorCode {:a 1}}]
+                             ["an empty code" {:errorClass "recoverable" :errorCode ""}]
+                             ["a class and no code" {:errorClass "recoverable"}]
+                             ["a code and no class" {:errorCode "x"}]]]
+        (testing label
+          (let [tool-message (second (metabot-persistence/tool-part->llm-messages (merge part extra)))
+                [output]     (messages/input-message->parts tool-message)]
+            (is (=? {:is_error true} tool-message))
+            (is (not (contains? tool-message :error)))
+            (is (= {:class :recoverable :code ::messages/replayed-failure}
+                   (get-in output [:result :error])))
+            (is (mr/validate tool-result-schema (:result output)))))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"

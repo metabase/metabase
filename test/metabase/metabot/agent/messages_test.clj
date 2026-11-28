@@ -85,7 +85,15 @@
             {:role :tool :tool_call_id "t1" :content "boom" :is_error true})))
     (is (= [{:type :tool-output :id "t1" :result {:output "Found 42"}}]
            (messages/input-message->parts
-            {:role :tool :tool_call_id "t1" :content "Found 42"})))))
+            {:role :tool :tool_call_id "t1" :content "Found 42"}))))
+  (testing "a failed tool result with its class and code keeps them"
+    (is (= [{:type   :tool-output
+             :id     "t1"
+             :result {:output "boom"
+                      :error  {:class :unrecoverable :code :internal}}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "boom" :is_error true
+             :error {:class :unrecoverable :code :internal}})))))
 
 (deftest ^:parallel input-message-user-with-tool-results-test
   (testing "user message with tool_result content blocks"

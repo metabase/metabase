@@ -96,6 +96,11 @@
   provider) owns, not us."
   :metabase.util.malli/value)
 
+(mr/def ::error-class
+  "The class of a failed tool call, as the name of its `metabase.metabot.tools.runtime` keyword. `:errorClass` and
+  `:errorCode` on an `output-error` part are Metabase keys, not AI SDK ones: history replays them to the agent."
+  [:enum "validation" "recoverable" "unrecoverable"])
+
 (mr/def ::structured-output
   "The `persisted-structured-output-keys` subset of a tool's `:structured-output`/
   `:structured_output`, as stored on a v2 tool part's `:output`
@@ -326,6 +331,8 @@
                           [:rawInput {:optional true} ::tool-io]
                           [:output {:optional true} ::never]
                           [:errorText :string]
+                          [:errorClass {:optional true} ::error-class]
+                          [:errorCode {:optional true} :string]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
                           [:approval {:optional true} [:map {:closed true}
                                                        [:id :string]
@@ -421,6 +428,8 @@
                           [:providerExecuted {:optional true} :boolean]
                           [:output {:optional true} ::never]
                           [:errorText :string]
+                          [:errorClass {:optional true} ::error-class]
+                          [:errorCode {:optional true} :string]
                           [:callProviderMetadata {:optional true} ::provider-metadata]
                           [:approval {:optional true} [:map {:closed true}
                                                        [:id :string]

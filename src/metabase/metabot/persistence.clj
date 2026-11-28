@@ -65,12 +65,36 @@
         structured (assoc :structured_output structured)))
     result))
 
+(def ^:private error-classes
+  "The classes of a failed tool call, as `metabase.metabot.tools.runtime` writes them."
+  #{:validation :recoverable :unrecoverable})
+
+(defn- storable-error
+  "The `:errorClass` and `:errorCode` strings that a stored `output-error` part keeps for the tool `error`.
+
+  Returns nil when the error has no known class or no keyword code. A qualified code keeps its namespace. For example,
+  `{:class :unrecoverable :code :internal}` gives `{:errorClass \"unrecoverable\" :errorCode \"internal\"}`."
+  [{:keys [class code]}]
+  (when (and (contains? error-classes class) (keyword? code))
+    {:errorClass (name class) :errorCode (u/qualified-name code)}))
+
+(defn- replayed-error
+  "The `:error` that history replays for the stored `output-error` `part`: the reverse of [[storable-error]]. Nil when
+  the part has no known class or no non-blank code, so the agent replays its fixed failure."
+  [{:keys [errorClass errorCode]}]
+  (let [error-class (when (string? errorClass) (keyword errorClass))]
+    (when (and (contains? error-classes error-class)
+               (string? errorCode)
+               (not (str/blank? errorCode)))
+      {:class error-class :code (keyword errorCode)})))
+
 (defn- internal-parts->storable
   "Convert internal agent-loop parts to v2 at-rest parts
   (`:metabase.metabot.schema.v2/message-data`). `:tool-input`/`:tool-output`
   pairs merge into a single `tool-<name>` part whose `:state` reflects the
   status; the stored `:output` is the trimmed result map
-  (see [[tool-result->storable-output]])."
+  (see [[tool-result->storable-output]]). A failed call becomes an `output-error` part. That part keeps the text,
+  the class and the code of the failure (see [[storable-error]]), but not its message for the user."
   [parts]
   (let [outputs (into {}
                       (comp (filter #(= :tool-output (:type %)))
@@ -113,7 +137,10 @@
                              ;; but that turn will have ended.
                              (assoc :errorText (tools.runtime/replay-text
                                                 (assoc (:result output)
-                                                       :output (self.core/tool-result-text (:result output)))))))
+                                                       :output (self.core/tool-result-text (:result output)))))
+
+                             (some? error)
+                             (merge (storable-error error))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -503,7 +530,8 @@
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
   calls and gets assistant text from its own thread copy).
-  The result of a failed (`output-error`) call has `:is_error true`. A blank `errorText` replays as
+  The result of a failed (`output-error`) call has `:is_error true`, and `:error` with the stored class and code of
+  the failure (see [[replayed-error]]). A blank `errorText` replays as
   [[metabase.metabot.self.core/failed-tool-result-text]], which is the text that the adapters send for it.
 
   The result text is the text that the adapters sent in the turn that stored the part (see
@@ -518,6 +546,7 @@
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
      (let [{:keys [state input output errorText toolCallId]} part
+           error   (when (= "output-error" state) (replayed-error part))
            content (case state
                      "output-available" (if (hidden-query-results? part)
                                           hidden-query-results
@@ -541,7 +570,11 @@
             ;; The Claude and Gemini adapters mark a failed result as they marked it in the turn that
             ;; failed, so the next turn's request starts with the bytes that this turn sent. The other
             ;; adapters send only the text, with no mark in either turn.
-            (= "output-error" state) (assoc :is_error true))])))))
+            (= "output-error" state) (assoc :is_error true)
+
+            ;; The class and the code of the failure (not its message for the user), for the eval trace and
+            ;; the debug log.
+            error (assoc :error error))])))))
 
 (defn- message-text
   [{:keys [data]}]
