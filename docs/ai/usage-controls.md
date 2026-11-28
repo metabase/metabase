@@ -30,6 +30,20 @@ These controls are granular. If you uncheck SQL generation but leave Chat and NL
 
 [Tenant](../embedding/tenants.md) groups follow the same model as regular groups.
 
+### Set AI feature access for each group
+
+By default, the table has two rows: **Administrators** and **All Users**. Every person who isn't an admin gets the AI features you allow for **All Users**. If you use [tenants](../embedding/tenants.md), the **Tenant groups** tab does the same for **All tenant users**.
+
+To give different groups different AI features, switch to group-level permissions:
+
+1. Set up your [groups](../people-and-groups/managing.md#groups).
+2. Below the table, click **Switch to group-level permissions**.
+3. Click **Switch** to confirm.
+
+In group-level mode, **All Users** and **All tenant users** groups lose AI feature access. People only get the AI features you allow for their other groups. Admins always get every feature.
+
+To switch back, click the gear icon, then **Remove group-level access**, then **Remove access from all groups**. Switching back deletes the AI feature access you set for each group. **All Users** and **All tenant users** don't get their access back, so you'll need to turn their AI features back on.
+
 ## MCP tools access
 
 _Admin > AI > Usage controls > MCP tools access_
