@@ -592,11 +592,13 @@ describe("AppBar question lineage", () => {
       withKBar: true,
     });
 
+    // The lineage comes from the store alone, so it shows on the first render
     const appBar = screen.getByTestId("app-bar");
+    expect(within(appBar).queryByText(/Started from/)).not.toBeInTheDocument();
+    // The collection path shows in its place
     expect(
       await within(appBar).findByRole("link", { name: /Our analytics/ }),
     ).toBeInTheDocument();
-    expect(within(appBar).queryByText(/Started from/)).not.toBeInTheDocument();
   });
 });
 

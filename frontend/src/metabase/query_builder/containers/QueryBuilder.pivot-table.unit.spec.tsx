@@ -313,15 +313,35 @@ function queryInPivotTable(text: string | RegExp) {
 }
 
 /**
- * The pivot table renders a placeholder until it has measured its columns, and
- * the query builder runs the query again once the measured widths land in the
- * settings. This waits until no query runs and the text shows.
+ * The pivot table renders a placeholder until it has measured its columns.
+ * The measured widths go to the settings of the question, and the query
+ * builder runs the query again, as it does after other changes of the
+ * settings. This waits until no query runs, no new query starts for a moment,
+ * and the assertion holds, so that a later step doesn't race a rerun.
  */
-async function waitForPivotTableText(store: Store, text: string | RegExp) {
-  await waitFor(() => {
+async function waitForPivotTable(store: Store, assertion: () => void) {
+  const isIdle = () => {
+    const settings = store.getState().qb.card?.visualization_settings;
+    expect(settings?.["pivot_table.column_widths"]).toBeDefined();
     expect(getIsRunning(store.getState())).toBe(false);
-    expect(getInPivotTable(text)).toBeInTheDocument();
-  });
+    assertion();
+  };
+  let callCount;
+  do {
+    await waitFor(isIdle, { timeout: 3000 });
+    callCount = fetchMock.callHistory.calls().length;
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+  } while (
+    callCount !== fetchMock.callHistory.calls().length ||
+    getIsRunning(store.getState())
+  );
+  isIdle();
+}
+
+async function waitForPivotTableText(store: Store, text: string | RegExp) {
+  await waitForPivotTable(store, () =>
+    expect(getInPivotTable(text)).toBeInTheDocument(),
+  );
 }
 
 function getPivotCalls() {
@@ -976,7 +996,11 @@ describe("QueryBuilder > pivot table", () => {
     expect(isFixtureQuery(SOURCE_CATEGORY, parseBody(tableCall))).toBe(true);
     expect(getPivotCalls()).toHaveLength(pivotCallCount);
 
-    expect(await screen.findByTestId("table-root")).toBeInTheDocument();
+    // The table shows the previous result until the new one arrives
+    await waitFor(() => {
+      expect(getIsRunning(store.getState())).toBe(false);
+      expect(screen.getByTestId("table-root")).toBeInTheDocument();
+    });
     // A changed saved question shows the title of an ad-hoc one
     expect(
       within(screen.getByTestId("qb-header")).getByText(
@@ -1024,7 +1048,7 @@ describe("QueryBuilder > pivot table", () => {
     );
     expect(within(showTotals).getByText("Show totals")).toBeVisible();
     await userEvent.click(within(showTotals).getByRole("switch"));
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(queryInPivotTable("3,708")).not.toBeInTheDocument(),
     );
     expect(queryInPivotTable("3,520")).not.toBeInTheDocument();
@@ -1038,7 +1062,7 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(
       within(getPivotTable()).getByTestId("Facebook-toggle-button"),
     );
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(queryInPivotTable("1,003")).not.toBeInTheDocument(),
     );
     expect(getInPivotTable("3,708")).toBeInTheDocument();
@@ -1054,7 +1078,7 @@ describe("QueryBuilder > pivot table", () => {
         ),
       ).getByRole("switch"),
     );
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(queryInPivotTable("3,708")).not.toBeInTheDocument(),
     );
     expect(getInPivotTable("1,003")).toBeInTheDocument();
@@ -1092,7 +1116,7 @@ describe("QueryBuilder > pivot table", () => {
       within(sidebar).getByText("Condense duplicate totals"),
     );
 
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(getInPivotTable("Totals for Affiliate")).toBeInTheDocument(),
     );
   });
@@ -1138,7 +1162,9 @@ describe("QueryBuilder > pivot table", () => {
         screen.getByTestId("chart-settings-widget-number_style"),
       ).getByText("123%"),
     );
-    await waitFor(() => expect(getInPivotTable("89,900%")).toBeInTheDocument());
+    await waitForPivotTable(store, () =>
+      expect(getInPivotTable("89,900%")).toBeInTheDocument(),
+    );
     expect(getInPivotTable("78,300%")).toBeInTheDocument();
     expect(queryInPivotTable("899")).not.toBeInTheDocument();
 
@@ -1147,7 +1173,7 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.clear(title);
     await userEvent.type(title, "ModifiedTITLE");
     await userEvent.tab();
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(getInPivotTable("ModifiedTITLE")).toBeInTheDocument(),
     );
     expect(queryInPivotTable("User → Source")).not.toBeInTheDocument();
@@ -1172,7 +1198,7 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.type(title, " renamed");
     await userEvent.tab();
 
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(getInPivotTable("Count renamed")).toBeInTheDocument(),
     );
     expect(getInPivotTable("1,234")).toBeInTheDocument();
@@ -1185,7 +1211,7 @@ describe("QueryBuilder > pivot table", () => {
     await waitForPivotTableText(store, "8 – 10");
 
     await sortColumn("Total: 100 bins", "descending");
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(getInPivotTable("158 – 160")).toBeInTheDocument(),
     );
     expect(queryInPivotTable("8 – 10")).not.toBeInTheDocument();
@@ -1194,7 +1220,9 @@ describe("QueryBuilder > pivot table", () => {
     );
 
     await sortColumn("Total: 100 bins", "ascending");
-    await waitFor(() => expect(getInPivotTable("8 – 10")).toBeInTheDocument());
+    await waitForPivotTable(store, () =>
+      expect(getInPivotTable("8 – 10")).toBeInTheDocument(),
+    );
     expect(queryInPivotTable("158 – 160")).not.toBeInTheDocument();
     expect(b64hash_to_utf8(router.location.hash)).toContain(
       '"pivot_table.column_sort_order":"ascending"',
@@ -1234,7 +1262,7 @@ describe("QueryBuilder > pivot table", () => {
       await screen.findByRole("option", { name: "is less than or equal to" }),
     );
 
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(getPivotCell("65.09")).toHaveStyle({
         "background-color": "rgba(80, 158, 227, 0.65)",
       }),
@@ -1260,7 +1288,7 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(
       within(getPivotCell("Gadget")).getByLabelText("dash icon"),
     );
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(queryInPivotTable("215")).not.toBeInTheDocument(),
     );
     expect(getInPivotTable("1,352")).toBeInTheDocument();
@@ -1270,11 +1298,13 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(
       within(getPivotCell("Totals for Gadget")).getByLabelText("add icon"),
     );
-    await waitFor(() => expect(getInPivotTable("215")).toBeInTheDocument());
+    await waitForPivotTable(store, () =>
+      expect(getInPivotTable("215")).toBeInTheDocument(),
+    );
 
     const categoryHeader = getPivotCell("Product → Category");
     await userEvent.click(within(categoryHeader).getByLabelText("dash icon"));
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(queryInPivotTable("215")).not.toBeInTheDocument(),
     );
     expect(queryInPivotTable("294")).not.toBeInTheDocument();
@@ -1283,7 +1313,9 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(
       within(getPivotCell("Totals for Gadget")).getByLabelText("add icon"),
     );
-    await waitFor(() => expect(getInPivotTable("215")).toBeInTheDocument());
+    await waitForPivotTable(store, () =>
+      expect(getInPivotTable("215")).toBeInTheDocument(),
+    );
     expect(queryInPivotTable("294")).not.toBeInTheDocument();
   });
 
@@ -1308,7 +1340,7 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(
       within(getPivotCell("User ID")).getByLabelText("dash icon"),
     );
-    await waitFor(() =>
+    await waitForPivotTable(store, () =>
       expect(getInPivotTable("Totals for 1162")).toBeVisible(),
     );
     expect(getInPivotTable("Totals for 1001")).toBeInTheDocument();
@@ -1317,7 +1349,9 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(
       within(getPivotCell("Totals for 1162")).getByLabelText("add icon"),
     );
-    await waitFor(() => expect(getInPivotTable("1162")).toBeVisible());
+    await waitForPivotTable(store, () =>
+      expect(getInPivotTable("1162")).toBeVisible(),
+    );
     expect(getInPivotTable("34")).toBeVisible();
     // The other user stays collapsed
     expect(getInPivotTable("Totals for 1001")).toBeInTheDocument();
@@ -1350,11 +1384,7 @@ describe("QueryBuilder > pivot table", () => {
       within(getPivotCell("Created At: Day")).getByLabelText("dash icon"),
     );
 
-    await waitFor(() =>
-      expect(
-        getInPivotTable("Totals for November 10, 2025"),
-      ).toBeInTheDocument(),
-    );
+    await waitForPivotTableText(store, "Totals for November 10, 2025");
     expect(getInPivotTable("Totals for November 9, 2025")).toBeInTheDocument();
     expect(getInPivotTable("Totals for November 11, 2025")).toBeInTheDocument();
   });
@@ -1406,7 +1436,7 @@ describe("QueryBuilder > pivot table", () => {
     await userEvent.click(await within(popover).findByText("Count"));
     await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
 
-    await waitFor(() => expect(getFirstRowTotal()).toBe("23"));
+    await waitForPivotTable(store, () => expect(getFirstRowTotal()).toBe("23"));
     expect(isOrderedByFirstAggregation(getLastPivotBody().stages[0])).toBe(
       true,
     );
