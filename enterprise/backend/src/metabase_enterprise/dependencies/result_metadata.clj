@@ -182,7 +182,8 @@
   counts a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or
   counting its failure, returning how many statuses it took, deleted ones included, the re-derived metadata stored
   together, or for each card when that fails."
-  [batch-size :- ms/PositiveInt]
+  [batch-size :- ms/PositiveInt
+   opts       :- ::dependencies.schema/job-opts]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
         statuses    (models.result-metadata-status/take-pending-result-metadata-statuses!
                      batch-size models.result-metadata-status/current-result-metadata-version
@@ -195,6 +196,7 @@
             derived  (lib-be/with-metadata-provider-cache
                        (into {}
                              (task.util/compute-in-parallel
+                              (:threads opts 1)
                               (fn [[card-id {:keys [state card]}]]
                                 [card-id {:state state :metadata (rederived-card-metadata card)}])
                               (fn [[card-id _] e]

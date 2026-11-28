@@ -131,7 +131,8 @@
   "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is
   outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning
   how many it took, the findings of each type stored together, or for each entity when that fails."
-  [batch-size :- pos-int?]
+  [batch-size :- pos-int?
+   opts       :- ::dependencies.schema/job-opts]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
   ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
   ;; the batch a private one.
@@ -149,6 +150,7 @@
                                                                     (record-analysis-failure! entity-type entity-id)))
                       analyses (into {}
                                      (task.util/compute-in-parallel
+                                      (:threads opts 1)
                                       (fn [entity]
                                         (let [analyzed (analyze-entity entity)]
                                           [(:entity-id analyzed) (:analysis analyzed)]))

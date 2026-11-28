@@ -82,7 +82,7 @@
   (testing "a batch does not hold up a batch of another job"
     (let [inner (promise)]
       (task.util/run-batch-in-place!
-       (test-job "test.outer" 1 (fn []
+       (test-job "test.outer" 1 (fn [_]
                                   (deliver inner (deref (future (task.util/run-batch-in-place!
                                                                  (test-job "test.inner" 1 (constantly nil))))
                                                         10000 :blocked))
@@ -95,7 +95,7 @@
       (let [events     (atom [])
             entered    (promise)
             release    (promise)
-            job        (test-job "test.overlap" 1 (fn []
+            job        (test-job "test.overlap" 1 (fn [_]
                                                     (swap! events conj [*runner* :start])
                                                     (when (= :first *runner*)
                                                       (deliver entered true)
@@ -117,7 +117,7 @@
     (let [events    (atom [])
           entered   (promise)
           release   (promise)
-          job       (test-job "test.fair" 1 (fn []
+          job       (test-job "test.fair" 1 (fn [_]
                                               (when (= 1 (count (swap! events conj *runner*)))
                                                 (deliver entered true)
                                                 (deref release 10000 nil))
@@ -135,65 +135,66 @@
 
 (deftest compute-in-parallel-order-test
   (testing "returns each call's value in order, calling them on several threads in the caller's bindings"
-    (mt/with-temp-env-var-value! [mb-dependency-job-threads 4]
-      (let [threads (atom #{})]
-        (is (= [[:a 0] [:a 1] [:a 2] [:a 3]]
-               (binding [*bound* :a]
-                 (task.util/compute-in-parallel (fn [x]
-                                                  (swap! threads conj (Thread/currentThread))
-                                                  (Thread/sleep (long (* 40 (- 4 x))))
-                                                  [*bound* x])
-                                                (fn [_ e] (throw e))
-                                                (range 4)))))
-        (is (< 1 (count @threads))))))
+    (let [threads (atom #{})]
+      (is (= [[:a 0] [:a 1] [:a 2] [:a 3]]
+             (binding [*bound* :a]
+               (task.util/compute-in-parallel 4
+                                              (fn [x]
+                                                (swap! threads conj (Thread/currentThread))
+                                                (Thread/sleep (long (* 40 (- 4 x))))
+                                                [*bound* x])
+                                              (fn [_ e] (throw e))
+                                              (range 4)))))
+      (is (< 1 (count @threads)))))
   (testing "calls each one on the caller's thread inside a transaction"
-    (mt/with-temp-env-var-value! [mb-dependency-job-threads 4]
-      (let [threads (atom #{})]
-        (t2/with-transaction [_]
-          (task.util/compute-in-parallel (fn [x] (swap! threads conj (Thread/currentThread)) x)
-                                         (fn [_ e] (throw e))
-                                         (range 4)))
-        (is (= #{(Thread/currentThread)} @threads))))))
+    (let [threads (atom #{})]
+      (t2/with-transaction [_]
+        (task.util/compute-in-parallel 4
+                                       (fn [x] (swap! threads conj (Thread/currentThread)) x)
+                                       (fn [_ e] (throw e))
+                                       (range 4)))
+      (is (= #{(Thread/currentThread)} @threads)))))
 
 (deftest compute-in-parallel-rethrows-earliest-test
   (testing "hands on-failure! the earliest element's Error first, even when a later one threw first"
-    (mt/with-temp-env-var-value! [mb-dependency-job-threads 4]
-      (let [started (promise)]
-        (is (thrown-with-msg? AssertionError #"first"
-                              (task.util/compute-in-parallel (fn [x]
-                                                               (case x
-                                                                 1 (do (deliver started true)
-                                                                       (Thread/sleep 100)
-                                                                       (throw (AssertionError. "first")))
-                                                                 2 (do (deref started 10000 nil)
-                                                                       (throw (AssertionError. "second")))
-                                                                 x))
-                                                             (fn [_ e] (throw e))
-                                                             [0 1 2])))))))
+    (let [started (promise)]
+      (is (thrown-with-msg? AssertionError #"first"
+                            (task.util/compute-in-parallel 4
+                                                           (fn [x]
+                                                             (case x
+                                                               1 (do (deliver started true)
+                                                                     (Thread/sleep 100)
+                                                                     (throw (AssertionError. "first")))
+                                                               2 (do (deref started 10000 nil)
+                                                                     (throw (AssertionError. "second")))
+                                                               x))
+                                                           (fn [_ e] (throw e))
+                                                           [0 1 2]))))))
 
 (deftest compute-in-parallel-waits-for-running-calls-test
   (testing "throws only once a call that ignores the interrupt has finished"
-    (mt/with-temp-env-var-value! [mb-dependency-job-threads 2]
-      (let [started   (promise)
-            finished? (atom false)]
-        (is (thrown? AssertionError
-                     (task.util/compute-in-parallel (fn [x]
-                                                      (if (= x :slow)
-                                                        (let [until (+ (System/currentTimeMillis) 300)]
-                                                          (deliver started true)
-                                                          (while (< (System/currentTimeMillis) until))
-                                                          (reset! finished? true))
-                                                        (do (deref started 10000 nil)
-                                                            (throw (AssertionError. "boom")))))
-                                                    (fn [_ e] (throw e))
-                                                    [:fail :slow])))
-        (is @finished?)))))
+    (let [started   (promise)
+          finished? (atom false)]
+      (is (thrown? AssertionError
+                   (task.util/compute-in-parallel 2
+                                                  (fn [x]
+                                                    (if (= x :slow)
+                                                      (let [until (+ (System/currentTimeMillis) 300)]
+                                                        (deliver started true)
+                                                        (while (< (System/currentTimeMillis) until))
+                                                        (reset! finished? true))
+                                                      (do (deref started 10000 nil)
+                                                          (throw (AssertionError. "boom")))))
+                                                  (fn [_ e] (throw e))
+                                                  [:fail :slow])))
+      (is @finished?))))
 
 (deftest compute-in-parallel-test
   (testing "returns the non-nil values in order, then hands each failure to on-failure! on the caller's thread, in order"
     (let [failures (atom [])]
       (is (= [0 4]
-             (task.util/compute-in-parallel (fn [x]
+             (task.util/compute-in-parallel 4
+                                            (fn [x]
                                               (case x
                                                 (1 3) (throw (ex-info "failed" {:x x}))
                                                 2     nil
@@ -207,47 +208,55 @@
   (doseq [threads [1 4]]
     (testing (str "an Error that on-failure! rethrows stops the batch before the elements queued behind the running ones, at "
                   threads " threads")
-      (mt/with-temp-env-var-value! [mb-dependency-job-threads threads]
-        (let [computed (atom 0)]
-          (is (thrown? StackOverflowError
-                       (task.util/compute-in-parallel (fn [x]
-                                                        (swap! computed inc)
-                                                        (if (= x 1)
-                                                          (throw (StackOverflowError.))
-                                                          (Thread/sleep 50))
-                                                        x)
-                                                      (fn [_ e]
-                                                        (when-not (instance? Exception e)
-                                                          (throw e)))
-                                                      (range 20))))
-          (is (<= @computed (inc threads))))))))
+      (let [computed (atom 0)]
+        (is (thrown? StackOverflowError
+                     (task.util/compute-in-parallel threads
+                                                    (fn [x]
+                                                      (swap! computed inc)
+                                                      (if (= x 1)
+                                                        (throw (StackOverflowError.))
+                                                        (Thread/sleep 50))
+                                                      x)
+                                                    (fn [_ e]
+                                                      (when-not (instance? Exception e)
+                                                        (throw e)))
+                                                    (range 20))))
+        (is (<= @computed (inc threads)))))))
 
 (deftest compute-in-parallel-stops-while-app-db-unreachable-test
   (doseq [threads [1 4]]
     (testing (str "a call that throws while the app DB is unreachable stops the batch before the elements queued behind "
                   "the running ones, checking reachability once, at " threads " threads")
-      (mt/with-temp-env-var-value! [mb-dependency-job-threads threads]
-        (let [computed (atom 0)
-              failures (atom [])
-              checks   (atom 0)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (fn []
-                                                                          (swap! checks inc)
-                                                                          false)]
-            (is (thrown-with-msg? Exception #"outage"
-                                  (task.util/compute-in-parallel (fn [x]
-                                                                   (swap! computed inc)
-                                                                   (if (= x 1)
-                                                                     (throw (Exception. "outage"))
-                                                                     (Thread/sleep 50))
-                                                                   x)
-                                                                 ;; like the jobs' handlers, which rethrow during an outage
-                                                                 (fn [x e]
-                                                                   (swap! failures conj x)
-                                                                   (throw e))
-                                                                 (range 20)))))
-          (is (<= @computed (inc threads)))
-          (is (= [1] @failures))
-          (is (= 1 @checks)))))))
+      (let [computed (atom 0)
+            failures (atom [])
+            checks   (atom 0)]
+        (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (fn []
+                                                                        (swap! checks inc)
+                                                                        false)]
+          (is (thrown-with-msg? Exception #"outage"
+                                (task.util/compute-in-parallel threads
+                                                               (fn [x]
+                                                                 (swap! computed inc)
+                                                                 (if (= x 1)
+                                                                   (throw (Exception. "outage"))
+                                                                   (Thread/sleep 50))
+                                                                 x)
+                                                               ;; like the jobs' handlers, which rethrow during an outage
+                                                               (fn [x e]
+                                                                 (swap! failures conj x)
+                                                                 (throw e))
+                                                               (range 20)))))
+        (is (<= @computed (inc threads)))
+        (is (= [1] @failures))
+        (is (= 1 @checks))))))
+
+(deftest batch-threads-test
+  (testing "a scheduled batch computes on one thread, and a batch run in place on dependency-job-threads threads"
+    (mt/with-temp-env-var-value! [mb-dependency-job-threads 3]
+      (doseq [[kind expected] [[:scheduled 1] [:in-place 3]]]
+        (let [opts (promise)]
+          (run-batch! kind (test-job "test.threads" 1 (fn [o] (deliver opts o) nil)))
+          (is (= expected (:threads @opts 1)) (name kind)))))))
 
 (deftest dependency-job-threads-at-least-one-test
   (testing "a dependency-job-threads setting that isn't positive means one thread"

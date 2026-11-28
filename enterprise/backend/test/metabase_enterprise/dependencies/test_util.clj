@@ -31,14 +31,14 @@
   process. Use this in tests after writes and before asserting on dependency data."
   []
   (mt/with-premium-features #{:dependencies}
-    (while (#'task.dependency/update-dependencies!))))
+    (while (#'task.dependency/update-dependencies! {}))))
 
 (defn run-analysis-finding-job!
   "Run batches of the analysis finding job until one takes nothing, or up to 20 of them, returning whether the last one
   took anything."
   []
   (loop [runs 1]
-    (let [took? (some? (#'task.analysis-finding/run-batch!))]
+    (let [took? (some? (#'task.analysis-finding/run-batch! {}))]
       (if (and took? (< runs 20))
         (recur (inc runs))
         took?))))

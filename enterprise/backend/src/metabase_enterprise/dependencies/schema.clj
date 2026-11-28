@@ -47,6 +47,11 @@
    [:entity_id ms/PositiveInt]
    [:stale     [:maybe ms/IntGreaterThanOrEqualToZero]]])
 
+(mr/def ::job-opts
+  "Options of a dependency job batch: `threads` is how many entities it computes at the same time, 1 when absent."
+  [:map {:closed true}
+   [:threads {:optional true} ms/PositiveInt]])
+
 (mr/def ::type->ids
   "Entities as `{entity-type ids}`."
   [:map-of :metabase-enterprise.dependencies.dependency-types/dependency-types [:set ms/PositiveInt]])

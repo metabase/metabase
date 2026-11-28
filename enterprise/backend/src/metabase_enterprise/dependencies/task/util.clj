@@ -1,13 +1,14 @@
 (ns metabase-enterprise.dependencies.task.util
   "The scheduling the dependencies module's self-rescheduling jobs share, each job described by a map of its
   `:job-type`, `:job-key`, `:trigger-key` and `:job-name`, the getters of its `:batch-size`, `:delay-minutes` and
-  `:variance-minutes` settings, and `:run-batch!`, which processes a batch and returns how many seconds from now to
-  run again, or nil to stop."
+  `:variance-minutes` settings, and `:run-batch!`, which processes a batch with a `::dependencies.schema/job-opts` map
+  and returns how many seconds from now to run again, or nil to stop."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
@@ -49,13 +50,14 @@
   (get (swap! batch-locks update job-key #(or % (ReentrantLock. true))) job-key))
 
 (mu/defn- run-batch-locked! :- :any
-  "Run a batch of `job` once no other runner on this node is running one, and return its result. Two runners taking a
-  batch at once would process the same entities."
-  [{:keys [run-batch!] :as job} :- Job]
+  "Run a batch of `job` with `opts` once no other runner on this node is running one, and return its result. Two
+  runners taking a batch at once would process the same entities."
+  [{:keys [run-batch!] :as job} :- Job
+   opts                         :- ::dependencies.schema/job-opts]
   (let [lock (batch-lock job)]
     (.lock lock)
     (try
-      (run-batch!)
+      (run-batch! opts)
       (finally
         (.unlock lock)))))
 
@@ -118,7 +120,7 @@
    {:keys [job-name batch-size] :as job} :- Job]
   (if (pos? (batch-size))
     (try
-      (if-some [delay-in-seconds (run-batch-locked! job)]
+      (if-some [delay-in-seconds (run-batch-locked! job {})]
         (schedule-run! scheduler job delay-in-seconds)
         (log/debug "Job" job-name "has nothing more to do, stopping."))
       (catch Throwable e
@@ -137,32 +139,37 @@
   [:enum :worked :idle :disabled])
 
 (mu/defn run-batch-in-place! :- ::batch-outcome
-  "Run a batch of `job` now, under the lock its scheduled runs take."
+  "Run a batch of `job` now on `dependency-job-threads` threads, under the lock its scheduled runs take."
   [job :- Job]
   (if (enabled? job)
     ;; a caller's metadata provider cache would still hold entities as they were before an earlier batch rewrote them
-    (if (some? (lib-be/with-existing-metadata-provider-cache nil (run-batch-locked! job)))
+    (if (some? (lib-be/with-existing-metadata-provider-cache nil
+                 (run-batch-locked! job {:threads (deps.settings/dependency-job-threads)})))
       :worked
       :idle)
     :disabled))
 
 (mu/defn compute-in-parallel :- [:sequential :any]
-  "The non-nil values `compute` returns for each of `xs`, in order, computed on up to `dependency-job-threads` threads
-  in the caller's dynamic bindings, or one at a time on the caller's thread inside a transaction, whose one connection
-  the threads would share. Calls `on-failure!` on the caller's thread, in order, with each element whose call threw and
-  its Throwable. Once a call throws an Error, or throws while the app DB is unreachable, no further call starts, and the
+  "The non-nil values `compute` returns for each of `xs`, in order, computed on up to `threads` threads in the caller's
+  dynamic bindings, or one at a time on the caller's thread inside a transaction, whose one connection the threads
+  would share. Calls `on-failure!` on the caller's thread, in order, with each element whose call threw and its
+  Throwable. Once a call throws an Error, or throws while the app DB is unreachable, no further call starts, and the
   elements left out return nothing. Returns or throws only once no call runs."
-  [compute     :- [:fn {:error/message "a function"} ifn?]
+  [threads     :- ms/PositiveInt
+   compute     :- [:fn {:error/message "a function"} ifn?]
    on-failure! :- [:fn {:error/message "a function"} ifn?]
    xs          :- [:maybe [:sequential [:fn {:error/message "a value"} some?]]]]
-  (let [threads  (min (deps.settings/dependency-job-threads) (count xs))
+  (let [threads  (min threads (count xs))
         stopped? (atom false)
         run      (fn [x]
                    (when-not @stopped?
                      (try
                        {:value (compute x)}
                        (catch Throwable e
-                         (when (or (not (instance? Exception e)) (not (dependencies.db/app-db-reachable?)))
+                         ;; once stopped, the pool's interrupt makes running calls throw, which says nothing about
+                         ;; the app DB
+                         (when (and (not @stopped?)
+                                    (or (not (instance? Exception e)) (not (dependencies.db/app-db-reachable?))))
                            (reset! stopped? true))
                          {:error e}))))
         handle!  (fn [x {:keys [value error]}]

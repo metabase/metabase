@@ -100,9 +100,10 @@
       15)))
 
 (defsetting dependency-job-threads
-  "How many entities of a batch each dependency job computes at the same time, at least 1. Each thread can use an
-  application database connection, in addition to the one the job uses. Unset, it is the smallest of 4, the number of
-  CPU cores, and a quarter of the application database's maximum connection pool size, at least 1."
+  "How many entities of a batch each dependency job computes at the same time when run on demand, at least 1;
+  scheduled runs use one thread. Each thread can use an application database connection, in addition to the one the
+  job uses. Unset, it is the smallest of 4, the number of CPU cores, and a quarter of the application database's
+  maximum connection pool size, at least 1."
   :visibility :internal
   :type       :integer
   :setter     :none
