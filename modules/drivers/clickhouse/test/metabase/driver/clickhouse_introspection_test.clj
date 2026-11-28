@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
@@ -652,3 +653,45 @@
             (metabase.test.data.clickhouse/exec-statements
              [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
              details)))))))
+
+(defn- describe-table-fields-by-table
+  "The fields of each Table of the current test Database by [schema name], as [[driver/describe-table]] reads them
+  one Table at a time, without `:jdbc-type`, which only the JDBC metadata gives."
+  [db]
+  (into {}
+        (for [table (t2/select :model/Table :db_id (u/the-id db) :active true)]
+          [[(:schema table) (:name table)]
+           (into #{} (map #(dissoc % :jdbc-type)) (:fields (driver/describe-table :clickhouse db table)))])))
+
+(defn- describe-fields-by-table
+  "The fields of the Tables of `db` by [schema name], as [[driver/describe-fields]] reads them all together."
+  [db]
+  (let [tables (t2/select :model/Table :db_id (u/the-id db) :active true)]
+    (update-vals (group-by (juxt :table-schema :table-name)
+                           (into [] (driver/describe-fields :clickhouse db
+                                                            :schema-names (into #{} (map :schema) tables)
+                                                            :table-names  (into #{} (map :name) tables))))
+                 #(into #{} (map (fn [f] (dissoc f :table-schema :table-name))) %))))
+
+(defn- check-describe-fields-matches-describe-table []
+  (let [db (driver.u/ensure-lib-database (mt/db))]
+    (is (true? (driver.u/supports? :clickhouse :describe-fields db)))
+    (is (= (describe-table-fields-by-table db)
+           (describe-fields-by-table db)))))
+
+(deftest describe-fields-matches-describe-table-test
+  (mt/test-driver :clickhouse
+    (testing "the bulk read of all fields gives each Table the fields that reading it alone gives"
+      (testing "introspection_db"
+        (mt/dataset introspection_db
+          (check-describe-fields-matches-describe-table)))
+      (testing "test-data"
+        (mt/dataset test-data
+          (check-describe-fields-matches-describe-table)))
+      (testing "a nil schema stands for the current database, as for a Table a transform just wrote"
+        (mt/dataset test-data
+          (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :venues))
+                fields                #(set (driver/describe-fields :clickhouse (driver.u/lib-database (mt/id))
+                                                                    :schema-names [%] :table-names [name]))]
+            (is (seq (fields schema)))
+            (is (set/subset? (fields schema) (fields nil)))))))))
