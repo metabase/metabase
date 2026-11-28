@@ -70,6 +70,8 @@ const elements = [
   // basic
   createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
+  // PROTOTYPE: chart colors playground
+  createElement({ type: "basic", name: "chart-colors-playground" }),
   createElement({
     type: "basic",
     name: "value-formatting",

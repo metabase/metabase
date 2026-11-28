@@ -15,6 +15,12 @@ import React, {
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  type ColorOverrides,
+  applyColorOverrides,
+  forgetChartColors,
+  useColorOverrides,
+} from "metabase/chart-colors-playground/chart-colors";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
@@ -107,6 +113,8 @@ type StateProps = {
 
 type ForwardedRefProps = {
   forwardedRef: Ref<HTMLDivElement>;
+  // PLAYGROUND: chart colors changed in the playground panel
+  playgroundColorOverrides: ColorOverrides;
 };
 
 type OnChangeCardAndRunOpts = {
@@ -371,6 +379,11 @@ class Visualization extends PureComponent<
   componentDidMount() {
     this.updateWarnings();
     this.prefetchVisualizationComponent();
+  }
+
+  // PLAYGROUND: removes this chart's colors from the playground panel
+  componentWillUnmount() {
+    forgetChartColors(this);
   }
 
   // Charts are loaded on demand. Start the download as the card mounts, while
@@ -752,7 +765,12 @@ class Visualization extends PureComponent<
     const loading = isLoading(series);
 
     // don't try to load settings unless data is loaded
-    const settings = this.props.settings || this.state.computedSettings;
+    // PLAYGROUND: swaps in the colors changed in the chart colors playground
+    const settings = applyColorOverrides(
+      this.props.settings || this.state.computedSettings,
+      this.props.playgroundColorOverrides,
+      this,
+    );
 
     if (!loading && !error) {
       if (!visualization || !CardVisualization) {
@@ -1076,6 +1094,8 @@ export default _.compose(
       const display = props.rawSeries?.[0]?.card?.display;
       const { loading: customVizLoading } =
         PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+      // PLAYGROUND: re-renders the chart when the playground panel changes a color
+      const playgroundColorOverrides = useColorOverrides();
 
       if (customVizLoading) {
         if (props.customVizLoadingView) {
@@ -1095,7 +1115,13 @@ export default _.compose(
         return <VisualizationRunningState className={cx(CS.spread, CS.z2)} />;
       }
 
-      return <Visualization {...props} forwardedRef={ref} />;
+      return (
+        <Visualization
+          {...props}
+          forwardedRef={ref}
+          playgroundColorOverrides={playgroundColorOverrides}
+        />
+      );
     },
   ),
 ) as ComponentType<VisualizationOwnProps>;
