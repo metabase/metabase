@@ -2,6 +2,7 @@
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
+   [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -43,14 +44,25 @@
     :else                                              :updated-fingerprints))
 
 (defn- fingerprint-row
-  "The update row of `field` for its `fingerprint`: a failure only advances its fingerprint version, a Field with no data
-  gets none."
-  [field fingerprint]
+  "The update row of `field` for its `fingerprint`, which came from `origin`: a failure only advances its fingerprint
+  version, a Field with no data gets none."
+  [origin field fingerprint]
   (case (fingerprint-outcome fingerprint)
     :failed-fingerprints  (failed-row field)
     :no-data-fingerprints nil
     :updated-fingerprints (do (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-                              (assoc (incomplete-analysis-kvs) :id (:id field) :fingerprint fingerprint))))
+                              (assoc (incomplete-analysis-kvs)
+                                     :id                 (:id field)
+                                     :fingerprint        fingerprint
+                                     :fingerprint_origin origin))))
+
+(defn- sample-origin
+  "The origin of the fingerprints from a sample of `table` read with `method`."
+  [table method]
+  {:source       :sample
+   :method       method
+   :row-count    (:estimated_row_count table)
+   :collected-at (str (t/instant))})
 
 (mr/def ::FingerprintStats
   [:map {:closed true}
@@ -97,7 +109,8 @@
               (redux/post-complete
                (analyze/fingerprint-fields fields)
                (fn [fingerprints]
-                 {:rows  (into [] (keep identity) (map fingerprint-row fields fingerprints))
+                 {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table :unspecified))
+                                                       fields fingerprints))
                   :stats (fingerprint-stats fingerprints)})))
         driver (driver.u/database->driver (:db_id table))
         opts {:truncation-size *truncation-size*}]

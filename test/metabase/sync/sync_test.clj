@@ -119,6 +119,7 @@
                (assoc :fields (for [field (t2/select :model/Field, :table_id (:id table), {:order-by [:name]})]
                                 (into {} (-> field
                                              (update :fingerprint map?)
+                                             (update :fingerprint_origin map?)
                                              (update :fingerprint_version (complement zero?))
                                              (update :dimension_interestingness double?)))))
                tu/boolean-ids-and-timestamps)))
@@ -140,6 +141,7 @@
    (mt/object-defaults :model/Field)
    {:created_at                 true
     :fingerprint                false
+    :fingerprint_origin         false
     :fingerprint_version        false
     :fk_target_field_id         false
     :database_is_auto_increment false
@@ -157,6 +159,7 @@
          :last_analyzed             true
          :fingerprint_version       true
          :fingerprint               true
+         :fingerprint_origin        true
          :dimension_interestingness true))
 
 (defn- field:movie-id []

@@ -573,6 +573,8 @@
    [:json-unfolding             {:optional true} [:maybe :boolean]]
    [:preview-display            {:optional true} [:maybe :boolean]]
    [:fingerprint-version        {:optional true} [:maybe :int]]
+   ;; where the fingerprint came from, as sync records it; Lib does not read it
+   [:fingerprint-origin         {:optional true} [:maybe :map]]
    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]

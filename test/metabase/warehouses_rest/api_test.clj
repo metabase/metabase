@@ -122,14 +122,17 @@
                                 {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
-  (mt/derecordize
-   (merge
-    (mt/object-defaults :model/Field)
-    {:target nil}
-    (select-keys
-     field
-     [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
-      :position :dimension_interestingness]))))
+  (-> (mt/derecordize
+       (merge
+        (mt/object-defaults :model/Field)
+        {:target nil}
+        (select-keys
+         field
+         [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_origin :fingerprint_version
+          :fk_target_field_id :position :dimension_interestingness])))
+      ;; the API gives the keyword values of the origin as strings
+      (m/update-existing :fingerprint_origin (fn [origin]
+                                               (some-> origin (update-vals #(cond-> % (keyword? %) name)))))))
 
 (defn- card-with-native-query [card-name & {:as kvs}]
   (merge

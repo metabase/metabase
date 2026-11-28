@@ -73,6 +73,23 @@
     [:target                     {:optional true} [:maybe [:ref ::field]]]
     [:table                      {:optional true} [:maybe [:ref ::table]]]]])
 
+(mr/def ::field.fingerprint-origin
+  "Where the fingerprint of a Field came from, for the whole fingerprint. `:source` is `:sample` for a fingerprint
+  from a sample of rows. `:method` is how the sample was read: `:unspecified` when the driver's `table-rows-sample`
+  read it, since sync cannot know how. `:row-count` is the row count estimate of the Table at that time (nil when the
+  driver gives none), and `:collected-at` the time, as an ISO-8601 instant in UTC.
+
+  More keys can come later, so the map is open. When statistics from the database's catalog fill some parts of a
+  fingerprint, a later `:parts` key holds the origin of each part. A Field with no origin, such as one whose
+  fingerprint came from before this was recorded or from a metadata seed, has an unknown origin."
+  [:map
+   [:source       :keyword]
+   [:method       {:optional true} [:maybe :keyword]]
+   [:fraction     {:optional true} [:maybe number?]]
+   [:runs         {:optional true} [:maybe :int]]
+   [:row-count    {:optional true} [:maybe :int]]
+   [:collected-at {:optional true} [:maybe [:re #"^\d{4}-\d{2}-\d{2}T.*Z$"]]]])
+
 (mr/def ::field.update
   "What an update of a Field takes: its `:id` and the columns of `:metabase_field` to change, each optional."
   [:map {:closed true}
@@ -96,6 +113,7 @@
    [:caveats                    {:optional true} [:maybe :string]]
    [:fingerprint                {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    [:fingerprint_version        {:optional true} [:maybe :int]]
+   [:fingerprint_origin         {:optional true} [:maybe ::field.fingerprint-origin]]
    [:database_type              {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:has_field_values           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:settings                   {:optional true} [:maybe ::field.settings]]

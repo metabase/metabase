@@ -6,6 +6,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.response :as api.response]
    [metabase.collections.core :as collections]
    [metabase.driver :as driver]
@@ -102,13 +103,16 @@
     :visibility_type          "normal"}))
 
 (defn- field-details [field]
-  (merge
-   (field-defaults)
-   (select-keys
-    field
-    [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
-     :entity_id :dimension_interestingness])))
+  (-> (merge
+       (field-defaults)
+       (select-keys
+        field
+        [:created_at :fingerprint :fingerprint_origin :fingerprint_version :fk_target_field_id :id :last_analyzed
+         :updated_at :database_required :database_is_auto_increment :database_is_pk :database_is_generated
+         :database_is_nullable :entity_id :dimension_interestingness]))
+      ;; the API gives the keyword values of the origin as strings
+      (m/update-existing :fingerprint_origin (fn [origin]
+                                               (some-> origin (update-vals #(cond-> % (keyword? %) name)))))))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"

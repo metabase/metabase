@@ -240,6 +240,7 @@
 (defmethod excluded-keys :field
   [_object-type]
   #{:database
+    :fingerprint-origin
     :metrics
     :table})
 
