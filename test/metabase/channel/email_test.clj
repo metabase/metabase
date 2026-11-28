@@ -268,6 +268,18 @@
       message/make-jmessage
       message/message->str))
 
+(deftest add-mail-args-timeouts-test
+  (testing "SMTP timeouts from settings are passed to postal, so a server that never responds can't block a sending thread forever (#35745)"
+    (tu/with-temporary-setting-values [email-smtp-connection-timeout-ms 1234
+                                       email-smtp-timeout-ms            5678]
+      (is (= {:host "smtp.metabase.com", :connectiontimeout "1234", :timeout "5678"}
+             (select-keys (#'email/add-mail-args {:host "smtp.metabase.com"})
+                          [:host :connectiontimeout :timeout])))
+      (testing "timeouts passed in explicitly win over the settings (e.g. the tighter ones used when testing SMTP settings)"
+        (is (= {:connectiontimeout "1000", :timeout "4000"}
+               (select-keys (#'email/add-mail-args {:host "smtp.metabase.com", :connectiontimeout "1000", :timeout "4000"})
+                            [:connectiontimeout :timeout])))))))
+
 (deftest send-message!-test
   (tu/with-temporary-setting-values [email-from-address "lucky@metabase.com"
                                      email-from-name    "Lucky"
