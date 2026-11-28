@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getColorsForValues } from "./charts";
 import { color } from "./palette";
 
@@ -32,7 +30,12 @@ describe("charts", () => {
   });
 
   it("should use harmony colors for > 8 series", () => {
-    const keys = ["count", "sum", "profit", ..._.times(8, (i) => `S${i}`)];
+    const keys = [
+      "count",
+      "sum",
+      "profit",
+      ...Array.from({ length: 8 }, (_, i) => `S${i}`),
+    ];
     const existingMapping = { count: color("accent1") };
 
     const newMapping = getColorsForValues(keys, existingMapping);
@@ -50,7 +53,12 @@ describe("charts", () => {
   });
 
   it("should reuse colors for > 24 series", () => {
-    const keys = ["count", "sum", "profit", ..._.times(48, (i) => `S${i}`)];
+    const keys = [
+      "count",
+      "sum",
+      "profit",
+      ...Array.from({ length: 48 }, (_, i) => `S${i}`),
+    ];
     const existingMapping = { count: color("accent1") };
 
     const newMapping = getColorsForValues(keys, existingMapping);
