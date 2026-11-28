@@ -1,0 +1,249 @@
+/* PROTOTYPE: metabot context tokens */
+
+/* ---- shared composer shell ---- */
+
+.composer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--mantine-radius-sm);
+  box-shadow: 0 3px 6px 0 #0000000d;
+  border: 1px solid var(--mb-color-border-neutral);
+
+  &:focus-within {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.composerResponding {
+  background: var(--mb-color-background_page-secondary);
+
+  &:focus-within {
+    border-color: var(--mb-color-border-neutral);
+  }
+}
+
+.editor {
+  flex: 1;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* ---- shared token behavior ---- */
+
+@keyframes token-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.token {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+  transform-origin: left center;
+  animation: token-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .token {
+    animation: none;
+  }
+}
+
+/* Filled circle with a knocked-out x, ringed in page color so it reads
+ * cleanly where it overlaps the token's corner. */
+.remove {
+  position: absolute;
+  top: -0.375rem;
+  right: -0.375rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mb-color-text-secondary);
+  box-shadow: 0 0 0 2px var(--mb-color-background_page-primary);
+  color: var(--mb-color-background_page-primary);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition:
+    opacity 120ms ease-out,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 120ms ease-out;
+
+  &:hover {
+    background: var(--mb-color-text-primary);
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 1px;
+  }
+}
+
+.token:hover .remove,
+.token:focus-within .remove {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .remove {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+}
+
+/* ---- variant 1: Cards ---- */
+
+.cardRow {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  /* room for the remove button, which overhangs each card's corner */
+  padding: 0.625rem 0.5rem 0.125rem;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  max-width: 13.5rem;
+  padding: 0.375rem 0.875rem 0.375rem 0.375rem;
+  border-radius: 0.625rem;
+  background: var(--mb-color-background_surface-secondary);
+}
+
+.cardTile {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--mb-color-border-neutral-subtle);
+  background: var(--mb-color-background_page-primary);
+  color: var(--mb-color-icon-brand);
+}
+
+.cardText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cardEditorRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0 0.5rem 0.4375rem 1rem;
+}
+
+/* ---- variant 2: Toolbar ---- */
+
+.toolbarEditor {
+  padding: 0.25rem 1rem 0;
+}
+
+.toolbarRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0 0.5rem 0.4375rem 0.75rem;
+}
+
+.chipList {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  min-width: 0;
+  /* room for the remove button above the first line of chips */
+  padding-top: 0.375rem;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.75rem;
+  max-width: 11rem;
+  padding: 0 0.625rem 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--mb-color-border-neutral);
+  background: var(--mb-color-background_page-primary);
+  color: var(--mb-color-icon-brand);
+}
+
+/* the thing you're looking at reads as ambient, mentions as explicit */
+.chipViewing {
+  border-color: transparent;
+  background: var(--mb-color-background_surface-brand-subtle);
+}
+
+/* ---- variant 3: Attachments ---- */
+
+.attachmentList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.625rem 0.5rem 0;
+}
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.75rem;
+  max-width: 13rem;
+  padding: 0 0.625rem 0 0.25rem;
+  border-radius: 0.375rem;
+  background: var(--mb-color-background_surface-secondary);
+}
+
+.attachmentIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  background: var(--mb-color-background_page-primary);
+  color: var(--mb-color-icon-brand);
+}
+
+.attachmentEditorRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0 0.5rem 0.4375rem 1rem;
+}
