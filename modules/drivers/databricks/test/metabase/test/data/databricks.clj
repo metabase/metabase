@@ -14,11 +14,33 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   [java.sql Connection Statement]))
 
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :databricks)
+
+;; Shared date tests still assume Spark 2.4's lenient timestamp-string parser. Apply that only in the
+;; test JVM — production connections must not send this SET (Lakehouse//RT returns CONFIG_NOT_AVAILABLE).
+;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
+(defmethod sql-jdbc.execute/do-with-connection-with-options :databricks
+  [driver db-or-id-or-spec options f]
+  ((get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (let [read-only? (.isReadOnly conn)]
+         (try
+           (.setReadOnly conn false)
+           (with-open [^Statement stmt (.createStatement conn)]
+             (.execute stmt "set legacy_time_parser_policy = legacy"))
+           (finally
+             (.setReadOnly conn read-only?)))))
+     (f conn))))
 
 (doseq [[base-type database-type] {:type/BigInteger             "BIGINT"
                                    :type/Boolean                "BOOLEAN"
