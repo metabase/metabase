@@ -6525,6 +6525,94 @@
         },
         "required" : [ "status" ]
       },
+      "metabase-enterprise.remote-sync.schema.worktree" : {
+        "description" : "A worktree, a checkout of a remote sync branch whose content lives in the same tables as the main app, with the user\n  who created it and the users working in it when hydrated.",
+        "type" : "object",
+        "properties" : {
+          "branch" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.remote-sync.schema.worktree-user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "creator_id" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "is_default" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.remote-sync.schema.worktree-user"
+            }
+          }
+        },
+        "required" : [ "id", "branch", "is_default", "creator_id", "created_at", "updated_at" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.remote-sync.schema.worktree-user" : {
+        "description" : "A user as a worktree lists them.",
+        "type" : "object",
+        "properties" : {
+          "common_name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "first_name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_name" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name", "common_name" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.replacement.schema.check-replace-source-response" : {
         "type" : "object",
         "properties" : {
@@ -13812,11 +13900,6 @@
         "type" : "string",
         "minLength" : 1
       },
-      "metabase.data-apps.schema.bundle-text" : {
-        "description" : "The text of a data app's bundle file.",
-        "type" : "string",
-        "maxLength" : 10485760
-      },
       "metabase.data-apps.schema.data-app" : {
         "description" : "A DataApp as selected from the app DB: every column of `:data_app`.",
         "type" : "object",
@@ -14730,6 +14813,10 @@
         "additionalProperties" : {
           "$ref" : "#/components/schemas/metabase.driver.index-method"
         }
+      },
+      "metabase.dynamic-goals.core.goal-values" : {
+        "description" : "Goal source results by source type, then by source id. A source with no entry wasn't run.",
+        "$ref" : "#/components/schemas/metabase.visualization-settings.dynamic-goals.goal-values"
       },
       "metabase.eid-translation.schema.entity-ids-by-model" : {
         "description" : "The entity IDs to translate, grouped by the model they belong to. Which models exist is checked by\n  [[metabase.eid-translation.util/model->entity-ids->ids]], whose error names them.",
@@ -20720,7 +20807,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
+        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "dynamic-goal", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -24623,7 +24710,7 @@
           },
           "card-reference?" : {
             "type" : "boolean",
-            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs."
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers compile it without stage CTEs."
           },
           "pivot?" : {
             "anyOf" : [ {
@@ -27195,6 +27282,23 @@
           }
         }
       },
+      "metabase.lib.schema.visualization..goal-value.reference" : {
+        "description" : "A dynamic goal's reference to a column of the result of another entity, such as a card or a measure.",
+        "type" : "object",
+        "properties" : {
+          "column" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "id", "column" ]
+      },
       "metabase.lib.schema.visualization..link-card.entity" : {
         "description" : "link card entity",
         "type" : "object",
@@ -27305,14 +27409,14 @@
           },
           "max" : {
             "anyOf" : [ {
-              "type" : "number"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.goal-value"
             }, {
               "type" : "null"
             } ]
           },
           "min" : {
             "anyOf" : [ {
-              "type" : "number"
+              "$ref" : "#/components/schemas/metabase.lib.schema.visualization.goal-value"
             }, {
               "type" : "null"
             } ]
@@ -27623,6 +27727,16 @@
             "type" : "null"
           } ]
         }
+      },
+      "metabase.lib.schema.visualization.goal-value" : {
+        "description" : "A goal: a number, the name of another column of the same result, or a [[::goal-value.reference]].",
+        "anyOf" : [ {
+          "type" : "string"
+        }, {
+          "type" : "number"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.visualization..goal-value.reference"
+        } ]
       },
       "metabase.lib.schema.visualization.legacy-reference" : {
         "description" : "A legacy MBQL reference to a column, as older settings give it.",
@@ -39088,6 +39202,44 @@
           "additionalProperties" : { }
         }
       },
+      "metabase.remote-sync.schema.worktree" : {
+        "description" : "A remote sync worktree, a checkout of a branch whose content lives in the same tables as the main app.",
+        "type" : "object",
+        "properties" : {
+          "branch" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "creator_id" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "is_default" : {
+            "type" : "boolean"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "branch", "is_default", "creator_id", "created_at", "updated_at" ],
+        "additionalProperties" : false
+      },
       "metabase.search.schema..weights.overrides" : {
         "description" : "search weight overrides",
         "type" : "object",
@@ -39510,6 +39662,607 @@
             "minimum" : 1
           }
         }
+      },
+      "metabase.sync.api.metadata-sync.answer" : {
+        "description" : "the other Metabase's answer, which the receiver checks",
+        "type" : "object",
+        "properties" : { }
+      },
+      "metabase.sync.metadata-sync.links.field-path" : {
+        "description" : "A Field's name, after the names of its parents. Always one name today.",
+        "type" : "array",
+        "items" : {
+          "description" : "value must be a non-blank string.",
+          "type" : "string",
+          "minLength" : 1
+        },
+        "minItems" : 1
+      },
+      "metabase.sync.metadata-sync.links.fk-link" : {
+        "type" : "object",
+        "properties" : {
+          "field" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
+          },
+          "kind" : {
+            "const" : "fk"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.target"
+          },
+          "user_set" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "kind", "field", "target" ]
+      },
+      "metabase.sync.metadata-sync.links.link" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.fk-link"
+        }, {
+          "description" : "a link of a kind that only a newer version knows",
+          "type" : "object",
+          "properties" : {
+            "kind" : {
+              "description" : "value must be a non-blank string.",
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "kind" ]
+        } ],
+        "description" : "A link. This version sends and applies the kind `fk`; a receiver leaves out a link of another kind, which a newer\n  sender sends."
+      },
+      "metabase.sync.metadata-sync.links.target" : {
+        "type" : "object",
+        "properties" : {
+          "field" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "table", "field" ]
+      },
+      "metabase.sync.metadata-sync.receive.counts" : {
+        "description" : "What an apply did. The keys are snake_case: the counts are part of an API response.",
+        "type" : "object",
+        "properties" : {
+          "row_counts_set" : {
+            "type" : "integer"
+          },
+          "fks_set" : {
+            "type" : "integer"
+          },
+          "values_dropped" : {
+            "type" : "integer"
+          },
+          "field_values_inserted" : {
+            "type" : "integer"
+          },
+          "tables_inserted" : {
+            "type" : "integer"
+          },
+          "left_out" : {
+            "type" : "integer"
+          },
+          "fields_inserted" : {
+            "type" : "integer"
+          },
+          "tables_existing" : {
+            "type" : "integer"
+          },
+          "tables_skipped" : {
+            "type" : "integer"
+          },
+          "database_updated" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "values_dropped", "tables_skipped", "left_out", "database_updated", "tables_inserted", "tables_existing", "fields_inserted", "fks_set", "row_counts_set", "field_values_inserted" ],
+        "additionalProperties" : false
+      },
+      "metabase.sync.metadata-sync.receive.result" : {
+        "type" : "object",
+        "properties" : {
+          "counts" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.receive.counts"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "counts" ],
+        "additionalProperties" : false
+      },
+      "metabase.sync.metadata-sync.stats.entry" : {
+        "type" : "object",
+        "properties" : {
+          "estimated_row_count" : {
+            "anyOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field_values" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.stats.field-values"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.sync.metadata-sync.stats.field-values" : {
+        "type" : "object",
+        "properties" : {
+          "field" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "minItems" : 1
+          },
+          "has_more_values" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "values" : {
+            "type" : "array",
+            "items" : {
+              "anyOf" : [ {
+                "anyOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "number"
+                }, {
+                  "type" : "boolean"
+                }, {
+                  "type" : "string",
+                  "format" : "uuid"
+                }, {
+                  "type" : "string"
+                }, {
+                  "type" : "string",
+                  "format" : "date-time"
+                } ]
+              }, {
+                "type" : "null"
+              } ]
+            }
+          }
+        },
+        "required" : [ "field", "values" ]
+      },
+      "metabase.sync.metadata-sync.tables.field" : {
+        "description" : "a Field's entry: its name path, and each of `field-columns` that has a value",
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "database_type" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "last_analyzed" : {
+            "anyOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "path" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be a non-blank string.",
+              "type" : "string",
+              "minLength" : 1
+            },
+            "minItems" : 1,
+            "maxItems" : 50
+          },
+          "user_set" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be a non-blank string.",
+                "type" : "string",
+                "minLength" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "path", "base_type", "database_type" ]
+      },
+      "metabase.sync.metadata-sync.tables.schema-filter" : {
+        "description" : "Which schemas of a Database to send, in the form of a Database's own schema filters.",
+        "type" : "object",
+        "properties" : {
+          "patterns" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "inclusion", "exclusion" ]
+          }
+        },
+        "required" : [ "type", "patterns" ],
+        "additionalProperties" : false
+      },
+      "metabase.sync.metadata-sync.tables.table" : {
+        "description" : "a Table's entry: each of `table-columns` that has a value, and its Fields",
+        "type" : "object",
+        "properties" : {
+          "data_source" : {
+            "anyOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "fields" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.field"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "user_set" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be a non-blank string.",
+                "type" : "string",
+                "minLength" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "metabase.sync.metadata-sync.wire.batch" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.database-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.tables-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-batch"
+        }, {
+          "description" : "a batch of a type that only a newer version knows",
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "description" : "value must be a non-blank string.",
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "type" ]
+        } ]
+      },
+      "metabase.sync.metadata-sync.wire.cursor" : {
+        "description" : "the cursor of an answer, which only the sender that wrote it reads",
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.open-json"
+      },
+      "metabase.sync.metadata-sync.wire.database" : {
+        "type" : "object",
+        "properties" : {
+          "dbms_version" : {
+            "anyOf" : [ {
+              "description" : "the version a driver reports, in its shape",
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timezone" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.sync.metadata-sync.wire.database-batch" : {
+        "type" : "object",
+        "properties" : {
+          "dbms_version" : {
+            "anyOf" : [ {
+              "description" : "the version a driver reports, in its shape",
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timezone" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "database"
+          }
+        },
+        "required" : [ "type" ]
+      },
+      "metabase.sync.metadata-sync.wire.envelope" : {
+        "description" : "What a receiver needs of an answer before it reads its entries: the format version, the Database it is for, a type\n  for each batch, and the cursor. It refuses an answer without them.",
+        "type" : "object",
+        "properties" : {
+          "batches" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "type" : {
+                  "description" : "value must be a non-blank string.",
+                  "type" : "string",
+                  "minLength" : 1
+                }
+              },
+              "required" : [ "type" ]
+            }
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "format_version" : {
+            "type" : "integer"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "format_version", "database", "engine", "batches" ]
+      },
+      "metabase.sync.metadata-sync.wire.links-batch" : {
+        "type" : "object",
+        "properties" : {
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-table"
+            }
+          },
+          "type" : {
+            "const" : "links"
+          }
+        },
+        "required" : [ "type", "tables" ]
+      },
+      "metabase.sync.metadata-sync.wire.links-table" : {
+        "type" : "object",
+        "properties" : {
+          "links" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.link"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "metabase.sync.metadata-sync.wire.request" : {
+        "description" : "a request for the metadata of one Database; a key that this version does not know is ignored, so that a newer receiver is not refused",
+        "type" : "object",
+        "properties" : {
+          "after" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "format_versions" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer"
+            },
+            "minItems" : 1
+          },
+          "schema_filters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.schema-filter"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "database", "engine" ]
+      },
+      "metabase.sync.metadata-sync.wire.response" : {
+        "description" : "An answer. It names the Database of its request, by `database` and `engine`, so that a receiver can refuse an\n  answer that is for another Database.",
+        "type" : "object",
+        "properties" : {
+          "batches" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.batch"
+            }
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "format_version" : {
+            "type" : "integer"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "format_version", "database", "engine", "batches" ]
+      },
+      "metabase.sync.metadata-sync.wire.stats-batch" : {
+        "type" : "object",
+        "properties" : {
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-table"
+            }
+          },
+          "type" : {
+            "const" : "stats"
+          }
+        },
+        "required" : [ "type", "tables" ]
+      },
+      "metabase.sync.metadata-sync.wire.stats-table" : {
+        "type" : "object",
+        "properties" : {
+          "estimated_row_count" : {
+            "anyOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field_values" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.stats.field-values"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "type" : "string",
+            "minLength" : 1
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "metabase.sync.metadata-sync.wire.tables-batch" : {
+        "type" : "object",
+        "properties" : {
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.table"
+            }
+          },
+          "type" : {
+            "const" : "tables"
+          }
+        },
+        "required" : [ "type", "tables" ]
       },
       "metabase.sync.schedules.ExpandedSchedulesMap" : {
         "description" : "value must be a valid map of schedule maps for a DB.",
@@ -41101,9 +41854,6 @@
               "type" : "null"
             } ]
           },
-          "can_execute" : {
-            "type" : "boolean"
-          },
           "source" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/metabase.transforms.schema..transform.source"
@@ -41140,6 +41890,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "can_query" : {
+            "type" : "boolean"
           },
           "creator_id" : {
             "anyOf" : [ {
@@ -41424,6 +42177,13 @@
               "type" : "null"
             } ]
           },
+          "worktree" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.remote-sync.schema.worktree"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "jwt_attributes" : {
             "anyOf" : [ {
               "type" : "object",
@@ -41565,7 +42325,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "slack_account_status", "can_write_any_collection", "sso_source", "has_used_password", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "slack_account_status", "can_write_any_collection", "sso_source", "has_used_password", "locale", "tenant_id", "tenant_collection_id", "worktree", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
       },
       "metabase.users-rest.api.user-permissions" : {
         "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
@@ -42200,6 +42960,94 @@
           },
           "uniqueItems" : true
         } ]
+      },
+      "metabase.visualization-settings.dynamic-goals.goal-values" : {
+        "description" : "Goal source results by source type, then by source id. A source with no entry wasn't run.",
+        "type" : "object",
+        "additionalProperties" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "$ref" : "#/components/schemas/metabase.visualization-settings.dynamic-goals.source-result"
+          }
+        }
+      },
+      "metabase.visualization-settings.dynamic-goals.source-result" : {
+        "description" : "The result of running one goal source.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "anyOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "cols" : {
+                  "anyOf" : [ {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+                    }
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "rows" : {
+                  "anyOf" : [ {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "anyOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "number"
+                          }, {
+                            "type" : "boolean"
+                          }, {
+                            "type" : "string",
+                            "format" : "uuid"
+                          }, {
+                            "type" : "string"
+                          }, {
+                            "type" : "string",
+                            "format" : "date-time"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    }
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "additionalProperties" : false
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "error" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "error_type" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "too-many-rows", "not-found", "has-parameters", "withheld", "too-many-sources" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "completed", "failed" ]
+          }
+        },
+        "required" : [ "status" ],
+        "additionalProperties" : false
       },
       "metabase.warehouse-schema-rest.api.table..csv-upload.parts" : {
         "description" : "CSV upload multipart parts",
@@ -43063,13 +43911,6 @@
               "type" : "null"
             } ]
           },
-          "transform_id" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "schema" : {
             "anyOf" : [ {
               "type" : "string"
@@ -43140,23 +43981,9 @@
               "type" : "null"
             } ]
           },
-          "collection_id" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "data_source" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "is_published" : {
-            "anyOf" : [ {
-              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -43923,13 +44750,6 @@
               "type" : "null"
             } ]
           },
-          "transform_id" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "schema" : {
             "anyOf" : [ {
               "type" : "string"
@@ -44015,13 +44835,6 @@
               "type" : "null"
             } ]
           },
-          "collection_id" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "data_source" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.common.keyword"
@@ -44035,13 +44848,6 @@
               "items" : {
                 "$ref" : "#/components/schemas/metabase.warehouse-schema.schema.field"
               }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "is_published" : {
-            "anyOf" : [ {
-              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -45077,12 +45883,8 @@
         "required" : [ "id" ],
         "additionalProperties" : false
       },
-      "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
-        "description" : "form-encoded base-64-encoded JSON",
-        "type" : "string"
-      },
       "metabase.xrays.api.automagic-dashboards.cell-query" : {
-        "description" : "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step\n  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler\n  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is\n  and fails validation, surfacing as a clean 400.",
+        "description" : "A base64-encoded JSON cell query (an MBQL 5 filter clause) taken on the query string. The `:decode/api` step\n  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler\n  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is\n  and fails validation, surfacing as a clean 400.",
         "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema..root.cell-query"
       },
       "metabase.xrays.api.automagic-dashboards.entity-id-or-query" : {
@@ -45094,6 +45896,7 @@
         "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema.filter-clause"
       },
       "metabase.xrays.automagic-dashboards.schema.filter-clause" : {
+        "description" : "An MBQL 5 filter clause.",
         "allOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
         }, {
@@ -47031,7 +47834,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "path",
@@ -47197,7 +48000,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "path",
@@ -48691,7 +49494,7 @@
       "get" : {
         "operationId" : "get-api-card-id",
         "summary" : "GET /api/card/{id}",
-        "description" : "Get `Card` with ID.\n\n  As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)\n  instead, you can specify `?legacy-mbql=true`.",
+        "description" : "Get `Card` with ID. Returns the MBQL query (`dataset_query`) as MBQL 5.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -48706,18 +49509,6 @@
               "type" : "string",
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "legacy-mbql",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ],
-            "default" : false
           }
         } ],
         "responses" : {
@@ -56489,6 +57280,91 @@
         "tags" : [ "/api/document" ]
       }
     },
+    "/api/dynamic-goal/values" : {
+      "post" : {
+        "operationId" : "post-api-dynamic-goal-values",
+        "summary" : "POST /api/dynamic-goal/values",
+        "description" : "Run the goal `sources` (cards and measures) as the current user and return each one's single-row result, keyed by\n  source type, then id. A source that can't run fails on its own. `dashboard_id` picks card cache settings.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "dashboard_id" : {
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "ignore_cache" : {
+                    "anyOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "sources" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "columns" : {
+                          "anyOf" : [ {
+                            "type" : "array",
+                            "items" : {
+                              "type" : "string"
+                            }
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "id" : {
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "type" : {
+                          "type" : "string",
+                          "enum" : [ "card", "measure" ]
+                        }
+                      },
+                      "required" : [ "type", "id" ],
+                      "additionalProperties" : false
+                    },
+                    "maxItems" : 1000
+                  }
+                },
+                "required" : [ "sources" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/dynamic-goal" ]
+      }
+    },
     "/api/ee/action-v2/execute" : {
       "post" : {
         "operationId" : "post-api-ee-action-v2-execute",
@@ -57912,126 +58788,6 @@
           }
         },
         "tags" : [ "/api/ee/apps" ]
-      },
-      "post" : {
-        "operationId" : "post-api-ee-apps",
-        "summary" : "POST /api/ee/apps",
-        "description" : "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says otherwise.",
-        "parameters" : [ ],
-        "responses" : {
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          },
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "slug" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "anyOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "description" : {
-                      "anyOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-hosts"
-                  },
-                  "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-path"
-                  },
-                  "description" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.description"
-                  },
-                  "enabled" : {
-                    "type" : "boolean"
-                  },
-                  "name" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.name"
-                  },
-                  "slug" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.slug"
-                  },
-                  "version" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.version"
-                  }
-                },
-                "required" : [ "slug" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
       }
     },
     "/api/ee/apps/generate/actions" : {
@@ -58207,8 +58963,40 @@
       "get" : {
         "operationId" : "get-api-ee-apps-generate-schema",
         "summary" : "GET /api/ee/apps/generate/schema",
-        "description" : "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and\n  measures, and its metrics. Superusers only.",
-        "parameters" : [ ],
+        "description" : "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and\n  measures, and its metrics, narrowed to the ones with `table-ids` and `metric-ids` when given. Superusers only.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "table-ids",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "metric-ids",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
         "responses" : {
           "4XX" : {
             "description" : "Client error response"
@@ -58289,7 +59077,7 @@
       "put" : {
         "operationId" : "put-api-ee-apps-slug",
         "summary" : "PUT /api/ee/apps/{slug}",
-        "description" : "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only.",
+        "description" : "Enable or disable a data app, which is served to superusers only while disabled and otherwise changes only through\n  a repository import.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -58385,60 +59173,12 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.allowed-hosts"
-                  },
-                  "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-path"
-                  },
-                  "description" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.description"
-                  },
                   "enabled" : {
                     "type" : "boolean"
-                  },
-                  "name" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.name"
-                  },
-                  "version" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.version"
                   }
                 },
+                "required" : [ "enabled" ],
                 "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-ee-apps-slug",
-        "summary" : "DELETE /api/ee/apps/{slug}",
-        "description" : "Delete a data app, its bundle, and its collection with the grants on it.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "description" : "value must be a non-blank string."
-        } ],
-        "responses" : {
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          },
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
               }
             }
           }
@@ -58571,117 +59311,6 @@
       }
     },
     "/api/ee/apps/{slug}/bundle" : {
-      "put" : {
-        "operationId" : "put-api-ee-apps-slug-bundle",
-        "summary" : "PUT /api/ee/apps/{slug}/bundle",
-        "description" : "Replace a data app's bundle.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "description" : "value must be a non-blank string."
-        } ],
-        "responses" : {
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          },
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "slug" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "anyOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "description" : {
-                      "anyOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "description" : "value must be a non-blank string.",
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "slug", "name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "bundle" : {
-                    "$ref" : "#/components/schemas/metabase.data-apps.schema.bundle-text"
-                  }
-                },
-                "required" : [ "bundle" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/apps" ]
-      },
       "get" : {
         "operationId" : "get-api-ee-apps-slug-bundle",
         "summary" : "GET /api/ee/apps/{slug}/bundle",
@@ -64008,7 +64637,7 @@
           "schema" : {
             "anyOf" : [ {
               "type" : "string",
-              "enum" : [ "created_at", "title", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
+              "enum" : [ "created_at", "title", "message_count", "total_tokens", "uncached_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
             }, {
               "type" : "null"
             } ]
@@ -64153,6 +64782,11 @@
                               "type" : "null"
                             } ]
                           },
+                          "uncached_tokens" : {
+                            "description" : "value must be an integer greater or equal to than zero.",
+                            "type" : "integer",
+                            "minimum" : 0
+                          },
                           "message_count" : {
                             "description" : "value must be an integer greater or equal to than zero.",
                             "type" : "integer",
@@ -64240,7 +64874,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "user" ]
+                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "uncached_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "user" ]
                       }
                     },
                     "limit" : {
@@ -64391,6 +65025,11 @@
                         "type" : "null"
                       } ]
                     },
+                    "cache_read_tokens" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
                     "fork_boundary_message_id" : {
                       "anyOf" : [ {
                         "type" : "string"
@@ -64436,6 +65075,11 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "uncached_tokens" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
                     },
                     "feedback" : {
                       "type" : "array",
@@ -64634,7 +65278,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "fork_boundary_message_id", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "uncached_tokens", "cache_read_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "fork_boundary_message_id", "feedback" ]
                 }
               }
             }
@@ -65345,6 +65989,103 @@
         "tags" : [ "/api/ee/remote-sync" ]
       }
     },
+    "/api/ee/remote-sync/checkout" : {
+      "put" : {
+        "operationId" : "put-api-ee-remote-sync-checkout",
+        "summary" : "PUT /api/ee/remote-sync/checkout",
+        "description" : "Make the current user work in the worktree with `worktree_id`, or in the main app when it is nil.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "204" : {
+            "description" : "No content"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "worktree_id" : {
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "worktree_id" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/create-branch" : {
+      "post" : {
+        "operationId" : "post-api-ee-remote-sync-create-branch",
+        "summary" : "POST /api/ee/remote-sync/create-branch",
+        "description" : "Create the branch `name` in the repository at the tip of the main app's branch, whichever worktree the request works\n  in.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "status" : {
+                      "const" : "success"
+                    }
+                  },
+                  "required" : [ "status", "message" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "name" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
     "/api/ee/remote-sync/current-task" : {
       "get" : {
         "operationId" : "get-api-ee-remote-sync-current-task",
@@ -65553,7 +66294,7 @@
       "post" : {
         "operationId" : "post-api-ee-remote-sync-import",
         "summary" : "POST /api/ee/remote-sync/import",
-        "description" : "Pull the synced content of the remote branch, or of `branch` to switch to it, into this instance, keeping its local\n  changes when `merge`, discarding them when `force`, and refusing when it has some otherwise.",
+        "description" : "Pull the synced content of the remote branch, or of `branch` to switch to it, into the worktree the request works in\n  or the main app, keeping its local changes when `merge`, discarding them when `force`, and refusing when it has some\n  otherwise.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -65814,6 +66555,142 @@
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/worktree" : {
+      "get" : {
+        "operationId" : "get-api-ee-remote-sync-worktree",
+        "summary" : "GET /api/ee/remote-sync/worktree",
+        "description" : "The worktrees, with the user who created each and the users working in each.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.remote-sync.schema.worktree"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-remote-sync-worktree",
+        "summary" : "POST /api/ee/remote-sync/worktree",
+        "description" : "Create a worktree checking out `branch`, a branch of the repository, empty until someone working in it pulls.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.remote-sync.schema.worktree"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "branch" : {
+                    "description" : "value must be a non-blank string.",
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "branch" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/worktree/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-remote-sync-worktree-id",
+        "summary" : "GET /api/ee/remote-sync/worktree/{id}",
+        "description" : "The worktree with `id`, with the user who created it and the users working in it.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.remote-sync.schema.worktree"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-remote-sync-worktree-id",
+        "summary" : "DELETE /api/ee/remote-sync/worktree/{id}",
+        "description" : "Delete the worktree with `id` and its content, moving the users working in it to the main app.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "204" : {
+            "description" : "No content"
           }
         },
         "tags" : [ "/api/ee/remote-sync" ]
@@ -67038,9 +67915,25 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "last_sync_attempted_at" : {
+                      "anyOf" : [ {
+                        "description" : "value must be a valid date/time/datetime",
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_sync_error" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
-                  "required" : [ "last_checked_at", "advisories" ]
+                  "required" : [ "last_checked_at", "last_sync_attempted_at", "last_sync_error", "advisories" ]
                 }
               }
             }
@@ -71130,6 +72023,40 @@
         "tags" : [ "/api/embed" ]
       }
     },
+    "/api/embed/card/{token}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-embed-card-token-goal-values",
+        "summary" : "GET /api/embed/card/{token}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a Card using a JSON Web Token signed with the `embedding-secret-key`. Same\n  checks as `GET /api/embed/card/:token/query`; every goal is withheld when the token signs a parameter value.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed" ]
+      }
+    },
     "/api/embed/card/{token}/params/{param-key}/remapping" : {
       "get" : {
         "operationId" : "get-api-embed-card-token-params-param-key-remapping",
@@ -71431,6 +72358,58 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/embed" ]
+      }
+    },
+    "/api/embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-embed-dashboard-token-dashcard-dashcard-id-card-card-id-goal-values",
+        "summary" : "GET /api/embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a Card on a Dashboard using a JSON Web Token signed with the\n  `embedding-secret-key`. Same checks as the dashcard query route; every goal is withheld when the token signs a\n  parameter value. Defined before the `/:export-format` route, which would otherwise match it.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
                 }
               }
             }
@@ -79181,7 +80160,7 @@
       "post" : {
         "operationId" : "post-api-notification-admin-bulk",
         "summary" : "POST /api/notification/admin/bulk",
-        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-update!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
+        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-updates!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
         "parameters" : [ ],
         "responses" : {
           "4XX" : {
@@ -81061,6 +82040,40 @@
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/card/{token}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-preview_embed-card-token-goal-values",
+        "summary" : "GET /api/preview_embed/card/{token}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a Card you're considering embedding by passing a JWT `token`. Same checks as\n  `GET /api/preview_embed/card/:token/query`; every goal is withheld when the token signs a parameter value.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/preview_embed/card/{token}/params/{param-key}/remapping" : {
       "get" : {
         "operationId" : "get-api-preview_embed-card-token-params-param-key-remapping",
@@ -81314,6 +82327,58 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
+    "/api/preview_embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-preview_embed-dashboard-token-dashcard-dashcard-id-card-card-id-goal-values",
+        "summary" : "GET /api/preview_embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a Card on a Dashboard you're considering embedding with JWT `token`. Same\n  checks as the preview dashcard query route; every goal is withheld when the token signs a parameter value.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
                 }
               }
             }
@@ -81855,6 +82920,42 @@
         "tags" : [ "/api/public" ]
       }
     },
+    "/api/public/card/{uuid}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-public-card-uuid-goal-values",
+        "summary" : "GET /api/public/card/{uuid}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a publicly-accessible Card. Does not require auth credentials. Public\n  sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
     "/api/public/card/{uuid}/params/{param-key}/remapping" : {
       "get" : {
         "operationId" : "get-api-public-card-uuid-params-param-key-remapping",
@@ -82252,6 +83353,60 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-public-dashboard-uuid-dashcard-dashcard-id-card-card-id-goal-values",
+        "summary" : "GET /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a Card in a publicly-accessible Dashboard. Does not require auth\n  credentials. Public sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
                 }
               }
             }
@@ -82709,6 +83864,51 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/metabase.public-sharing-rest.api.query-result"
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/public" ]
+      }
+    },
+    "/api/public/document/{uuid}/card/{card-id}/goal-values" : {
+      "get" : {
+        "operationId" : "get-api-public-document-uuid-card-card-id-goal-values",
+        "summary" : "GET /api/public/document/{uuid}/card/{card-id}/goal-values",
+        "description" : "Fetch the values of the dynamic goals of a Card embedded in a public Document. Does not require auth credentials.\n  Public sharing must be enabled.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.dynamic-goals.core.goal-values"
                 }
               }
             }
@@ -89620,9 +90820,6 @@
                           "type" : "null"
                         } ]
                       },
-                      "can_execute" : {
-                        "type" : "boolean"
-                      },
                       "source" : { },
                       "requestable_indexes" : {
                         "anyOf" : [ {
@@ -89640,6 +90837,9 @@
                       },
                       "target" : { },
                       "created_at" : { },
+                      "can_query" : {
+                        "type" : "boolean"
+                      },
                       "creator_id" : {
                         "type" : "integer",
                         "minimum" : 1
@@ -89987,9 +91187,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "can_execute" : {
-                      "type" : "boolean"
-                    },
                     "source" : { },
                     "requestable_indexes" : {
                       "anyOf" : [ {
@@ -90007,6 +91204,9 @@
                     },
                     "target" : { },
                     "created_at" : { },
+                    "can_query" : {
+                      "type" : "boolean"
+                    },
                     "creator_id" : {
                       "type" : "integer",
                       "minimum" : 1
@@ -90432,6 +91632,9 @@
                     "active" : {
                       "type" : "boolean"
                     },
+                    "can_query" : {
+                      "type" : "boolean"
+                    },
                     "description" : {
                       "anyOf" : [ {
                         "anyOf" : [ {
@@ -90688,6 +91891,9 @@
                       "active" : {
                         "type" : "boolean"
                       },
+                      "can_query" : {
+                        "type" : "boolean"
+                      },
                       "description" : {
                         "anyOf" : [ {
                           "anyOf" : [ {
@@ -90905,6 +92111,9 @@
                     },
                     "created_at" : { },
                     "active" : {
+                      "type" : "boolean"
+                    },
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "description" : {
@@ -91139,6 +92348,9 @@
                     },
                     "created_at" : { },
                     "active" : {
+                      "type" : "boolean"
+                    },
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "description" : {
@@ -93131,9 +94343,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "can_execute" : {
-                      "type" : "boolean"
-                    },
                     "source" : { },
                     "requestable_indexes" : {
                       "anyOf" : [ {
@@ -93151,6 +94360,9 @@
                     },
                     "target" : { },
                     "created_at" : { },
+                    "can_query" : {
+                      "type" : "boolean"
+                    },
                     "creator_id" : {
                       "type" : "integer",
                       "minimum" : 1
@@ -93506,9 +94718,6 @@
                         "type" : "null"
                       } ]
                     },
-                    "can_execute" : {
-                      "type" : "boolean"
-                    },
                     "source" : { },
                     "requestable_indexes" : {
                       "anyOf" : [ {
@@ -93526,6 +94735,9 @@
                     },
                     "target" : { },
                     "created_at" : { },
+                    "can_query" : {
+                      "type" : "boolean"
+                    },
                     "creator_id" : {
                       "type" : "integer",
                       "minimum" : 1
@@ -94077,9 +95289,6 @@
                           "type" : "null"
                         } ]
                       },
-                      "can_execute" : {
-                        "type" : "boolean"
-                      },
                       "source" : { },
                       "requestable_indexes" : {
                         "anyOf" : [ {
@@ -94097,6 +95306,9 @@
                       },
                       "target" : { },
                       "created_at" : { },
+                      "can_query" : {
+                        "type" : "boolean"
+                      },
                       "creator_id" : {
                         "type" : "integer",
                         "minimum" : 1
@@ -95287,6 +96499,138 @@
           }
         },
         "tags" : [ "/api/util" ]
+      }
+    },
+    "/api/warehouse/metadata/apply" : {
+      "post" : {
+        "operationId" : "post-api-warehouse-metadata-apply",
+        "summary" : "POST /api/warehouse/metadata/apply",
+        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`, which has no Tables before the seed. It inserts the Tables the Database has no row\n  for, with their Fields, and fills FK targets, row counts and field values that are empty. Returns the cursor of the\n  next request, `next`, when there is one, and counts of what it did. Each inserted Table counts as synced at once,\n  and after the last answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. An answer\n  applied again writes nothing.\n\n  What only a newer sender sends is left out: a key, a batch type or a link kind that this version does not know, a\n  value it does not take, such as a type that only a newer Metabase knows or a name longer than its column, and an\n  entry it cannot read. A null is a key left out. The counts say how many values (`values_dropped`), Tables\n  (`tables_skipped`), and batches, links and stats entries (`left_out`) it left out.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any\n  write:\n\n  - `metadata-sync-format-version-differs`: the answer has a format version that this version does not read.\n  - `metadata-sync-malformed-response`: the answer has no format version, Database, engine, or list of batches with\n    a type each.\n  - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.\n\n  And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.receive.result"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  },
+                  "response" : {
+                    "$ref" : "#/components/schemas/metabase.sync.api.metadata-sync.answer"
+                  }
+                },
+                "required" : [ "database_id", "response" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/warehouse" ]
+      }
+    },
+    "/api/warehouse/metadata/changes" : {
+      "post" : {
+        "operationId" : "post-api-warehouse-metadata-changes",
+        "summary" : "POST /api/warehouse/metadata/changes",
+        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one, in a format version that `format_versions` names (version 1 when it\n  names none). The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a\n  page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`\n  while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 400 `metadata-sync-format-version-not-read`: `format_versions` does not name the version this Metabase writes.\n  - 400 `metadata-sync-bad-cursor`: `after` is not a cursor this Metabase writes, such as one of another version.\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit\n    Database and the destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.response"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/warehouse" ]
+      }
+    },
+    "/api/warehouse/metadata/request" : {
+      "post" : {
+        "operationId" : "post-api-warehouse-metadata-request",
+        "summary" : "POST /api/warehouse/metadata/request",
+        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser. No sync of the Database may run until the seed\n  ends: the caller sees to that, for example with `disable-auto-sync` on.\n\n  Errors, each with an `error-code` in the body:\n\n  - 404 `metadata-sync-no-database`: there is no Database with this id.\n  - 400 `metadata-sync-database-not-loadable`: a stub Database, the audit Database, or a destination Database of\n    database routing.",
+        "parameters" : [ ],
+        "responses" : {
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          },
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.request"
+                }
+              }
+            }
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "after" : {
+                    "anyOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  }
+                },
+                "required" : [ "database_id" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/warehouse" ]
       }
     }
   },

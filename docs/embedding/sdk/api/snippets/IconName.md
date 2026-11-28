@@ -151,6 +151,7 @@ type IconName =
   | "google_drive"
   | "google_sheet"
   | "heart_handshake"
+  | "hexagon"
   | "history"
   | "home"
   | "horizontal_bar"

@@ -626,6 +626,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - csv-download
 - dashboard
 - dashboard-subscription
+- dynamic-goal
 - embedded-csv-download
 - embedded-dashboard
 - embedded-json-download
