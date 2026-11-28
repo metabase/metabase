@@ -1183,6 +1183,25 @@
                                                         :jwt   jwt-payload)]
           (is result))))))
 
+(deftest jwt-token-exchange-embedding-disabled-returns-json-test
+  (testing "POST /auth/sso answers SDK clients with JSON error when embedding is disabled"
+    (with-jwt-default-setup!
+      (mt/with-temporary-setting-values [enable-embedding-sdk false]
+        (let [jwt-payload (jwt/sign
+                           {:email      "rasta@metabase.com"
+                            :first_name "Rasta"
+                            :last_name  "Toucan"
+                            :iat        (buddy-util/now)
+                            :exp        (+ (buddy-util/now) 3600)}
+                           default-jwt-secret)
+              response    (client/client-full-response
+                           :post 402 "/auth/sso"
+                           {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
+                                                        "content-type"      "application/json"}}}
+                           {:jwt jwt-payload})]
+          (is (= "Embedding SDK for React is disabled. Enable it in the embedding settings."
+                 (get-in response [:body :message]))))))))
+
 (deftest jwt-token-no-hash-test
   (testing "should not return a session token when token=false"
     (with-jwt-default-setup!
