@@ -1207,3 +1207,10 @@
     (testing "Should be a valid password"
       (is (= {:valid true}
              (mt/client :post 200 "session/password-check" {:password "something123"}))))))
+
+(deftest deactivated-user-reset-token-is-not-valid-test
+  (testing "GET /session/password_reset_token_valid returns false for a valid token of a deactivated user"
+    (mt/with-temp [:model/User {user-id :id} {:is_active false}]
+      (let [token (auth-identity/create-password-reset! user-id)]
+        (is (= {:valid false}
+               (mt/client :get 200 "session/password_reset_token_valid" :token token)))))))
