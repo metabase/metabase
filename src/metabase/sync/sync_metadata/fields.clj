@@ -208,9 +208,9 @@
 (defn- sync-chunk!
   "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`,
   locating each Table in the warehouse with the [[fetch-metadata/table-remapper]] `remap-table`, reading the Tables
-  together and syncing Tables with nested Fields (all of them when `nested?`) one at a time and the others together,
-  or one at a time when that fails."
-  [database remap-table nested? chunk]
+  together and syncing Tables with nested Fields in the warehouse or in the app DB one at a time and the others
+  together, or one at a time when that fails."
+  [database remap-table chunk]
   (let [resolve-table (table-resolver database chunk)
         entries       (into []
                             (keep (fn [table-metadata]
@@ -218,7 +218,13 @@
                                       (when-let [table (resolve-table table-name table-schema)]
                                         (table-entry database remap-table table table-metadata)))))
                             chunk)
-        {nested true flat false} (group-by #(boolean (or nested? (some :nested-fields (:db-metadata %)))) entries)]
+        ;; a Table whose nested Fields the warehouse no longer has goes the nested way too, so they are retired
+        had-nested    (when (seq entries)
+                        (sync.db/table-ids-with-nested-fields (mapv (comp u/the-id :table) entries)))
+        nested-entry? (fn [{:keys [table db-metadata]}]
+                        (boolean (or (some :nested-fields db-metadata)
+                                     (contains? had-nested (u/the-id table)))))
+        {nested true flat false} (group-by nested-entry? entries)]
     {:total-fields   (transduce (map count) + 0 chunk)
      :updated-fields (+ (sync-tables-one-at-a-time! database nested)
                         (if (empty? flat)
@@ -249,13 +255,12 @@
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver      (driver.u/database->driver database)
           schemas?    (driver.u/supports? driver :schemas database)
-          nested?     (driver.u/supports? driver :nested-fields database)
           remap-table (fetch-metadata/table-remapper database)]
       (letfn [(sync! [fields-metadata]
                 (transduce (comp
                             (partition-by (juxt :table-name :table-schema))
                             (partition-by (chunk-key-fn))
-                            (map (partial sync-chunk! database remap-table nested?)))
+                            (map (partial sync-chunk! database remap-table)))
                            (partial merge-with +)
                            {:total-fields   0
                             :updated-fields 0}

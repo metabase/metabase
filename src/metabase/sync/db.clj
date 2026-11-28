@@ -270,6 +270,20 @@
                         [:= :active true]]})
    table-ids))
 
+(mu/defn table-ids-with-nested-fields :- [:set ::lib.schema.id/table]
+  "The ids of the Tables with `table-ids` that have active nested Fields, i.e. Fields with a `parent_id`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (into #{}
+        (map :table_id)
+        (app-db/select-batched
+         #(t2/select [:model/Field :table_id]
+                     {:select-distinct [:table_id]
+                      :where           [:and
+                                        [:in :table_id %]
+                                        [:= :active true]
+                                        [:not= :parent_id nil]]})
+         table-ids)))
+
 (mu/defn inactive-fields-by-lower-name
   "The inactive Fields of the Table with `table-id` under `parent-id` whose lower-cased name is one of `lower-names`."
   [table-id    :- ::lib.schema.id/table
