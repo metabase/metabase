@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -130,7 +131,8 @@
   "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is
   outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning
   how many it took, the findings of each type stored together, or for each entity when that fails."
-  [batch-size :- pos-int?]
+  [batch-size :- pos-int?
+   opts       :- ::dependencies.schema/job-opts]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
   ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
   ;; the batch a private one.
@@ -147,14 +149,14 @@
                                                                     (record-failed-finding! entity-type entity-id e)
                                                                     (record-analysis-failure! entity-type entity-id)))
                       analyses (into {}
-                                     (keep (fn [entity]
-                                             (try
-                                               (let [analyzed (analyze-entity entity)]
-                                                 [(:entity-id analyzed) (:analysis analyzed)])
-                                               (catch Throwable e
-                                                 (handle-analysis-failure! entity-type (:id entity) e)
-                                                 nil))))
-                                     entities)]
+                                     (task.util/compute-in-parallel
+                                      (:threads opts 1)
+                                      (fn [entity]
+                                        (let [analyzed (analyze-entity entity)]
+                                          [(:entity-id analyzed) (:analysis analyzed)]))
+                                      (fn [entity e]
+                                        (handle-analysis-failure! entity-type (:id entity) e))
+                                      entities))]
                 :when (seq analyses)]
           (try
             (store-analyses-and-clear! entity-type stale analyses)

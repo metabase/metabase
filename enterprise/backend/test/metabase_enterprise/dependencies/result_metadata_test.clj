@@ -58,7 +58,7 @@
   (mt/with-premium-features #{:dependencies}
     (loop [runs 1]
       (deps.test/synchronously-run-dependency-job!)
-      (when (and (pos? (deps.result-metadata/update-result-metadata! 1000)) (< runs 20))
+      (when (and (pos? (deps.result-metadata/update-result-metadata! 1000 {})) (< runs 20))
         (recur (inc runs))))))
 
 (defn- column [card-id column-name]
@@ -84,7 +84,7 @@
   "Run one batch of the result metadata job."
   []
   (mt/with-premium-features #{:dependencies}
-    (deps.result-metadata/update-result-metadata! 1000)))
+    (deps.result-metadata/update-result-metadata! 1000 {})))
 
 (defn- do-with-field-display-name!
   "Run `thunk` with `display-name` set by a user as the display name of the Field with `field-id`."
@@ -408,7 +408,7 @@
                                                                   :dataset_query          (card-query source-id)}])))]
             (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
             (mt/with-premium-features #{:dependencies}
-              (deps.result-metadata/update-result-metadata! 1000))
+              (deps.result-metadata/update-result-metadata! 1000 {}))
             (run-jobs!)
             (is (some? (column card-id "Grand total")))))))))
 
@@ -444,7 +444,7 @@
                                                                   :database_id            (mt/id)
                                                                   :dataset_query          (card-query source-id)}])))]
             (queries.card/update-cards! [{:id source-id :dataset_query (add-grand-total (table-query :orders))}])
-            (deps.result-metadata/update-result-metadata! 1000)
+            (deps.result-metadata/update-result-metadata! 1000 {})
             (queries.card/update-cards! [{:id card-id :name "Renamed"}])
             (run-jobs!)
             (is (some? (column card-id "Grand total")))))))))
@@ -455,9 +455,9 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card _               {:dataset_query (card-query source-id)}]
         (deps.test/synchronously-run-dependency-job!)
-        (is (= 1 (#'task.result-metadata/run-batch!)))
+        (is (= 1 (#'task.result-metadata/run-batch! {})))
         (run-jobs!)
-        (is (nil? (#'task.result-metadata/run-batch!)))))))
+        (is (nil? (#'task.result-metadata/run-batch! {})))))))
 
 (deftest storing-card-triggers-jobs-test
   (testing "the job stores a re-derived card through the Card model, so its hooks trigger the jobs, and keeps its
@@ -507,7 +507,7 @@
           (deps.test/synchronously-run-dependency-job!)
           (reprocess! card-id)
           (mt/with-premium-features #{:dependencies :sandboxes}
-            (deps.result-metadata/update-result-metadata! 1000))
+            (deps.result-metadata/update-result-metadata! 1000 {}))
           (let [columns (t2/select-one-fn :result_metadata :model/Card :id card-id)]
             (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"] (mapv :name columns)))
             (is (every? (comp nil? :fingerprint) columns))))))))
@@ -526,7 +526,7 @@
         (run-jobs!)
         (is (seq (column card-id "PRICE")))
         (is (not (pending? card-id)))
-        (is (nil? (#'task.result-metadata/run-batch!)))))))
+        (is (nil? (#'task.result-metadata/run-batch! {})))))))
 
 (deftest new-upstream-changed-before-its-edge-test
   (testing "a card changed to read a card that changes before the dependency job stores the new edge is re-derived
@@ -735,10 +735,10 @@
           @locked
           (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
                              #(mt/with-premium-features #{:dependencies}
-                                (deps.result-metadata/update-result-metadata! 1000)
+                                (deps.result-metadata/update-result-metadata! 1000 {})
                                 @save
                                 (deps.test/synchronously-run-dependency-job!)
-                                (deps.result-metadata/update-result-metadata! 1000)))
+                                (deps.result-metadata/update-result-metadata! 1000 {})))
           (is (= "Saved" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
 

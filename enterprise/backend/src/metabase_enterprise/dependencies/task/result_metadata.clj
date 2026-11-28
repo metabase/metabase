@@ -3,6 +3,7 @@
   [[metabase-enterprise.dependencies.result-metadata]]."
   (:require
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
@@ -18,9 +19,10 @@
 
 (mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Re-derive a batch of stale cards, returning when to run again: a second from now when it took any, or nil."
-  []
+  [opts :- ::dependencies.schema/job-opts]
   (when (premium-features/has-feature? :dependencies)
-    (let [taken (deps.result-metadata/update-result-metadata! (deps.settings/dependency-result-metadata-batch-size))]
+    (let [taken (deps.result-metadata/update-result-metadata!
+                 (deps.settings/dependency-result-metadata-batch-size) opts)]
       (when (pos? taken)
         (log/debug "Processed" taken "entities for result metadata")
         1))))

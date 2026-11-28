@@ -138,25 +138,25 @@
   unless a write raised it meanwhile, or counting its failure, returning how many it took, the dependencies stored
   together, or for each entity when that fails."
   [entity-type :- ::deps.dependency-types/dependency-types
-   batch-size  :- ms/PositiveInt]
+   batch-size  :- ms/PositiveInt
+   opts        :- ::deps.schema/job-opts]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
           statuses  (models.dependency-status/take-pending-statuses! entity-type batch-size)
           stale     (into {} (map (juxt :entity_id :stale)) statuses)]
       (when (seq statuses)
         (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
-      (let [computed (into []
-                           (keep (fn [entity]
-                                   (try
-                                     (log/debug "Computing dependencies for" type-name (:id entity))
-                                     [entity (deps.calculation/calculate-deps entity-type entity)]
-                                     (catch Throwable e
-                                       (handle-failure! entity-type (:id entity) e)
-                                       nil))))
-                           (when (seq statuses)
-                             (dependencies.db/readable-entities #(hydrated-entities entity-type %)
-                                                                (set (keys stale))
-                                                                #(record-failure! entity-type %1 %2))))]
+      (let [computed (task.util/compute-in-parallel
+                      (:threads opts 1)
+                      (fn [entity]
+                        (log/debug "Computing dependencies for" type-name (:id entity))
+                        [entity (deps.calculation/calculate-deps entity-type entity)])
+                      (fn [entity e]
+                        (handle-failure! entity-type (:id entity) e))
+                      (when (seq statuses)
+                        (dependencies.db/readable-entities #(hydrated-entities entity-type %)
+                                                           (set (keys stale))
+                                                           #(record-failure! entity-type %1 %2))))]
         (when (seq computed)
           (try
             (store-and-clear! entity-type stale computed)
@@ -173,7 +173,7 @@
 (mu/defn- update-dependencies! :- [:maybe :boolean]
   "Update the dependencies of up to a batch of entities, triggering the jobs that read them, and return whether the
   batch took any."
-  []
+  [opts :- ::deps.schema/job-opts]
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-backfill-batch-size)
           remaining  (reduce (fn [remaining entity-type]
@@ -181,7 +181,7 @@
                                  (reduced 0)
                                  (let [removed   (remove-deleted-entity-batch! entity-type remaining)
                                        processed (if (< removed remaining)
-                                                   (update-entity-batch! entity-type (- remaining removed))
+                                                   (update-entity-batch! entity-type (- remaining removed) opts)
                                                    0)]
                                    (when (pos? processed)
                                      (log/debug "Updated" processed "entities."))
@@ -197,8 +197,8 @@
 
 (mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Process a batch, returning when to run again: a second from now when it took any, or nil."
-  []
-  (when (update-dependencies!)
+  [opts :- ::deps.schema/job-opts]
+  (when (update-dependencies! opts)
     1))
 
 (mu/defn- log-job-start :- :nil

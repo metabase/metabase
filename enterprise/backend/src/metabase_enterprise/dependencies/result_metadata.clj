@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -181,7 +182,8 @@
   counts a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or
   counting its failure, returning how many statuses it took, deleted ones included, the re-derived metadata stored
   together, or for each card when that fails."
-  [batch-size :- ms/PositiveInt]
+  [batch-size :- ms/PositiveInt
+   opts       :- ::dependencies.schema/job-opts]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
         statuses    (models.result-metadata-status/take-pending-result-metadata-statuses!
                      batch-size models.result-metadata-status/current-result-metadata-version
@@ -193,15 +195,15 @@
             ;; a card's query keeps the metadata provider it was read with, so the read shares the batch's cache too
             derived  (lib-be/with-metadata-provider-cache
                        (into {}
-                             (keep (fn [[card-id {:keys [state card]}]]
-                                     (try
-                                       [card-id {:state state :metadata (rederived-card-metadata card)}]
-                                       (catch Throwable e
-                                         (handle-failure! card-id e)
-                                         nil))))
-                             (dependencies.db/readable-entities cards-with-states
-                                                                (set (map :entity_id statuses))
-                                                                handle-unreadable!)))
+                             (task.util/compute-in-parallel
+                              (:threads opts 1)
+                              (fn [[card-id {:keys [state card]}]]
+                                [card-id {:state state :metadata (rederived-card-metadata card)}])
+                              (fn [[card-id _] e]
+                                (handle-failure! card-id e))
+                              (dependencies.db/readable-entities cards-with-states
+                                                                 (set (map :entity_id statuses))
+                                                                 handle-unreadable!))))
             updates  (into {} (filter (comp (every-pred :state :metadata) val)) derived)
             stored   (if (seq updates)
                        (try

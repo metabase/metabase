@@ -58,7 +58,7 @@
 (defn- backfill-dependencies-single-trigger!
   []
   (mt/with-premium-features #{:dependencies}
-    (#'task.dependency/update-dependencies!)))
+    (#'task.dependency/update-dependencies! {})))
 
 (defn- forget-status!
   "Delete the dependency status of an entity, so the dependency job computes its dependencies again."
@@ -273,7 +273,7 @@
       ;; only a root swap is visible there
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [task.dependency/update-dependencies!
-                    (fn []
+                    (fn [_]
                       (deliver job-started true)
                       (deref can-finish 1500 :timeout)
                       ;; non-nil → the job will hit the in-job self-reschedule path on exit
@@ -1435,7 +1435,7 @@
                                  (for [_ (range n)]
                                    (merge (mt/with-temp-defaults :model/Card) {:dataset_query query})))]
                         (try
-                          {:count (events.tu/real-statement-count! #(#'task.dependency/update-entity-batch! :card 100))
+                          {:count (events.tu/real-statement-count! #(#'task.dependency/update-entity-batch! :card 100 {}))
                            :edges (t2/count :model/Dependency :from_entity_type "card" :from_entity_id [:in ids]
                                             :to_entity_type "table" :to_entity_id (mt/id :orders))}
                           (finally

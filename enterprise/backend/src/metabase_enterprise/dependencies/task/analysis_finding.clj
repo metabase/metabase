@@ -2,6 +2,7 @@
   "The job that runs the analysis of the entities whose AnalysisFindingStatus is stale, missing or outdated."
   (:require
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
@@ -15,10 +16,10 @@
 (mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Analyze a batch of entities whose findings are outdated, returning when to run again: a second from now when it took
   any, or nil."
-  []
+  [opts :- ::dependencies.schema/job-opts]
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-entity-check-batch-size)
-          taken      (deps.analysis-finding/analyze-batch! batch-size)]
+          taken      (deps.analysis-finding/analyze-batch! batch-size opts)]
       (when (pos? taken)
         (log/debug "Processed" taken "entities for analysis")
         1))))

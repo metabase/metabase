@@ -233,7 +233,7 @@
                                             (when (and (= :card entity-type) (contains? ids bad-id))
                                               (throw (ex-info "Unreadable row" {})))
                                             (entities entity-type ids))]
-                (deps.analysis-finding/analyze-batch! 1000)))
+                (deps.analysis-finding/analyze-batch! 1000 {})))
             (is (=? {:result false} (finding bad-id)))
             (is (=? [{:error_type :validation-exception-error :error_detail "Unreadable row"}]
                     (models.analysis-finding-error/errors-for-entity :card bad-id)))
@@ -256,7 +256,7 @@
                                               (throw (AssertionError. "Analysis broke"))
                                               (analysis card)))]
                 (is (thrown-with-msg? AssertionError #"Analysis broke"
-                                      (deps.analysis-finding/analyze-batch! 1000)))))
+                                      (deps.analysis-finding/analyze-batch! 1000 {})))))
             (is (=? {:result false} (finding card-id)))
             (is (=? [{:error_type :validation-exception-error :error_detail "Analysis broke"}]
                     (models.analysis-finding-error/errors-for-entity :card card-id)))))))))
@@ -284,16 +284,16 @@
               (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
                 (testing "when checking the entity fails"
                   (mt/with-dynamic-fn-redefs [queries.dependencies/analysis fail-bad-check]
-                    (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000)))))
+                    (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000 {})))))
                 (testing "when the analysis fails outside the check"
                   (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity fail-bad-outside]
-                    (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000))))))
+                    (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000 {}))))))
               (is (nil? (finding bad-id)))
               (is (empty? (models.analysis-finding-error/errors-for-entity :card bad-id)))
               (is (=? {:fail_count 0 :terminal false} (status :card bad-id)))
               (testing "and records and counts it while the app DB answers, without blocking the rest"
                 (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity fail-bad-outside]
-                  (deps.analysis-finding/analyze-batch! 1000))
+                  (deps.analysis-finding/analyze-batch! 1000 {}))
                 (is (=? {:result false} (finding bad-id)))
                 (is (=? {:fail_count 1} (status :card bad-id)))
                 (is (=? {:result true} (finding good-id)))))))))))
@@ -733,7 +733,7 @@
                                                           :analysis    {:result          false
                                                                         :finding-details #{(lib/validation-exception-error "Broken")}}}
                                               (analyze-entity entity)))]
-                (deps.analysis-finding/analyze-batch! 1000)))
+                (deps.analysis-finding/analyze-batch! 1000 {})))
             (is (=? {:result true} (finding clean-id)))
             (is (empty? (models.analysis-finding-error/errors-for-entity :card clean-id)))
             (is (=? {:result false} (finding errors-id)))
@@ -757,7 +757,7 @@
                                   (merge (mt/with-temp-defaults :model/Card) {:dataset_query (lib/query mp products)})))]
                        (try
                          (deps.test/synchronously-run-dependency-job!)
-                         {:count (events.tu/real-statement-count! #(deps.analysis-finding/analyze-batch! 1000))
+                         {:count (events.tu/real-statement-count! #(deps.analysis-finding/analyze-batch! 1000 {}))
                           :found (t2/count :model/AnalysisFinding :entity_type :card :entity_id [:in ids])}
                          (finally
                            (t2/delete! :model/AnalysisFinding :entity_type :card :entity_id [:in ids])
