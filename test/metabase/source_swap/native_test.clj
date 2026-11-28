@@ -281,6 +281,34 @@
       (is (re-find #"(?s)/\*.*?\]\].*?\*/" result)
           "Bracket marker should stay inside a comment, not leak into executable SQL"))))
 
+(deftest ^:parallel replace-table-in-native-sql-optional-clause-on-own-line-test
+  (testing "An optional clause on its own line keeps its AND inside the brackets"
+    (let [result (#'source-swap.native/replace-table-in-native-sql
+                  :postgres
+                  (str "SELECT * FROM users\n"
+                       "WHERE users.deactivated_at IS NULL\n"
+                       "  AND users.created_at >= '2023-01-01' [[ AND {{signed_up_in}} ]]\n"
+                       "  [[ AND {{state}} ]]\n"
+                       "  [[ AND users.cohort = {{cohort}} ]]")
+                  "users" "users_with_extras")]
+      (is (str/includes? result "users_with_extras"))
+      (is (not (re-find #"(?i)AND\s*\[\[" result))
+          "No AND should be moved in front of an optional clause")
+      (is (re-find #"(?i)\[\[\s*AND \{\{signed_up_in\}\}\s*\]\]" result))
+      (is (re-find #"(?i)\[\[\s*AND \{\{state\}\}\s*\]\]" result))
+      (is (re-find #"(?i)\[\[\s*AND users_with_extras\.cohort = \{\{cohort\}\}\s*\]\]" result)))))
+
+(deftest ^:parallel replace-table-in-native-sql-optional-clause-after-line-comment-test
+  (testing "An optional clause after a line ending in a comment keeps the clause out of the comment"
+    (let [result (#'source-swap.native/replace-table-in-native-sql
+                  :postgres
+                  "SELECT * FROM users WHERE users.id > 0 -- note\n  [[ AND users.cohort = {{cohort}} ]]"
+                  "users" "users_with_extras")]
+      (is (str/includes? result "users_with_extras"))
+      (is (str/includes? result "{{cohort}}"))
+      (is (not (re-find #"(?s)/\*[^*]*\{\{cohort\}\}" result))
+          "The parameter must stay outside any comment"))))
+
 ;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
 
 (deftest ^:parallel replace-table-in-native-sql-schema-qualified-test
