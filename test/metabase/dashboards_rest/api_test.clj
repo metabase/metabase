@@ -6927,6 +6927,49 @@
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
         (mt/user-http-request :rasta :put 403 (str "dashboard/" dashboard-id) {:archived true})))))
 
+(deftest restore-dashboard-trashed-with-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard {dashboard-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [dashboard-url (str "dashboard/" dashboard-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:archived true :archived_directly false :can_restore false}
+              (mt/user-http-request :rasta :get 200 dashboard-url)))
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 dashboard-url {:archived false})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 dashboard-url)))))))
+
+(deftest restore-dashboard-to-same-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard {dashboard-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [dashboard-url (str "dashboard/" dashboard-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 dashboard-url {:archived false :collection_id collection-id})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 dashboard-url)))))))
+
+(deftest restore-dashboard-to-live-collection-test
+  (mt/with-temp [:model/Collection {source-id :id} {}
+                 :model/Collection {destination-id :id} {}
+                 :model/Dashboard {dashboard-id :id} {:collection_id source-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) source-id)
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) destination-id)
+    (let [dashboard-url (str "dashboard/" dashboard-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" source-id) {:archived true})
+      (mt/user-http-request :rasta :put 200 dashboard-url {:archived false :collection_id destination-id})
+      (is (=? {:archived false :collection_id destination-id}
+              (mt/user-http-request :rasta :get 200 dashboard-url))))))
+
+(deftest restore-dashboard-to-root-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard {dashboard-id :id} {:collection_id collection-id}]
+    (let [dashboard-url (str "dashboard/" dashboard-id)]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+      (mt/user-http-request :crowberto :put 200 dashboard-url {:archived false :collection_id nil})
+      (is (=? {:archived false :collection_id nil}
+              (mt/user-http-request :crowberto :get 200 dashboard-url))))))
+
 (deftest move-archived-dashboard-to-collection-unarchives-test
   (testing "PUT /api/dashboard/:id moving an archived dashboard into a regular collection unarchives it"
     (mt/with-temp [:model/Collection {collection-id :id} {}

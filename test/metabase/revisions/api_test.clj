@@ -317,6 +317,28 @@
                                (update-in rev [:diff :before :cards] strip-ids)
                                (update-in rev [:diff :after :cards] strip-ids)))))))))))
 
+(deftest revert-card-in-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (create-card-revision! card-id true :crowberto)
+    (let [{revision-id :id} (first (revision/revisions :model/Card card-id))]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+      (is (= {:errors {:collection_id "archived Collection"}}
+             (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                   {:entity :card :id card-id :revision_id revision-id})))
+      (is (true? (t2/select-one-fn :archived :model/Card :id card-id))))))
+
+(deftest revert-dashboard-in-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard {dashboard-id :id} {:collection_id collection-id}]
+    (create-dashboard-revision! dashboard-id true :crowberto)
+    (let [{revision-id :id} (first (revision/revisions :model/Dashboard dashboard-id))]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+      (is (= {:errors {:collection_id "archived Collection"}}
+             (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                   {:entity :dashboard :id dashboard-id :revision_id revision-id})))
+      (is (true? (t2/select-one-fn :archived :model/Dashboard :id dashboard-id))))))
+
 (deftest permission-check-on-revert-test
   (testing "Are permissions enforced by the revert action in the revision api?"
     (mt/with-non-admin-groups-no-root-collection-perms

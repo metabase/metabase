@@ -483,20 +483,24 @@
     (set-cards-archived! (mapv :id group) archived? context)))
 
 (defn- moved-documents
-  "The rows of `updates`, which change `:collection_id` of the Documents `id->stored`, each with the `archived` state the
-  Document is about to have."
+  "The rows of `updates` that change `:collection_id` of the Documents in `id->stored`."
   [updates id->stored]
-  (for [row   (filterv #(changed? (get id->stored (:id %)) % :collection_id) updates)]
-    (assoc row :archived (boolean (if (contains? row :archived) (:archived row) (:archived (get id->stored (:id row))))))))
+  (filterv #(changed? (get id->stored (:id %)) % :collection_id) updates))
 
 (defn- check-document-updates
-  "Throw a 400 unless every one of `updates` that moves a Document of `id->stored` satisfies these rules:
+  "Throw a 400 when an update that moves or restores a Document in `id->stored` breaks one of these rules:
 
   - its Collection is in a namespace that holds Documents
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Document is"
   [updates id->stored]
-  (check-documents (moved-documents updates id->stored)))
+  (check-documents
+   (for [row updates
+         :let [stored (get id->stored (:id row))]
+         :when (or (changed? stored row :collection_id)
+                   (and (:archived stored) (false? (:archived row))))]
+     {:collection_id (get row :collection_id (:collection_id stored))
+      :archived      (get row :archived (:archived stored))})))
 
 (mu/defn update-documents! :- :nil
   "Apply `updates`, each the `:id` of a Document with the columns to give it, in one transaction, moving the cards of the
@@ -709,6 +713,10 @@
                                collection_id
                                (:collection_id existing-document))]
     (t2/with-transaction [_conn]
+      ;; Check the restore destination before creating the document's cards.
+      ;; Clones go into the current collection and can fail because the document is still archived.
+      (when (and document (:archived existing-document) (false? (:archived body)))
+        (check-document-updates [(assoc document-updates :id document-id)] {document-id existing-document}))
       (when collection_position
         (collection/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
                                                          {:collection_id       target-collection-id
@@ -784,16 +792,19 @@
   (update-documents! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
 
 (mu/defn revert-document! :- :int
-  "Write the revision `snapshot` to the Document with `id` in one statement without the cascades of an update."
+  "Write the revision `snapshot` to the Document with `id` in one statement without the cascades of an update.
+  Refuse any snapshot that would restore the Document into an archived Collection."
   [id        :- ms/PositiveInt
    _user-id  :- [:maybe ::lib.schema.id/user]
    snapshot  :- ::documents.schema/document.revision]
   (t2/with-transaction [_conn]
     (let [previous (documents.db/document id)
+          changes  (assoc snapshot :id id)
+          _        (check-document-updates [changes] {id previous})
           updated  (documents.db/update-document-columns! id snapshot)]
       (when previous
         (events/publish-event! :event/document-update
-                               (events/update-event {id previous} [(assoc snapshot :id id)]
+                               (events/update-event {id previous} [changes]
                                                     {:writer :revert})))
       updated)))
 

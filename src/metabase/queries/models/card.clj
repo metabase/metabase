@@ -2016,8 +2016,12 @@
       (collection/check-collection-namespace :model/Card parent))
     (when (or (contains? changes :collection_id) (contains? changes :type))
       (collection/check-allowed-content (:type card) parent))
-    (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
-      (check-not-in-archived-container card parent placement))
+    (cond
+      (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
+      (check-not-in-archived-container card parent placement)
+
+      (false? (:archived changes))
+      (collection/check-collection-not-archived false parent))
     (when (some data-app-card-columns (keys changes))
       (check-data-app-card card parent))))
 
@@ -2025,6 +2029,7 @@
   "Whether `changes` to a Card are checked against where the Card is put."
   [changes]
   (or (some #(contains? changes %) [:collection_id :type :dashboard_id :document_id])
+      (false? (:archived changes))
       (some data-app-card-columns (keys changes))))
 
 (defn- newly-referenced-field-ids
@@ -2443,6 +2448,7 @@
   "Throw unless every one of `entries`, with the `placement` it reads, satisfies these rules:
 
   - a Card that moves, changes type or goes in a Dashboard or Document can go where it is put
+  - a Card that is restored is not in an archived Collection
   - a change of the visualization settings keeps the timeline ids sequences of positive integers
   - a change of the parameters or parameter mappings keeps them well formed
   - a native query that filters on Fields filters on Fields of its Database
