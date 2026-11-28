@@ -1,6 +1,10 @@
 /** DataGrid overrides */
 
 .tableRow {
+  &:has(.textareaElement) {
+    z-index: 1;
+  }
+
   &:hover .tableBodyCell {
     background-color: var(--mb-color-background_surface-hover);
   }

@@ -31,6 +31,8 @@ export function getEditingCellTemplate({
           root: S.inlineEditingInputWrapper,
           wrapper: S.inlineEditingInputWrapper,
           textInputElement: S.inlineEditingTextInput,
+          textareaWrapper: S.textareaWrapper,
+          textareaElement: S.textareaElement,
           numberInputElement: S.inlineEditingTextInput,
           selectTextInputElement: S.inlineEditingTextInput,
           dateTextInputElement: S.inlineEditingTextInput,
