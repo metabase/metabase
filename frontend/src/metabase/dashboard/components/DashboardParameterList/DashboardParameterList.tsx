@@ -19,6 +19,7 @@ export interface DashboardParameterListProps extends Pick<
   | "widgetsPopoverPosition"
   | "vertical"
   | "hasTestIdProps"
+  | "hiddenParameterIds"
 > {
   className?: string;
   parameters: UiParameter[];
@@ -37,6 +38,7 @@ export const DashboardParameterList = forwardRef<
     widgetsPopoverPosition,
     vertical,
     hasTestIdProps = true,
+    hiddenParameterIds,
   },
   ref,
 ) {
@@ -74,6 +76,7 @@ export const DashboardParameterList = forwardRef<
       widgetsPopoverPosition={widgetsPopoverPosition}
       vertical={vertical}
       hasTestIdProps={hasTestIdProps}
+      hiddenParameterIds={hiddenParameterIds}
     />
   );
 });

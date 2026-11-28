@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/redux";
 
@@ -6,10 +8,11 @@ import {
   DashboardParameterList as ParameterList,
 } from "../../DashboardParameterList";
 
-export function ParametersList(
-  props: Omit<DashboardParameterListProps, "parameters">,
-) {
+export const ParametersList = forwardRef<
+  HTMLDivElement,
+  Omit<DashboardParameterListProps, "parameters">
+>(function ParametersList(props, ref) {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
-  return <ParameterList parameters={parameters} {...props} />;
-}
+  return <ParameterList ref={ref} parameters={parameters} {...props} />;
+});

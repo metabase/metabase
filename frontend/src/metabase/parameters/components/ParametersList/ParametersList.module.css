@@ -1,0 +1,11 @@
+/* Out of the flow and invisible, but still laid out so its width can be measured */
+.hiddenItem {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+
+  /* Widgets transition `all`, so they'd stay drawn over the first row until it ended */
+  & * {
+    transition: none;
+  }
+}

@@ -22,3 +22,9 @@
     border-bottom-color: var(--mb-color-border-neutral);
   }
 }
+
+/* Takes the space beside the toggle, so hiding overflowing filters doesn't shrink the row they're measured against */
+.ParametersList {
+  flex: 1;
+  min-width: 0;
+}
