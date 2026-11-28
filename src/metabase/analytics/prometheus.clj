@@ -14,6 +14,7 @@
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.global-system.system :as global-system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -1070,6 +1071,49 @@
 
 (declare install-real-reporter!)
 
+(defn- stop-system!
+  "Stop `sys`: the JVM meters, its web server and its registry, and clear the `system` var."
+  [^PrometheusSystem sys]
+  ;; cleared even when the stop fails, so a later [[setup!]] can start a new system
+  (try
+    ;; each meter is stopped on its own, so one that fails to stop stops neither the other nor the server
+    ;; Its stopper is taken out first, so a later start, which calls any stopper left over, cannot call a failing one.
+    (doseq [meter [jvm-hiccup-thread jvm-alloc-rate-thread]
+            :let  [[stop-meter] (reset-vals! meter nil)]
+            :when stop-meter]
+      (try
+        (stop-meter)
+        (catch Exception e
+          (log/warnf "Error stopping a JVM meter: %s" (ex-message e)))))
+    (try
+      (stop-web-server sys)
+      (prometheus/clear (.-registry sys))
+      (log/info "Prometheus web-server shut down")
+      (catch Exception e
+        (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))
+    (finally
+      (alter-var-root #'system (constantly nil)))))
+
+(defn- start-system!
+  "Start a Prometheus system on `port`, set the `system` var to it, and return it.
+  If installing the reporter fails, stops the system again and rethrows."
+  [port]
+  (let [sys (make-prometheus-system port "metabase-registry")]
+    (try
+      (install-real-reporter!)
+      (catch Throwable e
+        (stop-system! sys)
+        (throw e)))
+    ;; set last: a concurrent [[setup!]] skips the start when it finds the var set, so setting it earlier would let that
+    ;; call return before a start that then fails
+    (alter-var-root #'system (constantly sys))
+    sys))
+
+;; The running system, as a global-system component, so halting the system stops it too.
+;; Readers still use the `system` var, which the component's start and stop set, so tests can redefine it.
+(def ^:private system-component
+  (global-system/mutable-component-handle ::system (constantly nil)))
+
 (defn setup!
   "Start the prometheus metric collector and web-server. Port is optional, read from `MB_PROMETHEUS_SERVER_PORT`"
   ([] (setup! (parse (System/getenv "MB_PROMETHEUS_SERVER_PORT"))))
@@ -1077,11 +1121,8 @@
    (when (not system)
      (when-not port
        (log/info "Running prometheus metrics without a webserver"))
-     (locking #'system
-       (when-not system
-         (let [sys (make-prometheus-system port "metabase-registry")]
-           (alter-var-root #'system (constantly sys))
-           (install-real-reporter!)))))))
+     (global-system/start! system-component #(start-system! port) #(stop-system! %))
+     nil)))
 
 (defn observe-initial-values
   "Observe initial values. Some values need a baseline otherwise their first observed value won't register as a
@@ -1097,19 +1138,10 @@
         (prometheus/inc registry metric (qualified-vals labels) value)))))
 
 (defn shutdown!
-  "Stop the prometheus metrics web-server if it is running."
+  "Stop the prometheus metrics web-server if it is running. Halting the global system stops it too."
   []
-  (when system
-    (locking #'system
-      (when system
-        (when @jvm-hiccup-thread (@jvm-hiccup-thread))
-        (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
-        (try (stop-web-server system)
-             (prometheus/clear (.-registry system))
-             (alter-var-root #'system (constantly nil))
-             (log/info "Prometheus web-server shut down")
-             (catch Exception e
-               (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
+  (global-system/stop! system-component)
+  nil)
 
 ;; Threads still working during shutdown, like notification sends, call these after [[shutdown!]] drops the registry.
 (defn observe!

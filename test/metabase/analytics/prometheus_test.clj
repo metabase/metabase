@@ -4,12 +4,15 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [iapetos.core :as iapetos]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.global-system.system :as global-system]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -359,3 +362,76 @@
         (is (approx= 1 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-public/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))))))
+
+(deftest start-system-stops-a-system-whose-reporter-fails-test
+  (testing "a start that fails after creating the system stops it again and rethrows"
+    (let [stopped (atom [])]
+      (with-redefs [prometheus/system nil]
+        (mt/with-dynamic-fn-redefs [prometheus/make-prometheus-system (constantly ::system)
+                                    prometheus/install-real-reporter! #(throw (ex-info "reporter failed" {}))
+                                    prometheus/stop-system!           #(swap! stopped conj %)]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reporter failed" (#'prometheus/start-system! 0)))
+          (is (= [::system] @stopped)))))))
+
+(deftest stop-system-carries-on-past-a-meter-that-fails-to-stop-test
+  (testing "a JVM meter that fails to stop leaves the other meter, the server and the system var to be stopped as usual"
+    (let [hiccup        @#'prometheus/jvm-hiccup-thread
+          alloc         @#'prometheus/jvm-alloc-rate-thread
+          meters-before [@hiccup @alloc]
+          alloc-stopped (atom false)
+          ;; no web server and no real meters, so the test leaves nothing running
+          sys           (#'prometheus/->PrometheusSystem (iapetos/collector-registry "stop-test-registry") nil)]
+      (try
+        (reset! hiccup #(throw (ex-info "hiccup meter failed" {})))
+        (reset! alloc #(reset! alloc-stopped true))
+        (mt/with-log-messages-for-level [messages [metabase.analytics.prometheus :info]]
+          (with-redefs [prometheus/system sys]
+            (#'prometheus/stop-system! sys)
+            (is (= {:alloc-stopped? true
+                    :meters         [nil nil]
+                    :server-stopped true
+                    :system         nil}
+                   {:alloc-stopped? @alloc-stopped
+                    :meters         [@hiccup @alloc]
+                    :server-stopped (boolean (some #{"Prometheus web-server shut down"} (map :message (messages))))
+                    :system         @#'prometheus/system}))))
+        (finally
+          (let [[hiccup-before alloc-before] meters-before]
+            (reset! hiccup hiccup-before)
+            (reset! alloc alloc-before)))))))
+
+(deftest start-system-sets-the-var-only-after-the-reporter-installs-test
+  (testing "the system var is set only once the reporter is installed, so a concurrent setup! cannot return early"
+    (let [seen-while-installing (atom ::not-installed)]
+      (with-redefs [prometheus/system nil]
+        (mt/with-dynamic-fn-redefs [prometheus/make-prometheus-system (constantly ::system)
+                                    prometheus/install-real-reporter! #(reset! seen-while-installing
+                                                                               @#'prometheus/system)]
+          (is (= {:returned ::system, :seen-while-installing nil, :after ::system}
+                 {:returned              (#'prometheus/start-system! 0)
+                  :seen-while-installing @seen-while-installing
+                  :after                 @#'prometheus/system})))))))
+
+;; a handle of its own, since the test runner has already started the real component, and stopping that in a test
+;; would leave it running but unregistered
+(def ^:private test-system-component
+  (global-system/mutable-component-handle ::test-system (constantly nil)))
+
+(deftest setup-starts-through-the-global-system-test
+  (testing "setup! starts Prometheus through the global system, so a halt stops it, and shutdown! stops it"
+    (let [stops  (atom 0)
+          halts? #(global-system.tu/halts? test-system-component)]
+      (with-redefs [prometheus/system           nil
+                    prometheus/system-component test-system-component]
+        (mt/with-dynamic-fn-redefs [prometheus/start-system! (constantly ::system)
+                                    prometheus/stop-system!  (fn [_] (swap! stops inc))]
+          (try
+            (prometheus/setup! 0)
+            (let [after-start {:halts? (halts?), :stops @stops}]
+              (prometheus/shutdown!)
+              (is (= {:after-start {:halts? true, :stops 0}
+                      :after-stop  {:halts? false, :stops 1}}
+                     {:after-start after-start
+                      :after-stop  {:halts? (halts?), :stops @stops}})))
+            (finally
+              (global-system/stop! test-system-component))))))))
