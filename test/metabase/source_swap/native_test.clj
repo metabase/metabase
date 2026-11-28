@@ -489,3 +489,16 @@
       ;; Should be unchanged since no matching field
       (is (=? [{:name "filter", :field-id field-id}]
               result)))))
+
+(deftest replace-table-renames-column-qualifiers-test
+  (testing "columns qualified with replaced table name follow rename"
+    (doseq [backend [:sqlglot :sqlglot-java]]
+      (binding [sql-tools.settings/*parser-backend-override* backend]
+        (let [result (#'source-swap.native/replace-table-in-native-sql
+                      :postgres
+                      "SELECT DISTINCT users.* FROM users JOIN states ON users.state_id = states.id WHERE users.created_at >= '01-01-2023' [[ and users.cohort = {{cohort}} ]]"
+                      {:table "users" :schema "public"}
+                      {:table "users_with_extras" :schema "public"})]
+          (is (not (re-find #"(?<![_.\w])users\." result)) backend)
+          (is (str/includes? result "users_with_extras.state_id") backend)
+          (is (str/includes? result "users_with_extras.cohort") backend))))))
