@@ -202,10 +202,12 @@
   "Whether the current user may see each of the revisions whose snapshots are `objects`, as a vector of booleans in
   the order of `objects`. A model whose spec says `:authorize :snapshot` has each snapshot checked on its own terms,
   for its snapshots carry data-permission-sensitive definitions; for any other, whoever can read the current row can
-  read its whole history."
+  read its whole history. A stored snapshot is not a live row, so it is read as what a Revision records now: the
+  keys that an older snapshot carries and the model's permission schema does not accept (a hydrated `:owner`, say)
+  are dropped first."
   [model objects]
   (if (= :snapshot (:authorize (revisions.spec/spec model)))
-    (mapv boolean (map mi/can-read? (t2/hydrate (mapv #(t2/instance model %) objects) :can_read)))
+    (mapv boolean (map mi/can-read? (t2/hydrate (mapv #(t2/instance model (recorded model %)) objects) :can_read)))
     (mapv (constantly true) objects)))
 
 ;;; -------------------------------------------------- Model setup ---------------------------------------------------
