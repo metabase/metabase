@@ -663,16 +663,8 @@
       (every? #(isa? % Number) [acc-type second-type])
       java.lang.Number
 
-      (every?
-       (fn [column-type]
-         (some (fn [allowed-type]
-                 (isa? column-type allowed-type))
-               [String Number Boolean java.time.LocalDateTime]))
-       [acc-type second-type])
-      java.lang.String
-
       :else
-      nil)))
+      java.lang.String)))
 
 (def ^:const max-nested-field-columns-factor
   "Multiplier for intermediate type analysis working set limit.

@@ -280,6 +280,20 @@
       ;; no idea how to force it to use BigDecimal here
       (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row))))))
 
+(deftest ^:parallel json-array-and-number-merge-to-text-test
+  (testing "JSON arrays and numbers at one path merge to text whatever the row order (#59381)"
+    (let [merged-types (fn [json-strings]
+                         (transduce (map #(#'sql-jdbc.describe-table/json-map->types {:col %}))
+                                    #'sql-jdbc.describe-table/describe-json-rf
+                                    json-strings))
+          arr          "{\"field\": [1]}"
+          num          "{\"field\": 1}"]
+      (doseq [rows [[arr arr num num]
+                    [num num arr arr]
+                    [arr num arr num]]]
+        (is (= {[:col "field"] String}
+               (merged-types rows)))))))
+
 (deftest ^:parallel key-limit-test
   (testing "we don't read too many keys even from long jsons"
     (let [data (into {} (for [i (range (* 2 @#'sql-jdbc.describe-table/max-nested-field-columns))]
