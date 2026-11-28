@@ -338,11 +338,15 @@
              (not (mr/validate ::lib.schema/query query)))
     (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
                          "either exported by a newer Metabase whose query shape this version cannot represent, "
-                         "or stored by an instance that never validated it. Pass continue_on_error to skip just "
-                         "this entity, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check "
-                         "for the whole import.")
-                    {:schema-errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))})))
+                         "or stored by an instance that never validated it.")
+                    {::type         ::query-schema-error
+                     :schema-errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))})))
   query)
+
+(defn query-schema-error?
+  "Whether `e`, or an exception that caused it, refused to import a query that this instance's query schema rejects."
+  [e]
+  (some #(= ::query-schema-error (::type (ex-data %))) (take-while some? (iterate ex-cause e))))
 
 (defn- normalize-imported
   "`x` normalized into this instance's representation, or unchanged when it doesn't normalize, as many structures
