@@ -2,6 +2,13 @@ import userEvent from "@testing-library/user-event";
 import { getInstanceByDom } from "echarts/core";
 import fetchMock from "fetch-mock";
 
+import {
+  countChartElements,
+  getChartRoot,
+  getTooltipContent,
+  hoverChartElement,
+  queryShownTooltips,
+} from "__support__/echarts-interaction";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupBookmarksEndpoints,
@@ -3602,6 +3609,274 @@ describe("DashboardApp > visualizer", () => {
           .find((row) => within(row).queryByText(TAX_OVER_TOTAL.name) != null),
       );
       expect(within(addedSeriesRow).getByText("5.2%")).toBeInTheDocument();
+    });
+  });
+
+  describe("tooltips and legends of question dashcards", () => {
+    const yearColumn = breakoutColumn(
+      createMockDatetimeColumn({
+        id: ORDERS.CREATED_AT,
+        name: "CREATED_AT",
+        display_name: "Created At: Year",
+        unit: "year",
+        field_ref: ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+      }),
+    );
+    const aggregationColumn = (name: string, displayName: string, index = 0) =>
+      createMockNumericColumn({
+        id: undefined,
+        name,
+        display_name: displayName,
+        field_ref: ["aggregation", index],
+        base_type: "type/Float",
+        effective_type: "type/Float",
+        source: "aggregation",
+      });
+    const YEARS = ["2025", "2026", "2027"].map(
+      (year) => `${year}-01-01T00:00:00Z`,
+    );
+    const yearlyDataset = (columns: DatasetColumn[], values: number[][]) =>
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [yearColumn, ...columns],
+          rows: YEARS.map((year, index) => [year, ...values[index]]),
+        }),
+      });
+    const yearlyCard = (
+      id: number,
+      name: string,
+      display: "line" | "bar",
+      metrics: string[],
+    ) =>
+      createMockCard({
+        id,
+        name,
+        display,
+        dataset_query: STRUCTURED_QUERY,
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": metrics,
+        },
+      });
+
+    const SUM_OF_TOTAL_LINE = yearlyCard(70, "Q1", "line", ["sum"]);
+    const SUM_OF_TOTAL_BAR = yearlyCard(71, "Q1", "bar", ["sum"]);
+    const AVG_OF_TOTAL_BAR = yearlyCard(72, "Q2", "bar", ["avg"]);
+    const AVG_TOTAL_CUM_SUM_QUANTITY_LINE = yearlyCard(73, "Q1", "line", [
+      "avg",
+      "sum",
+    ]);
+    const SUM_OF_TOTAL_DATASET = yearlyDataset(
+      [aggregationColumn("sum", "Sum of Total")],
+      [[42156.87], [205256.02], [351986.79]],
+    );
+    const TOOLTIP_CARDS = [
+      SUM_OF_TOTAL_LINE,
+      SUM_OF_TOTAL_BAR,
+      AVG_OF_TOTAL_BAR,
+      AVG_TOTAL_CUM_SUM_QUANTITY_LINE,
+    ];
+    const TOOLTIP_DATASETS: Record<CardId, Dataset> = {
+      [SUM_OF_TOTAL_LINE.id]: SUM_OF_TOTAL_DATASET,
+      [SUM_OF_TOTAL_BAR.id]: SUM_OF_TOTAL_DATASET,
+      [AVG_OF_TOTAL_BAR.id]: yearlyDataset(
+        [aggregationColumn("avg", "Average of Total")],
+        [[56.6649], [56.8551], [57.1]],
+      ),
+      [AVG_TOTAL_CUM_SUM_QUANTITY_LINE.id]: yearlyDataset(
+        [
+          aggregationColumn("avg", "Average of Total"),
+          aggregationColumn("sum", "Cumulative sum of Quantity", 1),
+        ],
+        [
+          [56.6649, 3236],
+          [56.8551, 17587],
+          [57.1, 35000],
+        ],
+      ),
+    };
+
+    const questionDashcard = (card: Card, series: Card[] = []) =>
+      createMockDashboardCard({
+        id: 80,
+        dashboard_id: DASHBOARD_ID,
+        card_id: card.id,
+        card,
+        series,
+        size_x: 24,
+        size_y: 12,
+      });
+
+    it.each([
+      {
+        name: "a single series line chart",
+        dashcard: questionDashcard(SUM_OF_TOTAL_LINE),
+        renames: [["Sum of Total", "Custom"]],
+        target: { type: "path" as const, color: "#88BF4D", index: 1 },
+        rows: ["#88BF4D | Custom | 205,256.02 | +386.89%"],
+        seriesSettings: { COLUMN_2: { title: "Custom" } },
+      },
+      {
+        name: "a multi-series line chart",
+        dashcard: questionDashcard(AVG_TOTAL_CUM_SUM_QUANTITY_LINE),
+        renames: [
+          ["Average of Total", "Custom 1"],
+          ["Cumulative sum of Quantity", "Custom 2"],
+        ],
+        target: { type: "path" as const, color: "#A989C5", index: 1 },
+        rows: [
+          "#A989C5 | Custom 1 | 56.86 | +0.34%",
+          "#88BF4D | Custom 2 | 17,587 | +443.48%",
+        ],
+        seriesSettings: {
+          COLUMN_2: { title: "Custom 1" },
+          COLUMN_3: { title: "Custom 2" },
+        },
+      },
+      {
+        name: "a single series bar chart",
+        dashcard: questionDashcard(SUM_OF_TOTAL_BAR),
+        renames: [["Sum of Total", "Custom"]],
+        target: { type: "rect" as const, color: "#88BF4D", index: 1 },
+        rows: ["#88BF4D | Custom | 205,256.02 | +386.89%"],
+        seriesSettings: { COLUMN_2: { title: "Custom" } },
+      },
+      {
+        name: "a bar chart with an added series",
+        dashcard: questionDashcard(SUM_OF_TOTAL_BAR, [AVG_OF_TOTAL_BAR]),
+        renames: [
+          ["Q1", "Custom Q1"],
+          ["Q2", "Custom Q2"],
+        ],
+        target: { type: "rect" as const, color: "#88BF4D", index: 1 },
+        rows: [
+          "#88BF4D | Custom Q1 | 205,256.02 | +386.89%",
+          "#A989C5 | Custom Q2 | 56.86 | +0.34%",
+        ],
+        // an added series keeps its settings under its card's name
+        seriesSettings: {
+          COLUMN_2: { title: "Custom Q1" },
+          Q2: { title: "Custom Q2" },
+        },
+      },
+    ])(
+      "should show the series titles edited in the visualizer in the tooltips of $name",
+      async ({ dashcard, renames, target, rows, seriesSettings }) => {
+        await setup({
+          dashcards: [dashcard],
+          cards: TOOLTIP_CARDS,
+          datasets: TOOLTIP_DATASETS,
+        });
+        await editDashboard();
+        const modal = await openVisualizer(
+          dashcard.id,
+          "Visualize another way",
+        );
+        await userEvent.click(
+          within(modal).getByRole("button", { name: "Settings" }),
+        );
+        const seriesNames = within(modal).getAllByTestId("series-name-input");
+        expect(seriesNames.map((input) => input.getAttribute("value"))).toEqual(
+          renames.map(([originalName]) => originalName),
+        );
+        for (const [index, [, newName]] of renames.entries()) {
+          await userEvent.clear(seriesNames[index]);
+          await userEvent.type(seriesNames[index], newName);
+          await userEvent.tab();
+        }
+        await saveVisualizer();
+        await saveDashboard();
+
+        const chart = getChartRoot(await findDashcard(dashcard.id));
+        await hoverChartElement(chart, target);
+        await waitFor(() => {
+          const [tooltip] = queryShownTooltips();
+          expect(getTooltipContent(tooltip)).toEqual({
+            header: "2026",
+            rows,
+            footer: null,
+          });
+        });
+        expect(getSavedVisualization(dashcard.id)).toMatchObject({
+          settings: { series_settings: seriesSettings },
+        });
+      },
+    );
+
+    it("should hide the tooltip of a cartesian chart while its click actions are open", async () => {
+      // drills need the field refs of the backend
+      await setup({
+        dashcards: [MULTI_SERIES_LINE_DASHCARD],
+        datasets: DATASETS_WITH_FIELD_REFS,
+      });
+      const dashcardElement = await findDashcard(MULTI_SERIES_LINE_DASHCARD.id);
+      const target = { type: "path" as const, color: "#509EE3", index: 1 };
+      await hoverChartElement(getChartRoot(dashcardElement), target);
+      await waitFor(() => expect(queryShownTooltips()).toHaveLength(1));
+
+      clickChartElement(dashcardElement, target);
+      expect(await findClickActions()).toBeInTheDocument();
+      await waitFor(() => expect(queryShownTooltips()).toHaveLength(0));
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("click-actions-view"),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
+    it("should let users hide series in the legend of a dashcard, but not while editing the dashboard", async () => {
+      const dashcard = questionDashcard(ORDERS_BY_CREATED_AT_AND_CATEGORY);
+      const GADGET_COLOR = "#F9D45C";
+      await setup({
+        dashcards: [dashcard],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+      const getGadgetItem = (container: HTMLElement) =>
+        checkNotNull(
+          within(container)
+            .getAllByTestId("legend-item")
+            .find((item) => within(item).queryByText("Gadget") != null),
+        );
+      const countGadgetPoints = (container: HTMLElement) =>
+        countChartElements(getChartRoot(container), {
+          type: "path",
+          color: GADGET_COLOR,
+        });
+
+      const dashcardElement = await findDashcardWithLegend(dashcard.id);
+      await waitFor(() => expect(countGadgetPoints(dashcardElement)).toBe(2));
+      await userEvent.click(
+        within(getGadgetItem(dashcardElement)).getByRole("button", {
+          name: "Hide series",
+        }),
+      );
+      await waitFor(() => expect(countGadgetPoints(dashcardElement)).toBe(0));
+      await userEvent.click(
+        within(getGadgetItem(dashcardElement)).getByRole("button", {
+          name: "Show series",
+        }),
+      );
+      await waitFor(() => expect(countGadgetPoints(dashcardElement)).toBe(2));
+
+      await editDashboard();
+      expect(
+        within(getGadgetItem(getDashcard(dashcard.id))).queryByRole("button", {
+          name: "Hide series",
+        }),
+      ).not.toBeInTheDocument();
+
+      const modal = await openVisualizer(dashcard.id, "Visualize another way");
+      const modalGadgetItem = getGadgetItem(modal);
+      expect(
+        within(modalGadgetItem).queryByRole("button", { name: "Hide series" }),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        within(modalGadgetItem).getByTestId("legend-item-dot"),
+      );
+      await waitFor(() => expect(countGadgetPoints(modal)).toBe(2));
     });
   });
 
