@@ -598,6 +598,34 @@
             (is (= []
                    (t2/select :model/ParameterCard :card_id source-card-id)))))))))
 
+(deftest delete-card-resets-parameters-sourced-from-it-test
+  (testing "deleting Card resets parameters of Dashboards and Cards that take their values from it"
+    (mt/with-temp [:model/Card {source-card-id :id} {}]
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [parameter {:name                 "Category"
+                         :slug                 "category"
+                         :id                   "category"
+                         :type                 :category
+                         :values_source_type   :card
+                         :values_source_config {:card_id source-card-id}}
+              [{card-id :id}] (card/create-cards! [{:creator_id    (mt/user->id :rasta)
+                                                    :database_id   (mt/id)
+                                                    :dataset_query (table-query :venues)
+                                                    :display       :table
+                                                    :name          "Parameterized"
+                                                    :visualization_settings {}
+                                                    :parameters    [parameter]}])
+              [{dashboard-id :id}] (dashboard/create-dashboards! [{:name       "Dashboard"
+                                                                   :creator_id (mt/user->id :rasta)
+                                                                   :parameters [parameter]}])]
+          (card/delete-cards! [source-card-id])
+          (is (= [[nil nil]]
+                 (map (juxt :values_source_type :values_source_config)
+                      (t2/select-one-fn :parameters :model/Card :id card-id))))
+          (is (= [[nil nil]]
+                 (map (juxt :values_source_type :values_source_config)
+                      (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)))))))))
+
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
     (mt/with-temp [:model/Card  {source-card-id :id} {}
