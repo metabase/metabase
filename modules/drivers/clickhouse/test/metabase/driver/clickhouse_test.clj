@@ -1731,3 +1731,15 @@
                (is (some? e))
                (is (false? (:workspace/cleanup? (ex-data e)))
                    (ex-message e))))))))))
+
+(deftest features-of-unreachable-database-need-no-connection-test
+  (testing "Checking the features of a ClickHouse database that cannot be reached does not wait on connections (#52188)"
+    (let [database {:lib/type     :metadata/database
+                    :id           1
+                    :engine       :clickhouse
+                    :details      {:host "192.0.2.1", :port 8123, :user "default", :password "", :dbname "default"}
+                    :dbms-version {:cloud false, :single-node true, :semantic-version {:major 24, :minor 8}}}
+          timer    (u/start-timer)
+          features (driver.u/features :clickhouse database)]
+      (is (contains? features :left-join))
+      (is (< (u/since-ms timer) 2000)))))
