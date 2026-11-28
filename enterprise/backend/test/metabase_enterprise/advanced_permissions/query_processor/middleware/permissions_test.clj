@@ -6,6 +6,7 @@
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase-enterprise.test :as met]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
@@ -124,6 +125,14 @@
         (testing "The number of rows in a native query result is not limited if the user has full download permissions"
           (is (= (inc limited-download-max-rows)
                  (-> (native-download-query) limit-download-result-rows mt/rows count))))))))
+
+(deftest download-limit-without-current-user-test
+  (testing "Download limit middleware does not throw when no user is bound, e.g. for public questions"
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (binding [api/*current-user-id* nil]
+        (is (nil? (-> (mbql-download-query) ee.qp.perms/apply-download-limit lib/current-limit)))
+        (is (= (inc @#'ee.qp.perms/max-rows-in-limited-downloads)
+               (-> (native-download-query) limit-download-result-rows mt/rows count)))))))
 
 (defn- check-download-permissions [query]
   (let [qp (ee.qp.perms/check-download-permissions
