@@ -84,14 +84,16 @@
 (mu/defn- take-pending-statuses! :- [:map-of ::deps.dependency-types/dependency-types
                                      [:sequential ::dependencies.schema/pending-status]]
   "Up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is outdated, as
-  `{entity-type statuses}`, each with the `stale` count the job clears afterwards."
-  [batch-size :- pos-int?]
+  `{entity-type statuses}`, each with the `stale` count the job clears afterwards; with `reported-only?`, only the ones
+  that are neither archived nor internal content."
+  [batch-size :- pos-int?
+   opts       :- ::dependencies.schema/job-opts]
   (reduce (fn [taken entity-type]
             (let [remaining (- batch-size (reduce + (map count (vals taken))))
                   statuses  (when (pos? remaining)
                               (models.analysis-finding-status/take-pending-analysis-finding-statuses!
                                entity-type remaining models.analysis-finding/*current-analysis-finding-version*
-                               models.dependency/current-dependency-analysis-version))]
+                               models.dependency/current-dependency-analysis-version opts))]
               (cond-> taken
                 (seq statuses) (assoc entity-type statuses))))
           {}
@@ -130,7 +132,8 @@
 (mu/defn analyze-batch! :- nat-int?
   "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is
   outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning
-  how many it took, the findings of each type stored together, or for each entity when that fails."
+  how many it took, the findings of each type stored together, or for each entity when that fails; with
+  `reported-only?`, only the ones that are neither archived nor internal content."
   [batch-size :- pos-int?
    opts       :- ::dependencies.schema/job-opts]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
@@ -138,7 +141,7 @@
   ;; the batch a private one.
   (let [removed (remove-deleted-statuses! batch-size)]
     (lib-be/with-metadata-provider-cache
-      (let [taken (take-pending-statuses! batch-size)]
+      (let [taken (take-pending-statuses! batch-size opts)]
         (doseq [[entity-type statuses] taken
                 :let [stale    (into {} (map (juxt :entity_id :stale)) statuses)
                       entities (dependencies.db/readable-entities #(dependencies.db/entities entity-type %)

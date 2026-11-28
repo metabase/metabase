@@ -21,10 +21,12 @@
 ;;; ------------------------------------------- Draining the jobs -------------------------------------------
 
 (def ^:private job-batches
-  "The jobs' batches, in the order work flows between them."
+  "The jobs' batches, in the order work flows between them. The last two take only what [[failed-entities]] can depend
+  on, leaving the rest to their scheduled runs: an entity's analysis reads its upstreams' result metadata, never its
+  own. Dependencies are computed for every entity, since they say which cards something depends on."
   [task.dependency/run-batch-in-place!
-   task.result-metadata/run-batch-in-place!
-   task.analysis-finding/run-batch-in-place!])
+   #(task.result-metadata/run-batch-in-place! {:depended-on-only? true})
+   #(task.analysis-finding/run-batch-in-place! {:reported-only? true})])
 
 (def ^:private jobs-enabled?
   [task.dependency/enabled?
@@ -161,6 +163,6 @@
 
 (mu/defn failed-entities :- [:sequential ::failed-entity]
   "Every entity whose stored analysis failed or whose dependencies could not be computed, with its errors, excluding
-  archived and Metabase-managed content. Call [[drain-pending!]] first for current results."
+  archived and internal content. Call [[drain-pending!]] first for current results."
   []
   (into [] (mapcat failed-entities-of-type) (deps.analysis-finding/analyzed-types)))
