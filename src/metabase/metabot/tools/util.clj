@@ -8,6 +8,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.models.interface :as mi]
@@ -586,6 +587,66 @@
                                               (lib-be/application-database-metadata-provider
                                                (:database definition))))))
           :bare-table-only? (> (count stages) 1)})))))
+
+(def ^:private hidden-definition-filter
+  "How [[metric-definition-filters]] describes a filter that it does not name."
+  "a filter on a column the current user cannot see")
+
+(defn- clause-field-ids
+  "The IDs of the Fields that `clause` references, including the FK Fields of implicit joins."
+  [clause]
+  (into #{}
+        (comp (filter #(and (vector? %) (= :field (first %)) (map? (second %))))
+              (mapcat (fn [[_tag opts id-or-name]] [id-or-name (:source-field opts)]))
+              (filter pos-int?))
+        (tree-seq coll? seq clause)))
+
+(defn- visible-field-ids
+  "The `field-ids` on Tables the current user can query, without those that a column sandbox hides."
+  [field-ids]
+  (when (seq field-ids)
+    (let [field-id->table-id (metabot.perms/field-id->table-id field-ids)
+          table-ids          (set (vals field-id->table-id))
+          queryable          (metabot.perms/queryable-table-ids table-ids)
+          sandboxed          (metabot.perms/sandbox-restricted-fields table-ids)]
+      (into #{}
+            (filter (fn [field-id]
+                      (let [table-id (get field-id->table-id field-id)]
+                        (and (contains? queryable table-id)
+                             (if-let [allowed (get sandboxed table-id)]
+                               (contains? allowed field-id)
+                               true)))))
+            field-ids))))
+
+(defn metric-definition-filters
+  "Return the display names of the filters in the definition of metric `card`, in stage order. Return nil when the
+  definition has no filters or cannot be read.
+
+  Name a filter only when the current user can query every Field it references and no column sandbox hides one, so
+  that the name and the values of a hidden column stay hidden. Describe any other filter as
+  [[hidden-definition-filter]].
+
+  `card` is a lib metadata card or a Toucan row. Read the definition through `metadata-providerable`, or through an
+  app-DB metadata provider for the definition's database when it is nil."
+  [metadata-providerable card]
+  (when-let [definition (not-empty (metric-card-shape-get card :dataset-query :dataset_query))]
+    (try
+      (let [query   (lib/query (or metadata-providerable
+                                   (lib-be/application-database-metadata-provider (:database definition)))
+                               definition)
+            filters (vec (for [stage-number  (range (lib/stage-count query))
+                               filter-clause (lib/filters query stage-number)]
+                           {:display-name (lib/display-name query stage-number filter-clause :long)
+                            :field-ids    (clause-field-ids filter-clause)}))
+            visible (visible-field-ids (into #{} (mapcat :field-ids) filters))]
+        (not-empty (mapv (fn [{:keys [display-name field-ids]}]
+                           (if (every? #(contains? visible %) field-ids)
+                             display-name
+                             hidden-definition-filter))
+                         filters)))
+      (catch Exception e
+        (log/debug e "Could not describe the filters of a metric definition")
+        nil))))
 
 (defn- table-breakouts
   "Return the stage 0 breakouts of `definition` that a query on table `table-query` can also break out by.

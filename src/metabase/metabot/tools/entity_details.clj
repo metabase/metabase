@@ -545,7 +545,10 @@
                                           (map #(lib/find-matching-column % visible-cols))
                                           (m/find-first lib.types.isa/temporal?)))
          queryable-columns (when (and query-needed? with-queryable-dimensions?)
-                             (field-values-fn base-filterable-cols))]
+                             (field-values-fn base-filterable-cols))
+         ;; The filters name columns of the source, so describe them only when the source is usable.
+         definition-filters (when-not source-unavailable?
+                              (metabot.tools.u/metric-definition-filters metadata-provider card))]
      (cond-> {:id id
               :type :metric
               :name (:name card)
@@ -582,6 +585,9 @@
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
 
+       (seq definition-filters)
+       (assoc :definition_filters definition-filters)
+
        (and query-needed? with-segments?)
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
                           (mapv #(convert-measure-or-segment % :filters) segments)
@@ -600,7 +606,7 @@
                     :database_id :database_name :portable_entity_id
                     :base_table_id :base_table_name :base_table_portable_fk
                     :source_card_id :source_card_name :source_card_portable_entity_id
-                    :source_unavailable])))
+                    :source_unavailable :definition_filters])))
 
 (declare ^:private related-tables)
 

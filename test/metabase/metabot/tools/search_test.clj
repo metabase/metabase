@@ -1104,7 +1104,68 @@
               (is (= (:schema orders-t) (:base_table_schema metric-res))))
             (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
               (is (= [db-name (:schema orders-t) (:name orders-t)]
-                     (:base_table_portable_fk metric-res))))))))))
+                     (:base_table_portable_fk metric-res))))
+            (testing "a metric without filters has no definition filters"
+              (is (not (contains? metric-res :definition_filters))))))))))
+
+(defn- create-filtered-orders-metric!
+  "Create a metric named `metric-name` that counts orders with a Total over 100, and return its ID. With
+  `widgets-only?`, the metric also keeps only orders of products in the Widget category, a column of another table."
+  [metric-name & {:keys [widgets-only?]}]
+  (let [mp       (mt/metadata-provider)
+        query    (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        category (some #(when (= (mt/id :products :category) (:id %)) %) (lib/filterable-columns query))]
+    (:id (first (card/create-cards! [{:name                   metric-name
+                                      :type                   :metric
+                                      :creator_id             (mt/user->id :rasta)
+                                      :database_id            (mt/id)
+                                      :display                :table
+                                      :visualization_settings {}
+                                      :dataset_query          (cond-> (lib/filter query (lib/> (lib.metadata/field mp (mt/id :orders :total))
+                                                                                               100))
+                                                                widgets-only? (lib/filter (lib/= category "Widget"))
+                                                                true          (lib/aggregate (lib/count)))}])))))
+
+(deftest enrich-with-metric-sources-definition-filters-test
+  (testing "metric search results list the filters in the metric's definition, for the LLM too"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-model-cleanup [:model/Card]
+          (let [metric-id  (create-filtered-orders-metric! "Filtered Sample Metric")
+                results    (search/search {:term-queries ["Filtered Sample Metric"]})
+                metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+            (is (= ["Total is greater than 100"] (:definition_filters metric-res)))
+            (is (str/includes? (llm-shape/search-results->xml [metric-res])
+                               (str "Filters in its definition (all of its values cover only the rows that pass "
+                                    "them): Total is greater than 100")))))))))
+
+(deftest enrich-with-metric-sources-hides-definition-filters-of-unreadable-base-table-test
+  (testing "a readable metric does not describe the filters of an unreadable base table"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-model-cleanup [:model/Card]
+            (let [metric-id  (create-filtered-orders-metric! "Restricted Filtered Metric")
+                  results    (search/search {:term-queries ["Restricted Filtered Metric"]})
+                  metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+              (is (some? metric-res) "collection access still makes the metric searchable")
+              (is (not (contains? metric-res :definition_filters))))))))))
+
+(deftest enrich-with-metric-sources-hides-definition-filters-on-unqueryable-columns-test
+  (testing "metric search results do not name a filter on a column of a table the user cannot query"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
+                                   :perms/create-queries :query-builder-and-native)
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-model-cleanup [:model/Card]
+            (let [metric-id  (create-filtered-orders-metric! "Cross Table Filtered Metric" :widgets-only? true)
+                  results    (search/search {:term-queries ["Cross Table Filtered Metric"]})
+                  metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+              (is (= ["Total is greater than 100" "a filter on a column the current user cannot see"]
+                     (:definition_filters metric-res)))
+              (is (not (str/includes? (pr-str metric-res) "Widget"))))))))))
 
 (deftest enrich-with-metric-sources-respects-table-permissions-test
   (testing "a readable metric does not reveal metadata for an unreadable base table"
