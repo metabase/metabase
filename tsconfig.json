@@ -57,7 +57,8 @@
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*",
     ".github/scripts/**/*",
-    "bin/verify-doc-links/**/*"
+    "bin/verify-doc-links/**/*",
+    "bin/docs-diagram/**/*"
   ],
   "exclude": [
     "node_modules",

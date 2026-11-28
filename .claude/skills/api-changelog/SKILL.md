@@ -158,7 +158,7 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
    one `-` bullet per change, endpoint as `` `POST /api/foo/:id` `` with
    **`:id` colon-style params, not OpenAPI `{id}` braces**. Say what changed, what
    clients must do, and whether there was a deprecation period. Apply the
-   `docs-write` skill. Show the diff before writing to the file.
+   `metabase-docs` skill. Show the diff before writing to the file.
 
 ## Attribution
 
