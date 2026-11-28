@@ -348,7 +348,11 @@ export default defineConfig({
     cssCodeSplit: false,
     minify: false,
     lib: {
-      entry: { index: resolve(packageDir, "src/index.ts") },
+      entry: {
+        index: resolve(packageDir, "src/index.ts"),
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- build entry filename
+        slim: resolve(packageDir, "src/SlimMetabaseUIProvider.tsx"),
+      },
       formats: ["es"],
     },
     rolldownOptions: {

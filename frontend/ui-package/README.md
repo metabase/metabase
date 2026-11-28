@@ -27,6 +27,18 @@ createRoot(document.getElementById("root")!).render(
 
 Do not also import `@mantine/core/styles.css` or `@mantine/dates/styles.css`.
 
+For a smaller JavaScript bundle, import `SlimMetabaseUIProvider` from `@metabase/ui/slim` and opt into each component's overrides. The base theme and global stylesheet stay the same. The default provider still registers all overrides.
+
+```tsx
+import { Button } from "@metabase/ui";
+import { SlimMetabaseUIProvider } from "@metabase/ui/slim";
+import { buttonOverrides } from "@metabase/ui/overrides/buttons/Button/Button.config";
+
+<SlimMetabaseUIProvider components={buttonOverrides}>
+  <Button>Save</Button>
+</SlimMetabaseUIProvider>;
+```
+
 For a nonce-based `style-src` Content Security Policy, install `get-nonce` in the host and call `setNonce(nonce)` before mounting the provider. Use the same server-generated nonce as the one in your response policy. Mantine and the modal scroll lock use that shared nonce for their generated style tags.
 
 The package can be imported in Node.js without browser globals. This does not imply support for server-side rendering or hydration.

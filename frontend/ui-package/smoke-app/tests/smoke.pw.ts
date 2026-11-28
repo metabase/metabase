@@ -245,6 +245,29 @@ for (const scheme of SCHEMES) {
   });
 }
 
+test("the slim provider applies opted-in Button styles in both schemes", async ({
+  page,
+}) => {
+  for (const scheme of ["light", "dark"]) {
+    const button = page.getByTestId("button-filled");
+    await page.goto(`/?scheme=${scheme}`);
+    await expect(button).toBeVisible();
+    const expectedColor = await button.evaluate(
+      (element) => getComputedStyle(element).backgroundColor,
+    );
+    await page.goto(`/?slim&scheme=${scheme}`);
+    await expect(button).toHaveCSS("background-color", expectedColor);
+    await expect(button).toHaveCSS("font-family", /Lato/);
+  }
+});
+
+test("the slim provider can render a Button without component overrides", async ({
+  page,
+}) => {
+  await page.goto("/?slim&no-overrides");
+  await expect(page.getByRole("button", { name: "Filled" })).toBeVisible();
+});
+
 test("renders an individually imported SVG icon", async ({ page }) => {
   await page.goto("/");
   const icon = page.getByRole("img", { name: "Packed table icon" });
