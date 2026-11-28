@@ -18,6 +18,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getUserIsAdmin } from "metabase/current-user";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -160,6 +161,8 @@ export function DataAppView({
     isLoading: metaLoading,
     error: metaError,
   } = useGetDataAppQuery(slug, { skip: !validSlug });
+
+  usePageTitle(meta?.name ?? "", { titleIndex: 1 });
 
   useEffect(() => {
     if (!iframeEl || !isCrossOrigin) {
