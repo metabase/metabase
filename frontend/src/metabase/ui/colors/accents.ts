@@ -1,9 +1,8 @@
-import Color from "color";
-
 import {
   ACCENT_COLOR_NAMES_MAP,
   CHART_TINT_SHADE_FACTOR,
 } from "./constants/accents";
+import { adjustLightness, parseColor, toHex } from "./css-color";
 import type { ChartColorV2, ColorPalette } from "./types";
 import type { MetabaseAccentColorKey } from "./types/color-keys";
 
@@ -60,11 +59,12 @@ export function mapChartColorsToAccents(
  * Matches the alias logic in palette.ts tint().
  */
 export function deriveChartTintColor(hexColor: string): string {
-  const value = Color(hexColor);
-
-  return value
-    .lightness(value.lightness() + CHART_TINT_SHADE_FACTOR * 100)
-    .hex();
+  return toHex(
+    adjustLightness(
+      parseColor(hexColor),
+      (lightness) => lightness + CHART_TINT_SHADE_FACTOR * 100,
+    ),
+  );
 }
 
 /**
@@ -72,11 +72,12 @@ export function deriveChartTintColor(hexColor: string): string {
  * Matches the alias logic in palette.ts shade().
  */
 export function deriveChartShadeColor(hexColor: string): string {
-  const value = Color(hexColor);
-
-  return value
-    .lightness(value.lightness() - CHART_TINT_SHADE_FACTOR * 100)
-    .hex();
+  return toHex(
+    adjustLightness(
+      parseColor(hexColor),
+      (lightness) => lightness - CHART_TINT_SHADE_FACTOR * 100,
+    ),
+  );
 }
 
 /**

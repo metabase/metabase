@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
-import Color from "color";
-
 import { colors, getColors } from "./colors";
 import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
+import {
+  adjustLightness,
+  formatColor,
+  isDarkColor,
+  luminance,
+  parseColor,
+  toHex,
+} from "./css-color";
 import type { ColorGetter, ColorName, ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
@@ -76,7 +82,7 @@ export function color(color: any, palette: ColorPalette = colors) {
  * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-disabled"), 0.1)`
  */
 export const alpha = (c: string, a: number) => {
-  return Color(color(c)).alpha(a).string();
+  return formatColor(parseColor(color(c)), a);
 };
 
 /**
@@ -87,7 +93,12 @@ export const alpha = (c: string, a: number) => {
  * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-disabled"), 0.1)`
  */
 export const lighten = (c: string, f: number = 0.5) => {
-  return Color(color(c)).lighten(f).string();
+  return formatColor(
+    adjustLightness(
+      parseColor(color(c)),
+      (lightness) => lightness + lightness * f,
+    ),
+  );
 };
 
 /**
@@ -98,25 +109,32 @@ export const lighten = (c: string, f: number = 0.5) => {
  * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-disabled"), 0.1)`
  */
 export const darken = (c: string, f: number = 0.25) => {
-  return Color(color(c)).darken(f).string();
+  return formatColor(
+    adjustLightness(
+      parseColor(color(c)),
+      (lightness) => lightness - lightness * f,
+    ),
+  );
 };
 
 export const tint = (c: string, f: number = 0.125) => {
-  const value = Color(color(c));
-  return value.lightness(value.lightness() + f * 100).hex();
+  return toHex(
+    adjustLightness(parseColor(color(c)), (lightness) => lightness + f * 100),
+  );
 };
 
 export const shade = (c: string, f: number = 0.125) => {
-  const value = Color(color(c));
-  return value.lightness(value.lightness() - f * 100).hex();
+  return toHex(
+    adjustLightness(parseColor(color(c)), (lightness) => lightness - f * 100),
+  );
 };
 
 export const isLight = (c: string) => {
-  return Color(color(c)).isLight();
+  return !isDark(c);
 };
 
 export const isDark = (c: string) => {
-  return Color(color(c)).isDark();
+  return isDarkColor(parseColor(color(c)));
 };
 
 /** Returns undefined for CSS expressions or variables, which cannot be parsed */
@@ -159,10 +177,16 @@ export const getTextColorForBackground = (
   backgroundColor: string,
   getColor: ColorGetter = color,
 ) => {
-  const background = Color(getColor(backgroundColor));
+  const background = luminance(parseColor(getColor(backgroundColor)));
+  const contrast = (textColor: string) => {
+    const text = luminance(parseColor(textColor));
+    return (
+      (Math.max(background, text) + 0.05) / (Math.min(background, text) + 0.05)
+    );
+  };
   const lightTextContrast =
-    background.contrast(Color(LIGHT_TEXT_COLOR)) * whiteTextColorPriorityFactor;
-  const darkTextContrast = background.contrast(Color(DARK_TEXT_COLOR));
+    contrast(LIGHT_TEXT_COLOR) * whiteTextColorPriorityFactor;
+  const darkTextContrast = contrast(DARK_TEXT_COLOR);
 
   const textColor =
     lightTextContrast > darkTextContrast ? LIGHT_TEXT_COLOR : DARK_TEXT_COLOR;

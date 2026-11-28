@@ -1,7 +1,7 @@
-import Color from "color";
 import _ from "underscore";
 
 import { ACCENT_COLOR_NAMES_MAP } from "./constants/accents";
+import { parseColor, toHex } from "./css-color";
 import { ACCENT_COUNT, color } from "./palette";
 import type { AccentColorOptions, ColorPalette, NamedColor } from "./types";
 
@@ -53,7 +53,7 @@ const getNamedAccentVariant = (
     const name = accent[variant];
 
     // Ensure that colors are defined in hex, not HSLA
-    return { name, value: Color(color(name, palette)).hex() };
+    return { name, value: toHex(parseColor(color(name, palette))) };
   });
 };
 

@@ -1,9 +1,8 @@
-import Color from "color";
-
 import { DEFAULT_ACCENT_COLORS } from "./constants/accent-colors";
 import { getLightTheme } from "./constants/themes/light";
+import { parseColor, toHex, toHsl } from "./css-color";
 
-type ColorInstance = ReturnType<typeof Color>;
+type HslColor = ReturnType<typeof toHsl>;
 
 const SATURATION_FALLBACK_THRESHOLD = 20;
 
@@ -22,9 +21,10 @@ export interface HarmonyColors {
   charts: string[];
 }
 
-const toHex = (c: ColorInstance) => c.hex().toLowerCase();
+const lowerHex = (color: ReturnType<typeof parseColor>) =>
+  toHex(color).toLowerCase();
 
-const normalize = (cssColor: string) => toHex(Color(cssColor));
+const normalize = (cssColor: string) => lowerHex(parseColor(cssColor));
 
 const lightTheme = getLightTheme();
 
@@ -43,8 +43,18 @@ const FALLBACK: HarmonyColors = {
 Object.freeze(FALLBACK);
 Object.freeze(FALLBACK.charts);
 
-const rotated = (brand: ColorInstance, degrees: number) =>
-  toHex(brand.rotate(degrees));
+const rotated = (brand: HslColor, degrees: number) => {
+  const [hue, saturation, lightness] = brand.channels;
+  const rotatedHue = (hue + degrees) % 360;
+  return lowerHex({
+    ...brand,
+    channels: [
+      rotatedHue < 0 ? 360 + rotatedHue : rotatedHue,
+      saturation,
+      lightness,
+    ],
+  });
+};
 
 /**
  * Derives accessory colors and an 8-color chart palette from a brand color.
@@ -61,26 +71,30 @@ const rotated = (brand: ColorInstance, degrees: number) =>
  * indistinguishable colors.
  */
 export const suggestHarmonyColors = (brand: string): HarmonyColors => {
-  const brandColor = Color(brand);
+  const brandColor = parseColor(brand);
+  const hsl = toHsl(brandColor);
+  const [, saturation] = hsl.channels;
 
-  if (brandColor.saturationl() < SATURATION_FALLBACK_THRESHOLD) {
+  if (saturation < SATURATION_FALLBACK_THRESHOLD) {
     return FALLBACK;
   }
 
   const charts = [
-    toHex(brandColor),
-    ...Array.from({ length: 7 }, (_, i) => rotated(brandColor, (i + 1) * 45)),
+    lowerHex(brandColor),
+    ...Array.from({ length: 7 }, (_, i) => rotated(hsl, (i + 1) * 45)),
   ];
 
   return {
-    filter: rotated(brandColor, FILTER_HUE_OFFSET),
-    summarize: rotated(brandColor, SUMMARIZE_HUE_OFFSET),
-    positive: toHex(
-      brandColor.hue(POSITIVE_HUE).lightness(POSITIVE_NEGATIVE_LIGHTNESS),
-    ),
-    negative: toHex(
-      brandColor.hue(NEGATIVE_HUE).lightness(POSITIVE_NEGATIVE_LIGHTNESS),
-    ),
+    filter: rotated(hsl, FILTER_HUE_OFFSET),
+    summarize: rotated(hsl, SUMMARIZE_HUE_OFFSET),
+    positive: lowerHex({
+      ...hsl,
+      channels: [POSITIVE_HUE, saturation, POSITIVE_NEGATIVE_LIGHTNESS],
+    }),
+    negative: lowerHex({
+      ...hsl,
+      channels: [NEGATIVE_HUE, saturation, POSITIVE_NEGATIVE_LIGHTNESS],
+    }),
     charts,
   };
 };
