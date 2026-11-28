@@ -336,12 +336,19 @@
             (if-let [line (.readLine ^BufferedReader r)]
               ;; spec: https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation
               (cond
-                (= line "data: [DONE]")
-                acc
+                (str/starts-with? line "data:")
+                (let [v       (subs line 5)
+                      payload (if (str/starts-with? v " ") (subs v 1) v)]
+                  (cond
+                    (= payload "[DONE]")
+                    acc
 
-                (str/starts-with? line "data: ")
-                ;; NOTE: we can do that since not one of providers spit json in multiple lines
-                (recur (rf acc (json/decode+kw (subs line 6))))
+                    (= payload "")
+                    (recur acc)
+
+                    :else
+                    ;; NOTE: we can do that since not one of providers spit json in multiple lines
+                    (recur (rf acc (json/decode+kw payload)))))
 
                 (= line "")
                 (recur acc)
