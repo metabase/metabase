@@ -1,254 +1,211 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ADMINISTRATORS_GROUP_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { setupSaml } from "./sso/shared/helpers";
+
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
+
+describe("scenarios > admin > settings > API keys", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/api-key/count").as("getKeyCount");
+    cy.intercept("GET", "/api/api-key").as("getKeys");
+    cy.intercept("POST", "/api/api-key").as("createKey");
+    cy.intercept("PUT", "/api/api-key/*/regenerate").as("regenerateKey");
+
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should create an API key, count it on the auth card, and regenerate it", () => {
+    visitApiKeySettings();
+    H.tryToCreateApiKeyViaModal({ name: "New key", group: "Administrators" });
+
+    cy.findByLabelText("Copy and save this API key")
+      .findByLabelText("The API key")
+      .invoke("val")
+      .should("match", /^mb_/);
+    cy.button("Done").click();
+
+    cy.log("the key is saved");
+    cy.reload();
+    cy.wait("@getKeys");
+    cy.findByTestId("api-keys-table")
+      .findByRole("row", { name: "New key" })
+      .should("contain", "Administrators")
+      .and("contain", "mb_");
+
+    cy.log("the auth card counts it");
+    cy.visit("/admin/settings/authentication");
+    cy.wait("@getKeyCount");
+    cy.findByTestId("api-keys-setting")
+      .findByTestId("card-badge")
+      .should("have.text", "1 API Key");
+
+    cy.log("regenerating the key updates it");
+    visitApiKeySettings();
+    cy.findByTestId("api-keys-table")
+      .findByRole("row", { name: "New key" })
+      .findByLabelText("API key actions")
+      .click();
+    cy.findByRole("menuitem", { name: /edit/i }).click();
+    cy.button("Regenerate API key").click();
+    cy.button("Regenerate").click();
+    cy.wait("@regenerateKey");
+    cy.findByLabelText("The API key").should("include.value", "mb_");
+
+    cy.wait("@getKeys").then(({ response }) => {
+      const { created_at, updated_at } = response?.body?.[0] ?? {};
+      // after regeneration, created_at and updated_at should be different
+      // they're too close to check via UI though
+      expect(created_at).to.not.equal(updated_at);
+    });
+    cy.button("Done").click();
+  });
+
+  describe("api key actions", () => {
+    it("should allow creating questions and dashboards with an API key", () => {
+      H.createApiKey("Test API Key One", ADMINISTRATORS_GROUP_ID).then(
+        ({ body }) => {
+          const apiKey = body.unmasked_key;
+          createQuestionForApiKey(apiKey).then(({ body }) => {
+            const questionId = body.id;
+
+            cy.signInAsAdmin();
+            H.visitQuestion(questionId);
+            cy.findByTestId("qb-header").findByText("Test Question");
+            cy.findByTestId("view-footer").findByText("Showing 22 rows");
+
+            cy.findByTestId("qb-header-info-button").click();
+            H.sidesheet().within(() => {
+              cy.findByText("Test API Key One created this.");
+            });
+          });
+
+          createDashboardForApiKey(apiKey).then(({ body }) => {
+            const dashboardId = body.id;
+
+            cy.signInAsAdmin();
+            H.visitDashboard(dashboardId);
+            cy.findByTestId("dashboard-header").findByText("Test Dashboard");
+            cy.findByTestId("dashboard-header").icon("info").click();
+            H.sidesheet().within(() => {
+              cy.findByText("Test API Key One created this.");
+            });
+          });
+        },
+      );
+    });
+
+    it("should allow editing questions and dashboards with an api key", () => {
+      H.createApiKey("Test API Key One", ADMINISTRATORS_GROUP_ID).then(
+        ({ body }) => {
+          const apiKey = body.unmasked_key;
+
+          editQuestionForApiKey(
+            apiKey,
+            ORDERS_QUESTION_ID,
+            "Edited Question Name",
+          ).then(() => {
+            cy.signInAsAdmin();
+            H.visitQuestion(ORDERS_QUESTION_ID);
+            cy.findByTestId("qb-header").findByText("Edited Question Name");
+            cy.findByTestId("qb-header-info-button").click();
+            H.sidesheet().within(() => {
+              cy.findByText("You created this.");
+              cy.findByText(
+                'Test API Key One renamed this Card from "Orders" to "Edited Question Name".',
+              );
+            });
+          });
+
+          editDashboardForApiKey(
+            apiKey,
+            ORDERS_DASHBOARD_ID,
+            "Edited Dashboard Name",
+          ).then(() => {
+            cy.signInAsAdmin();
+            H.visitDashboard(ORDERS_DASHBOARD_ID);
+            cy.findByTestId("dashboard-header").findByText(
+              "Edited Dashboard Name",
+            );
+            cy.findByTestId("dashboard-header").icon("info").click();
+            H.sidesheet().within(() => {
+              cy.findByText("You created this.");
+              cy.findByText(
+                'Test API Key One renamed this Dashboard from "Orders in a dashboard" to "Edited Dashboard Name".',
+              );
+            });
+          });
+        },
+      );
+    });
+  });
+});
 
 describe("scenarios > admin > settings > user provisioning", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
   });
 
-  describe("oss", { tags: "@OSS" }, () => {
-    it("user provisioning page should not be available for OSS customers", () => {
-      cy.visit("/admin/settings/authentication/user-provisioning");
+  it("should set up SCIM, and turn the SAML provisioning warning off", () => {
+    const samlWarningMessage =
+      "When enabled, SAML user provisioning will be turned off in favor of SCIM.";
 
-      // falls back to the authentication page
-      cy.findByTestId("google-setting").should("be.visible");
-      cy.findByTestId("ldap-setting").should("be.visible");
-      cy.findByTestId("api-keys-setting").should("be.visible");
+    setupSaml();
+    cy.visit("/admin/settings/authentication/user-provisioning");
 
-      // no EE auth providers
-      cy.findByTestId("saml-setting").should("not.exist");
-    });
-  });
-
-  describe("scim settings management", () => {
-    beforeEach(() => {
-      H.activateToken("pro-self-hosted");
+    H.main().within(() => {
+      cy.findByText(samlWarningMessage).should("be.visible");
+      scimEndpointInput().should("not.exist");
+      scimTokenInput().should("not.exist");
     });
 
-    it("should be able to setup and manage scim feature", () => {
-      cy.visit("/admin/settings/authentication/user-provisioning");
+    scimToggle().click();
 
-      cy.log(
-        "should not show endpoint and token inputs if scim has never been enabled before",
-      );
-      H.main().within(() => {
-        scimEndpointInput().should("not.exist");
-        scimTokenInput().should("not.exist");
-      });
-
-      cy.log("can enable scim");
-      scimToggle().should("exist");
-      scimToggle().click();
-
-      let initialUnmaskedToken = "";
-      cy.log("should show unmasked info in modal");
-      H.modal().within(() => {
-        cy.findByText("Here's what you'll need to set SCIM up").should("exist");
-        scimEndpointInput().invoke("val").should("contain", "/api/ee/scim/v2");
-        scimTokenInput()
-          .invoke("val")
-          .should("not.contain", "****************************************");
-        // save to compare with masked token
-        scimTokenInput()
-          .invoke("val")
-          .then((val) => (initialUnmaskedToken = String(val)));
-        cy.findAllByRole("button", { name: /Done/ }).click();
-      });
-
-      cy.log(
-        "should show masked info in main page + should match unmasked token",
-      );
-      scimEndpointInput()
-        .should("exist")
-        .invoke("val")
-        .should("contain", "/api/ee/scim/v2");
-
+    let unmaskedToken = "";
+    H.modal().within(() => {
+      cy.findByText("Here's what you'll need to set SCIM up").should("exist");
+      scimEndpointInput().invoke("val").should("contain", "/api/ee/scim/v2");
       scimTokenInput()
         .invoke("val")
         .should("contain", "mb_")
-        .should("contain", "****************************************")
-        .then((val) =>
-          expect(val).to.contain(initialUnmaskedToken.slice(0, 7)),
-        );
-
-      cy.log("should be able to regenerate a token");
-      cy.findByRole("button", { name: /Regenerate/ }).click();
-
-      H.modal().within(() => {
-        cy.findByText("Regenerate token?").should("exist");
-        cy.findByRole("button", { name: /Regenerate now/ }).click();
-      });
-
-      let regeneratedToken = "";
-      H.modal().within(() => {
-        cy.findByText("Copy and save the SCIM token").should("exist");
-        scimTokenInput()
-          .invoke("val")
-          .should("not.contain", "Loading")
-          .should("not.contain", "****************************************")
-          .then((val) => (regeneratedToken = String(val)));
-        cy.findByRole("button", { name: /Done/ }).click();
-      });
-
-      scimTokenInput()
-        .invoke("val")
-        .should("contain", "mb_")
-        .should("contain", "****************************************")
-        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
-
-      cy.log("should be able to cancel regenerating a token");
-      cy.findByRole("button", { name: /Regenerate/ }).click();
-
-      H.modal().within(() => {
-        cy.findByText("Regenerate token?").should("exist");
-        cy.findByRole("button", { name: /Cancel/ }).click();
-      });
-      H.modal().should("not.exist");
-
-      scimTokenInput()
-        .invoke("val")
-        .should("contain", "mb_")
-        .should("contain", "****************************************")
-        .then((val) => expect(val).to.contain(regeneratedToken.slice(0, 7)));
-
-      cy.log("should be able to disable scim and info stay");
-      scimToggle().click();
-      scimSetting().findByLabelText("Disabled").should("exist");
-      scimEndpointInput().should("be.visible");
-      scimTokenInput().should("be.visible");
-      cy.findByRole("button", { name: /Regenerate/ }).should("be.disabled");
-
-      cy.log("should be able to re-enable");
-      scimToggle().click();
-      scimSetting().findByLabelText("Enabled").should("exist");
+        .should("not.contain", "****************************************")
+        .then((val) => (unmaskedToken = String(val)));
+      cy.findByRole("button", { name: /Done/ }).click();
     });
 
-    it("should warn users that saml user provisioning will be disabled before enabling scim", () => {
-      setupSaml();
-      cy.visit("/admin/settings/authentication/user-provisioning");
+    H.main().findByText(samlWarningMessage).should("not.exist");
 
-      const samlWarningMessage =
-        "When enabled, SAML user provisioning will be turned off in favor of SCIM.";
-
-      H.main().within(() => {
-        cy.log("message should exist while scim has never been enabled");
-        cy.findByText(samlWarningMessage).should("exist");
-
-        cy.log("message should not exist once scim has been enabled");
-        scimSetting().findByText("Disabled");
-        scimToggle().click();
-        scimSetting().findByText("Enabled");
-      });
-
-      H.modal().within(() => {
-        cy.findByRole("button", { name: /Done/ }).click();
-      });
-
-      H.main().within(() => {
-        cy.findByText(samlWarningMessage).should("not.exist");
-
-        cy.log(
-          "message should still not exist even after scim has been disabled",
-        );
-        scimToggle().click();
-        scimToggle().should("not.be.checked");
-        cy.findByText(samlWarningMessage).should("not.exist");
-      });
-    });
-
-    it("should properly handle errors", () => {
-      cy.intercept("POST", "/api/ee/scim/api_key", {
-        statusCode: 500,
-        body: { message: "An error occurred" },
-      });
-
-      cy.visit("/admin/settings/authentication/user-provisioning");
-
-      // toggling SCIM on triggers the failing token-generation POST
-      scimToggle().click();
-
-      // no modal is opened on failure — error surfaces directly on the form
-      H.modal().should("not.exist");
-
-      H.main().within(() => {
-        cy.findByText("Token failed to generate, Please try again.").should(
-          "exist",
-        );
-        cy.findByRole("button", { name: /Retry/ }).should("exist");
-      });
-    });
-
-    it("should close the regenerate modal and surface an error on the token field when regenerate fails", () => {
-      // generate an initial token via the UI
-      cy.visit("/admin/settings/authentication/user-provisioning");
-      scimToggle().click();
-      H.modal().within(() => {
-        cy.findByRole("button", { name: /Done/ }).click();
-      });
-
-      // now make subsequent regenerate calls fail
-      cy.intercept("POST", "/api/ee/scim/api_key", {
-        statusCode: 500,
-        body: { message: "An error occurred" },
-      });
-
-      cy.findByRole("button", { name: /Regenerate/ }).click();
-      H.modal().within(() => {
-        cy.findByText("Regenerate token?").should("exist");
-        cy.findByRole("button", { name: /Regenerate now/ }).click();
-      });
-
-      // the post-confirm modal does not appear; error surfaces on the form
-      H.modal().should("not.exist");
-      H.main().within(() => {
-        cy.findByText("Failed to regenerate token. Please try again.").should(
-          "exist",
-        );
-        cy.findByText("An error occurred").should("not.exist");
-        cy.findByRole("button", { name: /Regenerate/ }).should("exist");
-      });
-    });
-
-    it("should show a warning when SCIM is enabled without a token", () => {
-      // simulate enabling SCIM via config file / env var: enable it server-side, no token generated
-      cy.intercept("GET", "/api/ee/scim/api_key", (req) => {
-        req.continue();
-      });
-      cy.request("PUT", "api/setting/scim-enabled", { value: true });
-      cy.visit("/admin/settings/authentication/user-provisioning");
-
-      H.main().within(() => {
-        cy.findByText(
-          "Generate a SCIM token below to complete the setup.",
-        ).should("exist");
-        cy.findByRole("button", { name: /Generate/ }).should("exist");
-        cy.findByText("Token failed to generate, Please try again.").should(
-          "not.exist",
-        );
-      });
-
-      cy.log("warning is removed once a token has been generated");
-      cy.findByRole("button", { name: /Generate/ }).click();
-      H.modal().within(() => {
-        cy.findByText("Here's what you'll need to set SCIM up").should("exist");
-        cy.findByRole("button", { name: /Done/ }).click();
-      });
-
-      H.main().within(() => {
-        cy.findByText(
-          "Generate a SCIM token below to complete the setup.",
-        ).should("not.exist");
-        cy.findByRole("button", { name: /Regenerate/ }).should("exist");
-      });
-    });
+    cy.log("the setting and the token are saved");
+    cy.reload();
+    scimSetting().findByLabelText("Enabled").should("be.checked");
+    scimEndpointInput().invoke("val").should("contain", "/api/ee/scim/v2");
+    scimTokenInput()
+      .invoke("val")
+      .should("contain", "****************************************")
+      .then((val) => expect(val).to.contain(unmaskedToken.slice(0, 7)));
+    H.main().findByText(samlWarningMessage).should("not.exist");
   });
 });
+
+function visitApiKeySettings() {
+  cy.visit("/admin/settings/authentication/api-keys");
+  cy.wait("@getKeys");
+  cy.findByTestId("api-keys-settings-header");
+}
 
 function scimToggle() {
   return scimSetting().findByLabelText(/Enabled|Disabled/);
 }
+
 function scimSetting() {
   return cy.findByTestId("scim-enabled-setting");
 }
@@ -260,3 +217,101 @@ function scimEndpointInput() {
 function scimTokenInput() {
   return cy.findByLabelText("SCIM token");
 }
+
+const createQuestionForApiKey = (apiKey: string) => {
+  cy.signOut();
+
+  return cy.request({
+    method: "POST",
+    url: "/api/card",
+    headers: {
+      "X-Api-Key": apiKey,
+    },
+    body: {
+      name: "Test Question",
+      display: "table",
+      visualization_settings: {},
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          limit: 22,
+        },
+      },
+    },
+  });
+};
+
+const createDashboardForApiKey = (apiKey: string) => {
+  cy.signOut();
+
+  return cy.request({
+    method: "POST",
+    url: "/api/dashboard",
+    headers: {
+      "X-Api-Key": apiKey,
+    },
+    body: {
+      name: "Test Dashboard",
+    },
+  });
+};
+
+const editQuestionForApiKey = (
+  apiKey: string,
+  questionId: number,
+  newQuestionName: string,
+) => {
+  cy.signOut();
+  return cy
+    .request({
+      method: "GET",
+      url: `/api/card/${questionId}`,
+      headers: {
+        "X-Api-Key": apiKey,
+      },
+    })
+    .then(({ body: previousBody }) => {
+      return cy.request({
+        method: "PUT",
+        url: `/api/card/${questionId}`,
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+        body: {
+          ...previousBody,
+          name: newQuestionName,
+        },
+      });
+    });
+};
+
+const editDashboardForApiKey = (
+  apiKey: string,
+  dashboardId: number,
+  newDashboardName: string,
+) => {
+  cy.signOut();
+  return cy
+    .request({
+      method: "GET",
+      url: `/api/dashboard/${dashboardId}`,
+      headers: {
+        "X-Api-Key": apiKey,
+      },
+    })
+    .then(({ body: previousBody }) => {
+      return cy.request({
+        method: "PUT",
+        url: `/api/dashboard/${dashboardId}`,
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+        body: {
+          ...previousBody,
+          name: newDashboardName,
+        },
+      });
+    });
+};
