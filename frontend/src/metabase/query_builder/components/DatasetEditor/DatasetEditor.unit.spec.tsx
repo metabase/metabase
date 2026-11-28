@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -8,9 +9,10 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
@@ -34,6 +36,10 @@ const mockSavedCard = createMockCard({
 const mockSavedModel = { ...mockSavedCard, type: "model" };
 const mockSavedMetric = { ...mockSavedCard, type: "metric" };
 const mockUnsavedCard = createMockUnsavedCard();
+const mockUnsavedModel = createMockUnsavedCard({
+  type: "model",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+});
 
 const noop = () => {};
 const defaultDatasetEditorProps = {
@@ -70,27 +76,41 @@ const defaultDatasetEditorProps = {
   snippetCollectionId: null,
 };
 
-const renderDatasetEditor = async (card: Card | UnsavedCard) => {
+type SetupOpts = {
+  card: Card | UnsavedCard;
+  isDirty?: boolean;
+};
+
+const setup = async ({ card, isDirty = false }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupUserMetabotPermissionsEndpoint();
-  const question = new Question(card, createMockMetadata());
+  const metadata = createMockMetadata({ databases: [TEST_DB] });
+  const question = new Question(card, metadata);
+  const onOpenModal = jest.fn<void, [string]>();
 
   fetchMock.get("path:/api/search", { body: { data: [] } });
   fetchMock.get("path:/api/model-index", { body: [] });
 
   renderWithProviders(
-    <DatasetEditor {...defaultDatasetEditorProps} question={question} />,
+    <DatasetEditor
+      {...defaultDatasetEditorProps}
+      question={question}
+      isDirty={isDirty}
+      onOpenModal={onOpenModal}
+    />,
   );
 
   await screen.findByText("Query");
+
+  return { onOpenModal };
 };
 
 describe("DatasetEditor", () => {
   it("tries to load a model index for a saved model", async () => {
-    await renderDatasetEditor(mockSavedModel);
+    await setup({ card: mockSavedModel });
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
     expect(calls).toHaveLength(1);
     expect(
@@ -99,20 +119,39 @@ describe("DatasetEditor", () => {
   });
 
   it("does not try to load a model index for a saved question", async () => {
-    await renderDatasetEditor(mockSavedCard);
+    await setup({ card: mockSavedCard });
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
     expect(calls).toHaveLength(0);
   });
 
   it("does not try to load a model index for a saved metric", async () => {
-    await renderDatasetEditor(mockSavedMetric);
+    await setup({ card: mockSavedMetric });
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
     expect(calls).toHaveLength(0);
   });
 
   it("does not try to load a model index when card is unsaved", async () => {
-    await renderDatasetEditor(mockUnsavedCard);
+    await setup({ card: mockUnsavedCard });
     const calls = fetchMock.callHistory.calls("path:/api/model-index");
     expect(calls).toHaveLength(0);
+  });
+
+  it("does not show the saved state after opening the save modal for a new model (metabase#75461)", async () => {
+    const { onOpenModal } = await setup({
+      card: mockUnsavedModel,
+      isDirty: true,
+    });
+    const saveButton = screen.getByRole("button", { name: "Save" });
+
+    await userEvent.click(saveButton);
+
+    await waitFor(() =>
+      expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.SAVE),
+    );
+    await waitFor(() =>
+      expect(saveButton).not.toHaveAttribute("data-action-status", "pending"),
+    );
+    expect(saveButton).toHaveAttribute("data-action-status", "idle");
+    expect(saveButton).toHaveTextContent(/^Save$/);
   });
 });
