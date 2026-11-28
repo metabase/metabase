@@ -17,7 +17,7 @@ import { TableTrigger } from "../../TriggerComponents";
 import { UnconnectedDataSelector } from "../DataSelector";
 
 type DataSelectorProps = ComponentProps<typeof UnconnectedDataSelector>;
-type TestProps = Partial<DataSelectorProps> & Pick<DataSelectorProps, "steps">;
+type TestProps = Partial<DataSelectorProps>;
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
@@ -91,10 +91,10 @@ describe("DataSelector", () => {
   );
 
   // Required props the connected wrappers normally inject. The falsy values
-  // stand in for the `undefined`s these tests relied on before the conversion;
-  // the `canSelect*` flags are unread here, since no `steps` array below
-  // includes the bucket step.
-  const DEFAULT_PROPS: Omit<DataSelectorProps, "steps"> = {
+  // stand in for the `undefined`s these tests relied on before the conversion.
+  // With no models, saved questions, metrics or Library to pick, Raw Data is
+  // the only data type, so the picker skips straight to the databases.
+  const DEFAULT_PROPS: DataSelectorProps = {
     triggerContentComponent: TableTrigger,
     canSelectModel: true,
     canSelectTable: true,
@@ -126,7 +126,6 @@ describe("DataSelector", () => {
     const setTable = jest.fn();
     render(
       <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE, ANOTHER_DATABASE]}
         entityLookups={entityLookups}
@@ -172,7 +171,6 @@ describe("DataSelector", () => {
     const fetchSchemaTables = jest.fn();
 
     const props: TestProps = {
-      steps: ["DATABASE", "SCHEMA", "TABLE"],
       triggerElement: <div />,
       databases: [],
       entityLookups: emptyLookups,
@@ -230,7 +228,6 @@ describe("DataSelector", () => {
   it("should skip db and schema steps if there's only one option", async () => {
     render(
       <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
         triggerElement={<div />}
         databases={[SAMPLE_DATABASE]}
         entityLookups={entityLookups}
@@ -245,7 +242,6 @@ describe("DataSelector", () => {
     const fetchDatabases = jest.fn();
     render(
       <DataSelector
-        steps={["DATABASE"]}
         triggerElement={<div>button</div>}
         entityLookups={emptyLookups}
         databases={[]}
@@ -261,7 +257,6 @@ describe("DataSelector", () => {
   it("should expand multi-schema after clicking into single-schema", async () => {
     render(
       <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
         entityLookups={entityLookups}
@@ -286,7 +281,6 @@ describe("DataSelector", () => {
   it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
-        steps={["DATABASE"]}
         databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
         triggerElement={<div />}
@@ -303,7 +297,6 @@ describe("DataSelector", () => {
   it("should skip schema when going to previous step", async () => {
     render(
       <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
         databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
         triggerElement={<div />}
         entityLookups={entityLookups}
@@ -328,12 +321,7 @@ describe("DataSelector", () => {
 
   it("shows an empty state without any databases", async () => {
     render(
-      <DataSelector
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        databases={[]}
-        triggerElement={<div />}
-        isOpen={true}
-      />,
+      <DataSelector databases={[]} triggerElement={<div />} isOpen={true} />,
     );
     await waitForRequestsToSettle();
 
