@@ -20,6 +20,14 @@ export function setupAdhocQueryEndpoint(
   fetchMock.post("path:/api/dataset", response, options);
 }
 
+export function setupAdhocPivotQueryEndpoint(
+  response: MockResponse<Dataset | Response>,
+) {
+  fetchMock.post("path:/api/dataset/pivot", response, {
+    name: "dataset-pivot-post",
+  });
+}
+
 export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
   fetchMock.post(`path:/api/dataset/query_metadata`, metadata, {
     name: "dataset-query-metadata",

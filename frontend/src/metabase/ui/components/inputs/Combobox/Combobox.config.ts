@@ -16,7 +16,7 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
        * that keeps flipping the `placement` if the component is unmounted.
        * That's why we need to keep it `true` to avoid a regression. At the time
        * of writing, the only e2e test that caught this is "should apply
-       * conditional formatting" in `pivot_tables.cy.spec.js`.
+       * conditional formatting" in `pivot_tables.cy.spec.ts`.
        */
       keepMounted: true,
       shadow: "sm_outline",

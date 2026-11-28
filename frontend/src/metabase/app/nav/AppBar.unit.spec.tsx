@@ -546,6 +546,62 @@ describe("AppBar saved question breadcrumbs", () => {
   });
 });
 
+describe("AppBar question lineage", () => {
+  const matchMediaSpy = jest.spyOn(window, "matchMedia");
+
+  beforeEach(() => {
+    matchMediaSpy.mockReturnValue(getMediaQuery({ matches: false }));
+  });
+
+  afterEach(() => {
+    matchMediaSpy.mockReset();
+  });
+
+  it("links a changed saved question to the question it started from", async () => {
+    const originalCard = createMockCard({ id: 5, name: "Cypress Pivot Table" });
+    // The query builder keeps a changed question in `qb.card` without an id,
+    // while the store type declares a saved card
+    const changedCard = {
+      ...createMockCard({
+        display: "table",
+        dataset_query: originalCard.dataset_query,
+        original_card_id: originalCard.id,
+      }),
+      id: undefined,
+    } as unknown as Card;
+    setup({
+      card: changedCard,
+      originalCard,
+      initialRoute: "/question",
+      withKBar: true,
+    });
+
+    const appBar = screen.getByTestId("app-bar");
+    expect(await within(appBar).findByText(/Started from/)).toBeInTheDocument();
+    expect(
+      within(appBar).getByRole("link", { name: "Cypress Pivot Table" }),
+    ).toHaveAttribute("href", "/question/5-cypress-pivot-table");
+  });
+
+  it("shows no lineage for an unchanged saved question", async () => {
+    const card = createMockCard({ id: 5, name: "Cypress Pivot Table" });
+    setup({
+      card,
+      originalCard: card,
+      initialRoute: "/question/5",
+      withKBar: true,
+    });
+
+    // The lineage comes from the store alone, so it shows on the first render
+    const appBar = screen.getByTestId("app-bar");
+    expect(within(appBar).queryByText(/Started from/)).not.toBeInTheDocument();
+    // The collection path shows in its place
+    expect(
+      await within(appBar).findByRole("link", { name: /Our analytics/ }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("getSearchResultSelection", () => {
   const indexedEntity = createMockSearchResult({
     id: 42,
@@ -588,6 +644,7 @@ describe("getSearchResultSelection", () => {
 function setup({
   embedOptions,
   card = createMockCard(),
+  originalCard,
   dashboardState,
   initialRoute = "/question/1",
   collections = [FOO_COLLECTION],
@@ -597,6 +654,7 @@ function setup({
 }: {
   embedOptions?: Partial<InteractiveEmbeddingOptions>;
   card?: Card;
+  originalCard?: Card;
   dashboardState?: { dashboard: DashboardState };
   initialRoute?: string;
   collections?: Collection[];
@@ -636,6 +694,7 @@ function setup({
       }),
       qb: createMockQueryBuilderState({
         card,
+        originalCard,
       }),
       ...dashboardState,
       ...(settings ? { settings } : {}),

@@ -1351,7 +1351,7 @@
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
     ;; (This is calculated by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]])
     ;;
-    ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
+    ;; `e2e/test/scenarios/visualizations/tabular/pivot_tables.cy.spec.ts` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
     ;;
     ;; `:limit 1` applies per subquery under multi-query but only once under the single-query paths, so row
@@ -1377,7 +1377,7 @@
 
 (deftest ^:parallel fe-friendly-legacy-field-refs-test-2
   (testing "field_refs in the result metadata should preserve :base-type if it was specified for some reason, otherwise FE will break"
-    ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
+    ;; `e2e/test/scenarios/visualizations/tabular/pivot_tables.cy.spec.ts` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
     (let [query (merge (mt/mbql-query orders
                          {:aggregation  [[:count]]

@@ -1,12 +1,15 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { createMockPivotData } from "__support__/pivot";
 import { renderWithProviders } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import * as domUtils from "metabase/utils/dom";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
@@ -23,11 +26,13 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
+  REVIEWS,
   createOrdersCreatedAtDatasetColumn,
   createProductsCategoryDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { PIVOT_TABLE_BODY_LABEL } from "./constants";
 import {
   PIVOT_TABLE_MOCK_DATA,
   PivotTableTestWrapper,
@@ -379,5 +384,135 @@ describe("Visualizations > PivotTable > Chart Settings", () => {
     );
     await userEvent.click(await screen.findByText("Count"));
     expect(await screen.findByText("Category Updated")).toBeInTheDocument();
+  });
+});
+
+describe("Visualizations > PivotTable > Visualization", () => {
+  mockGetBoundingClientRect({ width: 600, height: 400 });
+
+  const ratingColumn = createMockColumn({
+    name: "RATING",
+    display_name: "Rating",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    source: "breakout",
+    field_ref: ["field", REVIEWS.RATING, null],
+  });
+  const createdAtColumn = createMockColumn({
+    name: "CREATED_AT",
+    display_name: "Created At: Month",
+    base_type: "type/DateTime",
+    effective_type: "type/DateTime",
+    source: "breakout",
+    unit: "month",
+    field_ref: ["field", REVIEWS.CREATED_AT, { "temporal-unit": "month" }],
+  });
+  const countColumn = createMockColumn({
+    name: "count",
+    display_name: "Count",
+    base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
+    source: "aggregation",
+    field_ref: ["aggregation", 0],
+  });
+  // Many months, so the row totals are far to the right
+  const months = Array.from(
+    { length: 48 },
+    (_value, index) =>
+      `${2022 + Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}-01T00:00:00Z`,
+  );
+
+  type SetupOpts = { isDashboard: boolean };
+
+  function setupWideTable({ isDashboard }: SetupOpts) {
+    const pivotOptions = { pivot_rows: [0], pivot_cols: [1] };
+    const data = createMockPivotData({
+      breakouts: [ratingColumn, createdAtColumn],
+      aggregations: [countColumn],
+      rows: months.flatMap((month, index) => [
+        [1, month, index + 1],
+        [2, month, index + 2],
+      ]),
+      ...pivotOptions,
+    });
+    renderWithProviders(
+      <Visualization
+        isDashboard={isDashboard}
+        rawSeries={[
+          {
+            card: createMockCard({
+              display: "pivot",
+              visualization_settings: {
+                "pivot_table.column_split": {
+                  rows: ["RATING"],
+                  columns: ["CREATED_AT"],
+                  values: ["count"],
+                },
+              },
+            }),
+            data: createMockDatasetData(data),
+          },
+        ]}
+      />,
+    );
+  }
+
+  it.each([{ isDashboard: true }, { isDashboard: false }])(
+    "scrolls horizontally to the row totals when the columns overflow (isDashboard: $isDashboard)",
+    async ({ isDashboard }) => {
+      setupWideTable({ isDashboard });
+
+      const body = await screen.findByLabelText(PIVOT_TABLE_BODY_LABEL);
+      const topHeader = screen.getByLabelText("pivot-table-top-header");
+      expect(within(topHeader).getByText("January 2022")).toBeInTheDocument();
+      expect(
+        within(topHeader).queryByText("Row totals"),
+      ).not.toBeInTheDocument();
+
+      body.scrollLeft = 10000;
+      fireEvent.scroll(body);
+
+      expect(
+        await within(topHeader).findByText("Row totals"),
+      ).toBeInTheDocument();
+      expect(
+        within(topHeader).queryByText("January 2022"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows an error for the results of a native query", async () => {
+    renderWithProviders(
+      <Visualization
+        rawSeries={[
+          {
+            card: createMockCard({
+              display: "pivot",
+              dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+                query: "select 1",
+              }),
+            }),
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn({
+                  name: "1",
+                  display_name: "1",
+                  base_type: "type/Integer",
+                  source: "native",
+                }),
+              ],
+              rows: [[1]],
+            }),
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "Pivot tables are only supported for questions built in the query builder.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("pivot-table")).not.toBeInTheDocument();
   });
 });

@@ -261,7 +261,7 @@
 (mu/defn- fe-friendly-expression-ref :- ::mbql.s/Reference
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' Lib
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
-  don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
+  don't believe me remove this and run `e2e/test/scenarios/visualizations/tabular/pivot_tables.cy.spec.ts` and you
   will see."
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
