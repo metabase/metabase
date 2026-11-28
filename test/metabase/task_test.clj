@@ -634,3 +634,11 @@
         (task/reschedule-trigger! (hourly-scope-trigger)))
       (is (= 43 (trigger-worktree-id))))
     (task/delete-task! scope-job-key scope-trigger-key)))
+
+(deftest standby-scheduler-test
+  (testing "standby stops the scheduler firing triggers without shutting it down"
+    (mt/with-temp-scheduler!
+      (task/standby-scheduler!)
+      (is (= {:standby? true, :shutdown? false}
+             {:standby?  (.isInStandbyMode (task/scheduler))
+              :shutdown? (.isShutdown (task/scheduler))})))))

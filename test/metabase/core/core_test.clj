@@ -80,3 +80,15 @@
 (deftest system-dependencies-have-no-cycle-test
   (testing "the halt's dependencies form a graph a halt accepts"
     (is (some? (#'global-system/dependency-graph @#'core/system-dependencies)))))
+
+(deftest shutdown-steps-follow-their-uses-test
+  (testing "every shutdown step runs before each step it uses, and every step named exists"
+    (let [position (zipmap (map first (#'core/shutdown-steps)) (range))
+          uses     core/shutdown-step-uses]
+      (is (= {:unknown #{}, :out-of-order []}
+             {:unknown      (into #{} (comp (mapcat (fn [[step used]] (cons step used))) (remove position)) uses)
+              :out-of-order (vec (for [[step used] uses
+                                       u           used
+                                       :when       (and (position step) (position u)
+                                                        (> (position step) (position u)))]
+                                   [step u]))})))))

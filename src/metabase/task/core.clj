@@ -29,6 +29,7 @@
   scheduler
   scheduler-disabled?
   scheduler-info
+  standby-scheduler!
   start-scheduler!
   stop-scheduler!
   trigger-now!])
