@@ -126,7 +126,7 @@ export function ColumnValue({
             size="lg"
             variant="outline"
             fw={400}
-            leftSection={<Icon name="label" size={16} />}
+            leftSection={<Icon name="label" size={12} />}
           >
             {value}
           </Badge>
