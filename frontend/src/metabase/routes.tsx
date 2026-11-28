@@ -67,7 +67,7 @@ import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { getCollectionTimelineRoutes } from "metabase/timelines/collections/routes";
 
 import { LoadCurrentUser } from "./LoadCurrentUser";
-import { createEntityIdRedirect } from "./routes-stable-id-aware";
+import { getEntityIdRoutes } from "./routes-stable-id-aware";
 
 type AppStore = Store<State> & {
   dispatch: ThunkDispatch<State, void, UnknownAction>;
@@ -305,25 +305,14 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               { path: "archive", element: redirect("../trash") },
               { path: "trash", lazy: trashCollectionLanding },
 
+              ...getEntityIdRoutes(),
+
               {
-                path: "document/:entityId",
+                path: "document/:documentId",
                 lazy: documentPage,
                 children: [
                   lazyModalRoute("comments/:childTargetId", commentsSidesheet),
                 ],
-              },
-
-              {
-                path: "collection/entity/:entity_id/*",
-                element: createEntityIdRedirect({
-                  parametersToTranslate: [
-                    {
-                      name: "entity_id",
-                      resourceType: "collection",
-                      type: "param",
-                    },
-                  ],
-                }),
               },
 
               {
@@ -372,46 +361,11 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 ],
               },
 
-              {
-                path: "dashboard/entity/:entity_id/*",
-                element: createEntityIdRedirect({
-                  parametersToTranslate: [
-                    {
-                      name: "entity_id",
-                      resourceType: "dashboard",
-                      type: "param",
-                    },
-                    {
-                      name: "tab",
-                      resourceType: "dashboard-tab",
-                      type: "search",
-                    },
-                    {
-                      name: "scrollTo",
-                      resourceType: "dashboard-card",
-                      type: "hash",
-                    },
-                  ],
-                }),
-              },
-
               getDashboardRoute(),
 
               {
                 path: "/question",
                 children: [
-                  {
-                    path: "/question/entity/:entity_id/*",
-                    element: createEntityIdRedirect({
-                      parametersToTranslate: [
-                        {
-                          name: "entity_id",
-                          resourceType: "card",
-                          type: "param",
-                        },
-                      ],
-                    }),
-                  },
                   { index: true, lazy: queryBuilder },
                   { path: "notebook", lazy: queryBuilder },
                   { path: "ask", lazy: metabotQueryBuilder },

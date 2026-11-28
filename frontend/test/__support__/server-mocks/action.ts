@@ -40,6 +40,10 @@ function setupActionPostEndpoint() {
   );
 }
 
+export function setupActionByEntityIdEndpoint(action: WritebackAction) {
+  fetchMock.get(`path:/api/action/${action.entity_id}`, action);
+}
+
 export function setupActionsEndpoints(actions: WritebackAction[]) {
   fetchMock.get("path:/api/action", actions);
 

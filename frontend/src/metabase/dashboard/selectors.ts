@@ -459,6 +459,9 @@ export const getDocumentTitle = (state: State) =>
 export const getIsNavigatingBackToDashboard = (state: State) =>
   state.dashboard.isNavigatingBackToDashboard;
 
+export const getPrefetchedDashboard = (state: State) =>
+  state.dashboard.prefetchedDashboard;
+
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) => {

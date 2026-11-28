@@ -28,6 +28,7 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 const getCollectionItemTagModels = (
   models: ListCollectionItemsRequest["models"],
@@ -110,6 +111,16 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
+      onQueryStarted: ({ id, ...params }, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (collection) =>
+          dispatch(
+            collectionApi.util.upsertQueryData(
+              "getCollection",
+              { ...params, id: collection.id },
+              collection,
+            ),
+          ),
+        ),
     }),
     getCollectionPermissionsGraph: builder.query<
       CollectionPermissionsGraph,

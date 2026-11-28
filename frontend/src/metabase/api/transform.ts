@@ -1,5 +1,6 @@
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
+  BaseEntityId,
   CancelJobRunRequest,
   CreateTransformRequest,
   DagTransform,
@@ -38,6 +39,7 @@ import {
   provideTransformTags,
   tag,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const transformApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -61,13 +63,23 @@ export const transformApi = Api.injectEndpoints({
       providesTags: (response) =>
         response ? provideTransformRunListTags(response.data) : [],
     }),
-    getTransform: builder.query<Transform, TransformId>({
+    getTransform: builder.query<Transform, TransformId | BaseEntityId>({
       query: (id) => ({
         method: "GET",
         url: `/api/transform/${id}`,
       }),
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
+      onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (transform) =>
+          dispatch(
+            transformApi.util.upsertQueryData(
+              "getTransform",
+              transform.id,
+              transform,
+            ),
+          ),
+        ),
     }),
     runTransform: builder.mutation<RunTransformResponse, TransformId>({
       query: (id) => ({

@@ -21,6 +21,10 @@ export function setupDashboardEndpoints(
   });
 }
 
+export function setupDashboardByEntityIdEndpoint(dashboard: Dashboard) {
+  fetchMock.get(`path:/api/dashboard/${dashboard.entity_id}`, dashboard);
+}
+
 export function setupAutoDashboardEndpoints(
   dashboard: Dashboard,
   metadata: DashboardQueryMetadata,

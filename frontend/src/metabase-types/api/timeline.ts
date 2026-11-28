@@ -4,6 +4,7 @@ import type {
   CollectionId,
   RegularCollectionId,
 } from "./collection";
+import type { BaseEntityId } from "./entity-id";
 import type { UserInfo } from "./user";
 
 export type TimelineId = number;
@@ -80,7 +81,7 @@ export interface ListCollectionTimelinesRequest {
 }
 
 export interface GetTimelineRequest {
-  id: TimelineId;
+  id: TimelineId | BaseEntityId;
   include?: "events";
   archived?: boolean;
   start?: string;

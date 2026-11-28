@@ -1,4 +1,5 @@
 import type {
+  BaseEntityId,
   CreateMeasureRequest,
   FieldValue,
   GetMeasureDimensionValuesRequest,
@@ -20,6 +21,7 @@ import {
   provideMeasureTags,
   tag,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const measureApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,12 +32,18 @@ export const measureApi = Api.injectEndpoints({
       }),
       providesTags: (measures = []) => provideMeasureListTags(measures),
     }),
-    getMeasure: builder.query<Measure, MeasureId>({
+    getMeasure: builder.query<Measure, MeasureId | BaseEntityId>({
       query: (id) => ({
         method: "GET",
         url: `/api/measure/${id}`,
       }),
       providesTags: (measure) => (measure ? provideMeasureTags(measure) : []),
+      onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (measure) =>
+          dispatch(
+            measureApi.util.upsertQueryData("getMeasure", measure.id, measure),
+          ),
+        ),
     }),
     getMeasureDimensionValues: builder.query<
       GetMeasureDimensionValuesResponse,

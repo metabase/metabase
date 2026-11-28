@@ -217,7 +217,7 @@ export interface WritebackActionListQuery {
 }
 
 export interface GetActionRequest {
-  id: number;
+  id: WritebackActionId | BaseEntityId;
 }
 
 export interface ExecuteActionRequest {

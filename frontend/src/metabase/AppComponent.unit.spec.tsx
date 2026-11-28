@@ -49,7 +49,7 @@ const setup = ({ initialRoute }: SetupOpts) => {
       {
         element: <App />,
         children: [
-          { path: "/document/:entityId", element: <DocumentPageOuter /> },
+          { path: "/document/:documentId", element: <DocumentPageOuter /> },
           {
             path: "/collection/:slug",
             element: <CollectionPage />,

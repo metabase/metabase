@@ -58,6 +58,7 @@ import {
   markCardAsSlow,
   setDashboardAttributes,
   setDocumentTitle,
+  setPrefetchedDashboard,
   setShowLoadingCompleteFavicon,
   setSidebar,
 } from "./actions";
@@ -133,6 +134,17 @@ export const isNavigatingBackToDashboard = handleActions(
     [RESET]: () => false,
   },
   INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
+);
+
+export const prefetchedDashboard = createReducer<Dashboard | null>(
+  INITIAL_DASHBOARD_STATE.prefetchedDashboard,
+  (builder) => {
+    builder
+      .addCase(setPrefetchedDashboard, (_state, { payload }) => payload)
+      // It is for one load only, so a later visit requests the dashboard again.
+      .addCase(fetchDashboard.fulfilled, () => null)
+      .addCase(fetchDashboard.rejected, () => null);
+  },
 );
 
 export const isAddParameterPopoverOpen = handleActions(

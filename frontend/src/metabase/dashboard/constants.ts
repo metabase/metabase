@@ -38,6 +38,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   },
   isAddParameterPopoverOpen: false,
   isNavigatingBackToDashboard: false,
+  prefetchedDashboard: null,
   slowCards: {},
   sidebar: { props: {} },
   timelineEvents: {

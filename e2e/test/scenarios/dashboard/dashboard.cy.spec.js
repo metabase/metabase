@@ -1111,6 +1111,12 @@ describe("scenarios > dashboard > entity id support", () => {
   });
 
   it("should redirect entity id paths to the dashboard, its tabs and its modals, and keep the search params", () => {
+    // the dashboard is loaded once, by its entity id, and the dashboard page reuses it
+    cy.intercept({
+      method: "GET",
+      pathname: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
+    }).as("dashboardByNumericId");
+
     cy.log("Dashboard entity id");
     cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}`);
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`);
@@ -1121,6 +1127,7 @@ describe("scenarios > dashboard > entity id support", () => {
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}/move`);
     H.main().findByText("Orders in a dashboard").should("be.visible");
     H.modal().findByText("Move dashboard to…").should("be.visible");
+    cy.get("@dashboardByNumericId.all").should("have.length", 0);
 
     cy.log("Dashboard and tab entity ids");
     H.createDashboardWithTabs({

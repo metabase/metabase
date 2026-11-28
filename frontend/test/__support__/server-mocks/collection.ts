@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type {
+  BaseEntityId,
   Collection,
   CollectionId,
   CollectionItem,
@@ -366,6 +367,13 @@ export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
     status: 403,
     body: PERMISSION_ERROR,
   });
+}
+
+export function setupCollectionByEntityIdEndpoint(
+  entityId: BaseEntityId,
+  collection: Collection,
+) {
+  fetchMock.get(`path:/api/collection/${entityId}`, collection);
 }
 
 export function setupCollectionByIdEndpoint({

@@ -1,4 +1,5 @@
 import type {
+  BaseEntityId,
   CreateSnippetRequest,
   ListSnippetsParams,
   NativeQuerySnippet,
@@ -14,6 +15,7 @@ import {
   provideSnippetListTags,
   provideSnippetTags,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const snippetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,12 +30,21 @@ export const snippetApi = Api.injectEndpoints({
       }),
       providesTags: (snippets = []) => provideSnippetListTags(snippets),
     }),
-    getSnippet: builder.query<NativeQuerySnippet, NativeQuerySnippetId>({
+    getSnippet: builder.query<
+      NativeQuerySnippet,
+      NativeQuerySnippetId | BaseEntityId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/native-query-snippet/${id}`,
       }),
       providesTags: (snippet) => (snippet ? provideSnippetTags(snippet) : []),
+      onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (snippet) =>
+          dispatch(
+            snippetApi.util.upsertQueryData("getSnippet", snippet.id, snippet),
+          ),
+        ),
     }),
     createSnippet: builder.mutation<NativeQuerySnippet, CreateSnippetRequest>({
       query: (body) => ({

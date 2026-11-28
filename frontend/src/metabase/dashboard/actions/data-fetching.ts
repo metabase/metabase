@@ -783,6 +783,17 @@ export const fetchDashboard = createAsyncThunk(
 
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);
+      // A dashboard definition already holds the card layout, so it is published
+      // for the loading skeleton before the query metadata arrives. Only on a
+      // fresh open: a dashboard that is already on screen never shows the skeleton.
+      const isOpeningDashboard = getDashboardId(getState()) === null;
+      const publishLayout = (dashboard: Dashboard) =>
+        dispatch(
+          dashboardLayoutFetched(
+            normalize(copyVirtualCardsToCards(dashboard), dashboardSchema)
+              .entities,
+          ),
+        );
 
       if (!clearCache && loadedDashboard) {
         entities = {
@@ -871,6 +882,9 @@ export const fetchDashboard = createAsyncThunk(
         // The dashboard was just handed to us (e.g. a save response), so skip
         // the GET. We still warm the query metadata cache exactly as the normal
         // path does (served from cache via forceRefetch: false).
+        if (isOpeningDashboard) {
+          publishLayout(prefetchedDashboard);
+        }
         linkTargets = toLinkTargets(
           await runRtkEndpoint(
             { id: dashId, dashboard_load_id: dashboardLoadId },
@@ -894,20 +908,10 @@ export const fetchDashboard = createAsyncThunk(
           { forceRefetch: false },
         );
 
-        // The dashboard definition already holds the card layout and usually
-        // arrives well before the query metadata, so publish it right away for
-        // the loading skeleton. Only on a fresh open: a dashboard that is
-        // already on screen never shows the skeleton.
-        const isOpeningDashboard = getDashboardId(getState()) === null;
+        // The dashboard definition usually arrives well before the query metadata.
         if (isOpeningDashboard) {
           dashboardRequest.then(
-            (response) =>
-              dispatch(
-                dashboardLayoutFetched(
-                  normalize(copyVirtualCardsToCards(response), dashboardSchema)
-                    .entities,
-                ),
-              ),
+            publishLayout,
             // A failed request is surfaced by the `Promise.all` below.
             () => {},
           );

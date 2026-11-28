@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
-import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
+import {
+  handleLoadedByEntityId,
+  handleQueryFulfilled,
+} from "metabase/api/utils/lifecycle";
 import type {
   CopyDocumentRequest,
   CreateDocumentRequest,
@@ -19,8 +22,18 @@ export const documentApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/document/${id}`,
       }),
-      providesTags: (result, error, { id }) =>
-        !error ? [idTag("document", id)] : [],
+      providesTags: (document) =>
+        document ? [idTag("document", document.id)] : [],
+      onQueryStarted: ({ id, ...params }, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (doc) =>
+          dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { ...params, id: doc.id },
+              doc,
+            ),
+          ),
+        ),
     }),
     createDocument: builder.mutation<Document, CreateDocumentRequest>({
       query: (body) => ({

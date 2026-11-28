@@ -87,7 +87,7 @@ const setup = ({ canWrite = true, withCardEmbed = false }: SetupOpts = {}) => {
 
   return renderWithProviders(
     <>
-      <Route path="/document/:entityId" element={<DocumentPage />}></Route>
+      <Route path="/document/:documentId" element={<DocumentPage />}></Route>
     </>,
     {
       withRouter: true,
@@ -103,7 +103,7 @@ const setupDocumentError = ({ status }: { status: number }) => {
   setupTimelinesEndpoints([]);
 
   return renderWithProviders(
-    <Route path="/document/:entityId" element={<DocumentPage />} />,
+    <Route path="/document/:documentId" element={<DocumentPage />} />,
     {
       withRouter: true,
       initialRoute: "/document/1",
@@ -116,7 +116,7 @@ const setupNewDocument = () => {
   setupTimelinesEndpoints([]);
 
   return renderWithProviders(
-    <Route path="/document/:entityId" element={<DocumentPage />} />,
+    <Route path="/document/:documentId" element={<DocumentPage />} />,
     {
       withRouter: true,
       initialRoute: "/document/new",

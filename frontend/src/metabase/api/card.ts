@@ -32,6 +32,7 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -83,6 +84,16 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
+        onQueryStarted: ({ id, ...params }, { dispatch, queryFulfilled }) =>
+          handleLoadedByEntityId(id, queryFulfilled, (card) =>
+            dispatch(
+              cardApi.util.upsertQueryData(
+                "getCard",
+                { ...params, id: card.id },
+                card,
+              ),
+            ),
+          ),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({

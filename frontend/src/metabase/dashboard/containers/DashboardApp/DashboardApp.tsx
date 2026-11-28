@@ -46,7 +46,12 @@ import {
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
-import { getDocumentTitle, getFavicon, getIsEditing } from "../../selectors";
+import {
+  getDocumentTitle,
+  getFavicon,
+  getIsEditing,
+  getPrefetchedDashboard,
+} from "../../selectors";
 
 import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
@@ -94,6 +99,7 @@ export const DashboardApp = () => {
     [location.search],
   );
   const dashboardId = Urls.extractEntityId(params.slug);
+  const prefetchedDashboard = useSelector(getPrefetchedDashboard);
 
   useRegisterDashboardMetabotContext();
 
@@ -203,6 +209,7 @@ export const DashboardApp = () => {
     <ErrorBoundary message={error}>
       <DashboardContextProvider
         dashboardId={dashboardId}
+        prefetchedDashboard={prefetchedDashboard ?? undefined}
         parameterQueryParams={parameterQueryParams}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}

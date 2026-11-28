@@ -1,12 +1,20 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  BaseEntityId,
   CardId,
   Dataset,
   Document,
   DocumentId,
   GetPublicDocument,
 } from "metabase-types/api";
+
+export function setupDocumentByEntityIdEndpoint(
+  entityId: BaseEntityId,
+  doc: Document | Promise<Document>,
+) {
+  fetchMock.get(`path:/api/document/${entityId}`, doc);
+}
 
 export function setupDocumentEndpoints(doc: Document) {
   fetchMock.get(`path:/api/document/${doc.id}`, doc);
@@ -92,7 +100,7 @@ export function setupPublicDocumentCardQueryEndpoint(
 }
 
 export function setupDocumentErrorEndpoint(
-  id: DocumentId,
+  id: DocumentId | BaseEntityId,
   { status }: { status: number },
 ) {
   fetchMock.get(`path:/api/document/${id}`, { status });

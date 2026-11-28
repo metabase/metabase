@@ -25,6 +25,7 @@ import {
   provideActionListTags,
   provideActionTags,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const actionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -42,6 +43,16 @@ export const actionApi = Api.injectEndpoints({
         url: `/api/action/${id}`,
       }),
       providesTags: (action) => (action ? provideActionTags(action) : []),
+      onQueryStarted: ({ id, ...params }, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (action) =>
+          dispatch(
+            actionApi.util.upsertQueryData(
+              "getAction",
+              { ...params, id: action.id },
+              action,
+            ),
+          ),
+        ),
     }),
     createAction: builder.mutation<WritebackAction, CreateActionRequest>({
       query: (body) => ({
