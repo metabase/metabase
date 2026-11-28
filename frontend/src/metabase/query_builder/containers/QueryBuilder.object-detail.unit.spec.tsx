@@ -517,7 +517,7 @@ describe("QueryBuilder > object detail", () => {
       "aria-label",
       "sidebar_open icon",
     );
-    // the closing sidesheet moves the pointer focus, so hover again
+    // the tooltip closes with the click, so hover again
     await userEvent.unhover(within(getRow(0)).getByTestId("detail-shortcut"));
     await userEvent.hover(within(getRow(0)).getByTestId("detail-shortcut"));
     expect(
@@ -551,7 +551,11 @@ describe("QueryBuilder > object detail", () => {
     const nameValues = within(detail).getAllByText("Domenica Williamson");
     await userEvent.click(nameValues[nameValues.length - 1]);
     await userEvent.click(within(detail).getByText("Searsboro"));
-    expect(screen.queryByTestId("click-actions-view")).not.toBeInTheDocument();
+    // the drills open a while after the click, as in the table above, so wait
+    // for them to have had the chance to open
+    await expect(
+      screen.findByTestId("click-actions-view", {}, { timeout: 2000 }),
+    ).rejects.toThrow();
   });
 
   it("opens the row that was clicked after a vertical and a horizontal scroll (metabase#51301)", async () => {
