@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.global-system.mutable-component :as mc]
    [metabase.global-system.system :as system]
-   [metabase.global-system.test-util :as global-system.tu])
+   [metabase.global-system.test-util :as global-system.tu]
+   [metabase.test :as mt])
   (:import
    (clojure.lang IDeref)
    (java.util.concurrent LinkedBlockingQueue)))
@@ -622,6 +623,75 @@
           (system/reopen!)
           (cleanup! [handle]))))))
 
+(deftest ^:synchronized halt-stops-waiting-for-starts-after-the-timeout-test
+  (testing "a halt given a start timeout stops waiting for a start that outlasts it, and logs which one"
+    (mt/with-log-messages-for-level [messages [metabase.global-system.system :warn]]
+      (let [handle (system/mutable-component-handle ::slow-start-during-halt (constantly nil))
+            inside (promise)
+            leave  (promise)]
+        (try
+          (let [starter (future (system/ensure-started! handle
+                                                        #(do (deliver inside true) @leave :started)
+                                                        (constantly nil)))
+                _       @inside
+                closing (future (#'system/begin-halt! 100))]
+            (is (= {:waited-out? true
+                    :logged      [{:level   :warn
+                                   :message (str "Halting while 1 components are still starting, which this halt will"
+                                                 " not stop: (" (pr-str ::slow-start-during-halt) ")")}]}
+                   {:waited-out? (not= ::still-waiting (deref closing 5000 ::still-waiting))
+                    :logged      (mapv #(select-keys % [:level :message]) (messages))}))
+            (deliver leave true)
+            @starter)
+          (finally
+            (deliver leave true)
+            (system/reopen!)
+            (cleanup! [handle])))))))
+
+(deftest ^:synchronized interrupted-halt-stops-waiting-for-starts-test
+  (testing "an interrupt while the halt waits for a start ends the wait, so the halt can go on to stop everything"
+    (let [handle (system/mutable-component-handle ::start-outlasting-an-interrupt (constantly nil))
+          inside (promise)
+          leave  (promise)]
+      (try
+        (let [starter (future (system/ensure-started! handle
+                                                      #(do (deliver inside true) @leave :started)
+                                                      (constantly nil)))
+              _       @inside
+              result  (promise)
+              halter  (doto (Thread. ^Runnable #(deliver result (#'system/begin-halt!)))
+                        (.start))]
+          ;; the halter is polling the start by now, with no timeout to end the wait
+          (Thread/sleep 50)
+          (.interrupt halter)
+          (is (true? (deref result 5000 ::still-waiting)))
+          (deliver leave true)
+          @starter)
+        (finally
+          (deliver leave true)
+          (system/reopen!)
+          (cleanup! [handle]))))))
+
+(deftest ^:synchronized stop-failures-are-logged-as-they-happen-test
+  (testing "each failed stop is logged before the next stop runs"
+    (mt/with-log-messages-for-level [messages [metabase.global-system.system :error]]
+      (let [fails   (system/mutable-component-handle ::fails-to-stop (constantly nil))
+            after   (system/mutable-component-handle ::stops-after-a-failure (constantly nil))
+            logged? (promise)]
+        (try
+          (system/ensure-started! fails (constantly :running) (fn [_] (throw (ex-info "boom" {}))))
+          (system/ensure-started! after (constantly :running) (fn [_] (deliver logged? (boolean (seq (messages))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Some components failed to stop"
+                                (#'system/stop-all! [fails after])))
+          (is (= {:logged-before-next-stop? true
+                  :messages                 [{:level   :error
+                                              :message (str "Failed to stop component "
+                                                            ::fails-to-stop)}]}
+                 {:logged-before-next-stop? (deref logged? 1000 false)
+                  :messages                 (mapv #(select-keys % [:level :message]) (messages))}))
+          (finally
+            (cleanup! [fails after])))))))
+
 (deftest ^:synchronized halt-waits-without-holding-a-lock-test
   (testing "starts that hold a slot lock while a halt waits are refused at once, so nothing deadlocks"
     (let [a        (system/mutable-component-handle ::waits-a (constantly nil))
@@ -653,7 +723,8 @@
       (try
         (wait-for #(contains? (:starting @@#'system/admissions) ::waits-a))
         (.start halter)
-        (wait-for #(#{Thread$State/BLOCKED Thread$State/WAITING} (.getState halter)))
+        ;; the halt polls for starts in flight, sleeping between checks
+        (wait-for #(#{Thread$State/BLOCKED Thread$State/WAITING Thread$State/TIMED_WAITING} (.getState halter)))
         ;; a start made while holding another component's slot lock
         (let [writer (future (mc/with-slot-lock b
                                (outcome #(system/ensure-started! c (constantly :c) (constantly nil)))))]

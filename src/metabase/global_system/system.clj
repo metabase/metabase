@@ -14,6 +14,7 @@
    [clojure.pprint :as pprint]
    [metabase.global-system.mutable-component :as mc]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [weavejester.dependency :as dep])
   (:import
    (clojure.lang IDeref)
@@ -243,8 +244,10 @@
                     ;; only once registered, so a halt that finds nothing in flight finds this registered
                     (swap! admissions update :starting dissoc k)))))))))))
 
-;; A long start holds up the threads that need the component, and [[halt!]] waits for it with no timeout.
-;; A start that exits the JVM deadlocks: the shutdown hook's halt waits for the start, and the exit waits for the hook.
+;; A long start holds up the threads that need the component, and [[halt!]] waits for it up to its `:start-timeout-ms`,
+;; with no limit by default.
+;; Without a limit, a start that exits the JVM deadlocks: the shutdown hook's halt waits for the start, and the exit
+;; waits for the hook.
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
@@ -296,7 +299,15 @@
    Once all have run, throws an ex-info whose `:failures` holds each component key with its exception, and whose
    cause is the first failure, with the others attached to it as suppressed exceptions."
   [handles]
-  (let [failures (u/run-each! (map (fn [handle] [(handle-key handle) #(stop! handle)]) handles))]
+  (let [failures (u/run-each! (map (fn [handle]
+                                     (let [k (handle-key handle)]
+                                       ;; logged as it happens, so a later stop that outlasts shutdown cannot lose it
+                                       [k #(try
+                                             (stop! handle)
+                                             (catch Throwable e
+                                               (log/errorf e "Failed to stop component %s" k)
+                                               (throw e)))]))
+                                   handles))]
     (when (seq failures)
       (let [cause (second (first failures))]
         ;; so a log of the one exception shows every failure's stack trace; the cause itself is skipped, since two stops
@@ -350,21 +361,45 @@
   (swap! admissions assoc :halted? true)
   nil)
 
+;; the longest wait in milliseconds whose nanoseconds still fit in a long
+(def ^:private max-wait-ms (quot Long/MAX_VALUE 1000000))
+
 (defn- await-starts!
-  "Wait for every start in flight to register or fail, by taking its slot lock, which the start holds throughout.
+  "Wait up to `timeout-ms` for every start in flight to register or fail.
+   Returns `:starting`, the keys of those still in flight, and `:interrupted?`, whether an interrupt ended the wait.
    Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
-  []
-  (doseq [{:keys [handle]} (vals (:starting @admissions))]
-    (mc/without-binding handle #(mc/with-slot-lock handle nil))))
+  [timeout-ms]
+  ;; polled rather than waited on through each start's slot lock, which has no timed wait
+  (let [start      (System/nanoTime)
+        timeout-ns (* 1000000 timeout-ms)]
+    (loop []
+      (let [starting (keys (:starting @admissions))]
+        (if (or (empty? starting) (>= (- (System/nanoTime) start) timeout-ns))
+          {:starting (set starting), :interrupted? false}
+          (if (try
+                (Thread/sleep 10)
+                true
+                (catch InterruptedException _
+                  false))
+            (recur)
+            {:starting (set (keys (:starting @admissions))), :interrupted? true}))))))
 
 (defn- begin-halt!
-  "Refuse every later start, then wait for the starts already in flight to register or fail.
+  "Refuse every later start, then wait up to `start-timeout-ms` for the starts already in flight to register or fail.
+   Returns whether an interrupt ended that wait, in which case the interrupt is cleared.
    Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
-  []
-  (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
-    (throw (ex-info "A component's start cannot halt the system" {})))
-  (close-admission!)
-  (await-starts!))
+  ([]
+   (begin-halt! max-wait-ms))
+  ([start-timeout-ms]
+   (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
+     (throw (ex-info "A component's start cannot halt the system" {})))
+   (close-admission!)
+   (let [{:keys [starting interrupted?]} (await-starts! start-timeout-ms)]
+     (when (seq starting)
+       (log/warnf "Halting while %d components are still starting, which this halt will not stop: %s"
+                  (count starting)
+                  (pr-str (sort-by str starting))))
+     interrupted?)))
 
 (defn halt!
   "Stop every running component [[start!]] started.
@@ -373,17 +408,26 @@
    Otherwise components stop in the reverse of the order they first started in, as far as the dependencies allow.
 
    From the moment it begins, every start throws until [[reopen!]], so a stop cannot restart what the halt stopped.
-   It first waits for the starts already running, holding no lock and with no timeout, so it stops those too.
+   It first waits up to `:start-timeout-ms` milliseconds, unbounded by default, for the starts already running, holding
+   no lock, so it stops those too; one still running after that is logged and left running.
    It does not wait for a stop already running elsewhere, so it can stop what that component uses while that stop runs.
+   An interrupt during the wait for starts ends that wait; the halt still stops every component, then restores it.
 
    Throws before stopping anything if `dependencies` has a cycle, or if called from a component's start.
    Throws after trying every stop if any threw, with each failure under `:failures` of the ex-data."
   ([]
    (halt! {}))
   ([dependencies]
-   (let [graph (dependency-graph dependencies)]
-     (begin-halt!)
-     (stop-all! (halt-order graph)))))
+   (halt! dependencies {}))
+  ([dependencies {:keys [start-timeout-ms], :or {start-timeout-ms Long/MAX_VALUE}}]
+   (let [graph        (dependency-graph dependencies)
+         interrupted? (begin-halt! (min start-timeout-ms max-wait-ms))]
+     ;; restored only once the stops have run, since a stop's own waits would throw at once while it is set
+     (try
+       (stop-all! (halt-order graph))
+       (finally
+         (when interrupted?
+           (.interrupt (Thread/currentThread))))))))
 
 (defn reopen!
   "Let components start again after [[halt!]], for a REPL that halts the system and starts it again in one JVM."
