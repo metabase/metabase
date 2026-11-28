@@ -464,6 +464,26 @@
                        :fingerprint_version i/*latest-fingerprint-version*}
                       (t2/select-one [:model/Field :fingerprint :fingerprint_version] :id (u/the-id bad-fd)))))))))))
 
+(deftest fingerprint-sample-failure-is-isolated-per-table-test
+  (mt/test-driver :h2
+    (testing "when sampling one Table fails with a query error, the other Tables are still fingerprinted"
+      (mt/with-temp [:model/Database db      {:engine :h2}
+                     :model/Table    missing {:db_id (u/the-id db) :name "MISSING"}
+                     :model/Table    good    {:db_id (u/the-id db) :name "GOOD"}
+                     :model/Field    gone-fd {:table_id (u/the-id missing) :base_type :type/Text :fingerprint_version 0}
+                     :model/Field    good-fd {:table_id (u/the-id good) :base_type :type/Text :fingerprint_version 0}]
+        (mt/with-dynamic-fn-redefs [sync.fingerprint/sample-fingerprints (fn [table fields]
+                                                                           (if (= (u/the-id table) (u/the-id missing))
+                                                                             (throw (SQLException. "table does not exist"))
+                                                                             (stub-sample-fingerprints table fields)))]
+          (is (= {:no-data-fingerprints 0, :failed-fingerprints 1, :updated-fingerprints 1, :fingerprints-attempted 1}
+                 (fingerprint-db! (driver.u/lib-database (u/the-id db)))))
+          (is (= stub-fingerprint (t2/select-one-fn :fingerprint :model/Field :id (u/the-id good-fd))))
+          (testing "and the Fields of the failed Table are not retried on every sync"
+            (is (=? {:fingerprint         nil
+                     :fingerprint_version i/*latest-fingerprint-version*}
+                    (t2/select-one [:model/Field :fingerprint :fingerprint_version] :id (u/the-id gone-fd))))))))))
+
 (deftest fingerprint-save-error-is-not-retried-per-table-test
   (mt/test-driver :h2
     (testing "an Error of saving the fingerprints of all Tables is thrown without saving those of each Table"
