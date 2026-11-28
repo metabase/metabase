@@ -15,3 +15,7 @@
     background-color: var(--mb-color-background_surface-hover);
   }
 }
+
+.optionItem:focus-visible {
+  outline-offset: calc(-1 * var(--mantine-spacing-xxxs));
+}
