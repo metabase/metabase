@@ -1589,6 +1589,18 @@
                "/collection/C/"}
              (group->perms [a b c] group))))))
 
+(deftest move-from-personal-to-impersonal-deeply-nested-test
+  (testing "Collections three levels below a Collection moved out of a Personal Collection get the new parent's perms"
+    (with-personal-and-impersonal-collections [group {[a b c d] :personal, [e] :root}]
+      (perms/grant-collection-readwrite-permissions! group e)
+      (collection/update-collections! [{:id (u/the-id a) :location (collection/children-location e)}] nil)
+      (is (= #{"/collection/A/"
+               "/collection/B/"
+               "/collection/C/"
+               "/collection/D/"
+               "/collection/E/"}
+             (group->perms [a b c d e] group))))))
+
 ;;; --------------------------------------------- Impersonal -> Personal ---------------------------------------------
 
 (deftest move-from-impersonal-to-personal-test
