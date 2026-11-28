@@ -323,6 +323,30 @@
           (is (= :driver (:type (ex-data e))))
           (is (set? (:cyclic-visible-ifs (ex-data e)))))))))
 
+(deftest ^:parallel destination-database-advanced-options-test
+  (let [props      (->> (driver/connection-properties :postgres)
+                        (driver.u/connection-props-server->client :postgres)
+                        driver.u/collect-all-props-by-name)
+        hidden-if  (fn [prop-name]
+                     (-> (get-in props [prop-name :visible-if])
+                         (update-keys name)
+                         (get "destination-database")))]
+    (testing "the advanced options section and its connection settings are available for destination databases"
+      (doseq [prop-name ["advanced-options" "additional-options"]]
+        (testing prop-name
+          (is (contains? props prop-name))
+          (is (nil? (hidden-if prop-name))))))
+    (testing "options that only apply to the router database stay hidden for destination databases"
+      (doseq [prop-name ["auto_run_queries"
+                         "let-user-control-scheduling"
+                         "schedules.metadata_sync"
+                         "schedules.cache_field_values"
+                         "json-unfolding"
+                         "refingerprint"]]
+        (testing prop-name
+          (is (contains? props prop-name))
+          (is (false? (hidden-if prop-name))))))))
+
 (deftest ^:parallel collect-all-props-by-name-test
   (testing "collect-all-props-by-name flattens nested groups"
     (testing "flat properties without groups"

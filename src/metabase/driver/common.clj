@@ -212,8 +212,7 @@
   have their visibility controlled using the `visible-if` property."
   {:name    "advanced-options"
    :type    :section
-   :default false
-   :visible-if {"destination-database" false}})
+   :default false})
 
 (def auto-run-queries
   "Map representing the `auto-run-queries` option in a DB connection form."
@@ -225,6 +224,7 @@
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true
+                  "destination-database" false
                   "write-data-connection" false
                   "admin-connection" false}})
 
@@ -235,6 +235,7 @@
    :display-name (deferred-tru "Choose when syncs and scans happen")
    :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
    :visible-if   {"advanced-options" true
+                  "destination-database" false
                   "write-data-connection" false
                   "admin-connection" false}})
 
@@ -266,6 +267,7 @@
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
    :visible-if   {"advanced-options" true
+                  "destination-database" false
                   "write-data-connection" false
                   "admin-connection" false}
    :description  (deferred-tru
@@ -283,6 +285,7 @@
                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
                        "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true
+                  "destination-database" false
                   "write-data-connection" false
                   "admin-connection" false}})
 
