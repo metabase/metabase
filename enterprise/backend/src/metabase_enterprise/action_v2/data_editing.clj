@@ -11,9 +11,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp]
+   [metabase.queue-listener.core :as queue-listener]
    [metabase.sync.field-values :as sync.field-values]
-   [metabase.util :as u]
-   [metabase.util.queue :as queue])
+   [metabase.util :as u])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
 
@@ -44,9 +44,9 @@
                                    (action-v2.db/fields batch)))))]
     (sync.field-values/sync-fields-grouped-by-table! fields)))
 
-(defmethod queue/init-listener! ::FieldValueInvalidation [_]
-  (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
-                 {:max-batch-messages 10, :max-next-ms 10}))
+(defmethod queue-listener/init-listener! ::FieldValueInvalidation [_]
+  (queue-listener/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
+                          {:max-batch-messages 10, :max-next-ms 10}))
 
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."

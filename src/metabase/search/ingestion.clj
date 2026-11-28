@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
+   [metabase.queue-listener.core :as queue-listener]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion.query :as search.ingestion.query]
@@ -491,7 +492,7 @@
   (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
 
 (defn- index-worker-exists? []
-  (queue/listener-exists? listener-name))
+  (queue-listener/listener-exists? listener-name))
 
 (mu/defn await-pending-updates! :- :boolean
   "Wait up to `timeout-ms` for queued and running index updates to finish. Return whether none remain."
@@ -568,17 +569,17 @@
   "Starts the ingestion listener on the queue"
   []
   (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue ingest-batch!
-                   {:success-handler     (fn [_result _duration _]
-                                           (track-queue-size!))
-                    :err-handler        (fn [err _]
-                                          (log/errorf "Error indexing search entries: %s" (ex-message err))
-                                          (analytics/inc! :metabase-search/index-error)
-                                          (track-queue-size!))
-                    ;; Note that each message can correspond to multiple documents,
-                    ;; for example there would be 1 message for updating all
-                    ;; the tables within a given database when it is renamed.
-                    ;; Messages can also correspond to zero documents,
-                    ;; such as when updating a table that is marked as not visible.
-                    :max-batch-messages 50
-                    :max-next-ms       100})))
+    (queue-listener/listen! listener-name queue ingest-batch!
+                            {:success-handler    (fn [_result _duration _]
+                                                   (track-queue-size!))
+                             :err-handler        (fn [err _]
+                                                   (log/errorf "Error indexing search entries: %s" (ex-message err))
+                                                   (analytics/inc! :metabase-search/index-error)
+                                                   (track-queue-size!))
+                             ;; Note that each message can correspond to multiple documents,
+                             ;; for example there would be 1 message for updating all
+                             ;; the tables within a given database when it is renamed.
+                             ;; Messages can also correspond to zero documents,
+                             ;; such as when updating a table that is marked as not visible.
+                             :max-batch-messages 50
+                             :max-next-ms        100})))
