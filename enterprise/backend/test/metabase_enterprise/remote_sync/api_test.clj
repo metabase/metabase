@@ -80,6 +80,23 @@
           (is (false? (mt/user-http-request :crowberto :get 200 "setting/remote-sync-enabled")))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id collection)))))))))
 
+(deftest read-only-settings-save-pull-test
+  (remote-sync.tu/with-repository [url]
+    (mt/with-temporary-setting-values [remote-sync-url         nil
+                                       remote-sync-token       nil
+                                       remote-sync-branch      nil
+                                       remote-sync-type        :read-write
+                                       remote-sync-auto-import false]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (testing "setting up read-only instance pulls its branch"
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                        {:remote-sync-url url :remote-sync-type "read-only"})]
+            (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id)))))
+        (testing "saving setting that keeps repository, branch and type does not pull"
+          (is (= {:success true}
+                 (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                       {:remote-sync-auto-import true}))))))))
+
 (deftest test-connection-test
   (remote-sync.tu/with-repository [url]
     (testing "a reachable repository passes"
