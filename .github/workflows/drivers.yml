@@ -54,7 +54,32 @@ jobs:
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
       starburst-should-run: ${{ steps.driver-decisions.outputs.starburst-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
+      warehouse-slot: ${{ steps.warehouse-slot.outputs.slot }}
     steps:
+      # Shared cloud warehouses: every run, from every PR and branch, tests the cloud drivers
+      # (Athena, BigQuery, Databricks, MotherDuck, Redshift, Snowflake) against the same
+      # warehouses. Too many runs at once overload them and the tests fail. To limit this, each
+      # cloud job joins a job-level concurrency group named for its warehouse, a slot, and its
+      # matrix leg. Each group runs one job at a time, and `queue: max` makes later jobs wait
+      # (up to 100) instead of being cancelled. So each leg of each warehouse runs for at most
+      # DRIVER_WAREHOUSE_SLOTS runs at once.
+      #
+      # The slot is the run number modulo the slot count. A re-run keeps its run number, so it
+      # keeps its slot. Keep the count even: Databricks picks its workspace by run number modulo 2,
+      # so an even count splits the slots evenly between the two workspaces.
+      - name: Pick shared-warehouse concurrency slot
+        id: warehouse-slot
+        shell: bash
+        env:
+          SLOTS: ${{ vars.DRIVER_WAREHOUSE_SLOTS || '4' }}
+        run: | # sh
+          if ! [[ "$SLOTS" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::DRIVER_WAREHOUSE_SLOTS must be a positive integer, got '$SLOTS'"
+            exit 1
+          fi
+          slot=$(( GITHUB_RUN_NUMBER % SLOTS ))
+          echo "Using shared-warehouse slot $slot of $SLOTS"
+          echo "slot=$slot" >> "$GITHUB_OUTPUT"
       - name: Checkout repository
         uses: actions/checkout@v7
       - name: Prepare back-end environment
@@ -102,6 +127,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-athena-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-${{ matrix.runner-index }}
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -140,6 +169,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-bigquery-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-${{ matrix.runner-index }}
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -177,6 +210,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-bigquery-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-transforms-python
+      queue: max
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -304,6 +341,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-databricks-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-${{ matrix.runner-index }}
+      queue: max
     permissions:
       id-token: write
       contents: read
@@ -665,6 +706,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.motherduck-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-motherduck-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-${{ matrix.runner-index }}
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -1025,6 +1070,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-redshift-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-${{ matrix.job.name }}
+      queue: max
     strategy:
       fail-fast: false
       matrix:
@@ -1121,6 +1170,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-snowflake-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-${{ matrix.runner-index }}
+      queue: max
     permissions:
       # Required to mint a GitHub Actions OIDC token for the Snowflake WIF live test.
       id-token: write
@@ -1197,6 +1250,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-snowflake-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-upload
+      queue: max
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -1234,6 +1291,10 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
+    # See "Shared cloud warehouses" in determine-driver-skips.
+    concurrency:
+      group: drivers-warehouse-snowflake-slot-${{ needs.determine-driver-skips.outputs.warehouse-slot }}-transforms-python
+      queue: max
     env:
       CI: 'true'
       DRIVERS: snowflake
