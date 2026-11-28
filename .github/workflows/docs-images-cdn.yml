@@ -1,0 +1,107 @@
+name: Docs images to CDN
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ["docs/**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: read
+
+jobs:
+  upload:
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          sparse-checkout: |
+            docs
+            .github/scripts
+
+      - name: List changed images
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | select(.status != "removed") | .filename' > "$RUNNER_TEMP/files.txt"
+          if grep -qiE '^docs/.+\.(png|gif|jpe?g|webp|avif)$' "$RUNNER_TEMP/files.txt"; then
+            echo "images=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.files.outputs.images
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - if: steps.files.outputs.images
+        name: Install oxipng
+        env:
+          NAME: oxipng-10.2.1-x86_64-unknown-linux-musl
+          SHA256: 1813750ef592c5350ca79c88f98b2c0876d05c826dc7156245256d4255c1ad17
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "https://github.com/oxipng/oxipng/releases/download/v10.2.1/$NAME.tar.gz"
+          echo "$SHA256  $NAME.tar.gz" | sha256sum -c
+          tar -xzf "$NAME.tar.gz"
+          sudo install "$NAME/oxipng" /usr/local/bin/oxipng
+          oxipng --version
+
+      - if: steps.files.outputs.images
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.DOCS_IMAGES_CDN_IAM_ROLE }}
+          aws-region: ${{ vars.DOCS_IMAGES_CDN_AWS_REGION }}
+
+      - name: Upload images and rewrite links
+        if: steps.files.outputs.images
+        env:
+          BUCKET: ${{ vars.DOCS_IMAGES_CDN_S3_BUCKET }}
+        run: bun .github/scripts/docs-images-cdn.ts < "$RUNNER_TEMP/files.txt"
+
+      - name: Commit and push
+        if: steps.files.outputs.images
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          [ -n "$(git status --porcelain docs README.md)" ] || exit 0
+          git add -A docs README.md
+          git -c user.name="Metabase Automation" -c user.email="github-automation@metabase.com" \
+            commit --no-verify -m "Move docs images to cdn.metabase.com"
+          git push origin "HEAD:refs/heads/$HEAD_REF"
+
+  fork:
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Fail on new images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          FORK: "true"
+        run: |
+          set -o pipefail
+          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | select(.status != "removed") | .filename' |
+            bun .github/scripts/docs-images-cdn.ts
