@@ -6784,6 +6784,18 @@
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d)) {:dashcards [] :tabs []})
       (is (true? (t2/select-one-fn :archived :model/Card :id (:id dq)))))))
 
+(deftest dq-used-only-as-series-is-not-archived-test
+  (testing "PUT /api/dashboard/:id keeps a Dashboard Question used only as a series of a dashcard unarchived (#84708)"
+    (mt/with-temp [:model/Dashboard d {}
+                   :model/Card dq-a {:dashboard_id (:id d)}
+                   :model/Card dq-b {:dashboard_id (:id d)}
+                   :model/DashboardCard dc-a {:dashboard_id (:id d) :card_id (:id dq-a)}
+                   :model/DashboardCardSeries _ {:dashboardcard_id (:id dc-a) :card_id (:id dq-b) :position 0}]
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d))
+                            {:dashcards [(assoc dc-a :series [{:id (:id dq-b)}])] :tabs []})
+      (is (t2/exists? :model/DashboardCardSeries :card_id (:id dq-b)))
+      (is (false? (t2/select-one-fn :archived :model/Card :id (:id dq-b)))))))
+
 (deftest removing-one-dq-does-not-affect-sibling-dq-test
   (testing "PUT /api/dashboard/:id removing one Dashboard Question's dashcard leaves an unrelated Dashboard Question untouched"
     (mt/with-temp [:model/Dashboard d {}

@@ -194,15 +194,20 @@
     ;; headings render without a card background, matching the frontend default
     (= display "heading") (assoc :dashcard.background false)))
 
+(defn- named-card-ids
+  "The ids of the Cards that the dashcards `new-cards` name, as their card or among their series."
+  [new-cards]
+  (into #{} (mapcat (fn [{:keys [card_id series]}] (cons card_id (map u/the-id series)))) new-cards))
+
 (defn- questions-to-unarchive
   "The ids of the dashboard questions of the Dashboard `dashboard-id` that `new-cards` name."
   [dashboard-id new-cards]
-  (set/intersection (dashboards.db/internal-dashboard-question-ids dashboard-id) (into #{} (map :card_id) new-cards)))
+  (set/intersection (dashboards.db/internal-dashboard-question-ids dashboard-id) (named-card-ids new-cards)))
 
 (defn- questions-to-archive
   "The ids of the dashboard questions of the Dashboard `dashboard-id` that `new-cards` do not name."
   [dashboard-id new-cards]
-  (set/difference (dashboards.db/internal-dashboard-question-ids dashboard-id) (into #{} (map :card_id) new-cards)))
+  (set/difference (dashboards.db/internal-dashboard-question-ids dashboard-id) (named-card-ids new-cards)))
 
 (defn- check-questions-updatable
   "Throws a 403 unless the current user may set `archived` of each of the Cards among `card-ids` that it changes."
