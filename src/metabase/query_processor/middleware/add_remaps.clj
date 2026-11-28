@@ -628,6 +628,12 @@
                                (add-remapping-info remapping-dimensions internal-cols-info)
                                (concat internal-only-cols)))))
 
+(defn- strip-internal-remaps
+  "Remove `:lib/internal-remap` from result `cols`. It lists every value of the column, including rows the user can't
+  see; the added remap column carries the labels the rows need. Runs even when remaps are disabled."
+  [cols]
+  (some->> cols (mapv #(dissoc % :lib/internal-remap))))
+
 (mu/defn- remap-results-xform
   "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be
   added and each row flowing through needs to include the remapped data for the new column. For external remappings
@@ -649,11 +655,13 @@
   results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
   [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- ::lib.schema/query
    rff                                                                           :- ::qp.schema/rff]
-  (if disable-remaps?
-    rff
-    (fn remap-results-rff* [metadata]
+  (fn remap-results-rff* [metadata]
+    (if disable-remaps?
+      (rff (m/update-existing metadata :cols strip-internal-remaps))
+      ;; read the internal remaps before they are stripped
       (let [internal-cols-info (cols-internal-columns-info (:cols metadata))
-            metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
+            metadata           (-> (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)
+                                   (update :cols strip-internal-remaps))]
         (remap-results-xform internal-cols-info (rff metadata))))))
 
 (mu/defn remap-cols :- [:maybe ::qp.schema/result-metadata.columns]
@@ -661,9 +669,10 @@
   results of running it."
   [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware, :as _query} :- ::lib.schema/query
    cols                                                                          :- [:maybe ::qp.schema/result-metadata.columns]]
-  (if (or disable-remaps? (empty? cols))
-    cols
-    (vec (:cols (add-remapped-to-and-from-metadata {:cols cols} external-remaps (cols-internal-columns-info cols))))))
+  (strip-internal-remaps
+   (if (or disable-remaps? (empty? cols))
+     cols
+     (:cols (add-remapped-to-and-from-metadata {:cols cols} external-remaps (cols-internal-columns-info cols))))))
 
 (defn disable-remaps
   "Sets the value of the disable-remaps? option in this query."
