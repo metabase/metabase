@@ -537,6 +537,8 @@ Related: [contains](#contains), [regexExtract](#regexextract).
 
 ### domain
 
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
+
 Extracts the domain name from a URL or email.
 
 Syntax: `domain(urlOrEmail)`
@@ -571,6 +573,8 @@ Syntax: `float(value)`
 Example: `float("123.45")` would return `123.45` as a floating point value.
 
 ### host
+
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
 
 Extracts the host, which is the domain and the TLD, from a URL or email.
 
@@ -644,6 +648,8 @@ Example: `notEmpty([Feedback])` would return true if `Feedback` contains a value
 Related: [isEmpty](#isempty), [isNull](#isnull), [notNull](#notnull)
 
 ### path
+
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
 
 Extracts the pathname from a URL.
 
@@ -721,6 +727,8 @@ It would return false for "Computer **s**cience 201: Data structures" because th
 Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
 ### subdomain
+
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
 
 Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
 
@@ -1051,31 +1059,39 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here they are in summary:
 
-**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
+**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**BigQuery**: `Median`.
+**BigQuery**: `Median`, `domain`, `host`, `path`, `subdomain`.
+
+**ClickHouse**: `domain`, `host`, `path`, `subdomain`.
 
 **Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
 **Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
 
-**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`.
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**MariaDB**: `Median`, `Percentile`, `Offset`.
+**MariaDB**: `Median`, `Percentile`, `Offset`, `domain`, `host`, `path`, `subdomain`.
 
 **MySQL**: `Median`, `Percentile`, `Offset`.
 
-**Oracle**: `date`, `datetime`, `float`, `splitPart`.
+**Oracle**: `date`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`. Only provides _approximate_ results for `Median` and `Percentile`.
+**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`. Only provides _approximate_ results for `Median` and `Percentile`.
+
+**Redshift**: `domain`, `host`, `path`, `subdomain`.
+
+**Snowflake**: `domain`, `host`, `path`, `subdomain`.
 
 **SparkSQL**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`.
+**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
+**SQLite** (including Metabase Sample Database): `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
-**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
+**Starburst**: `domain`, `host`, `path`, `subdomain`.
+
+**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
 
 If you're using or maintaining a third-party database driver, check the [driver changelog](../../developers-guide/driver-changelog.md) to see how your driver might be impacted.
 
