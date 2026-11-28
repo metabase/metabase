@@ -41,6 +41,7 @@ jobs:
             /package.json
             e2e/runner/read-spec-paths.js
             e2e/support/timings.json
+            e2e/test
           sparse-checkout-cone-mode: false
       - name: Prepare Node + Bun environment
         uses: ./.github/actions/prepare-node-bun

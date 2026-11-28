@@ -43,11 +43,20 @@ inputs:
     description: Metabase Track recording sink container
     required: false
     default: false
+  mode:
+    description: |
+      `start-and-wait` (default) starts the containers and blocks until they accept connections.
+      `start` launches them in the background and returns at once, so the job can install its
+      toolchain while images pull; a later step with `mode: wait` and the same service inputs then
+      blocks until they are up.
+    required: false
+    default: start-and-wait
 
 runs:
   using: "composite"
   steps:
     - name: Authenticate to prevent API rate limit
+      if: ${{ inputs.mode != 'wait' }}
       shell: bash
       env:
         DOCKER_USERNAME: ${{ inputs.username }}
@@ -68,11 +77,11 @@ runs:
         done
 
     - name: Start Containers
+      if: ${{ inputs.mode != 'wait' }}
       shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
       run: | # bash
-        Y='\033[33m'
-        G='\033[1;32m'
-
         cd e2e/test/scenarios/
 
         SERVICES=()
@@ -86,20 +95,63 @@ runs:
         [ "${{ inputs.snowplow }}" = true ] && SERVICES+=(snowplow-micro)
         [ "${{ inputs.metaplow }}" = true ] && SERVICES+=(metaplow-sink)
 
-        for attempt in 1 2 3; do
-          echo "Docker compose up attempt $attempt of 3..."
-          if docker compose up "${SERVICES[@]}" -d; then
-            echo "Docker compose up succeeded on attempt $attempt"
-            break
-          fi
-          if [ $attempt -eq 3 ]; then
-            echo "::error::Docker compose up failed after 3 attempts"
+        compose_up() {
+          for attempt in 1 2 3; do
+            echo "Docker compose up attempt $attempt of 3..."
+            if docker compose up "${SERVICES[@]}" -d; then
+              echo "Docker compose up succeeded on attempt $attempt"
+              return 0
+            fi
+            if [ $attempt -eq 3 ]; then
+              echo "::error::Docker compose up failed after 3 attempts"
+              return 1
+            fi
+            echo "::warning::Docker compose up attempt $attempt failed, retrying in 30s..."
+            docker compose down 2>/dev/null || true
+            sleep 30
+          done
+        }
+
+        if [ "$MODE" = start ]; then
+          # Detached from the step's output so the step returns immediately; the `wait` step
+          # replays the log and fails on the exit status recorded here.
+          rm -f "$RUNNER_TEMP/e2e-containers.exit"
+          export -f compose_up
+          export SERVICES_LIST="${SERVICES[*]}"
+          nohup bash -c 'read -ra SERVICES <<< "$SERVICES_LIST"; compose_up; echo $? > "$RUNNER_TEMP/e2e-containers.exit"' \
+            > "$RUNNER_TEMP/e2e-containers.log" 2>&1 < /dev/null &
+          echo "Starting ${SERVICES[*]} in the background"
+        else
+          compose_up
+        fi
+
+    - name: Wait for Containers
+      if: ${{ inputs.mode != 'start' }}
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: | # bash
+        Y='\033[33m'
+        G='\033[1;32m'
+
+        if [ "$MODE" = wait ]; then
+          EXIT_FILE="$RUNNER_TEMP/e2e-containers.exit"
+          for _ in $(seq 1 600); do
+            [ -s "$EXIT_FILE" ] && break
+            sleep 1
+          done
+          echo "::group::docker compose up"
+          cat "$RUNNER_TEMP/e2e-containers.log" || true
+          echo "::endgroup::"
+          if [ ! -s "$EXIT_FILE" ]; then
+            echo "::error::Docker compose up did not finish within 10 minutes"
             exit 1
           fi
-          echo "::warning::Docker compose up attempt $attempt failed, retrying in 30s..."
-          docker compose down 2>/dev/null || true
-          sleep 30
-        done
+          if [ "$(cat "$EXIT_FILE")" != 0 ]; then
+            echo "::error::Docker compose up failed"
+            exit 1
+          fi
+        fi
 
         if ${{ inputs.maildev }}; then
           echo -e "${Y}checking maildev container..." &&
@@ -107,9 +159,11 @@ runs:
           while ! nc -z localhost 1125; do sleep 1; done &&
           echo -e "${G}Maildev is up and running!"
 
+          # Only the web port: maildev's SMTPS server crashes ("Socket closed unexpectedly") when a client
+          # connects to 465 and hangs up without a TLS handshake, which is exactly what `nc -z` does. The web
+          # UI is served by the same process, so it is up once the SMTPS server is.
           echo -e "${Y}checking maildev-ssl container..." &&
           while ! nc -z localhost 1081; do sleep 1; done &&
-          while ! nc -z localhost 465; do sleep 1; done &&
           echo -e "${G}Maildev-ssl is up and running!"
         fi
 

@@ -29,16 +29,54 @@ type MatrixEntry = MatrixJob & {
   edition: "ee" | "oss";
 };
 
-const taggedJobs: MatrixJob[] = [
+type TaggedJob = MatrixJob & {
+  /** A selected spec has to mention one of these tags for the job to be worth a runner. */
+  triggerTags: string[];
+};
+
+// There is no Mongo job: tests tagged `@mongo` run in the regular jobs (see e2e-test.yml), which start
+// the Mongo container anyway. A dedicated job spent ~80% of its runner time on setup for about a minute
+// of tests.
+const taggedJobs: TaggedJob[] = [
   {
     name: "oss-subset",
     edition: "oss",
     tags: "@OSS @prerelease+-@EE",
     specs: DEFAULT_SPEC_PATTERN,
+    triggerTags: ["@OSS", "@prerelease"],
   },
-  { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
-  { name: "python", tags: "@python", specs: DEFAULT_SPEC_PATTERN },
+  {
+    name: "python",
+    tags: "@python",
+    specs: DEFAULT_SPEC_PATTERN,
+    triggerTags: ["@python"],
+  },
 ];
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Whether any of the specs mentions one of the tags. Tags are string literals in the spec files
+ * (`{ tags: "@mongo" }`, `{ tags: ["@external", "@python"] }`), so a text search over-approximates
+ * the specs that Cypress grep would pick: it can keep a job that turns out to be empty, never drop
+ * one that has tests to run. A spec that cannot be read keeps the job too.
+ */
+export function specsMentionTags(
+  specFiles: string[],
+  tags: string[],
+  readSpec: (file: string) => string = (file) => readFileSync(file, "utf8"),
+): boolean {
+  const pattern = new RegExp(`(${tags.map(escapeRegExp).join("|")})(?![\\w-])`);
+  return specFiles.some((file) => {
+    try {
+      return pattern.test(readSpec(file));
+    } catch {
+      return true;
+    }
+  });
+}
 
 function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0);
@@ -78,6 +116,7 @@ export function buildMatrix({
   maxJobs,
   timings,
   targetRunnerMinutes,
+  readSpec,
 }: {
   java: number;
   defaultRunner: string;
@@ -86,6 +125,7 @@ export function buildMatrix({
   maxJobs: number;
   timings: Timings;
   targetRunnerMinutes: number;
+  readSpec?: (file: string) => string;
 }): { config: MatrixEntry[]; regularChunks: number } {
   if (!Number.isInteger(maxJobs) || maxJobs <= taggedJobs.length) {
     throw new Error(
@@ -113,8 +153,17 @@ export function buildMatrix({
     }),
   );
 
-  // Regular jobs exclude the OSS, Mongo, and Python tags, so these jobs must also run for selected specs.
-  const config = [...regularJobs, ...taggedJobs].map((test) => ({
+  // Regular jobs exclude the OSS and Python tags, so these jobs cover them. A narrowed plan only
+  // needs the ones whose tags appear in a selected spec; each one skipped saves a whole runner.
+  const neededTaggedJobs: MatrixJob[] = taggedJobs
+    .filter(
+      ({ triggerTags }) =>
+        specFiles === null ||
+        specsMentionTags(specFiles, triggerTags, readSpec),
+    )
+    .map(({ triggerTags: _triggerTags, ...job }) => job);
+
+  const config = [...regularJobs, ...neededTaggedJobs].map((test) => ({
     "java-version": java,
     runner: defaultRunner,
     edition: "ee" as const,
