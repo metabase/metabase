@@ -148,7 +148,7 @@
   Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
   calling this.
 
-    (with-open-path-to-resouce [path \"modules\"]
+    (with-open-path-to-resource [path \"modules\"]
        ...)"
   [[path-binding resource-filename-str] & body]
   `(do-with-open-path-to-resource
