@@ -2,6 +2,7 @@
 import { createHash } from "crypto";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -32,6 +33,10 @@ const repoRoot = resolve(packageDir, "../..");
 const pkg = readPackageJson(resolve(packageDir, "package.json"));
 
 const uiDir = resolve(repoRoot, "frontend/src/metabase/ui");
+const esmAdapters = new Map([
+  ["ttag", resolve(packageDir, "src/ttag.ts")],
+  ["react-use", resolve(packageDir, "src/react-use.ts")],
+]);
 
 // Resolved from @svgr/webpack (a root dependency) so the root needs no @svgr/plugin-* entries.
 const svgrRequire = createRequire(require.resolve("@svgr/webpack"));
@@ -71,6 +76,19 @@ function dayjsPluginExtension(): Plugin {
     resolveId(id) {
       if (/^dayjs\/plugin\/\w+$/.test(id)) {
         return { id: `${id}.js`, external: true };
+      }
+    },
+  };
+}
+
+function esmInterop(): Plugin {
+  return {
+    name: "mbui-esm-interop",
+    enforce: "pre",
+    resolveId(id, importer) {
+      const adapter = esmAdapters.get(id);
+      if (adapter) {
+        return importer === adapter ? { id, external: true } : adapter;
       }
     },
   };
@@ -171,6 +189,34 @@ function assertBaselineMatchesPatch(baseline: string) {
   }
 }
 
+function writeIconExports(dist: string) {
+  const iconSource = "src/metabase/ui/components/icons/Icon/icons";
+  const iconExports = resolve(dist, "icons");
+  mkdirSync(iconExports, { recursive: true });
+
+  for (const file of readdirSync(resolve(repoRoot, "frontend", iconSource))) {
+    if (!file.endsWith(".svg")) {
+      continue;
+    }
+    const name = basename(file, ".svg");
+    const module = `${iconSource}/${name}.js`;
+    if (!existsSync(resolve(dist, module))) {
+      continue;
+    }
+    writeFileSync(
+      resolve(iconExports, `${name}.js`),
+      `export { default } from "../${module}";\n`,
+    );
+    writeFileSync(
+      resolve(iconExports, `${name}.d.ts`),
+      `import type { ForwardRefExoticComponent, SVGProps } from "react";
+declare const Icon: ForwardRefExoticComponent<SVGProps<SVGSVGElement>>;
+export default Icon;
+`,
+    );
+  }
+}
+
 function stylesAndFonts(): Plugin {
   const dist = resolve(packageDir, "dist");
   let failed = false;
@@ -188,6 +234,7 @@ function stylesAndFonts(): Plugin {
       if (failed || !write) {
         return;
       }
+      writeIconExports(dist);
       const cssFiles = readdirSync(dist).filter((f) => f.endsWith(".css"));
       if (cssFiles.length !== 1) {
         throw new Error(`Expected one CSS file, got: ${cssFiles.join(", ")}`);
@@ -266,6 +313,7 @@ export default defineConfig({
     }),
     rejectUndeclaredBareImports(),
     dayjsPluginExtension(),
+    esmInterop(),
     stylesAndFonts(),
   ],
   resolve: {
@@ -309,7 +357,9 @@ export default defineConfig({
     },
     rolldownOptions: {
       external: (id) =>
-        !id.startsWith("dayjs/plugin/") && externalPattern.test(id),
+        !esmAdapters.has(id) &&
+        !id.startsWith("dayjs/plugin/") &&
+        externalPattern.test(id),
       output: {
         preserveModules: true,
         preserveModulesRoot: resolve(repoRoot, "frontend"),

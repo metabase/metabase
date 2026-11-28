@@ -1,5 +1,4 @@
 import Color from "color";
-import _ from "underscore";
 
 import { ACCENT_COLOR_NAMES_MAP } from "./constants/accents";
 import { ACCENT_COUNT, color } from "./palette";
@@ -19,43 +18,34 @@ export const getNamedAccentColors = (
   }: AccentColorOptions = {},
   palette?: ColorPalette,
 ): NamedColor[] => {
-  const ranges: NamedColor[][] = [];
+  const variants: ("base" | "tint" | "shade")[] = [];
   if (main) {
-    ranges.push(getNamedAccentVariant("base", palette, gray));
+    variants.push("base");
   }
   if (light) {
-    ranges.push(getNamedAccentVariant("tint", palette, gray));
+    variants.push("tint");
   }
   if (dark) {
-    ranges.push(getNamedAccentVariant("shade", palette, gray));
+    variants.push("shade");
   }
 
-  return harmony ? _.unzip(ranges).flat() : ranges.flat();
+  const accents = gray
+    ? ACCENT_COLOR_NAMES_MAP
+    : ACCENT_COLOR_NAMES_MAP.slice(0, ACCENT_COUNT);
+  const names = harmony
+    ? accents.flatMap((accent) => variants.map((variant) => accent[variant]))
+    : variants.flatMap((variant) => accents.map((accent) => accent[variant]));
+
+  return names.map((name) => ({
+    name,
+    value: Color(color(name, palette)).hex(),
+  }));
 };
 
 export const getAccentColors = (
   options: AccentColorOptions = {},
   palette?: ColorPalette,
 ): string[] => getNamedAccentColors(options, palette).map(({ value }) => value);
-
-// One variant (base/tint/shade) of the accent colors, as opposed to
-// getNamedAccentColors, which combines the variants an option set asks for.
-const getNamedAccentVariant = (
-  variant: "base" | "tint" | "shade",
-  palette?: ColorPalette,
-  withGray = false,
-): NamedColor[] => {
-  const accents = withGray
-    ? ACCENT_COLOR_NAMES_MAP
-    : ACCENT_COLOR_NAMES_MAP.slice(0, ACCENT_COUNT);
-
-  return accents.map((accent) => {
-    const name = accent[variant];
-
-    // Ensure that colors are defined in hex, not HSLA
-    return { name, value: Color(color(name, palette)).hex() };
-  });
-};
 
 export const getMainAccentColors = (
   palette?: ColorPalette,

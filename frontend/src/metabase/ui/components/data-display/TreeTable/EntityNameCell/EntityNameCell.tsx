@@ -5,8 +5,10 @@ import type { ColorName } from "metabase/ui/colors/types";
 import { Ellipsified } from "metabase/ui/components/data-display/Ellipsified";
 import type { IconName } from "metabase-types/api/icon";
 
+import { type IconComponent, StaticIcon } from "../../../icons/Icon/StaticIcon";
+
 interface EntityNameCellProps {
-  icon?: IconName;
+  icon?: IconName | IconComponent;
   name: React.ReactNode;
   iconColor?: ColorName;
   nameColor?: ColorName;
@@ -28,7 +30,18 @@ export const EntityNameCell = memo(function EntityNameCell({
 }: EntityNameCellProps) {
   return (
     <Group data-testid={testId} gap="sm" wrap="nowrap" miw={0}>
-      {icon && <FixedSizeIcon name={icon} c={iconColor} />}
+      {typeof icon === "string" ? (
+        <FixedSizeIcon name={icon} c={iconColor} />
+      ) : (
+        icon && (
+          <StaticIcon
+            component={icon}
+            c={iconColor}
+            flex="0 0 1rem"
+            aria-hidden
+          />
+        )
+      )}
       {wrap ? (
         <Text c={nameColor} flex={1} miw={0}>
           {name}

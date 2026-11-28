@@ -21,7 +21,11 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { DatabaseFeature } from "metabase-types/api";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
@@ -74,6 +78,15 @@ function createMetricAggregatedQuery() {
         ],
       },
     ],
+  });
+}
+
+function createOrdersQueryWithFeatures(features: DatabaseFeature[]) {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase({ features })],
+  });
+  return Lib.createTestQuery(createMetadataProvider({ metadata }), {
+    stages: [{ source: { type: "table", id: ORDERS_ID } }],
   });
 }
 
@@ -305,6 +318,34 @@ describe("AggregateStep", () => {
     });
     expect(screen.getByText("Average of Product → Rating")).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      hasPercentiles: false,
+      features: COMMON_DATABASE_FEATURES.filter(
+        (feature) => feature !== "percentile-aggregations",
+      ),
+    },
+    { hasPercentiles: true, features: COMMON_DATABASE_FEATURES },
+  ])(
+    "should offer median only when the database supports percentile aggregations ($hasPercentiles) (metabase#15502)",
+    async ({ hasPercentiles, features }) => {
+      setup({
+        step: createMockNotebookStep({
+          query: createOrdersQueryWithFeatures(features),
+        }),
+      });
+
+      await userEvent.click(screen.getByText("Pick a function or metric"));
+
+      expect(
+        screen.getByRole("option", { name: "Average of ..." }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Median of ..." }) != null,
+      ).toBe(hasPercentiles);
+    },
+  );
 
   it("should add an aggregation with a basic operator", async () => {
     const { getRecentAggregationClause } = setup();

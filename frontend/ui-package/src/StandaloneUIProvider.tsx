@@ -11,6 +11,7 @@ import {
   type ColorSchemeContextType,
 } from "../../src/metabase/ui/components/theme/ColorSchemeProvider";
 import type { ThemeProviderProps } from "../../src/metabase/ui/components/theme/ThemeProvider";
+import { getCspNonce } from "../../src/metabase/utils/csp";
 
 import type { MetabaseUIProviderProps } from "./MetabaseUIProvider";
 
@@ -46,7 +47,7 @@ const CssVariables = ({
     return `:root { ${declarations.join(" ")} }`;
   }, [colorScheme, fontFamily, zIndex]);
 
-  return <style>{css}</style>;
+  return <style nonce={getCspNonce()}>{css}</style>;
 };
 
 export const StandaloneUIProvider = ({

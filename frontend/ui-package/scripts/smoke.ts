@@ -87,6 +87,10 @@ try {
     recursive: true,
     withFileTypes: true,
   });
+  assert(
+    !dependencies.some((entry) => entry.name === "kbar"),
+    "the standalone package must not install kbar",
+  );
   for (const name of ["react", "react-dom"]) {
     const paths = dependencies
       .filter(
@@ -99,6 +103,11 @@ try {
     assert(paths.length === 1, `expected one ${name}, got ${paths}`);
   }
 
+  must(
+    "node",
+    ["--input-type=module", "-e", 'await import("@metabase/ui")'],
+    appDir,
+  );
   must("bun", ["run", "type-check"], appDir);
   must("bun", ["run", "build"], appDir);
 

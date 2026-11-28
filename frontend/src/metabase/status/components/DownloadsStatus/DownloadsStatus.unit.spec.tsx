@@ -37,6 +37,19 @@ const getDownloadDatasetAction = () =>
     id: 1,
   });
 
+// jsdom's fetch polyfill can't stream a body, so reject the read the way a
+// browser does when the server aborts the connection mid-stream. fetch-mock
+// clones the Response it is given, so the clone must keep the rejection.
+class AbortedStreamResponse extends Response {
+  blob(): Promise<Blob> {
+    return Promise.reject(new TypeError("network error"));
+  }
+
+  clone(): Response {
+    return this;
+  }
+}
+
 interface SetupOpts {
   downloads?: DownloadsState;
 }
@@ -152,6 +165,44 @@ describe("DownloadsStatus", () => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument(),
     );
     await dismissPromise;
+  });
+
+  it("should show a download error when the stream is aborted mid-download", async () => {
+    const { store } = setup();
+    // The store is created by renderWithProviders and dispatches thunks at runtime
+    const dispatch = store.dispatch as Dispatch;
+
+    const abortedResponse = new AbortedStreamResponse("v\n1\n2\n", {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition": 'filename="test.csv"',
+      },
+    });
+    fetchMock.post(
+      "http://localhost/api/card/1/query/csv",
+      () => abortedResponse,
+      { delay: 500 },
+    );
+
+    await act(async () => {
+      dispatch(getDownloadDatasetAction());
+    });
+
+    expect(screen.getByText("Downloading…")).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(await screen.findByText("Download error")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The download was interrupted and the file may be incomplete. Please try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Download completed")).not.toBeInTheDocument();
+    expect(screen.queryByText("test.csv")).not.toBeInTheDocument();
   });
 
   it("should collapse and expand", async () => {

@@ -146,6 +146,68 @@ async function setup({
 }
 
 describe("DataPickerModal", () => {
+  it.each([
+    { title: "one database", hasOtherDatabase: false },
+    { title: "two databases", hasOtherDatabase: true },
+  ])(
+    "should open the databases by default, with no table selected, with $title",
+    async ({ hasOtherDatabase }) => {
+      const tableNames = [
+        "Accounts",
+        "Analytic Events",
+        "Feedback",
+        "Invoices",
+        "Orders",
+        "People",
+        "Products",
+        "Reviews",
+      ];
+      const sampleDatabase = createMockDatabase({
+        id: 2,
+        name: "Sample Database",
+        tables: tableNames.map((name, index) =>
+          createMockTable({
+            id: 20 + index,
+            db_id: 2,
+            schema: "PUBLIC",
+            display_name: name,
+          }),
+        ),
+      });
+      await setup({
+        databases: hasOtherDatabase
+          ? [
+              createMockDatabase({ id: 1, name: "Other Database" }),
+              sampleDatabase,
+            ]
+          : [sampleDatabase],
+        collections: [ROOT],
+        collectionItems: [{ collection: ROOT, items: [] }],
+      });
+
+      await waitFor(() =>
+        expect(getPickerItem(0, "Databases")).toHaveAttribute(
+          "data-active",
+          "true",
+        ),
+      );
+      expect(getPickerItem(0, "Our analytics")).not.toHaveAttribute(
+        "data-active",
+      );
+
+      await userEvent.click(getPickerItem(1, "Sample Database"));
+      for (const name of tableNames) {
+        expect(await findPickerItem(2, name)).not.toHaveAttribute(
+          "data-active",
+        );
+      }
+      expect(getPickerItem(1, "Sample Database")).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+    },
+  );
+
   describe("recents", () => {
     const recentItems = [
       createMockRecentTableItem({
@@ -685,6 +747,153 @@ describe("DataPickerModal", () => {
     });
   });
 
+  describe("nested collections (metabase#14178)", () => {
+    const SECOND_COLLECTION_ID = 21;
+    const THIRD_COLLECTION_ID = 22;
+    const collectionItem = (opts: Partial<CollectionItem>) =>
+      createMockCollectionItem({ model: "collection", ...opts });
+
+    const getLevel = (level: number) =>
+      screen.getByTestId(`item-picker-level-${level}`);
+    const expectActive = (level: number, name: string) =>
+      waitFor(() =>
+        expect(
+          within(getLevel(level)).getByRole("link", { name: new RegExp(name) }),
+        ).toHaveAttribute("data-active", "true"),
+      );
+
+    it("lists only the collections that hold questions in them or below them", async () => {
+      await setup({
+        collections: [ROOT, FIRST_COLLECTION],
+        collectionItems: [
+          {
+            collection: ROOT,
+            items: [
+              collectionItem({
+                id: FIRST_COLLECTION_ID,
+                name: FIRST_COLLECTION.name,
+                here: ["collection"],
+                below: ["card", "collection"],
+              }),
+            ],
+          },
+          {
+            collection: FIRST_COLLECTION,
+            items: [
+              collectionItem({
+                id: SECOND_COLLECTION_ID,
+                name: "Second collection",
+                location: `/${FIRST_COLLECTION_ID}/`,
+                here: ["card", "collection"],
+              }),
+            ],
+          },
+          {
+            collection: createMockCollection({ id: SECOND_COLLECTION_ID }),
+            items: [
+              collectionItem({
+                id: THIRD_COLLECTION_ID,
+                name: "Third collection",
+                location: `/${FIRST_COLLECTION_ID}/${SECOND_COLLECTION_ID}/`,
+              }),
+              createMockCollectionItem({
+                id: 1,
+                name: "Orders",
+                model: "card",
+                collection_id: SECOND_COLLECTION_ID,
+              }),
+            ],
+          },
+        ],
+      });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(
+        await within(getLevel(1)).findByText(FIRST_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Second collection")).not.toBeInTheDocument();
+      expect(screen.queryByText("Third collection")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(getLevel(1)).getByText(FIRST_COLLECTION.name),
+      );
+      await expectActive(0, "Our analytics");
+      await expectActive(1, FIRST_COLLECTION.name);
+      expect(
+        await within(getLevel(2)).findByText("Second collection"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Third collection")).not.toBeInTheDocument();
+
+      await userEvent.click(within(getLevel(2)).getByText("Second collection"));
+      await expectActive(0, "Our analytics");
+      await expectActive(1, FIRST_COLLECTION.name);
+      await expectActive(2, "Second collection");
+      expect(
+        await within(getLevel(3)).findByText("Orders"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Third collection")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("picking a table (metabase#45003)", () => {
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: ["Orders", "People", "Products"].map((name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          display_name: name,
+        }),
+      ),
+    });
+
+    it("records the picked table as a recent selection, and closes with the Close button", async () => {
+      const { onChange, onClose } = await setup({
+        databases: [SAMPLE_DATABASE],
+        collections: [ROOT],
+        collectionItems: [{ collection: ROOT, items: [] }],
+      });
+
+      const dialog = await screen.findByRole("dialog", {
+        name: "Pick your starting data",
+      });
+      await userEvent.click(await within(dialog).findByText("Databases"));
+      await userEvent.click(await within(dialog).findByText("Sample Database"));
+      await userEvent.click(await within(dialog).findByText("People"));
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 11, model: "table" }),
+      );
+      // picking closes the modal
+      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/activity/recents", {
+            method: "POST",
+          }),
+        ).toHaveLength(1),
+      );
+      const [recentCall] = fetchMock.callHistory.calls(
+        "path:/api/activity/recents",
+        { method: "POST" },
+      );
+      const body: unknown = JSON.parse(String(recentCall.options.body));
+      expect(body).toEqual({
+        context: "selection",
+        model: "table",
+        model_id: 11,
+      });
+
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /Close/ }),
+      );
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("hidden tables", () => {
     const TABLES = ["Orders", "People", "Products", "Reviews"].map(
       (name, index) =>
@@ -952,3 +1161,14 @@ describe("DataPickerModal > library", () => {
     expect(await findItem(0, "Library")).toHaveAttribute("data-active", "true");
   });
 });
+
+function getPickerItem(level: number, name: string) {
+  const levelElement = screen.getByTestId(`item-picker-level-${level}`);
+  return checkNotNull(within(levelElement).getByText(name).closest("a"));
+}
+
+async function findPickerItem(level: number, name: string) {
+  const levelElement = await screen.findByTestId(`item-picker-level-${level}`);
+  const item = await within(levelElement).findByText(name);
+  return checkNotNull(item.closest("a"));
+}
