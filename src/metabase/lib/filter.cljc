@@ -586,8 +586,9 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op options first-arg & rest-args] a-filter-clause
-         columns (lib.metadata.calculation/visible-columns query stage-number)
-         col     (lib.equality/find-matching-column query stage-number first-arg columns)]
+         col     (when (lib.util/ref-clause? first-arg)
+                   (lib.equality/find-matching-column query stage-number first-arg
+                                                      (lib.metadata.calculation/visible-columns query stage-number)))]
      {:lib/type :mbql/filter-parts
       :operator op
       :options  options
