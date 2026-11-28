@@ -55,6 +55,7 @@ import type {
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
+import { isReadableCard } from "metabase-types/guards/dashboard";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
@@ -162,10 +163,11 @@ export const getIsSharing = createSelector(
 
 /**
  * Whether the current user can set up and edit this dashboard's
- * subscriptions. It takes the Subscriptions permission and a card with data
- * to send, and for a non-admin a configured email or Slack channel, since
- * only an admin can set one up. `channelInfo` is `undefined` while it loads
- * or when its request fails, which leaves only an admin able to manage them.
+ * subscriptions. It takes the Subscriptions permission, a card with data to
+ * send, read access to every question card, and for a non-admin a configured
+ * email or Slack channel, since only an admin can set one up. `channelInfo`
+ * is `undefined` while it loads or when its request fails, which leaves only
+ * an admin able to manage them.
  */
 export const getCanManageDashboardSubscriptions = (
   state: State,
@@ -175,6 +177,9 @@ export const getCanManageDashboardSubscriptions = (
   const hasDataCards = dashboard.dashcards.some(
     (dashcard) => !["text", "heading"].includes(dashcard.card.display),
   );
+  const canReadEveryCard = dashboard.dashcards
+    .filter(isQuestionDashCard)
+    .every((dashcard) => isReadableCard(dashcard.card));
   const hasConfiguredChannel =
     channelInfo?.channels.email?.configured === true ||
     channelInfo?.channels.slack?.configured === true;
@@ -182,6 +187,7 @@ export const getCanManageDashboardSubscriptions = (
   return (
     canManageSubscriptions(state) &&
     hasDataCards &&
+    canReadEveryCard &&
     (getUserIsAdmin(state) || hasConfiguredChannel)
   );
 };

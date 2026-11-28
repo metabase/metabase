@@ -109,13 +109,12 @@ const setup = ({
               dashcards: dashboard.dashcards.map((c) => c.id),
             },
           },
-          dashcards: {
-            [DASHCARD.id]: {
-              ...DASHCARD,
-              isDirty: false,
-              isRemoved: false,
-            },
-          },
+          dashcards: Object.fromEntries(
+            dashboard.dashcards.map((dashcard) => [
+              dashcard.id,
+              { ...dashcard, isDirty: false, isRemoved: false },
+            ]),
+          ),
         }),
       },
     },
@@ -207,6 +206,25 @@ describe("DashboardSubscriptionsButton", () => {
           ],
         },
       });
+      expect(
+        screen.queryByTestId("dashboard-subscriptions-button"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("cards without read access", () => {
+    it("should not render when some question card cannot be read (metabase#87692)", () => {
+      const unreadableDashcard = createMockDashboardCard({
+        id: 2,
+        card_id: 2,
+        card: createMockCard({ id: 2 }),
+      });
+      Reflect.deleteProperty(unreadableDashcard.card, "dataset_query");
+      setup({
+        isAdmin: true,
+        dashboard: { dashcards: [DASHCARD, unreadableDashcard] },
+      });
+
       expect(
         screen.queryByTestId("dashboard-subscriptions-button"),
       ).not.toBeInTheDocument();
