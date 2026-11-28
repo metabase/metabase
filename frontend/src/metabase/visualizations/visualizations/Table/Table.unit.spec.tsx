@@ -46,6 +46,7 @@ import {
   ORDERS,
   ORDERS_ID,
   createOrdersTable,
+  createOrdersTableDatasetColumns,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -342,6 +343,49 @@ describe("table.pivot", () => {
         ["Gadget", "10", "30"],
         ["Widget", "20", "40"],
       ]);
+    });
+
+    it("should display a pivot table as a regular one when the pivot columns are missing (metabase#18976)", () => {
+      // the columns of `select 'a', 'b'`, with pivot settings that name
+      // columns the query does not return
+      const series: Series = [
+        {
+          card: createMockCard({
+            dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+              query: "select 'a', 'b'",
+            }),
+            query_type: "native",
+            display: "table",
+            visualization_settings: {
+              "table.pivot": true,
+              "table.pivot_column": "'a'",
+              "table.cell_column": "1",
+            },
+          }),
+          ...createMockDataset({
+            data: {
+              cols: [
+                createMockCategoryColumn({ name: "'a'", display_name: "'a'" }),
+                createMockCategoryColumn({ name: "'b'", display_name: "'b'" }),
+              ],
+              rows: [["a", "b"]],
+            },
+          }),
+        },
+      ];
+
+      renderWithProviders(
+        <Visualization rawSeries={series} width={600} height={400} />,
+      );
+
+      expect(
+        screen.getAllByRole("columnheader").map((header) => header.textContent),
+      ).toEqual(["", "'a'", "'b'"]);
+      expect(
+        within(screen.getByTestId("table-body"))
+          .getAllByRole("gridcell")
+          .map((cell) => cell.textContent),
+      ).toEqual(["", "a", "b"]);
     });
 
     it("should not warn when each row and pivot value pair appears once (metabase#84401)", async () => {
@@ -887,6 +931,370 @@ describe("text_wrapping", () => {
       const textWrappingSetting = getTextWrappingSetting(stringColumn);
 
       expect(textWrappingSetting.getDefault?.(stringColumn, {})).toBe(false);
+    });
+  });
+});
+
+describe("orders table grid", () => {
+  // wide and tall enough for the data grid to render every column, and the
+  // first rows of a long table
+  const GRID_RECT = { width: 4000, height: 800 };
+
+  // two rows from the sample database's ORDERS table, as the backend sends them
+  const ORDER_1: RowValues = [
+    1,
+    1,
+    14,
+    37.65,
+    2.07,
+    39.718145389078366,
+    null,
+    "2028-02-11T21:40:27.892-08:00",
+    2,
+  ];
+  const ORDER_2: RowValues = [
+    2,
+    1,
+    123,
+    110.93,
+    6.1,
+    117.03,
+    6.42,
+    "2027-05-15T08:04:04.58-07:00",
+    3,
+  ];
+
+  const getOrderRows = (count: number): RowValues[] =>
+    Array.from({ length: count }, (_, index) => [
+      index + 1,
+      ...ORDER_1.slice(1),
+    ]);
+
+  type GridSetupOpts = {
+    rows: RowValues[];
+    visualization_settings?: VisualizationSettings;
+    isDashboard?: boolean;
+    height?: number;
+  };
+
+  const getOrdersSeries = ({
+    rows,
+    visualization_settings = {},
+  }: Pick<GridSetupOpts, "rows" | "visualization_settings">): Series => [
+    createMockSingleSeries(
+      { display: "table", visualization_settings },
+      {
+        row_count: rows.length,
+        data: {
+          cols: createOrdersTableDatasetColumns(),
+          rows,
+          // the backend sets it when a dashcard query hits the row limit
+          rows_truncated: rows.length,
+        },
+      },
+    ),
+  ];
+
+  const setupGrid = ({
+    rows,
+    visualization_settings,
+    isDashboard = false,
+    height = GRID_RECT.height,
+  }: GridSetupOpts) => {
+    const series = getOrdersSeries({ rows, visualization_settings });
+    const getVisualization = (height: number) => (
+      <div>
+        <h1>Outside the table</h1>
+        <Visualization
+          rawSeries={series}
+          isDashboard={isDashboard}
+          width={GRID_RECT.width}
+          height={height}
+        />
+      </div>
+    );
+    const { rerender } = renderWithProviders(getVisualization(height));
+    return {
+      setHeight: (height: number) => rerender(getVisualization(height)),
+    };
+  };
+
+  const getBody = () => screen.getByTestId("table-body");
+
+  const getVisibleIds = () =>
+    within(getBody())
+      .getAllByRole("gridcell")
+      .filter((cell) => cell.dataset.columnId === "ID")
+      .map((cell) => cell.textContent);
+
+  // the parts of a row, as the data grid renders its pinned and scrolled
+  // sections separately
+  const getRowParts = (index: number) =>
+    within(getBody())
+      .queryAllByRole("row")
+      .filter((row) => row.dataset.datasetIndex === String(index));
+
+  const getRowCells = (index: number) =>
+    getRowParts(index).flatMap((row) => within(row).queryAllByRole("gridcell"));
+
+  // the name of a sorted header also has the sort icon
+  const getHeader = (name: string) =>
+    screen.getByRole("columnheader", { name: new RegExp(`^${name}( |$)`) });
+
+  const clickHeader = (name: string) => {
+    const header = getHeader(name);
+    const clickTarget = within(header).getByTestId("cell-data");
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+  };
+
+  beforeEach(() => {
+    mockGetBoundingClientRect(GRID_RECT);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe("cell selection", () => {
+    let writeText: jest.Mock;
+    let originalClipboard: Clipboard;
+
+    beforeEach(() => {
+      originalClipboard = navigator.clipboard;
+      writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText },
+      });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: originalClipboard,
+      });
+    });
+
+    // the cells of the second row, other than its primary key
+    const getSecondRowCells = () => {
+      return getRowParts(1)
+        .flatMap((row) => within(row).queryAllByRole("gridcell"))
+        .filter(
+          (cell) =>
+            cell.hasAttribute("data-selectable-cell") &&
+            cell.dataset.columnId !== "ID",
+        );
+    };
+
+    const getSelectedCellTexts = () =>
+      within(getBody())
+        .getAllByRole("gridcell")
+        .filter((cell) => cell.getAttribute("aria-selected") === "true")
+        .map((cell) => cell.textContent);
+
+    const click = (
+      cell: HTMLElement,
+      modifiers: { metaKey?: boolean; shiftKey?: boolean } = {},
+    ) => {
+      fireEvent.mouseDown(cell, modifiers);
+      fireEvent.mouseUp(cell, modifiers);
+      fireEvent.click(cell, modifiers);
+    };
+
+    it("should select cells by click, drag, cmd+click and shift+click, copy them, and clear the selection", async () => {
+      setupGrid({ rows: [ORDER_2, ORDER_1] });
+      const cells = getSecondRowCells();
+      expect(cells.map((cell) => cell.textContent)).toEqual([
+        "1",
+        "14",
+        "37.65",
+        "2.07",
+        "39.72",
+        "",
+        "February 11, 2028, 9:40 PM",
+        "2",
+      ]);
+      expect(getSelectedCellTexts()).toEqual([]);
+
+      click(cells[1]);
+      expect(cells[1]).toHaveAttribute("aria-selected", "true");
+      expect(getSelectedCellTexts()).toEqual(["14"]);
+
+      // drag from the first cell to the fourth one
+      fireEvent.mouseDown(cells[0], { buttons: 1 });
+      fireEvent.mouseOver(cells[3], { buttons: 1 });
+      fireEvent.mouseUp(cells[3]);
+      expect(getSelectedCellTexts()).toEqual(["1", "14", "37.65", "2.07"]);
+
+      click(cells[5], { metaKey: true });
+      expect(getSelectedCellTexts()).toEqual(["1", "14", "37.65", "2.07", ""]);
+
+      click(cells[4]);
+      click(cells[6], { shiftKey: true });
+      expect(getSelectedCellTexts()).toEqual([
+        "39.72",
+        "",
+        "February 11, 2028, 9:40 PM",
+      ]);
+
+      fireEvent.keyDown(window, { key: "c", metaKey: true });
+      expect(writeText).toHaveBeenLastCalledWith(
+        "Total\tDiscount ($)\tCreated At\n39.72\t\tFebruary 11, 2028, 9:40 PM",
+      );
+
+      fireEvent.keyDown(window, { key: "c", metaKey: true, shiftKey: true });
+      expect(writeText).toHaveBeenLastCalledWith(
+        "Total\tDiscount ($)\tCreated At\n" +
+          "39.718145389078366\tnull\t2028-02-11T21:40:27.892-08:00",
+      );
+      expect(writeText).toHaveBeenCalledTimes(2);
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(getSelectedCellTexts()).toEqual([]);
+
+      click(cells[2]);
+      expect(getSelectedCellTexts()).toEqual(["37.65"]);
+      await userEvent.click(screen.getByText("Outside the table"));
+      expect(getSelectedCellTexts()).toEqual([]);
+    });
+  });
+
+  it("should keep the DOM nodes of the rows that stay visible during scrolling", () => {
+    setupGrid({ rows: getOrderRows(100) });
+    const targetIndex = 15;
+
+    const targetRowParts = getRowParts(targetIndex);
+    expect(targetRowParts.length).toBeGreaterThan(0);
+    expect(getRowParts(0).length).toBeGreaterThan(0);
+
+    const scrollContainer = screen.getByTestId("table-scroll-container");
+    scrollContainer.scrollTop = 36 * (targetIndex - 1);
+    fireEvent.scroll(scrollContainer);
+
+    expect(getRowParts(0)).toEqual([]);
+    const targetRowPartsAfterScroll = getRowParts(targetIndex);
+    expect(targetRowPartsAfterScroll).toHaveLength(targetRowParts.length);
+    targetRowPartsAfterScroll.forEach((row, index) => {
+      expect(row).toBe(targetRowParts[index]);
+    });
+  });
+
+  describe("in a dashboard", () => {
+    it("should show the row count without pagination", () => {
+      setupGrid({ rows: getOrderRows(2000), isDashboard: true });
+
+      expect(screen.queryByText(/^Rows \d+-\d+/)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Next page")).not.toBeInTheDocument();
+      expect(screen.getByText("Showing first 2,000 rows")).toBeInTheDocument();
+    });
+
+    it("should paginate the rows, with a page size that follows the card height", () => {
+      const { setHeight } = setupGrid({
+        rows: getOrderRows(2000),
+        visualization_settings: { "table.pagination": true },
+        isDashboard: true,
+        height: 400,
+      });
+
+      expect(screen.getByText("Rows 1-9 of first 2,000")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Showing first 2,000 rows"),
+      ).not.toBeInTheDocument();
+      expect(getVisibleIds()).toContain("6");
+      expect(getVisibleIds()).not.toContain("12");
+
+      fireEvent.click(screen.getByLabelText("Next page"));
+      expect(screen.getByText("Rows 10-18 of first 2,000")).toBeInTheDocument();
+      expect(getVisibleIds()).toContain("12");
+      expect(getVisibleIds()).not.toContain("6");
+
+      fireEvent.click(screen.getByLabelText("Previous page"));
+      expect(screen.getByText("Rows 1-9 of first 2,000")).toBeInTheDocument();
+      expect(getVisibleIds()).toContain("6");
+      expect(getVisibleIds()).not.toContain("12");
+
+      // a taller card shows more rows on a page
+      setHeight(800);
+      expect(screen.getByText(/^Rows 1-\d+ of first 2,000$/)).toHaveTextContent(
+        "Rows 1-20 of first 2,000",
+      );
+      expect(getVisibleIds()).toContain("12");
+    });
+
+    const getPinnedRowId = () => {
+      const pinnedQuadrant = screen.getByTestId("pinned-center-quadrant");
+      return within(pinnedQuadrant)
+        .getAllByRole("gridcell")
+        .filter((cell) => cell.dataset.columnId === "ID")
+        .map((cell) => within(cell).getByTestId("cell-data").textContent);
+    };
+
+    const PINNED_ROW_SETTINGS = {
+      "table.freeze_rows": true,
+      "table.freeze_rows_count": 1,
+    };
+
+    it("should keep the pinned row on every page", () => {
+      setupGrid({
+        rows: getOrderRows(2000),
+        visualization_settings: {
+          ...PINNED_ROW_SETTINGS,
+          "table.pagination": true,
+        },
+        isDashboard: true,
+        height: 400,
+      });
+
+      expect(getPinnedRowId()).toEqual(["1"]);
+      expect(screen.getByText("Rows 1-9 of first 2,000")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText("Next page"));
+      expect(screen.getByText("Rows 10-18 of first 2,000")).toBeInTheDocument();
+      expect(getPinnedRowId()).toEqual(["1"]);
+    });
+
+    it("should show the first row of the sorted rows as the pinned row", () => {
+      setupGrid({
+        rows: getOrderRows(2000),
+        visualization_settings: PINNED_ROW_SETTINGS,
+        isDashboard: true,
+      });
+
+      expect(getPinnedRowId()).toEqual(["1"]);
+
+      clickHeader("ID");
+      expect(getPinnedRowId()).toEqual(["2000"]);
+
+      clickHeader("ID");
+      expect(getPinnedRowId()).toEqual(["1"]);
+    });
+
+    it("should keep the row index in display order after client-side sorting", () => {
+      setupGrid({
+        rows: getOrderRows(5),
+        visualization_settings: { "table.row_index": true },
+        isDashboard: true,
+      });
+      // the first row on screen, whichever row of the data it shows
+      const getFirstRowIndexAndId = () => {
+        const [firstRow] = within(getBody()).getAllByRole("row");
+        const cells = getRowCells(Number(firstRow.dataset.datasetIndex));
+        return [
+          cells
+            .map((cell) => within(cell).queryByTestId("row-id-cell"))
+            .find(Boolean)?.textContent,
+          cells.find((cell) => cell.dataset.columnId === "ID")?.textContent,
+        ];
+      };
+
+      expect(getFirstRowIndexAndId()).toEqual(["1", "1"]);
+
+      clickHeader("ID");
+      expect(
+        within(getHeader("ID")).getByLabelText("chevrondown icon"),
+      ).toBeInTheDocument();
+      expect(getFirstRowIndexAndId()).toEqual(["1", "5"]);
     });
   });
 });
