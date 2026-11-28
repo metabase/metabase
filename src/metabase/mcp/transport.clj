@@ -79,6 +79,23 @@
   (message/msg [(str "MCP access is not enabled for your account. "
                      "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
+(def ^:private standard-input-schema-client-names
+  "Words, or runs of words, in a lowercased `clientInfo.name` that mark a client known to read the standard MCP input
+  schemas."
+  ["claude" "codex" "cursor" "visual studio code" "vscode" "zed"])
+
+(defn- standard-input-schema-client?
+  "True when `client-name`, from the `initialize` handshake, names a client known to read the standard input schemas.
+  Every other client gets the OpenAI strict ones."
+  [client-name]
+  ;; Copilot Studio initializes as "mcs" and asks the user for every required argument it can't fill.
+  (boolean (when (string? client-name)
+             (let [client-name (u/lower-case-en client-name)
+                   ;; whole words only, so `zed` doesn't match inside "standardized"
+                   words       (str " " (str/join " " (str/split client-name #"[^a-z0-9]+")) " ")]
+               (or (= "mcs" client-name)
+                   (some #(str/includes? words (str " " % " ")) standard-input-schema-client-names))))))
+
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
   [params]
@@ -379,11 +396,14 @@
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
+            client-name      (get-in params [:clientInfo :name])
             ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
             supports-mcp-ui? (and (mcp-app-ui-capability? params)
-                                  (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
-            session-id       (mcp.session/create! user-id {:supports-mcp-ui?
-                                                           supports-mcp-ui?})
+                                  (mcp/inline-ui-enabled-for-client? client-name))
+            session-id       (mcp.session/create!
+                              user-id
+                              {:supports-mcp-ui?        supports-mcp-ui?
+                               :standard-input-schemas? (standard-input-schema-client? client-name)})
             init-response (handle-initialize (:id body) params capabilities instructions)]
         ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
         ;; here, from the on-thread request, and never overwritten.

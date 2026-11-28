@@ -626,6 +626,34 @@
          (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["chatgpt"]]
            (is (contains? (tool-names (handshake)) "visualize_query"))))))))
 
+(defn- listed-input-schema
+  "The `inputSchema` that `tools/list` sends for `tool-name` to a client that initializes as `client-name`."
+  [auth-headers client-name tool-name]
+  (let [init       (jsonrpc-request "initialize" {:clientInfo {:name client-name}})
+        session-id (get-in (mcp-request auth-headers init) [:headers "Mcp-Session-Id"])]
+    (->> (mcp-request auth-headers (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+         :body :result :tools
+         (some #(when (= tool-name (:name %)) (:inputSchema %))))))
+
+(deftest tools-list-input-schemas-follow-the-client-test
+  ;; Copilot Studio asks the user for every required argument it can't fill, while OpenAI's strict tool rules need
+  ;; every argument listed.
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing "clients known to read standard schemas are sent only the required arguments"
+       (doseq [client-name ["mcs" "claude-code" "codex-mcp-client" "Visual Studio Code" "Zed"]]
+         (testing client-name
+           (is (=? {:required   ["id"]
+                    :properties {:row_limit {:type "integer"}}}
+                   (listed-input-schema auth client-name "run_saved_question"))))))
+     (testing "every other client is sent the strict schemas"
+       (doseq [client-name ["openai-mcp" "ChatGPT" "mcp" "some-new-client" "standardized-client" "mcs-proxy"]]
+         (testing client-name
+           (is (=? {:required   ["id" "parameters" "row_limit"]
+                    :properties {:row_limit {:type ["integer" "null"]}}}
+                   (listed-input-schema auth client-name "run_saved_question")))))))))
+
 (deftest tools-list-descriptions-fit-client-truncation-test
   (testing "GHY-4543: Claude Code (2.1.271) truncates each tool description at 2048 characters, silently dropping
             whatever guidance comes after. Every description `tools/list` sends, MCP Apps tools included and the

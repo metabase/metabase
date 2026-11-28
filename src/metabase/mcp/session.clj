@@ -186,11 +186,14 @@
 
 (mr/def ::session-payload
   "The unsigned client-capability hint carried in the second segment of an `Mcp-Session-Id`: the
-   payload version and whether the client can render MCP Apps UI. Server-minted and only echoed back
-   by clients; validated before we read its `:ui` flag, which is the only thing relayed onward."
+   payload version, whether the client can render MCP Apps UI, and whether it reads standard tool input schemas.
+   Server-minted and only echoed back by clients; validated before we read its `:ui` and `:standard` flags, the only
+   things relayed onward."
   [:map
-   [:v  :int]
-   [:ui :boolean]])
+   [:v        :int]
+   [:ui       :boolean]
+   ;; optional, so a node that predates it still accepts the payload during a rolling deploy
+   [:standard {:optional true} :boolean]])
 
 (def ^:private max-session-id-length
   "Maximum persisted length for `mcp_query_handle.mcp_session_id`."
@@ -256,7 +259,7 @@
            ;; any well-formed one works for its presenter — but claims nothing, so the gate it feeds fails
            ;; closed rather than trusting a self-assertion.
            :payload  (if signed?
-                       (select-keys decoded-payload [:ui])
+                       (select-keys decoded-payload [:ui :standard])
                        {:ui false})}
 
           ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
@@ -299,10 +302,11 @@
   client makes about itself, and any caller could mint one asserting MCP Apps support it never advertised.
   The id itself remains an opaque stateless correlator — see [[session-parts]] for why an unproven claim
   downgrades the capability rather than rejecting the session."
-  [{:keys [supports-mcp-ui?]}]
+  [{:keys [supports-mcp-ui? standard-input-schemas?]}]
   (let [uuid       (str (UUID/randomUUID))
-        payload    (encode-session-payload {:v  session-payload-version
-                                            :ui (true? supports-mcp-ui?)})
+        payload    (encode-session-payload {:v        session-payload-version
+                                            :ui       (true? supports-mcp-ui?)
+                                            :standard (true? standard-input-schemas?)})
         session-id (str uuid "." payload "." (session-payload-signature uuid payload))]
     ;; Enforce the `mcp_query_handle.mcp_session_id` column width (254) at the mint site, not only on the read path
     ;; ([[session-parts]]). A future payload field that pushed an id past the cap would otherwise mint fine and
@@ -343,6 +347,13 @@
   ([_user-id metadata]
    (create-session-id metadata)))
 
+(defn- signed-payload-flag?
+  "True when the signed capability payload of `session-id` sets flag `k`; false for an unsigned payload or none."
+  [session-id k]
+  (boolean
+   (when-let [{:keys [payload extended]} (session-parts session-id)]
+     (and extended (true? (get payload k))))))
+
 (defn supports-mcp-ui?
   "Return true if the client PROVABLY advertised MCP Apps UI support during initialize.
 
@@ -351,9 +362,12 @@
   true here, which meant a caller could bypass the whole gate by simply omitting the payload. Both that and an
   unsigned payload now fail closed."
   [session-id]
-  (boolean
-   (when-let [{:keys [payload extended]} (session-parts session-id)]
-     (and extended (true? (:ui payload))))))
+  (signed-payload-flag? session-id :ui))
+
+(defn standard-input-schemas?
+  "Return true if the client that initialized `session-id` reads standard tool input schemas."
+  [session-id]
+  (signed-payload-flag? session-id :standard))
 
 (defn get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.

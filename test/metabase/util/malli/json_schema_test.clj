@@ -272,6 +272,23 @@
     (is (= {:anyOf [{:anyOf [{:type "integer", :example 5} {:type "string"}]} {:type "null"}]}
            (rewrite {:oneOf [{:anyOf [{:type "integer", :example 5} {:type "string"}]} {:type "null"}]})))))
 
+(deftest ^:parallel non-nullable-test
+  (let [nullable #'mu.json-schema/nullable]
+    (testing "takes back out the `null` that `nullable` adds"
+      (doseq [schema [;; a type array
+                      {:type "integer", :minimum 1, :description "An id."}
+                      ;; an enum, which `null` joins
+                      {:type "string", :enum ["a" "b"]}
+                      ;; a `const`, which `nullable` wraps in an `anyOf`, moving the description up
+                      {:type "string", :const "x", :description "Pick."}]]
+        (is (= schema (mu.json-schema/non-nullable (nullable schema))))))
+    (testing "a union `nullable` flattened into a type array stays one"
+      (is (= {:type ["integer" "string"]}
+             (mu.json-schema/non-nullable (nullable {:anyOf [{:type "integer"} {:type "string"}]})))))
+    (testing "a schema that doesn't accept `null` is returned unchanged"
+      (is (= {:type "integer"}
+             (mu.json-schema/non-nullable {:type "integer"}))))))
+
 (deftest ^:parallel one-of-siblings-test
   (testing "keywords beside a rewritten `oneOf` accept what they accepted beside the `oneOf`"
     ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it

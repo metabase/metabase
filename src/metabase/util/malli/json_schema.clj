@@ -353,6 +353,25 @@
       (cond-> {:anyOf [(dissoc schema :description) {:type "null"}]}
         (:description schema) (assoc :description (:description schema))))))
 
+(defn non-nullable
+  "The JSON Schema `schema` without the `null` that [[nullable]] adds.
+  Takes `null` out of a type array and `nil` out of its `:enum`, or unwraps `{:anyOf [X {:type \"null\"}]}` to X with
+  the description put back.
+  Returns any other schema unchanged.
+  A union that [[nullable]] flattened into a type array stays a type array rather than becoming an `anyOf` again."
+  [{:keys [type anyOf] :as schema}]
+  (cond
+    (and (sequential? type) (some #{"null"} type))
+    (let [type-names (vec (remove #{"null"} type))]
+      (cond-> (assoc schema :type (if (= 1 (count type-names)) (first type-names) type-names))
+        (:enum schema) (update :enum #(vec (remove nil? %)))))
+
+    (and (= 2 (count anyOf)) (= {:type "null"} (second anyOf)))
+    (merge (dissoc schema :anyOf) (first anyOf))
+
+    :else
+    schema))
+
 (defn- one-of-replacement
   "What replaces the `oneOf` `branches`.
   For `[X {:type \"null\"}]`, Malli's rendering of `[:maybe X]`, returns [[nullable]] X.
