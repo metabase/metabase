@@ -1,10 +1,17 @@
 import fetchMock from "fetch-mock";
 
-import type { Measure } from "metabase-types/api";
+import type { BaseEntityId, Measure } from "metabase-types/api";
 import { createMockMeasure } from "metabase-types/api/mocks";
 
 export function setupMeasureEndpoint(measure: Measure) {
   fetchMock.get(`path:/api/measure/${measure.id}`, measure);
+}
+
+export function setupMeasureByEntityIdEndpoint(
+  entityId: BaseEntityId,
+  measure: Measure,
+) {
+  fetchMock.get(`path:/api/measure/${entityId}`, measure);
 }
 
 export function setupMeasuresEndpoints(measures: Measure[]) {

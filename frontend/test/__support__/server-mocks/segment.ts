@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { Segment } from "metabase-types/api";
+import type { BaseEntityId, Segment } from "metabase-types/api";
 import { createMockSegment } from "metabase-types/api/mocks";
 
 export function setupSegmentRevisionsEndpointError(segmentId: number) {
@@ -12,6 +12,13 @@ export function setupSegmentRevisionsEndpointError(segmentId: number) {
 
 export function setupSegmentEndpoint(segment: Segment) {
   fetchMock.get(`path:/api/segment/${segment.id}`, segment);
+}
+
+export function setupSegmentByEntityIdEndpoint(
+  entityId: BaseEntityId,
+  segment: Segment,
+) {
+  fetchMock.get(`path:/api/segment/${entityId}`, segment);
 }
 
 export function setupSegmentEndpointError(segmentId: number) {

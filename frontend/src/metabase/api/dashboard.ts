@@ -39,6 +39,7 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -83,6 +84,16 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
+        onQueryStarted: ({ id, ...params }, { dispatch, queryFulfilled }) =>
+          handleLoadedByEntityId(id, queryFulfilled, (dashboard) =>
+            dispatch(
+              dashboardApi.util.upsertQueryData(
+                "getDashboard",
+                { ...params, id: dashboard.id },
+                dashboard,
+              ),
+            ),
+          ),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,

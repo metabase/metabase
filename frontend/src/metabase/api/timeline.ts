@@ -17,6 +17,7 @@ import {
   provideTimelineTags,
   tag,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const timelineApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -47,6 +48,16 @@ export const timelineApi = Api.injectEndpoints({
       }),
       providesTags: (timeline) =>
         timeline ? provideTimelineTags(timeline) : [],
+      onQueryStarted: ({ id, ...params }, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (timeline) =>
+          dispatch(
+            timelineApi.util.upsertQueryData(
+              "getTimeline",
+              { ...params, id: timeline.id },
+              timeline,
+            ),
+          ),
+        ),
     }),
     createTimeline: builder.mutation<Timeline, CreateTimelineRequest>({
       query: (body) => ({

@@ -1,3 +1,5 @@
+import { isBaseEntityID } from "metabase-types/api/entity-id";
+
 type QueryData<T> = {
   data: T;
 };
@@ -25,4 +27,20 @@ export async function handleQueryFulfilled<T>(
   } catch {
     handleError?.();
   }
+}
+
+/**
+ * Calls `handleEntity` with the result of a query that was made by entity ID.
+ * An endpoint uses it to cache the entity under its numeric ID as well, so that a page asking by numeric ID finds it.
+ */
+export function handleLoadedByEntityId<T>(
+  id: unknown,
+  queryFulfilled: Promise<QueryData<T>>,
+  handleEntity: (entity: T) => void,
+) {
+  if (!isBaseEntityID(id)) {
+    return undefined;
+  }
+
+  return handleQueryFulfilled(queryFulfilled, handleEntity);
 }

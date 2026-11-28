@@ -1,4 +1,6 @@
+import { handleLoadedByEntityId } from "metabase/api/utils/lifecycle";
 import type {
+  BaseEntityId,
   ListTransformTestsRequest,
   RunTransformTestResponse,
   TransformTest,
@@ -27,12 +29,25 @@ export const transformTestApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (tests = []) => provideTransformTestListTags(tests),
     }),
-    getTransformTest: builder.query<TransformTest, TransformTestId>({
+    getTransformTest: builder.query<
+      TransformTest,
+      TransformTestId | BaseEntityId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/transform-test/${id}`,
       }),
       providesTags: (test) => (test ? provideTransformTestTags(test) : []),
+      onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (test) =>
+          dispatch(
+            transformTestApi.util.upsertQueryData(
+              "getTransformTest",
+              test.id,
+              test,
+            ),
+          ),
+        ),
     }),
     runTransformTest: builder.mutation<
       RunTransformTestResponse,

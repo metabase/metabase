@@ -1,6 +1,7 @@
 import fetchMock, { type RouteResponse } from "fetch-mock";
 
 import type {
+  BaseEntityId,
   CollectionId,
   DagTransform,
   Dataset,
@@ -45,6 +46,13 @@ export function setupGetTransformEndpoint(
   response: MockResponse<Transform> = transform,
 ) {
   fetchMock.get(`path:/api/transform/${transform.id}`, response);
+}
+
+export function setupGetTransformByEntityIdEndpoint(
+  entityId: BaseEntityId,
+  transform: Transform,
+) {
+  fetchMock.get(`path:/api/transform/${entityId}`, transform);
 }
 
 export function setupUpdateTransformEndpoint(

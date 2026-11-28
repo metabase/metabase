@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import type { Card, CreateCardRequest } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { BaseEntityId } from "./entity-id";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
@@ -32,7 +33,7 @@ export type Document = {
   is_placeholder?: boolean;
 };
 
-export type GetDocumentRequest = { id: DocumentId };
+export type GetDocumentRequest = { id: DocumentId | BaseEntityId };
 
 export type DocumentCardToCreate = Pick<
   CreateCardRequest,

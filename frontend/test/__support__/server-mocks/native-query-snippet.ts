@@ -13,6 +13,12 @@ export function setupNativeQuerySnippetEndpoints(
   );
 }
 
+export function setupNativeQuerySnippetByEntityIdEndpoint(
+  snippet: NativeQuerySnippet,
+) {
+  fetchMock.get(`${PATH}/${snippet.entity_id}`, snippet);
+}
+
 /**
  * Serves one snippet that PUT requests change: later GET requests return the
  * snippet with the PUT body merged in, as the backend does.

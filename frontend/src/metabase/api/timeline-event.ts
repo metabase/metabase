@@ -1,4 +1,5 @@
 import type {
+  BaseEntityId,
   CreateTimelineEventRequest,
   TimelineEvent,
   TimelineEventId,
@@ -13,15 +14,29 @@ import {
   provideTimelineEventTags,
   tag,
 } from "./tags";
+import { handleLoadedByEntityId } from "./utils/lifecycle";
 
 export const timelineEventApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getTimelineEvent: builder.query<TimelineEvent, TimelineEventId>({
+    getTimelineEvent: builder.query<
+      TimelineEvent,
+      TimelineEventId | BaseEntityId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/timeline-event/${id}`,
       }),
       providesTags: (event) => (event ? provideTimelineEventTags(event) : []),
+      onQueryStarted: (id, { dispatch, queryFulfilled }) =>
+        handleLoadedByEntityId(id, queryFulfilled, (timelineEvent) =>
+          dispatch(
+            timelineEventApi.util.upsertQueryData(
+              "getTimelineEvent",
+              timelineEvent.id,
+              timelineEvent,
+            ),
+          ),
+        ),
     }),
     createTimelineEvent: builder.mutation<
       TimelineEvent,
