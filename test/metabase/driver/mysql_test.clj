@@ -47,6 +47,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -1465,3 +1466,20 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(tx/defdataset bit-values
+  [["flags"
+    [{:field-name "flag", :base-type {:native "BIT(1)"}}]
+    [[true] [false] [true] [nil]]]])
+
+(deftest value-list-scan-of-bit-column-test
+  (mt/test-driver :mysql
+    (mt/dataset bit-values
+      (testing "the batched value-list scan keeps both values of a BIT(1) column"
+        (let [table (t2/select-one :model/Table :id (mt/id :flags))
+              field (t2/select-one :model/Field :id (mt/id :flags :flag))]
+          (is (= :type/Boolean (:base_type field)))
+          (is (= #{true false nil}
+                 (mt/with-test-user :crowberto
+                   (set (get-in (distinct-batch/run-distinct-batch :mysql table [field])
+                                [(:id field) :values]))))))))))
