@@ -14,7 +14,7 @@ import { t } from "ttag";
 
 import { Group, PreventEagerPortal, Stack, UnstyledButton } from "metabase/ui";
 import { useGatedCloseProps } from "metabase/ui/components/overlays/overlay-stack";
-import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
+import { useBlockShortcuts } from "metabase/ui/hooks/use-block-shortcuts";
 
 import { StaticIcon } from "../../icons/Icon/StaticIcon";
 import ChevronLeftIcon from "../../icons/Icon/icons/chevronleft.svg?component";
@@ -140,9 +140,7 @@ export function Modal({
   const isCentered = layout === "centered";
   const hasCenteredHeading = isCentered && (illustration != null || !!title);
 
-  useDisableCommandPalette({
-    disabled: props.opened,
-  });
+  useBlockShortcuts(props.opened);
 
   return (
     <PreventEagerPortal {...props}>
@@ -230,9 +228,7 @@ function ModalRoot({
 }: ModalRootProps) {
   const closeProps = useGatedCloseProps(props);
 
-  useDisableCommandPalette({
-    disabled: props.opened,
-  });
+  useBlockShortcuts(props.opened);
   return (
     <PreventEagerPortal>
       <MantineModal.Root

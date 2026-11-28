@@ -1,5 +1,4 @@
 import { createContext, useContext } from "react";
-import { noop } from "underscore";
 
 import type {
   ColorScheme,
@@ -13,6 +12,8 @@ export interface ColorSchemeContextType {
   setColorScheme: (scheme: ColorScheme) => void;
   toggleColorScheme: () => void;
 }
+
+const noop = () => {};
 
 export const colorSchemeContextDefaultValue: ColorSchemeContextType = {
   colorScheme: "light",

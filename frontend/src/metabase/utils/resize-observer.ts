@@ -16,9 +16,6 @@ type ResizeObserverCallback = (
 // updates to resize the text.
 const isEmbeddingSdk =
   typeof process !== "undefined" && process.env?.IS_EMBEDDING_SDK === "true";
-const ResizeObserverImpl = isEmbeddingSdk
-  ? JuggleResizeObserver
-  : window.ResizeObserver;
 
 function createResizeObserver() {
   const callbacksMap: Map<unknown, ResizeObserverCallback[]> = new Map();
@@ -30,11 +27,14 @@ function createResizeObserver() {
     });
   }
 
-  const observer = new ResizeObserverImpl(handler);
+  let observer: ResizeObserver | undefined;
 
   return {
-    observer,
     subscribe(target: Element, callback: ResizeObserverCallback) {
+      const ResizeObserverImpl = isEmbeddingSdk
+        ? JuggleResizeObserver
+        : window.ResizeObserver;
+      observer ??= new ResizeObserverImpl(handler);
       observer.observe(target);
       const callbacks = callbacksMap.get(target) ?? [];
       callbacks.push(callback);
@@ -43,7 +43,7 @@ function createResizeObserver() {
     unsubscribe(target: Element, callback: ResizeObserverCallback) {
       const callbacks = callbacksMap.get(target) ?? [];
       if (callbacks.length === 1) {
-        observer.unobserve(target);
+        observer?.unobserve(target);
         callbacksMap.delete(target);
         return;
       }

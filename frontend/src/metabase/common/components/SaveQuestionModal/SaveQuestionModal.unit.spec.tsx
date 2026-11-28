@@ -38,6 +38,7 @@ import type {
   CollectionId,
   CollectionItem,
   DashboardId,
+  RecentCollectionItem,
   RecentItem,
 } from "metabase-types/api";
 import {
@@ -102,11 +103,14 @@ const setup = async (
     createError,
     personalCollectionItems = [],
     recentSelections = [],
+    pickerRecentItems = [],
   }: {
     collectionEndpoints?: CollectionEndpoints;
     createError?: unknown;
     personalCollectionItems?: CollectionItem[];
     recentSelections?: RecentItem[];
+    /** Recent views and selections listed in the save location picker */
+    pickerRecentItems?: RecentItem[];
   } = {},
 ) => {
   const onCreateMock = jest.fn<
@@ -145,7 +149,7 @@ const setup = async (
 
   setupRecentViewsAndSelectionsEndpoints(recentSelections, ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
-    [],
+    pickerRecentItems,
     ["selections", "views"],
     {},
     false,
@@ -840,6 +844,71 @@ describe("SaveQuestionModal", () => {
       await waitFor(() =>
         expect(saveLocDropdown()).toHaveTextContent(FOO_DASH.name),
       );
+    });
+
+    it("should not list recent items the user cannot write to in the save location picker", async () => {
+      mockGetBoundingClientRect();
+      const recentItem = ({
+        id,
+        model,
+        name,
+        can_write,
+      }: Pick<RecentCollectionItem, "id" | "name" | "can_write"> & {
+        model: "collection" | "dashboard";
+      }) =>
+        createMockRecentCollectionItem({
+          id,
+          model,
+          name,
+          can_write,
+          parent_collection: { id: null, name: "Our analytics" },
+        });
+      await setup(getQuestion(), null, {
+        pickerRecentItems: [
+          recentItem({
+            id: 12,
+            model: "collection",
+            name: "Second collection",
+            can_write: true,
+          }),
+          recentItem({
+            id: 13,
+            model: "collection",
+            name: "Third collection",
+            can_write: false,
+          }),
+          recentItem({
+            id: 3,
+            model: "dashboard",
+            name: "Orders in a dashboard",
+            can_write: true,
+          }),
+          recentItem({
+            id: 4,
+            model: "dashboard",
+            name: "Third collection dashboard",
+            can_write: false,
+          }),
+        ],
+      });
+
+      await userEvent.click(saveLocDropdown());
+      const picker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(picker).findByText("Recent items"));
+
+      const recents = await within(picker).findByTestId("item-picker-level-1");
+      expect(
+        await within(recents).findByText("Second collection"),
+      ).toBeInTheDocument();
+      expect(
+        within(recents).getByText("Orders in a dashboard"),
+      ).toBeInTheDocument();
+      expect(
+        within(picker).queryByText("Third collection"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(picker).queryByText("Third collection dashboard"),
+      ).not.toBeInTheDocument();
     });
 
     it("should now show tab input if selected dashboard has no tabs", async () => {

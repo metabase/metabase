@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
@@ -49,6 +50,7 @@ import type {
   Collection,
   Database,
   Dataset,
+  Settings,
   Timeline,
   TokenFeatures,
   UnsavedCard,
@@ -245,6 +247,11 @@ interface SetupOpts {
   withUndos?: boolean;
   currentUser?: User;
   /**
+   * Overrides of the instance settings, in the store and in
+   * GET /api/session/properties.
+   */
+  settings?: Partial<Settings>;
+  /**
    * Set to false to look at the page while the question is still loading.
    */
   waitForLoad?: boolean;
@@ -259,6 +266,7 @@ interface SetupOpts {
    * `afterEach` with `window.history.replaceState(null, "", "/")`.
    */
   syncWindowLocation?: boolean;
+  hasEnterprisePlugins?: boolean;
 }
 
 export const setup = async ({
@@ -284,17 +292,30 @@ export const setup = async ({
       can_create_native_queries: true,
     }),
   }),
+  settings = {},
   waitForLoad = true,
   hasAcknowledgedModelModal = false,
   collections = [TEST_COLLECTION],
   tokenFeatures,
   syncWindowLocation = false,
+  hasEnterprisePlugins = false,
 }: SetupOpts) => {
+  const instanceSettings = mockSettings({
+    "site-url": "http://localhost:3000",
+    ...(tokenFeatures && {
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+    ...settings,
+  });
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);
-  setupPropertiesEndpoints(createMockSettings());
+  setupPropertiesEndpoints(createMockSettings(settings));
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints(bookmarks);
   setupTimelinesEndpoints(timelinesResponse ?? timelines);
@@ -363,12 +384,7 @@ export const setup = async ({
       initialRoute,
       storeInitialState: createMockState({
         currentUser,
-        settings: mockSettings({
-          "site-url": "http://localhost:3000",
-          ...(tokenFeatures && {
-            "token-features": createMockTokenFeatures(tokenFeatures),
-          }),
-        }),
+        settings: instanceSettings,
       }),
     },
   );

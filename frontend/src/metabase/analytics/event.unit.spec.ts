@@ -73,6 +73,10 @@ describe("trackSchemaEvent", () => {
       database_id: 1,
       question_id: 0,
     },
+    {
+      event: "turn_into_model_clicked",
+      question_id: 7,
+    },
   ])(
     "should send the $event event to Snowplow as valid self-describing JSON",
     (event) => {

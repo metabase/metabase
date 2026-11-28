@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import _ from "underscore";
 
 import resizeObserver from "metabase/utils/resize-observer";
 
@@ -81,11 +80,16 @@ export const useAreAnyTruncated = <E extends Element>({
           return newStatuses;
         });
       };
-      const handleResizeDebounced = _.debounce(handleResize, 200);
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      const handleResizeDebounced = () => {
+        clearTimeout(timeout);
+        timeout = setTimeout(handleResize, 200);
+      };
       resizeObserver.subscribe(element, handleResizeDebounced);
-      unsubscribeFns.push(() =>
-        resizeObserver.unsubscribe(element, handleResizeDebounced),
-      );
+      unsubscribeFns.push(() => {
+        clearTimeout(timeout);
+        resizeObserver.unsubscribe(element, handleResizeDebounced);
+      });
     });
 
     return () => {

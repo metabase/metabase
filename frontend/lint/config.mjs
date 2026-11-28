@@ -686,6 +686,10 @@ const configs = [
             { group: ["metabase-enterprise"] },
             { group: ["metabase-enterprise/*"] },
             { group: ["cljs/metabase.lib*"] },
+            {
+              group: ["underscore", "underscore/**"],
+              message: "Use native JavaScript in metabase/ui instead.",
+            },
             dayjsRestrictedPattern,
           ],
           paths: [

@@ -76,6 +76,32 @@ describe("file-paths.yaml", () => {
     },
   );
 
+  it.each([
+    "frontend/ui-package/package.json",
+    "frontend/fonts/Lato/lato-v16-latin-regular.woff2",
+    "LICENSE-AGPL.txt",
+    "frontend/src/metabase/ui/icons/example.svg",
+  ])(
+    "selects the UI package check without other frontend jobs for %s",
+    (file) => {
+      expect(matches("ui_package", file)).toBe(true);
+      expect(matches("frontend_all", file)).toBe(false);
+    },
+  );
+
+  it("checks the package when an included app stylesheet changes", () => {
+    expect(
+      matches(
+        "frontend_all",
+        "frontend/src/metabase/css/core/layout.module.css",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps unrelated app files out of the UI package filter", () => {
+    expect(matches("ui_package", "frontend/src/metabase/App.tsx")).toBe(false);
+  });
+
   it("treats frontend/lint/OXLINT.md as a documentation-only change", () => {
     expect(matches("frontend_all", "frontend/lint/OXLINT.md")).toBe(false);
     expect(matches("documentation", "frontend/lint/OXLINT.md")).toBe(true);

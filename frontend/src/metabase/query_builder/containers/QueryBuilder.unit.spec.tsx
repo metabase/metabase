@@ -5,6 +5,7 @@ import { setupJestCanvasMock } from "jest-canvas-mock";
 import _ from "underscore";
 
 import {
+  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
@@ -77,8 +78,11 @@ import {
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
+  saveQuestion,
   setup,
+  triggerNotebookQueryChange,
   waitForFaviconReady,
+  waitForQueryToFinish,
   waitForSaveToBeEnabled,
 } from "./test-utils";
 
@@ -121,6 +125,142 @@ describe("QueryBuilder", () => {
         });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+      });
+
+      describe("visualizing a just-saved question from the notebook (metabase#13470)", () => {
+        mockGetBoundingClientRect();
+
+        const ORDERS_DATASET = createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createOrdersIdDatasetColumn(),
+              createOrdersCreatedAtDatasetColumn(),
+            ],
+            rows: [
+              [1, "2027-11-17T10:00:00Z"],
+              [2, "2027-11-18T10:00:00Z"],
+            ],
+          }),
+          row_count: 2,
+        });
+
+        /**
+         * Saves a new question through the save modal, as the user would,
+         * then opens its notebook.
+         */
+        async function saveAndOpenNotebook() {
+          const { router, store } = await setup({
+            card: TEST_UNSAVED_STRUCTURED_CARD,
+            dataset: ORDERS_DATASET,
+          });
+          const savedCard = createMockCard({
+            id: 1,
+            name: "Orders",
+            dataset_query: TEST_UNSAVED_STRUCTURED_CARD.dataset_query,
+          });
+          setupCardsEndpoints([savedCard]);
+          setupCardQueryMetadataEndpoint(
+            savedCard,
+            createMockCardQueryMetadata({
+              databases: [createSampleDatabase()],
+            }),
+          );
+          setupCardQueryEndpoints(savedCard, ORDERS_DATASET);
+
+          await saveQuestion();
+          expect(
+            fetchMock.callHistory.called("card-create", { method: "POST" }),
+          ).toBe(true);
+          await waitFor(() =>
+            expect(router.location.pathname).toMatch(/^\/question\/1-/),
+          );
+
+          await userEvent.click(screen.getByTestId("notebook-button"));
+          await waitFor(() =>
+            expect(router.location.pathname).toContain("/notebook"),
+          );
+          return { router, store };
+        }
+
+        async function visualize(
+          store: Parameters<typeof waitForQueryToFinish>[0],
+        ) {
+          await userEvent.click(
+            await screen.findByRole("button", { name: "Visualize" }),
+          );
+          expect(await screen.findByTestId("table-root")).toBeInTheDocument();
+          await waitForQueryToFinish(store);
+        }
+
+        it("does not offer to save the question when nothing changed", async () => {
+          const { router, store } = await saveAndOpenNotebook();
+
+          await visualize(store);
+
+          expect(router.location.pathname).not.toContain("/notebook");
+          expect(
+            within(screen.getByTestId("qb-header")).queryByRole("button", {
+              name: "Save",
+            }),
+          ).not.toBeInTheDocument();
+        });
+
+        it("offers to save the question after a change", async () => {
+          const { router, store } = await saveAndOpenNotebook();
+
+          await triggerNotebookQueryChange();
+          await visualize(store);
+
+          expect(router.location.pathname).not.toContain("/notebook");
+          expect(
+            within(screen.getByTestId("qb-header")).getByRole("button", {
+              name: "Save",
+            }),
+          ).toBeInTheDocument();
+        });
+      });
+
+      describe("data step", () => {
+        mockGetBoundingClientRect({ width: 3000, height: 1000 });
+
+        it("shows the source table of a saved question in the data step", async () => {
+          const card = createMockCard({
+            id: 2,
+            name: "Orders, Count",
+            type: "question",
+            dataset_query: Lib.toJsQuery(
+              Lib.createTestQuery(SAMPLE_PROVIDER, {
+                stages: [
+                  {
+                    source: { type: "table", id: ORDERS_ID },
+                    aggregations: [
+                      { type: "operator", operator: "count", args: [] },
+                    ],
+                  },
+                ],
+              }),
+            ),
+          });
+          await setup({
+            card,
+            initialRoute: `/question/${card.id}/notebook`,
+          });
+
+          const dataStep = await screen.findByTestId("data-step-cell");
+          expect(dataStep).toHaveTextContent(/^Orders$/);
+          await userEvent.click(within(dataStep).getByText("Orders"));
+
+          const miniPicker = await screen.findByTestId("mini-picker");
+          expect(
+            await within(miniPicker).findByTestId("mini-picker-header"),
+          ).toHaveTextContent("Sample Database");
+          expect(
+            await within(miniPicker).findByText("Orders"),
+          ).toBeInTheDocument();
+          expect(
+            await within(miniPicker).findByText("Products"),
+          ).toBeInTheDocument();
+        });
       });
 
       it("renders the notebook of a question whose custom column references a missing field (metabase#28221)", async () => {
@@ -312,6 +452,36 @@ describe("QueryBuilder", () => {
 
       response.resolve(new Response(JSON.stringify({}), { status: 500 }));
       await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+    });
+
+    describe("opening a saved source at its URL", () => {
+      it.each([
+        {
+          title: "a saved question",
+          card: createMockCard({
+            id: 2,
+            name: "Orders, Count",
+            type: "question",
+            dataset_query: TEST_CARD.dataset_query,
+          }),
+          route: "/question/2-orders-count",
+        },
+        {
+          title: "a native question",
+          card: { ...TEST_NATIVE_CARD, id: 3, name: "Native source" },
+          route: "/question/3-native-source",
+        },
+      ])("opens $title without unsaved changes", async ({ card, route }) => {
+        await setup({
+          card,
+          dataset: createMockDataset({ running_time: 123 }),
+          initialRoute: route,
+        });
+
+        expect(await screen.findByDisplayValue(card.name)).toBeInTheDocument();
+        expect(await screen.findByTestId("execution-time")).toBeInTheDocument();
+        expect(screen.queryByTestId("qb-save-button")).not.toBeInTheDocument();
+      });
     });
 
     describe("query execution time", () => {
@@ -751,7 +921,7 @@ describe("QueryBuilder", () => {
     // But native queries won't run the query on first load, we need to manually
     // click the run button, but our mock `NativeQueryEditor` doesn't have a run
     // button wired up, and it's quite hard to do so (I've tried).
-    // So I test that case in Cypress in `28834-modified-native-question.cy.spec.js` instead.
+    // So that case is tested in Cypress by "issue 10803" in `downloads.cy.spec.ts` instead.
 
     it("should allow downloading results for a native query", async () => {
       fetchMock.post(`path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`, {});
@@ -784,48 +954,58 @@ describe("QueryBuilder", () => {
       ).toHaveLength(1);
     });
 
-    it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
-      fetchMock.post("path:/api/dataset/csv", {});
-      await setup({
-        card: TEST_NATIVE_CARD,
-        dataset: TEST_NATIVE_CARD_DATASET,
-      });
+    it.each(["csv", "xlsx"])(
+      "should allow downloading %s results for a native query using the current result even the query has changed but not rerun (metabase#28834)",
+      async (format) => {
+        fetchMock.post(`path:/api/dataset/${format}`, {});
+        await setup({
+          card: TEST_NATIVE_CARD,
+          dataset: TEST_NATIVE_CARD_DATASET,
+        });
 
-      const container = screen.getByTestId("test-container");
+        const container = screen.getByTestId("test-container");
 
-      await waitForFaviconReady(container);
+        await waitForFaviconReady(container);
 
-      const inputArea = within(
-        screen.getByTestId("mock-native-query-editor"),
-      ).getByRole("textbox");
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
 
-      await userEvent.click(inputArea);
-      await userEvent.type(inputArea, " union SELECT 2");
+        await userEvent.click(inputArea);
+        await userEvent.type(inputArea, " union SELECT 2");
 
-      await userEvent.tab();
+        await userEvent.tab();
 
-      expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
+        expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
-      await userEvent.click(
-        screen.getByTestId("question-results-download-button"),
-      );
-      await userEvent.click(await screen.findByLabelText(".csv"));
-      await userEvent.click(
-        await screen.findByTestId("download-results-button"),
-      );
+        await userEvent.click(
+          screen.getByTestId("question-results-download-button"),
+        );
+        await userEvent.click(await screen.findByLabelText(`.${format}`));
+        await userEvent.click(
+          await screen.findByTestId("download-results-button"),
+        );
 
-      const calls = fetchMock.callHistory.calls("path:/api/dataset/csv");
-      const lastCall = calls[calls.length - 1];
-      const body = await Promise.resolve(lastCall.options?.body);
-      // Unjustified type cast. FIXME
-      const urlSearchParams = new URLSearchParams(body as string);
-      expect(lastCall.url).toEqual(expect.stringContaining("/api/dataset/csv"));
-      const query =
-        urlSearchParams instanceof URLSearchParams
-          ? JSON.parse(urlSearchParams.get("query") ?? "{}")
-          : {};
-      expect(query).toMatchObject({ stages: [{ native: "SELECT 1" }] });
-    });
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/dataset/${format}`),
+          ).toHaveLength(1),
+        );
+        const [lastCall] = fetchMock.callHistory.calls(
+          `path:/api/dataset/${format}`,
+        );
+        const body = await Promise.resolve(lastCall.options?.body);
+        const urlSearchParams = new URLSearchParams(String(body));
+        expect(lastCall.url).toEqual(
+          expect.stringContaining(`/api/dataset/${format}`),
+        );
+        const query =
+          urlSearchParams instanceof URLSearchParams
+            ? JSON.parse(urlSearchParams.get("query") ?? "{}")
+            : {};
+        expect(query).toMatchObject({ stages: [{ native: "SELECT 1" }] });
+      },
+    );
   });
 
   describe("column header drills", () => {
@@ -967,6 +1147,119 @@ describe("QueryBuilder", () => {
         ],
       });
     });
+  });
+
+  describe("filter pills and the filter picker", () => {
+    it("should show the values and the operators of a between filter when its pill is clicked (metabase#14726)", async () => {
+      const card = createMockUnsavedCard({
+        display: "table",
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [
+              {
+                source: { type: "table", id: ORDERS_ID },
+                filters: [
+                  {
+                    type: "operator",
+                    operator: "between",
+                    args: [
+                      { type: "column", name: "ID" },
+                      { type: "literal", value: 96 },
+                      { type: "literal", value: 97 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      });
+      await setup({ card });
+
+      const filtersPanel = await screen.findByTestId("qb-filters-panel");
+      await userEvent.click(
+        within(filtersPanel).getByText("ID is between 96 and 97"),
+      );
+      const popover = await screen.findByRole("dialog");
+      expect(within(popover).getByDisplayValue("96")).toBeInTheDocument();
+      expect(within(popover).getByDisplayValue("97")).toBeInTheDocument();
+
+      await userEvent.click(within(popover).getByText("Between"));
+      const menu = await screen.findByRole("menu");
+      expect(within(menu).getByText("Is not")).toBeInTheDocument();
+      expect(within(menu).getByText("Greater than")).toBeInTheDocument();
+      expect(within(menu).getByText("Less than")).toBeInTheDocument();
+    });
+
+    it.each([
+      {
+        issue: "metabase#21973",
+        tableId: PEOPLE_ID,
+        operator: "max" as const,
+        columnName: "NAME",
+        breakoutName: "SOURCE",
+        aggregationName: "Max of Name",
+        filterOperator: "Starts with",
+      },
+      {
+        issue: "metabase#22154",
+        tableId: PRODUCTS_ID,
+        operator: "min" as const,
+        columnName: "VENDOR",
+        breakoutName: "CATEGORY",
+        aggregationName: "Min of Vendor",
+        filterOperator: "Ends with",
+      },
+    ])(
+      "should filter $aggregationName as text ($issue)",
+      async ({
+        tableId,
+        operator,
+        columnName,
+        breakoutName,
+        aggregationName,
+        filterOperator,
+      }) => {
+        const card = createMockUnsavedCard({
+          display: "table",
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [
+                {
+                  source: { type: "table", id: tableId },
+                  aggregations: [
+                    {
+                      type: "operator",
+                      operator,
+                      args: [{ type: "column", name: columnName }],
+                    },
+                  ],
+                  breakouts: [{ type: "column", name: breakoutName }],
+                },
+              ],
+            }),
+          ),
+        });
+        await setup({ card });
+
+        await userEvent.click(
+          await screen.findByTestId("question-filter-header"),
+        );
+        const popover = await screen.findByRole("dialog");
+        await userEvent.click(within(popover).getByText("Summaries"));
+        await userEvent.click(within(popover).getByText(aggregationName));
+        await userEvent.click(
+          await within(popover).findByLabelText("Filter operator"),
+        );
+        await userEvent.click(
+          within(await screen.findByRole("menu")).getByText(filterOperator),
+        );
+
+        expect(
+          await within(popover).findByPlaceholderText("Enter some text"),
+        ).toBeInTheDocument();
+      },
+    );
   });
 
   describe("filtering from the header and going back", () => {

@@ -33,6 +33,10 @@ const repoRoot = resolve(packageDir, "../..");
 const pkg = readPackageJson(resolve(packageDir, "package.json"));
 
 const uiDir = resolve(repoRoot, "frontend/src/metabase/ui");
+const esmAdapters = new Map([
+  ["ttag", resolve(packageDir, "src/ttag.ts")],
+  ["react-use", resolve(packageDir, "src/react-use.ts")],
+]);
 
 // Resolved from @svgr/webpack (a root dependency) so the root needs no @svgr/plugin-* entries.
 const svgrRequire = createRequire(require.resolve("@svgr/webpack"));
@@ -72,6 +76,19 @@ function dayjsPluginExtension(): Plugin {
     resolveId(id) {
       if (/^dayjs\/plugin\/\w+$/.test(id)) {
         return { id: `${id}.js`, external: true };
+      }
+    },
+  };
+}
+
+function esmInterop(): Plugin {
+  return {
+    name: "mbui-esm-interop",
+    enforce: "pre",
+    resolveId(id, importer) {
+      const adapter = esmAdapters.get(id);
+      if (adapter) {
+        return importer === adapter ? { id, external: true } : adapter;
       }
     },
   };
@@ -296,6 +313,7 @@ export default defineConfig({
     }),
     rejectUndeclaredBareImports(),
     dayjsPluginExtension(),
+    esmInterop(),
     stylesAndFonts(),
   ],
   resolve: {
@@ -335,7 +353,9 @@ export default defineConfig({
     },
     rolldownOptions: {
       external: (id) =>
-        !id.startsWith("dayjs/plugin/") && externalPattern.test(id),
+        !esmAdapters.has(id) &&
+        !id.startsWith("dayjs/plugin/") &&
+        externalPattern.test(id),
       output: {
         preserveModules: true,
         preserveModulesRoot: resolve(repoRoot, "frontend"),

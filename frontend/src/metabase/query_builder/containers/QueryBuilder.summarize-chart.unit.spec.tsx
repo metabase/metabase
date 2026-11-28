@@ -9,6 +9,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -17,7 +18,9 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockSettings,
   createMockUnsavedCard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS,
@@ -276,4 +279,140 @@ describe("QueryBuilder > summarize sidebar > chart", () => {
     );
     await assertChartByCreatedAtAndCategory();
   });
+});
+
+describe("QueryBuilder > summarize sidebar > chart_generated analytics", () => {
+  const SETTING_URL = "path:/api/setting/non-table-chart-generated";
+  const PRODUCT_TITLE = "Rustic Paper Wallet";
+  // a table needs rows to render, an empty result shows no visualization
+  const PRODUCTS_WITH_ROW_DATASET = createDataset(
+    createProductsTableDatasetColumns(),
+    [
+      [
+        1,
+        "1018947080336",
+        PRODUCT_TITLE,
+        "Gizmo",
+        "Swaniawski, Casper and Hilll",
+        29.46,
+        4.6,
+        "2025-07-19T19:44:56.582Z",
+      ],
+    ],
+  );
+  let trackSimpleEvent: jest.SpiedFunction<typeof Analytics.trackSimpleEvent>;
+
+  beforeEach(() => {
+    mockGetBoundingClientRect();
+    trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+  });
+
+  afterEach(() => {
+    trackSimpleEvent.mockRestore();
+  });
+
+  async function setupChartGenerated({
+    isAdmin,
+    isChartGenerated,
+  }: {
+    isAdmin: boolean;
+    isChartGenerated: boolean;
+  }) {
+    await setup({
+      card: PRODUCTS_CARD,
+      dataset: PRODUCTS_WITH_ROW_DATASET,
+      database: createSampleDatabase({ auto_run_queries: true }),
+      currentUser: createMockUser({ is_superuser: isAdmin }),
+      settings: { "non-table-chart-generated": isChartGenerated },
+    });
+    setupDatasetEndpoint();
+
+    // Stands in for the backend setting: it is stored only by the PUT below,
+    // and session properties read it back.
+    let storedIsChartGenerated = isChartGenerated;
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () =>
+        createMockSettings({
+          "non-table-chart-generated": storedIsChartGenerated,
+        }),
+      { name: "get-session-properties" },
+    );
+    fetchMock.put(SETTING_URL, async (call: CallLog) => {
+      const body = JSON.parse(String(call.options.body));
+      if (body.value === true) {
+        storedIsChartGenerated = true;
+      }
+      return 204;
+    });
+  }
+
+  function getChartGeneratedCalls() {
+    return trackSimpleEvent.mock.calls.filter(
+      ([event]) => event.event === "chart_generated",
+    );
+  }
+
+  it("should track the first non-table visualization once and save the setting", async () => {
+    await setupChartGenerated({
+      isAdmin: true,
+      isChartGenerated: false,
+    });
+
+    // the table rendered on load is not a non-table chart
+    expect(await screen.findByText(PRODUCT_TITLE)).toBeInTheDocument();
+    expect(getChartGeneratedCalls()).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(SETTING_URL)).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
+    await addBreakout("Category");
+    await assertChartByCategory();
+
+    await waitFor(() =>
+      expect(getChartGeneratedCalls()).toEqual([
+        [{ event: "chart_generated", event_detail: "bar" }],
+      ]),
+    );
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls(SETTING_URL)).toHaveLength(1),
+    );
+    const [settingCall] = fetchMock.callHistory.calls(SETTING_URL);
+    expect(settingCall.options.method).toBe("PUT");
+    expect(JSON.parse(String(settingCall.options.body))).toEqual({
+      value: true,
+    });
+
+    // a second non-table chart in the same session is not tracked again
+    await addBreakout("Created At", { add: true });
+    await assertChartByCreatedAtAndCategory();
+    expect(getChartGeneratedCalls()).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(SETTING_URL)).toHaveLength(1);
+  });
+
+  it.each([
+    { name: "a non-admin", isAdmin: false, isChartGenerated: false },
+    {
+      name: "an admin after the first chart was generated",
+      isAdmin: true,
+      isChartGenerated: true,
+    },
+  ])(
+    "should not track a non-table visualization for $name",
+    async ({ isAdmin, isChartGenerated }) => {
+      await setupChartGenerated({
+        isAdmin,
+        isChartGenerated,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Summarize/ }),
+      );
+      await addBreakout("Category");
+      await assertChartByCategory();
+
+      expect(getChartGeneratedCalls()).toHaveLength(0);
+      expect(fetchMock.callHistory.calls(SETTING_URL)).toHaveLength(0);
+    },
+  );
 });
