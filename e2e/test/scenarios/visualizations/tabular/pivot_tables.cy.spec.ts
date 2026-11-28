@@ -686,6 +686,57 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
+  it("should apply conditional formatting", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+          ],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: ["STATE", "CREATED_AT"],
+          columns: ["CATEGORY"],
+          values: ["sum"],
+        },
+        "pivot_table.collapsed_rows": {
+          value: [],
+          rows: ["STATE", "CREATED_AT"],
+        },
+      },
+    });
+
+    cy.findByTestId("pivot-table").should("contain", "65.09");
+
+    H.openVizSettingsSidebar();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Conditional Formatting").click();
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Add a rule").click();
+    cy.findByTestId("conditional-formatting-value-input").type("70").blur();
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("is equal to").click({ force: true });
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("is less than or equal to").click({ force: true });
+
+    cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
+      "have.css",
+      "background-color",
+      "rgba(80, 158, 227, 0.65)",
+    );
+  });
+
   describe("issue 37380", () => {
     beforeEach(() => {
       const categoryField = [
