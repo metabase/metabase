@@ -3,10 +3,9 @@ const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import type { LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
@@ -302,26 +301,6 @@ describe("issue 14124", () => {
   });
 });
 
-describe("issue 49270", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("document title should not indicate that loading takes place when query has errored (metabase#49270)", () => {
-    H.openOrdersTable();
-    cy.icon("sum").click();
-
-    cy.intercept("POST", "/api/dataset", (request) => {
-      request.reply({ statusCode: 500, delay: 1000 });
-    });
-
-    cy.button("Done").click();
-    cy.title().should("equal", "Doing science... · Metabase");
-    cy.title().should("equal", "Question · Metabase");
-  });
-});
-
 describe("issue 53404", () => {
   beforeEach(() => {
     H.restore();
@@ -359,7 +338,10 @@ describe("issue 53170", () => {
     "should correctly position the add column popover (metabase#53170)",
     { viewportWidth: 480, viewportHeight: 800 },
     () => {
-      H.openOrdersTable();
+      H.createNativeQuestion(
+        { native: { query: "SELECT * FROM ORDERS LIMIT 5" } },
+        { visitQuestion: true },
+      );
       cy.findByLabelText("Add column").click();
       H.popover().within(() => {
         cy.findByText("Combine columns").click();
@@ -370,46 +352,6 @@ describe("issue 53170", () => {
       });
     },
   );
-});
-
-describe("filter picker and query running state", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should focus the filter picker search input and show the query running state when navigating back (metabase#54817, metabase#57398)", () => {
-    H.openProductsTable();
-    H.filter();
-    H.popover().findByPlaceholderText("Find...").should("be.focused");
-    H.popover().within(() => {
-      cy.log("1st filter");
-      cy.findByText("Category").click();
-      cy.findByText("Widget").click();
-      cy.findByLabelText("Add another filter").click();
-
-      cy.log("2st filter");
-      cy.findByText("Vendor").click();
-      cy.findByText("Alfreda Konopelski II Group").click();
-      cy.findByLabelText("Add another filter").click();
-    });
-
-    cy.log("delay the response to be able to verify the running state");
-    cy.intercept("POST", "/api/dataset", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(5000);
-      });
-    });
-
-    cy.go("back");
-    H.queryBuilderMain().findByTestId("loading-indicator").should("be.visible");
-    H.queryBuilderFiltersPanel().within(() => {
-      cy.findByText("Category is Widget").should("be.visible");
-      cy.findByText("Vendor is Alfreda Konopelski II Group").should(
-        "not.exist",
-      );
-    });
-  });
 });
 
 describe("issue 46845", () => {
@@ -526,87 +468,6 @@ describe("54205", { tags: "@external" }, () => {
     });
   });
 });
-describe("issue 55631", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-    cy.intercept("POST", "/api/card").as("cardCreate");
-  });
-
-  it("should not flash the default title when saving the question (metabase#55631)", () => {
-    H.visualize();
-    cy.findByTestId("qb-header").button("Save").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Name").should("have.value", "Orders");
-      cy.findByLabelText("Name").clear().type("Custom");
-      cy.findByLabelText("Where do you want to save this?").click();
-    });
-
-    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
-
-    // The flash happens between the save response and the modal closing,
-    // so record the Name value on every frame until the modal is gone.
-    cy.window().then((win) => {
-      const nameValues: string[] = [];
-      const sample = () => {
-        const input = win.document.querySelector<HTMLInputElement>(
-          '[data-testid="save-question-modal"] input[name="name"]',
-        );
-        if (input) {
-          nameValues.push(input.value);
-          win.requestAnimationFrame(sample);
-        }
-      };
-      sample();
-      cy.wrap(nameValues).as("nameValues");
-    });
-
-    H.modal().button("Save").click();
-    cy.wait("@cardCreate");
-    cy.findByTestId("save-question-modal").should("not.exist");
-
-    cy.get<string[]>("@nameValues")
-      .should("include", "Custom")
-      .and("not.include", "Orders");
-  });
-});
-describe("issue 42723", () => {
-  const questionDetails: StructuredQuestionDetails = {
-    display: "line",
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should be able to change the query without loosing the viz type (metabase#42723)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    H.queryBuilderFooter().findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Count");
-    H.popover().icon("arrow_up").click();
-    H.tableInteractiveHeader().icon("chevronup").should("be.visible");
-
-    H.queryBuilderFooter().findByLabelText("Switch to visualization").click();
-    H.ensureChartIsActive();
-  });
-});
-
 describe("issue 58628", () => {
   beforeEach(() => {
     H.restore();
@@ -652,70 +513,6 @@ describe("issue 52872", () => {
           cy.wrap($el[0].offsetWidth).should("be.lt", window.innerWidth);
         });
       });
-  });
-});
-
-describe("issue #47005", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-
-    H.createQuestion({
-      name: "Question A",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    }).then(({ body: question }) => {
-      H.createQuestion(
-        {
-          name: "Question B",
-          query: {
-            "source-table": "card__" + question.id,
-          },
-        },
-        { visitQuestion: true },
-      );
-    });
-  });
-
-  it("should show the collection of the base question in breadcrumbs (metabase#47005)", () => {
-    cy.findAllByTestId("head-crumbs-container")
-      .filter(":contains(Question A)")
-      .findByText("Our analytics")
-      .should("be.visible");
-  });
-});
-
-describe("issue 66210", () => {
-  const METRIC_NAME = "66210 metric";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion({
-      name: METRIC_NAME,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-      },
-      type: "metric",
-    });
-
-    cy.visit("/");
-  });
-
-  it("should not allow you to join on metrics (metabase#66210)", () => {
-    H.startNewQuestion();
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(0, "Our analytics").click();
-    H.entityPickerModalItem(1, METRIC_NAME).should("be.visible");
-    H.entityPickerModalItem(1, "Orders").click();
-    H.join();
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModalItem(0, "Our analytics").click();
-    H.entityPickerModalItem(1, "Orders").should("be.visible");
-    H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
   });
 });
 

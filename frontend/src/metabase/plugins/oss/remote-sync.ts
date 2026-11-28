@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
@@ -14,6 +14,11 @@ export type RemoteSyncSettingsModalProps = {
 export type RemoteSyncSetupMenuItemProps = {
   isNavbarOpened: boolean;
   onClick: () => void;
+};
+
+export type RemoteSyncWorktreesNavItemProps = {
+  isNavbarOpened: boolean;
+  isSelected: boolean;
 };
 
 export type RemoteSyncChangesArea =
@@ -39,6 +44,8 @@ type PluginRemoteSync = {
   SettingsPage: ComponentType;
   SettingsModal: ComponentType<RemoteSyncSettingsModalProps>;
   SetupMenuItem: ComponentType<RemoteSyncSetupMenuItemProps>;
+  WorktreesNavItem: ComponentType<RemoteSyncWorktreesNavItemProps>;
+  getDataStudioRoutes: () => ReactNode;
   AppBarControls: ComponentType;
   ChangesBadge: ComponentType<RemoteSyncChangesBadgeProps>;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
@@ -51,6 +58,8 @@ const getDefaultPluginRemoteSync = (): PluginRemoteSync => ({
   SettingsPage: PluginPlaceholder,
   SettingsModal: PluginPlaceholder,
   SetupMenuItem: PluginPlaceholder,
+  WorktreesNavItem: PluginPlaceholder,
+  getDataStudioRoutes: () => null,
   AppBarControls: PluginPlaceholder,
   ChangesBadge: PluginPlaceholder,
   getIsRemoteSyncReadOnly: () => false,

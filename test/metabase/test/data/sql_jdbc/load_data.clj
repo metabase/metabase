@@ -177,7 +177,7 @@
 (mu/defn do-insert*!
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
-   table-identifier          :- ::h2x/expr
+   table-identifier          :- sequential?
    rows                      :- [:sequential [:map-of :string ::tx/dataset-value]]
    {:keys [transaction?] :or {transaction? true}} :- [:maybe [:map {:closed true}
                                                               [:transaction? {:optional true} [:maybe :boolean]]]]]

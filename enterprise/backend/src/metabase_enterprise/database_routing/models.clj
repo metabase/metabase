@@ -60,12 +60,13 @@
   (when-let [destination-db-id (some-> db-id driver.u/lib-database router-db->destination-db-id)]
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
 
-(defenterprise refuses-anonymous-access?
-  "Enterprise version. Whether the Database with `database-id` is a router database not granted anonymous access."
+(defenterprise anonymous-access-refusing-database-ids
+  "The ids among `database-ids` of the router databases not granted anonymous access."
   :feature :none
-  [database-id]
-  (and (database-routing.db/router-exists? database-id)
-       (not (database-routing.db/router-anonymous-access-granted? database-id))))
+  [database-ids]
+  (into #{}
+        (keep (fn [[database-id granted?]] (when-not granted? database-id)))
+        (database-routing.db/router-anonymous-access-grants-by-database database-ids)))
 
 (defenterprise-schema db-routing-enabled? :- :boolean
   "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database, even while

@@ -10,6 +10,7 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.test :as mt]))
 
@@ -74,7 +75,17 @@
   (testing "tool result with string role"
     (is (=? [{:type :tool-output :id "t1" :result {:output "results"}}]
             (messages/input-message->parts
-             {:role "tool" :tool_call_id "t1" :content "results"})))))
+             {:role "tool" :tool_call_id "t1" :content "results"}))))
+  (testing "a failed tool result keeps its failure mark, and a result without one has no :error"
+    (is (= [{:type   :tool-output
+             :id     "t1"
+             :result {:output "boom"
+                      :error  {:class :recoverable :code ::messages/replayed-failure}}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "boom" :is_error true})))
+    (is (= [{:type :tool-output :id "t1" :result {:output "Found 42"}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "Found 42"})))))
 
 (deftest ^:parallel input-message-user-with-tool-results-test
   (testing "user message with tool_result content blocks"
@@ -99,6 +110,35 @@
       (is (=? {:messages [{:role "assistant" :tool_calls [{:id "call-1" :function {:arguments string?}}]}
                           {:role "tool" :tool_call_id "call-1"}]}
               (chat-completions/request-body {:model "some/model" :input parts}))))))
+
+(deftest ^:parallel stored-failure-with-blank-text-replays-into-claude-test
+  (testing (str "an old stored failure with blank `errorText` replays to Claude as a failure with text, "
+                "because Anthropic rejects an `is_error` result with empty content")
+    (doseq [error-text ["" "  "]]
+      (testing (pr-str error-text)
+        (let [rows    [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                       {:id       2
+                        :role     :assistant
+                        :finished true
+                        :data     [{:type       "tool-search"
+                                    :toolCallId "c1"
+                                    :state      "output-error"
+                                    :input      {:q "x"}
+                                    :errorText  error-text}]}]
+              history (metabot.persistence/history rows)
+              parts   (messages/build-message-history
+                       {}
+                       (memory/initialize (conj history {:role :user :content "and now?"}) {}))]
+          (is (= [{:type        "tool_result"
+                   :tool_use_id "c1"
+                   :content     "Tool execution failed"
+                   :is_error    true}]
+                 (into []
+                       (comp (filter #(= "user" (:role %)))
+                             (filter (comp sequential? :content))
+                             (mapcat :content)
+                             (filter #(= "tool_result" (:type %))))
+                       (claude/parts->claude-messages parts)))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; build-message-history
@@ -401,23 +441,23 @@
       (is (str/includes? system "there is no SQL editor") "premise")
       (is (not (str/includes? user "The user is currently in the SQL editor"))))))
 
-(deftest ^:parallel sql-profile-dialect-claim-matches-preload-test
-  (testing "sql-querying-only.selmer claims the dialect skill 'has already been loaded'; that claim and the preload must agree now that the preload gates on SQL tools"
+(deftest ^:parallel sql-profile-system-prompt-has-no-dialect-test
+  (testing "the sql profile's system prompt says nothing about the dialect; only the preload, which follows the SQL tools, holds it"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
       (let [profile (profiles/get-profile :sql)
             context {:user_is_viewing [{:type       "adhoc"
                                         :sql_engine "postgres"
                                         :query      {:type "native" :database 1 :native {:query "SELECT 1"}}}]}
             memory  (memory/initialize [{:role :user :content "Hi"}] {})]
-        (doseq [[label caps] {"with write_sql_queries" ["permission:write_sql_queries"]
-                              "without it"             []}]
+        (doseq [[label caps preloaded?] [["with write_sql_queries" ["permission:write_sql_queries"] true]
+                                         ["without it"             []                               false]]]
           (testing label
-            (let [tools      (profiles/profile->tools profile caps)
-                  system     (:content (messages/build-system-message (assoc context :capabilities caps) profile tools))
-                  parts      (messages/build-message-history context memory tools)
-                  claims?    (str/includes? system "have already been loaded into this conversation")
-                  preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
-              (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))
+            (let [tools  (profiles/profile->tools profile caps)
+                  system (:content (messages/build-system-message (assoc context :capabilities caps) profile tools))
+                  parts  (messages/build-message-history context memory tools)]
+              (is (not (str/includes? system "have already been loaded into this conversation")))
+              (is (not (str/includes? system "# SQL Dialect")))
+              (is (= preloaded? (boolean (some #(= "load_skill" (:function %)) parts)))))))))))
 
 (deftest build-message-history-uses-the-kept-context-block-test
   (let [calls   (atom 0)
@@ -505,3 +545,22 @@
           (is (=? {:block #"(?s)<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*"
                    :full? false}
                   (messages/render-context-block context memory true))))))))
+
+(deftest ^:parallel requests-send-no-text-that-is-only-whitespace-test
+  (testing "the history of earlier turns and the steps of this turn both leave out text that is only whitespace"
+    (is (=? [{:role :user :content "Hi"}
+             {:type :text :text "Hello"}
+             {:role :user :content "Again"}
+             {:type :tool-input :id "c1"}
+             {:type :text :text "Done"}]
+            (messages/build-message-history
+             {}
+             (-> (memory/initialize [{:role :user :content "Hi"}
+                                     {:role :assistant :content "\n\n"}
+                                     {:role :assistant :content "Hello"}
+                                     {:role :user :content "Again"}]
+                                    {})
+                 (memory/set-context-block nil)
+                 (memory/add-step [{:type :text :text " "}
+                                   {:type :tool-input :id "c1" :function "search" :arguments {}}])
+                 (memory/add-step [{:type :text :text "Done"}])))))))

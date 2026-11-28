@@ -17,6 +17,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.api.conversations]
+   [metabase.metabot.api.custom-expression]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
@@ -204,9 +205,12 @@
   it seeds the agent loop as the immutable baseline for this turn's state.
   `:full-context-replayed?` is true when `:history` replays a full `<context>` block
   (see [[metabot.persistence/replays-full-context?]]), so this turn sends only the time
-  and what the user is viewing."
+  and what the user is viewing.
+  `:preloaded-skill-ids` holds the SQL dialect skills that `:history` already preloads
+  (see [[metabot.persistence/replayed-skill-preloads]]), so this turn does not preload them again."
   [{:keys [metabot profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id title-job full-context-replayed?]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job full-context-replayed?
+           preloaded-skill-ids]}]
   (let [enriched-context (metabot.context/create-context
                           ;; Server-authoritative: decided from the request's client header here, on the
                           ;; handler thread, before the agent moves to the streaming thread.
@@ -246,6 +250,7 @@
                                :profile-id             (keyword profile-id)
                                :context                enriched-context
                                :full-context-replayed? (boolean full-context-replayed?)
+                               :preloaded-skill-ids    (set preloaded-skill-ids)
                                :eval-session-id        eval-session-id
                                :memory-atom            memory-atom
                                :tracking-opts          {:session-id conversation-id}
@@ -301,6 +306,7 @@
                  :turn-state            (some-> @memory-atom memory/turn-state)
                  :context-block         (some-> @memory-atom memory/context-block)
                  :full-context?         (some-> @memory-atom memory/context-block-full?)
+                 :preload-parts         (some-> @memory-atom memory/dialect-preload)
                  :context-window-tokens window))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"
@@ -358,6 +364,7 @@
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
           replayed? (metabot.persistence/replays-full-context? live)
+          preloaded (metabot.persistence/replayed-skill-preloads live)
           state     (metabot.persistence/conversation-state live)
           first-msg (or (:content (metabot.persistence/first-non-forked-user-message live))
                         (:content message))
@@ -373,6 +380,7 @@
         :context                context
         :history                history
         :full-context-replayed? replayed?
+        :preloaded-skill-ids    preloaded
         :conversation-id        conversation_id
         :state                  state
         :debug?                 debug?
@@ -471,10 +479,11 @@
   "`/api/metabot` routes."
   (handlers/routes
    (handlers/route-map-handler
-    {"/metabot"       metabase.metabot.api.metabot/routes
-     "/conversations" metabase.metabot.api.conversations/routes
-     "/permissions"   metabase.metabot.api.permissions/routes
-     "/document"      metabase.metabot.api.document/routes
+    {"/metabot"           metabase.metabot.api.metabot/routes
+     "/conversations"     metabase.metabot.api.conversations/routes
+     "/custom-expression" metabase.metabot.api.custom-expression/routes
+     "/permissions"       metabase.metabot.api.permissions/routes
+     "/document"          metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"         metabase.slackbot.api/routes})
+     "/slack"             metabase.slackbot.api/routes})
    (api.macros/ns-handler *ns* +auth)))

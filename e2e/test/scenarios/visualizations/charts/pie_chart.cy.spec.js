@@ -712,7 +712,7 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findByAltText("pie chart example illustration").should("be.visible");
     cy.findByLabelText("Open summarize sidebar").click();
 
-    cy.findByLabelText("Rating").click();
+    H.clickSummaryField("Rating");
     H.echartsContainer().findByText("200").should("be.visible");
     H.echartsContainer().findByText("Total").should("be.visible");
   });

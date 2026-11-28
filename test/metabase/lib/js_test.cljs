@@ -802,13 +802,46 @@
       (is (= column (lib.js/legacy-column->type-info column))))))
 
 (deftest ^:parallel xray-cell-query-test
-  (testing "returns last stage filter as legacy clause"
+  (testing "returns the last stage filter as an MBQL 5 clause"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/filter (lib/= (meta/field-metadata :venues :price) 2)))]
-      (is (=? ["=" ["field" (meta/id :venues :price) any?] 2]
+      (is (=? ["=" {"lib/uuid" string?}
+               ["field" {"lib/uuid" string?, "base-type" "type/Integer"} (meta/id :venues :price)]
+               2]
               (js->clj (lib.js/xray-cell-query query))))))
+  (testing "combines several filters with :and"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 2))
+                    (lib/filter (lib/> (meta/field-metadata :venues :id) 10)))]
+      (is (=? ["and" {"lib/uuid" string?}
+               ["=" {"lib/uuid" string?} ["field" map? (meta/id :venues :price)] 2]
+               [">" {"lib/uuid" string?} ["field" map? (meta/id :venues :id)] 10]]
+              (js->clj (lib.js/xray-cell-query query))))))
+  (testing "reads the filters of the last stage"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 2))
+                    lib/append-stage)]
+      (is (nil? (lib.js/xray-cell-query query)))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+
+(deftest ^:parallel same-clause?-test
+  (let [query (-> (lib.tu/venues-query)
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+        [first-count second-count sum] (lib/aggregations query)]
+    (testing "tells apart clauses that are otherwise equal"
+      (is (true? (lib.js/same-clause? first-count first-count)))
+      (is (false? (lib.js/same-clause? first-count second-count))))
+    (testing "finds a clause again after another clause is removed"
+      (let [[second-count' sum'] (lib/aggregations (lib/remove-clause query -1 first-count))]
+        (is (true? (lib.js/same-clause? second-count second-count')))
+        (is (true? (lib.js/same-clause? sum sum')))))
+    (testing "a replaced clause is a different clause"
+      (let [renamed (lib.js/with-expression-name sum "Total price")
+            [_ _ sum'] (lib/aggregations (lib/replace-clause query -1 sum renamed))]
+        (is (false? (lib.js/same-clause? sum sum')))))))
 
 (deftest ^:parallel parameter-field-info-test
   (let [mp (lib.tu/merged-mock-metadata-provider

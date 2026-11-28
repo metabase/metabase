@@ -3,10 +3,10 @@
    [clojure.math :as math]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +37,7 @@
   (->> (str/split search-term #"\s+")
        (map #(u/lower-case-en (str/trim %)))
        (remove str/blank?)
-       (map h2x/like-substring)))
+       (map funnysql.util/like-substring)))
 
 (defmethod specialization/base-query :h2
   [active-table search-term search-ctx select-items]
@@ -54,7 +54,7 @@
   {:search_terms        (:searchable_text entity)
    :native_search_terms (str/join " " (keep entity [:searchable_text :native_query]))})
 
-(defmethod specialization/text-score :h2 []
+(defmethod specialization/text-score :h2 [_search-ctx]
   [:inline 1])
 
 (defmethod specialization/view-count-percentile-query :h2

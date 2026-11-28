@@ -27,6 +27,7 @@ import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -41,6 +42,9 @@ import { dashboardSaved } from "metabase/metabot/state";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Dashboard,
   DashboardId,
@@ -51,12 +55,16 @@ import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
+  createMockColumn,
   createMockDashboard,
+  createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
   createMockDatabase,
+  createMockDataset,
   createMockHeadingDashboardCard,
   createMockParameter,
+  createMockParameterMapping,
   createMockTable,
   createMockTextDashboardCard,
   createMockUser,
@@ -64,6 +72,8 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 import { isObject } from "metabase-types/guards";
+
+registerVisualizations();
 
 const TEST_COLLECTION = createMockCollection();
 
@@ -1096,6 +1106,262 @@ describe("DashboardApp", () => {
           name: "revert to You created this",
         }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("filters mapped to SQL question variables", () => {
+    const RATING_PARAMETER = createMockParameter({
+      id: "10c0d4ba",
+      name: "Rating",
+      slug: "rating",
+      type: "number/=",
+      sectionId: "number",
+    });
+    const NUMBER_PARAMETER = createMockParameter({
+      id: "f8ec7c71",
+      name: "Number",
+      slug: "number",
+      type: "number/=",
+      sectionId: "number",
+    });
+    const SQL_CARD = createMockCard({
+      id: 2,
+      name: "Question 1",
+      display: "table",
+      query_type: "native",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+          query:
+            "SELECT * from products where true [[ and price > {{price}}]] [[ and rating > {{rating}} ]] limit 5;",
+          templateTags: {
+            price: {
+              type: "number",
+              name: "price",
+              id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+              "display-name": "Price",
+            },
+            rating: {
+              type: "number",
+              name: "rating",
+              id: "68821a54-f0f3-4f09-8c32-6f7c0e5e5399",
+              "display-name": "Rating",
+            },
+          },
+        }),
+      ),
+    });
+    const RATING_MAPPING = createMockParameterMapping({
+      parameter_id: RATING_PARAMETER.id,
+      card_id: SQL_CARD.id,
+      target: ["variable", ["template-tag", "rating"]],
+    });
+    const PRICE_MAPPING = createMockParameterMapping({
+      parameter_id: NUMBER_PARAMETER.id,
+      card_id: SQL_CARD.id,
+      target: ["variable", ["template-tag", "price"]],
+    });
+    const SQL_DASHCARD = createMockDashboardCard({
+      id: 3,
+      dashboard_id: 1,
+      card_id: SQL_CARD.id,
+      card: SQL_CARD,
+      size_x: 16,
+      size_y: 8,
+      parameter_mappings: [RATING_MAPPING, PRICE_MAPPING],
+    });
+    const DASHCARD_QUERY_URL = `path:/api/dashboard/1/dashcard/${SQL_DASHCARD.id}/card/${SQL_CARD.id}/query`;
+
+    const isEqual = (a: unknown, b: unknown) =>
+      JSON.stringify(a) === JSON.stringify(b);
+
+    // Like the backend, only rows matching both variables come back
+    function setupSqlDashcardQueryEndpoint() {
+      fetchMock.post(DASHCARD_QUERY_URL, (call) => {
+        const body: unknown = JSON.parse(String(call.options.body));
+        const parameters: unknown[] =
+          isObject(body) && Array.isArray(body.parameters)
+            ? body.parameters
+            : [];
+        const valueOf = (id: string, tag: string) =>
+          parameters
+            .filter(isObject)
+            .find(
+              (parameter) =>
+                parameter.id === id &&
+                isEqual(parameter.target, ["variable", ["template-tag", tag]]),
+            )?.value;
+        const isFiltered =
+          isEqual(valueOf(NUMBER_PARAMETER.id, "price"), ["95"]) &&
+          isEqual(valueOf(RATING_PARAMETER.id, "rating"), ["3.8"]);
+
+        return createMockDataset({
+          data: {
+            cols: [
+              createMockColumn({ name: "PRICE", display_name: "Price" }),
+              createMockColumn({ name: "RATING", display_name: "Rating" }),
+            ],
+            rows: isFiltered
+              ? [
+                  [98.82, 4.3],
+                  [95.93, 4.4],
+                ]
+              : [],
+          },
+        });
+      });
+    }
+
+    function getFilterInput(name: string) {
+      return within(screen.getByLabelText(name)).getByRole("textbox");
+    }
+
+    // Like the backend, a saved dashboard comes back with full dashcards
+    function setupSqlDashboardEndpoints(dashboard: Dashboard) {
+      let persistedDashboard = dashboard;
+      fetchMock.get(
+        `path:/api/dashboard/${dashboard.id}`,
+        () => persistedDashboard,
+      );
+      fetchMock.put(`path:/api/dashboard/${dashboard.id}`, (call) => {
+        const body: unknown = JSON.parse(String(call.options.body));
+        if (!isObject(body) || !Array.isArray(body.dashcards)) {
+          throw new Error("Expected a dashboard update with dashcards");
+        }
+        persistedDashboard = {
+          ...persistedDashboard,
+          dashcards: body.dashcards.map((dashcard: unknown) => ({
+            ...SQL_DASHCARD,
+            ...(isObject(dashcard) ? dashcard : {}),
+            card: SQL_CARD,
+          })),
+        };
+        return persistedDashboard;
+      });
+    }
+
+    function getDashcard() {
+      return screen.getByTestId("dashcard");
+    }
+
+    async function setupSqlDashboard() {
+      setupSqlDashcardQueryEndpoint();
+      setupSubscriptionsEndpoint([]);
+      const dashboard = createMockDashboard({
+        id: 1,
+        parameters: [RATING_PARAMETER, NUMBER_PARAMETER],
+        dashcards: [SQL_DASHCARD],
+      });
+      setupSqlDashboardEndpoints(dashboard);
+      await setup({ dashboard });
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should keep a number filter value on blur (metabase#31975)", async () => {
+      // the table virtualizes its rows, so it needs a size to render them
+      mockGetBoundingClientRect({ width: 800, height: 400 });
+      await setupSqlDashboard();
+
+      await userEvent.type(getFilterInput("Number"), "95");
+      await userEvent.tab();
+      await userEvent.type(getFilterInput("Rating"), "3.8");
+      await userEvent.tab();
+
+      expect(getFilterInput("Number")).toHaveValue("95");
+      expect(getFilterInput("Rating")).toHaveValue("3.8");
+      expect(
+        await within(getDashcard()).findByText("98.82"),
+      ).toBeInTheDocument();
+      expect(within(getDashcard()).getByText("4.3")).toBeInTheDocument();
+      expect(within(getDashcard()).getByText("95.93")).toBeInTheDocument();
+      expect(within(getDashcard()).getByText("4.4")).toBeInTheDocument();
+
+      const body: unknown = JSON.parse(
+        String(
+          fetchMock.callHistory.lastCall(DASHCARD_QUERY_URL)?.options.body,
+        ),
+      );
+      expect(body).toHaveProperty(
+        "parameters",
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: NUMBER_PARAMETER.id,
+            type: "number/=",
+            value: ["95"],
+            target: PRICE_MAPPING.target,
+          }),
+          expect.objectContaining({
+            id: RATING_PARAMETER.id,
+            type: "number/=",
+            value: ["3.8"],
+            target: RATING_MAPPING.target,
+          }),
+        ]),
+      );
+    });
+
+    it("should reset the mapping to a number variable when the operator changes from 'Equal to' to another operator", async () => {
+      await setupSqlDashboard();
+
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(
+        within(
+          screen.getByTestId("edit-dashboard-parameters-widget-container"),
+        ).getByText("Number"),
+      );
+      const sidebar = await screen.findByTestId("dashboard-parameter-sidebar");
+      expect(
+        await within(getDashcard()).findByRole("button", { name: /Price/ }),
+      ).toBeInTheDocument();
+      expect(within(sidebar).getByText("Filter operator")).toBeInTheDocument();
+
+      await userEvent.click(within(sidebar).getByDisplayValue("Equal to"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Between" }),
+      );
+      expect(
+        await within(getDashcard()).findByText(
+          "A number variable in this card can only be connected to a number filter with Equal to operator.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(getDashcard()).queryByText("Column to filter on"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(within(sidebar).getByDisplayValue("Between"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Equal to" }),
+      );
+      expect(
+        await within(getDashcard()).findByText("Column to filter on"),
+      ).toBeInTheDocument();
+      const mappingButton = within(getDashcard()).getByRole("button", {
+        name: /Select…/,
+      });
+      expect(mappingButton).not.toHaveTextContent("Price");
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByLabelText("Edit dashboard");
+
+      const putCall = fetchMock.callHistory.lastCall("path:/api/dashboard/1", {
+        method: "PUT",
+      });
+      const body: unknown = JSON.parse(String(putCall?.options.body));
+      expect(body).toHaveProperty("dashcards", [
+        expect.objectContaining({
+          id: SQL_DASHCARD.id,
+          parameter_mappings: [RATING_MAPPING],
+        }),
+      ]);
+      const filters = screen.getByTestId(
+        "dashboard-parameters-widget-container",
+      );
+      expect(within(filters).getByLabelText("Rating")).toBeInTheDocument();
+      expect(
+        within(filters).queryByLabelText("Number"),
+      ).not.toBeInTheDocument();
     });
   });
 });

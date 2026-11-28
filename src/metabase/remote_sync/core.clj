@@ -4,6 +4,7 @@
    [metabase.remote-sync.db :as remote-sync.db]
    [metabase.remote-sync.spec :as remote-sync.spec]
    [metabase.remote-sync.synced :as remote-sync.synced]
+   [metabase.remote-sync.worktrees :as remote-sync.worktrees]
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
@@ -18,4 +19,11 @@
   read-only?
   synced-changes?
   synced-models
-  synced-name])
+  synced-name]
+ [remote-sync.worktrees
+  delete-checkouts!
+  ensure-built-ins!
+  non-default-worktree
+  non-default-worktrees
+  user-non-default-worktree-id
+  worktrees-enabled?])

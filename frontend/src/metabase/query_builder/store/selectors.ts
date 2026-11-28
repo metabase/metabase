@@ -59,7 +59,10 @@ import type { DeepPartial } from "metabase-types/utils/types";
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
 import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
-import { getQuestionWithDefaultVisualizationSettings } from "../utils/viz-settings";
+import {
+  getQuestionWithDefaultVisualizationSettings,
+  keepPivotColumnSplitOfChangedQuery,
+} from "../utils/viz-settings";
 
 import {
   getCard,
@@ -89,6 +92,12 @@ export const getQueryStatus = (state: QueryBuilderStoreState) =>
   state.qb.queryStatus;
 export const getLoadingControls = (state: QueryBuilderStoreState) =>
   state.qb.loadingControls;
+
+export const getSummaryGeneratedExpressions = (state: QueryBuilderStoreState) =>
+  getUiControls(state).summaryGeneratedExpressions;
+
+export const getSummaryFormulaToEdit = (state: QueryBuilderStoreState) =>
+  getUiControls(state).summaryFormulaToEdit;
 
 export const getIsShowingTemplateTagsEditor = (state: QueryBuilderStoreState) =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -1128,9 +1137,10 @@ export const getSubmittableQuestion = (
   let submittableQuestion = question;
 
   if (series) {
-    submittableQuestion = getQuestionWithDefaultVisualizationSettings(
-      submittableQuestion,
-      series,
+    submittableQuestion = keepPivotColumnSplitOfChangedQuery(
+      question,
+      getQuestionWithDefaultVisualizationSettings(submittableQuestion, series),
+      rawSeries,
     );
   }
 

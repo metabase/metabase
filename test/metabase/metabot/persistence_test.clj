@@ -102,6 +102,25 @@
                                                    :data {:block "<context>\nCurrent date: x\n</context>\n" :full true}}
                                                   {:type "text" :text "hi there"}]}))))))
 
+(deftest ^:parallel messages->client-messages-dialect-preload-part-test
+  (let [row      {:role :assistant
+                  :data [{:type "tool-load_skill" :toolCallId "skill_preload_sql-dialect-sqlite"
+                          :state "output-available" :input {:ids ["sql-dialect-sqlite"]}
+                          :output {:output "SQL rules for the **sqlite** SQL dialect."}}
+                         {:type "step-start"}
+                         {:type "tool-load_skill" :toolCallId "call-1"
+                          :state "output-available" :input {:ids ["create-sql-query"]}
+                          :output {:output "skill body"}}
+                         {:type "text" :text "hi there"}]}
+        tool-ids (fn [message] (keep #(when (= "tool_call" (:type %)) (:id %)) (:parts message)))]
+    (testing "the stored SQL dialect preload is what the model read, so the chat does not show it"
+      (is (= ["call-1"] (tool-ids (client-message row)))))
+    (testing "the admin conversation page does not show it either"
+      (is (= [[] ["call-1"]]
+             (mapv tool-ids (metabot-persistence/messages->threaded-client-messages
+                             [{:id 1 :external_id "u1" :role :user :data [{:type "text" :text "q"}]}
+                              (merge {:id 2 :external_id "a1"} row)])))))))
+
 (deftest ^:parallel messages->client-messages-resolved-tool-part-test
   (testing "resolved tool part carries args and result"
     (let [[part] (:parts (client-message
@@ -1469,6 +1488,90 @@
       (testing "a failed turn is not replayed, so its full block is not either"
         (is (false? (replays? (into full [:error {:message "boom"}]))))))))
 
+(def ^:private preload-call-id "skill_preload_sql-dialect-postgresql")
+
+(def ^:private dialect-preload
+  "The internal parts of a SQL dialect preload, as [[metabase.metabot.skills/dialect-preload-parts]] makes them."
+  [{:type :tool-input :id preload-call-id :function "load_skill" :arguments {:ids ["sql-dialect-postgresql"]}}
+   {:type :tool-output :id preload-call-id :result {:output "SQL rules for the **postgres** engine."}}])
+
+(deftest finalize-stores-the-preload-before-the-first-step-test
+  (with-rasta-tx
+    (let [conversation-id (str (random-uuid))
+          block           "<context>\n\nThe user is in the SQL editor.\n</context>\n"
+          assistant-id    (seed-turn! conversation-id "How many orders?"
+                                      [{:type :start :id "msg-1"} {:type :text :text "There are 5."}]
+                                      :context-block block :preload-parts dialect-preload)
+          data            (:data (t2/select-one :model/MetabotMessage :id assistant-id))]
+      (testing "the preload is stored after the <context> part and before the first step"
+        (is (= ["data-context" "tool-load_skill" "step-start" "text"] (map :type data)))
+        (is (=? {:toolCallId preload-call-id
+                 :state      "output-available"
+                 :input      {:ids ["sql-dialect-postgresql"]}
+                 :output     {:output "SQL rules for the **postgres** engine."}}
+                (second data))))
+      (testing "history replays the preload right after the user message, before the first step"
+        (is (= [{:role :user :content (str block "How many orders?")}
+                {:role       :assistant
+                 :tool_calls [{:id        preload-call-id
+                               :name      "load_skill"
+                               :arguments (json/encode {:ids ["sql-dialect-postgresql"]})}]}
+                {:role :tool :tool_call_id preload-call-id :content "SQL rules for the **postgres** engine."}
+                {:role :assistant :content "There are 5."}]
+               (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+      (testing "a reloaded conversation does not show the preload, and the next turn still knows it is replayed"
+        (is (= [[{:type "text" :message "How many orders?"}]
+                [{:type "text" :message "There are 5."}]]
+               (mapv #(mapv (fn [part] (select-keys part [:type :message])) (:parts %))
+                     (:messages (metabot-persistence/conversation-detail conversation-id)))))
+        (is (= #{"sql-dialect-postgresql"}
+               (metabot-persistence/replayed-skill-preloads
+                (metabot-persistence/live-messages conversation-id))))))))
+
+(defn- replayed-skill-preloads
+  "Calls [[metabase.metabot.persistence/replayed-skill-preloads]], or returns `::undefined` when that var is missing.
+
+  The var is resolved when the test runs, so this namespace also loads at a commit without it."
+  [messages]
+  (if-let [f (ns-resolve 'metabase.metabot.persistence 'replayed-skill-preloads)]
+    (f messages)
+    ::undefined))
+
+(deftest replayed-skill-preloads-test
+  (with-rasta-tx
+    (let [preloads (fn [& turns]
+                     (let [conversation-id (str (random-uuid))]
+                       (doseq [[parts & finalize-opts] turns]
+                         (apply seed-turn! conversation-id "hi" parts finalize-opts))
+                       (metabot-persistence/live-messages conversation-id)))
+          answer   [{:type :start :id "msg"} {:type :text :text "hello"}]]
+      (testing "a stored preload gives its dialect skill id"
+        (is (= #{"sql-dialect-postgresql"}
+               (replayed-skill-preloads (preloads [answer :preload-parts dialect-preload])))))
+      (testing "a failed turn is not replayed, so its preload does not count"
+        (is (= #{} (replayed-skill-preloads
+                    (preloads [answer :preload-parts dialect-preload :error {:message "boom"}])))))
+      (testing "a deleted answer is not replayed, so its preload does not count"
+        (is (= #{} (replayed-skill-preloads
+                    (map #(cond-> % (= :assistant (:role %)) (assoc :deleted_at (t/offset-date-time)))
+                         (preloads [answer :preload-parts dialect-preload]))))))
+      (testing "an older row stored with no preload gives nothing"
+        (is (= #{} (replayed-skill-preloads (preloads [answer])))))
+      (testing "the model's own load_skill call is not a preload"
+        (is (= #{} (replayed-skill-preloads
+                    (preloads [[{:type :start :id "msg"}
+                                {:type :tool-input :id "call-1" :function "load_skill"
+                                 :arguments {:ids ["sql-dialect-postgresql"]}}
+                                {:type :tool-output :id "call-1" :result {:output "rules"}}]])))))
+      (testing "the preloads of every replayed turn count"
+        (is (= #{"sql-dialect-postgresql" "sql-dialect-mysql"}
+               (replayed-skill-preloads
+                (preloads [answer :preload-parts dialect-preload]
+                          [answer :preload-parts [{:type :tool-input :id "skill_preload_sql-dialect-mysql"
+                                                   :function "load_skill" :arguments {:ids ["sql-dialect-mysql"]}}
+                                                  {:type :tool-output :id "skill_preload_sql-dialect-mysql"
+                                                   :result {:output "rules"}}]]))))))))
+
 (deftest history-tool-call-conversion-test
   (testing "text and tool parts interleave; tool calls become an assistant call + tool result pair"
     (with-rasta-tx
@@ -1485,6 +1588,104 @@
                   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
                   {:role :tool :tool_call_id "c1" :content "rows"}]
                  history)))))))
+
+(deftest history-replays-the-calls-of-a-step-before-their-results-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   (fn [id] {:role :assistant :tool_calls [{:id id :name "search" :arguments (json/encode {:q id})}]})
+          result (fn [id] {:role :tool :tool_call_id id :content (str "found " id)})
+          parts  (fn [id] [{:type :tool-input :id id :function "search" :arguments {:q id}}
+                           {:type :tool-output :id id :result {:output (str "found " id)}}])]
+      (testing "the calls of one step replay before their results, as the agent loop sends them"
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (call "c2") (result "c1") (result "c2")
+                (call "c3") (result "c3")
+                {:role :assistant :content "done"}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :start}]
+                               (parts "c3")
+                               [{:type :start} {:type :text :text "done"}])))))
+      (testing "text that the model writes after a call in the same step replays before the result of that call"
+        (is (= [{:role :assistant :content "Let me look that up."}
+                (call "c1")
+                {:role :assistant :content "This may take a moment."}
+                (result "c1")]
+               (replay [{:type :start}
+                        {:type :text :text "Let me look that up."}
+                        (first (parts "c1"))
+                        {:type :text :text "This may take a moment."}
+                        (second (parts "c1"))]))))
+      (testing "a row with no step-start parts, as a row migrated from v1 is, replays each result after its call"
+        (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+               (replay (concat (parts "c1") (parts "c2"))))))
+      (testing "a v1 row, which the read path migrates, replays each result after its call"
+        (let [conversation-id (str (random-uuid))
+              v1-input        (fn [id] {:type "tool-input" :id id :function "search" :arguments {:q id}})
+              v1-output       (fn [id] {:type "tool-output" :id id :function "search" :result {:output (str "found " id)}})]
+          (t2/update! :model/MetabotMessage :id (seed-turn! conversation-id "look it up" [])
+                      {:data         [(v1-input "c1") (v1-input "c2") (v1-output "c1") (v1-output "c2")]
+                       :data_version 1})
+          (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+                 (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))))
+      (testing (str "the message of a terminal error, which the agent adds after the results of the turn's last step, "
+                    "replays after those results")
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (result "c1")
+                {:role :assistant :tool_calls [{:id "c2" :name "search" :arguments (json/encode {:q "c2"})}]}
+                {:role :tool :tool_call_id "c2" :content "You don't have access to that table." :is_error true}
+                {:role :assistant :content "You don't have permission to see that table."}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (parts "c1")
+                               [{:type :start}
+                                {:type :tool-input :id "c2" :function "search" :arguments {:q "c2"}}
+                                {:type   :tool-output :id "c2"
+                                 :result {:output "You don't have access to that table."
+                                          :error  {:class        :unrecoverable
+                                                   :code         :permission-denied
+                                                   :user-message "You don't have permission to see that table."}}}
+                                {:type :text :text "You don't have permission to see that table."}])))))
+      (testing (str "the notice that the agent adds after the results of the last step of a turn at its step limit "
+                    "replays after those results, and the calls of that step replay before their results")
+        (is (= [(call "c1") (call "c2") (result "c1") (result "c2")
+                {:role :assistant :content "I stopped at the step limit."}]
+               (replay (concat [{:type :start}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :text :text "I stopped at the step limit."}
+                                {:type :finish :finish-reason :max-iterations}]))))))))
+
+(deftest history-replays-a-step-limit-turn-as-its-reply-call-sent-it-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "c1"})}]}
+          result {:role :tool :tool_call_id "c1" :content "found c1"}
+          text   {:role :assistant :content "This may take a moment."}
+          notice {:role :assistant :content "I stopped at the step limit."}
+          ;; the model writes text after its call, and the agent adds the notice after the result
+          step   [{:type :start}
+                  {:type :tool-input :id "c1" :function "search" :arguments {:q "c1"}}
+                  {:type :text :text "This may take a moment."}
+                  {:type :tool-output :id "c1" :result {:output "found c1"}}
+                  {:type :text :text "I stopped at the step limit."}]]
+      (testing (str "text that the model writes after a call in the last step of a turn at its step limit replays "
+                    "before the result, as the reply call sent it, and only the notice moves after the result")
+        (is (= [call text result notice]
+               (replay (conj step {:type :finish :finish-reason :max-iterations})))))
+      (testing (str "known gap: when the reply call is cut short at its output limit, the row stores the finish reason "
+                    "`length`, so the turn replays in step order and the notice stays before the result")
+        (let [cut-short (conj step (usage-part "length") {:type :finish :finish-reason :max-iterations})]
+          (is (=? {:finish_reason "length"}
+                  (t2/select-one :model/MetabotMessage :id (seed-turn! (str (random-uuid)) "look it up" cut-short))))
+          (is (= [call text notice result]
+                 (replay cut-short))))))))
 
 (deftest history-tool-output-shapes-test
   (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"
@@ -1521,7 +1722,69 @@
                                 {:type   :tool-output :id "c1"
                                  :result {:output (str "This call failed with an unexpected error. Don't retry the "
                                                        "same call. Try another approach, or tell the user it failed.")
-                                          :error  {:class :unrecoverable :code :internal}}}]))))))))
+                                          :error  {:class :unrecoverable :code :internal}}}]))))
+        (testing (str "a failed call with no output replays the fallback text that the adapters send, "
+                      "not an empty string")
+          (is (= "Tool execution failed"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1" :result {:error {:class :recoverable :code :x}}}]))))
+        (testing (str "known gap: a keyword result changes in the JSON round trip, so the adapters send `\":ok\"` "
+                      "but history replays `\"ok\"`")
+          (is (= ":ok" (self.core/tool-result-text :ok)))
+          (is (= "ok"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1" :result :ok}]))))
+        (testing (str "each result shape that this test lists replays as the text that the adapters send for it, "
+                      "so the next turn's prefix holds for these shapes")
+          (doseq [result ["just a string"
+                          42
+                          nil
+                          {:output "rows"}
+                          {:rows [1 2]}
+                          {:output "Table 7 was not found." :error {:class :recoverable :code :x}}
+                          {:error {:class :recoverable :code :x}}
+                          {:output "" :error {:class :unrecoverable :code :x}}]]
+            (testing (pr-str result)
+              (is (= (self.core/tool-result-text result)
+                     (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                    {:type :tool-output :id "c1" :result result}]))))))))))
+
+(deftest ^:parallel history-replays-blank-error-text-as-fallback-test
+  (testing (str "a stored failure with a blank `errorText` replays the fallback text that the adapters "
+                "send, so history and the request hold one text")
+    (doseq [error-text ["" "  "]]
+      (testing (pr-str error-text)
+        (let [rows [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                    {:id       2
+                     :role     :assistant
+                     :finished true
+                     :data     [{:type       "tool-search"
+                                 :toolCallId "c1"
+                                 :state      "output-error"
+                                 :input      {:q "x"}
+                                 :errorText  error-text}]}]]
+          (is (= [{:role         :tool
+                   :tool_call_id "c1"
+                   :content      self.core/failed-tool-result-text
+                   :is_error     true}]
+                 (filter #(= :tool (:role %)) (metabot-persistence/history rows)))))))))
+
+(deftest ^:parallel history-replays-whitespace-only-text-test
+  (let [replay (fn [assistant-row]
+                 (rest (metabot-persistence/history
+                        [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                         (merge {:id 2 :role :assistant :finished true} assistant-row)])))
+        part   {:type "tool-search" :toolCallId "c1" :state "output-available" :input {:q "x"} :output "rows"}
+        call   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
+        result {:role :tool :tool_call_id "c1" :content "rows"}]
+    (testing (str "text that is only whitespace replays in its place, because the request, not history, leaves it "
+                  "out (see `metabase.metabot.agent.messages/build-message-history`)")
+      (is (= [{:role :assistant :content "\n\n"} call result]
+             (replay {:data [{:type "text" :text "\n\n"} part]}))))
+    (testing "text that is only whitespace after the last call of a `tool-calls` row replays after the results"
+      (is (= [call result {:role :assistant :content "\n\n"}]
+             (replay {:finish_reason "tool-calls"
+                      :data          [{:type "step-start"} part {:type "text" :text "\n\n"}]}))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"

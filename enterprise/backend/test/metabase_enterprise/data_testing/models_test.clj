@@ -12,6 +12,7 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.sandbox.test-util :as met]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
@@ -177,7 +178,7 @@
           ;; Raw: the model's before-delete hook reads the row back, which is the very thing under
           ;; test here. Nothing should have been written, but a leftover row would break the
           ;; Transform's own cleanup on its FK.
-          (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]}))))))
+          (t2/query {:delete-from (t2/table-name :model/TransformTest) :where [:= :transform_id transform-id]}))))))
 
 (deftest duplicate-expectation-names-test
   ;; Uniqueness is a property of the vector rather than of one expectation, so `::expectations`
@@ -191,7 +192,7 @@
         (is (re-find #"unique" (pr-str (keep (comp :error ex-data) (causes e))))
             (pr-str (mapv ex-message (causes e)))))
       (finally
-        (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]})))))
+        (t2/query {:delete-from (t2/table-name :model/TransformTest) :where [:= :transform_id transform-id]})))))
 
 (deftest update-is-validated-too-test
   (testing "an update goes through the same :in transform as an insert"
@@ -449,7 +450,7 @@
   "What the run permission check of a native query on the Database `db-id` answers, or `:throws`."
   [db-id]
   (try
-    (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))
+    (first (query-perms/query-run-answers [(lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")]))
     (catch Throwable _
       :throws)))
 
@@ -638,7 +639,7 @@
   (boolean
    (when subject
      (and (mi/can-read? (t2/hydrate subject :can_read))
-          (query-perms/can-run-query? query)
+          (first (query-perms/query-run-answers [query]))
           (or (mi/superuser?)
               (some-> (data-testing.models/query-database-id query) per-query-native?))))))
 
@@ -702,3 +703,18 @@
                     (check-can-query transform-tests single-row-can-run-transform-test? [true true true false])
                     (check-can-query card-tests single-row-can-run-card-test? [true true true true false])
                     (check-can-query segment-tests single-row-can-run-segment-test? [true false])))))))))))
+
+(deftest transform-test-runs-in-worktree-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "test-branch"}]
+      (mdb/with-worktree-scope (mdb/worktree-id->scope worktree-id)
+        (mt/with-temp [:model/Transform     transform      (native-transform (mt/id) 1)
+                       :model/TransformTest transform-test {:transform_id (:id transform)}]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (testing "transform itself is not run"
+              (is (false? (:can_execute (t2/hydrate transform :can_execute)))))
+            (testing "its test is run, created and moved to it"
+              (is (mi/can-query? (t2/hydrate transform-test :can_query)))
+              (is (mi/can-create? :model/TransformTest {:transform_id (:id transform)}))
+              (is (mi/can-update? (assoc (t2/hydrate transform-test :can_write) :transform_id Integer/MAX_VALUE)
+                                  {:transform_id (:id transform)})))))))))

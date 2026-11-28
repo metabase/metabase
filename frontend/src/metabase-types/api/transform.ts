@@ -41,7 +41,7 @@ export type Transform = {
   source_readable: boolean;
   can_read?: boolean;
   can_write?: boolean;
-  can_query?: boolean;
+  can_execute?: boolean;
 
   source_database_id?: DatabaseId;
 

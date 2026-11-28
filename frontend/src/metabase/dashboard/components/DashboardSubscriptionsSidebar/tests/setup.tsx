@@ -8,7 +8,7 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState, createMockState } from "__support__/state";
 import type { Screen } from "__support__/ui";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -20,6 +20,7 @@ import type {
   DashboardSubscription,
   DashboardTab,
   TokenFeatures,
+  UserListResult,
 } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
@@ -102,6 +103,7 @@ type SetupOpts = {
     lastName: string;
   };
   pulseListDelay?: number;
+  recipients?: UserListResult[];
 };
 
 export function setup({
@@ -119,6 +121,7 @@ export function setup({
   pulses = [],
   currentUser,
   pulseListDelay = 0,
+  recipients = [user],
 }: SetupOpts = {}) {
   const dashboard = createMockDashboard({
     dashcards,
@@ -173,7 +176,7 @@ export function setup({
   setupNotificationChannelsEndpoints(channelData.channels);
 
   setupUserRecipientsEndpoint({
-    users: [user],
+    users: recipients,
   });
 
   fetchMock.get({
@@ -244,6 +247,13 @@ export const hasAdvancedFilterOptionsHidden = (screen: Screen) => {
 export const selectScheduleTime = async (time = "8:00") => {
   await userEvent.click(screen.getByTestId("select-time"));
   await userEvent.click(screen.getByRole("option", { name: time }));
+};
+
+export const pickFrequency = async (frequency: string) => {
+  await userEvent.click(screen.getByTestId("select-frequency"));
+  await userEvent.click(
+    within(await screen.findByRole("listbox")).getByText(frequency),
+  );
 };
 
 export const hasBasicFilterOptions = (screen: Screen) => {

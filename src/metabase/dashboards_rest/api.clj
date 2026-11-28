@@ -679,17 +679,19 @@
 
 (defn- check-create-transient-dashboard-cards
   "Checks the current user can create the new Cards of `dashboard` in the Collection `parent-collection-id`, asking
-  once for all of them and one by one only to throw the error of the one that cannot."
+  once for all of them and one by one only to throw the error of the one that cannot, and that their goals are valid."
   [dashboard parent-collection-id]
   (let [new-cards (into []
                         (comp (mapcat (fn [{:keys [card series]}] (cons card series)))
                               (filter #(and (map? %) (not (pos-int? (:id %))) (seq (:dataset_query %))))
                               (map #(assoc % :collection_id parent-collection-id)))
-                        (:dashcards dashboard))]
-    (when-not (queries.card/can-create-all? (mapv #(vector % nil) new-cards))
+                        (:dashcards dashboard))
+        pairs     (mapv #(vector % nil) new-cards)]
+    (when-not (queries.card/can-create-all? pairs)
       (doseq [new-card new-cards]
         (api/create-check :model/Card new-card))
-      (api/check-403 false))))
+      (api/check-403 false))
+    (queries.card/check-new-cards-goal-references pairs)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

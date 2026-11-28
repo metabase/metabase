@@ -957,6 +957,10 @@
     ;; Does the driver support editing data within database tables.
     :actions/data-editing
     ;;
+    ;; Can a single row action (`:model.row/*`, `:table.row/*`) act on several rows at once? Drivers that support this
+    ;; should make the whole batch atomic.
+    :actions/bulk
+    ;;
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting
     ;;
@@ -1155,14 +1159,14 @@
     ;; Does this driver support compiling multi-stage queries to CTEs instead of nested subselects?
     ;; The driver should support putting a CTE at the start of a statement, or after `CREATE TABLE`
     ;; or `INSERT INTO`, or the driver should change these statements so they are valid
-    ;; (e.g. `driver/compile-insert :sqlserver`). See also `:stage-ctes/nested`.
+    ;; (e.g. `driver/compile-insert :sqlserver`). Queries with a native stage that has its own CTE, and cards that a
+    ;; native query references with `{{#123}}`, always compile with nested subselects.
     :stage-ctes
     ;;
-    ;; Does this driver support CTEs inside another query, e.g. in the body of another CTE or in a subquery?
-    ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
-    ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
-    ;; this has the same value as `:stage-ctes`.
-    :stage-ctes/nested
+    ;; Should an aggregation with no breakouts over a previous stage go in its own stage CTE? This is for databases
+    ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
+    ;; Only applies to queries compiled with `:stage-ctes`.
+    :stage-ctes/nest-single-row-aggregation
     ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;
@@ -1242,11 +1246,6 @@
 (defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
   [driver _feature database]
   (database-supports? driver :regex database))
-
-;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
-(defmethod database-supports? [::driver :stage-ctes/nested]
-  [driver _feature database]
-  (database-supports? driver :stage-ctes database))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -1587,6 +1586,44 @@
 (defmethod superseded-by :default
   [_]
   nil)
+
+;;; The row actions -- the implicit actions of models and Data Apps, and table editing -- act on one row at a time
+;;; through these three methods. Drivers that support `:actions` implement all three.
+;;;
+;;; Rows and primary keys are maps of column name to value, using the names of the Table's Fields. `pk` holds a value
+;;; for every primary key column of the Table, which Metabase knows from the Fields with `:semantic-type :type/PK`.
+;;; Values come as the user entered them: the driver converts them to the column's type. The rows a method returns
+;;; also use the Field names.
+;;;
+;;; Each call changes at most one row, or nothing. A driver whose database has transactions makes each call atomic; a
+;;; driver whose database lacks them must check before it writes, and should document that the check can race with
+;;; other writers. Errors are `ex-info`s with `:status-code 400`, and the error types in `metabase.actions.error` where
+;;; they apply.
+
+(defmulti action-create-row!
+  "Insert `row` into the Table with `table-id` of `database`, and return the row as the database stored it.
+
+  `pk-columns` are the names of the Table's primary key columns."
+  {:added "0.66.0", :arglists '([driver database {:keys [table-id pk-columns row]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti action-update-row!
+  "Set the columns in `row` on the one row of the Table with `table-id` of `database` whose primary key is `pk`, and
+  return `{:before row, :after row}`.
+
+  Throw a 400 if no row has that primary key, or if more than one does; in that case nothing may have changed."
+  {:added "0.66.0", :arglists '([driver database {:keys [table-id pk row]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti action-delete-row!
+  "Delete the one row of the Table with `table-id` of `database` whose primary key is `pk`, and return `{:before row}`.
+
+  Throw a 400 if no row has that primary key, or if more than one does; in that case nothing may have changed."
+  {:added "0.66.0", :arglists '([driver database {:keys [table-id pk]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).

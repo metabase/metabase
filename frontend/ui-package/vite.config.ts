@@ -216,9 +216,8 @@ function stylesAndFonts(): Plugin {
       rmSync(resolve(dist, cssFiles[0]));
       writeFileSync(resolve(dist, "styles.css"), styles);
 
-      // Ships next to package.json, like the embedding SDK package does.
       copyFileSync(
-        resolve(repoRoot, "LICENSE.txt"),
+        resolve(repoRoot, "LICENSE-AGPL.txt"),
         resolve(packageDir, "LICENSE.txt"),
       );
 

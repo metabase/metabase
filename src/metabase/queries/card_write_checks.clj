@@ -64,7 +64,7 @@
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? (:dataset_query card-before-updates) (get card-updates :dataset_query ::api/not-provided))
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
+    (query-perms/check-run-permissions-for-queries [(dissoc (:dataset_query card-updates) :query-permissions/perms)])))
 
 (defn- check-embedding-enabled-to-change-embedding
   "Embedding must be enabled to change the value of `enable_embedding`, `embedding_type` or `embedding_params`."
@@ -87,7 +87,7 @@
   [query]
   ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
   ;; any value already on the incoming query is dropped here.
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)]))
 
 (defn check-allowed-to-create-card!
   "Throws unless `card` can be saved as `card-type` and the current user may create it and run its query."
@@ -96,6 +96,7 @@
   (check-allowed-to-run-query! (:dataset_query card))
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (api/create-check :model/Card (assoc card :collection_id (actual-collection-id card)))
+  (queries.card/check-new-card-goal-references card)
   (check-no-save-cycle (:dataset_query card)))
 
 (mu/defn check-allowed-to-update-card!
@@ -104,6 +105,7 @@
    card-updates       :- ::queries.schema/card]
   (check-embedding-enabled-to-change-embedding card-before-update card-updates)
   (api/update-check card-before-update card-updates)
+  (queries.card/check-updated-goal-references [[card-before-update card-updates]])
   (doseq [f [check-update-result-metadata-data-perms
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))
@@ -118,4 +120,5 @@
                            {:user-id api/*current-user-id*
                             :object  (first (or (queries.card/first-update-refused card-changes)
                                                 (first card-changes)))})
-    (api/check-403 false)))
+    (api/check-403 false))
+  (queries.card/check-updated-goal-references card-changes))

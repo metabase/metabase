@@ -1,7 +1,7 @@
 import { type JSX, useMemo } from "react";
 
 import "metabase/css/core/base.css";
-import "metabase/css/core/fonts.css";
+import "fonts.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,

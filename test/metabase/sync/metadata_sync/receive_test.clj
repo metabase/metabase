@@ -875,10 +875,10 @@
 (defn- change-log-entries
   "The change log entries written while `thunk` runs, as `[table-name action]` and their count."
   [thunk]
-  (let [top (or (:id (t2/query-one ["SELECT MAX(id) AS id FROM change_log"])) 0)]
+  (let [top (or (:id (t2/query-one {:select [[[:max :id] :id]] :from [(t2/table-name :model/ChangeLog)]})) 0)]
     (thunk)
     (frequencies (map (juxt :table_name :action)
-                      (t2/query ["SELECT table_name, action FROM change_log WHERE id > ?" top])))))
+                      (t2/query {:select [:table_name :action] :from [(t2/table-name :model/ChangeLog)] :where [:> :id top]})))))
 
 (deftest a-seed-writes-the-change-log-test
   ;; An OSS build writes no change log, even with the feature on, as in `metabase.change-log.events-test`.

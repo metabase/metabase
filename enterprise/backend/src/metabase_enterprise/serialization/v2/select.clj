@@ -46,13 +46,14 @@
   (when (and (seq collection-set) (contains? (:transform (serialization/spec-of model)) :collection_id))
     (in-collections collection-set)))
 
-(def ^:private not-in-exploration-document
+(defn- not-in-exploration-document
   "The clause leaving out the Cards an exploration Summary document materializes."
+  []
   [:or [:= :document_id nil]
-   [:in :document_id ^:allow-subquery {:select [:id] :from [:document] :where [:= :exploration_id nil]}]])
+   [:in :document_id ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Document)] :where [:= :exploration_id nil]}]])
 
 (defmethod where :model/Card [_ {:keys [collection-set]}]
-  [:and (when (seq collection-set) (in-collections collection-set)) not-in-exploration-document])
+  [:and (when (seq collection-set) (in-collections collection-set)) (not-in-exploration-document)])
 
 (defmethod where :model/CardTest [_ {:keys [card-ids]}]
   (when card-ids (in-ids :card_id card-ids)))
@@ -82,7 +83,7 @@
 (defn- of-fields-of-tables
   "The clause matching rows of the Fields of the Tables with `table-ids`."
   [table-ids]
-  [:in :field_id ^:allow-subquery {:select [:id] :from [:metabase_field] :where (in-ids :table_id table-ids)}])
+  [:in :field_id ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Field)] :where (in-ids :table_id table-ids)}])
 
 (defmethod where :model/Table [_ {:keys [collection-set table-ids]}]
   (cond
@@ -128,7 +129,7 @@
 (defmethod where :model/SegmentTest [_ opts]
   ;; The tests of the Segments that an export with the same options takes. `:ids` names segment tests, not Segments.
   [:in :segment_id ^:allow-subquery {:select [:id]
-                                     :from   [:segment]
+                                     :from   [(t2/table-name :model/Segment)]
                                      :where  (where-clause :model/Segment (dissoc opts :ids))}])
 
 (defn select-rows

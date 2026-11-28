@@ -683,6 +683,27 @@ describe("QueryBuilder - model editor", () => {
       expect(screen.getByText("37.65")).toBeInTheDocument();
     });
 
+    it("shows the source table of a model query in the data step", async () => {
+      setupModelServer({ card: ORDERS_MODEL, runQuery: runOrdersQuery });
+      await setup({
+        card: ORDERS_MODEL,
+        initialRoute: `/model/${ORDERS_MODEL.id}/query`,
+      });
+
+      const dataStep = await screen.findByTestId("data-step-cell");
+      expect(dataStep).toHaveTextContent(/^Orders$/);
+      await userEvent.click(within(dataStep).getByText("Orders"));
+
+      const miniPicker = await screen.findByTestId("mini-picker");
+      expect(
+        await within(miniPicker).findByTestId("mini-picker-header"),
+      ).toHaveTextContent("Sample Database");
+      expect(await within(miniPicker).findByText("Orders")).toBeInTheDocument();
+      expect(
+        await within(miniPicker).findByText("Products"),
+      ).toBeInTheDocument();
+    });
+
     it("locks the display of a model to a table", async () => {
       setupModelServer({ card: ORDERS_MODEL, runQuery: runOrdersQuery });
       await setup({
@@ -1178,6 +1199,105 @@ describe("QueryBuilder - model editor", () => {
           within(getNotebookStep("data")).getByText("Orders"),
         ).toBeInTheDocument();
       }
+    });
+  });
+
+  describe("saving a new model", () => {
+    const PRODUCTS_COLUMNS = createProductsTableDatasetColumns();
+    const PRODUCTS_ROWS: RowValue[][] = [
+      [
+        1,
+        "1018947080336",
+        "Rustic Paper Wallet",
+        "Gizmo",
+        "Swaniawski, Casper and Hilll",
+        29.46,
+        4.6,
+        "2023-07-19T19:44:56.582Z",
+      ],
+    ];
+
+    /** Records every value the input shows, also ones replaced in the same task */
+    function recordInputValues(input: HTMLElement) {
+      const values = [input.getAttribute("value")];
+      const pushOldValues = (records: MutationRecord[]) =>
+        records.forEach((record) => values.push(record.oldValue));
+      const observer = new MutationObserver(pushOldValues);
+      observer.observe(input, {
+        attributes: true,
+        attributeFilter: ["value"],
+        attributeOldValue: true,
+      });
+      return function stop() {
+        pushOldValues(observer.takeRecords());
+        observer.disconnect();
+        values.push(input.getAttribute("value"));
+        return values;
+      };
+    }
+
+    it("does not show a '- Modified' suffix in the name while the new model saves (metabase#42773)", async () => {
+      const model = createMockCard({
+        id: 52,
+        name: "Products",
+        type: "model",
+        display: "table",
+        dataset_query: Lib.toJsQuery(
+          Lib.createTestQuery(SAMPLE_PROVIDER, {
+            stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+          }),
+        ),
+        result_metadata: PRODUCTS_COLUMNS,
+      });
+      setupModelServer({
+        card: model,
+        runQuery: () =>
+          createMockDataset({
+            data: { cols: PRODUCTS_COLUMNS, rows: PRODUCTS_ROWS },
+          }),
+        isNew: true,
+      });
+      const { router } = await setup({ card: null, initialRoute: "/" });
+      startNewModel(router);
+      const miniPicker = await screen.findByTestId("mini-picker");
+      await userEvent.click(
+        await within(miniPicker).findByText("Sample Database"),
+      );
+      await userEvent.click(await within(miniPicker).findByText("Products"));
+
+      await userEvent.click(
+        within(screen.getByTestId("dataset-edit-bar")).getByRole("button", {
+          name: "Save",
+        }),
+      );
+      const modal = await screen.findByTestId("save-question-modal");
+      const nameInput = within(modal).getByLabelText("Name");
+      expect(nameInput).toHaveValue("Products");
+
+      const stopRecording = recordInputValues(nameInput);
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("save-question-modal"),
+        ).not.toBeInTheDocument(),
+      );
+      const names = stopRecording();
+
+      expect(names).toContain("Products");
+      expect(names.filter((name) => / - Modified$/.test(name ?? ""))).toEqual(
+        [],
+      );
+      expect(getCardPostBodies()).toEqual([
+        expect.objectContaining({
+          name: "Products",
+          type: "model",
+          dataset_query: expect.objectContaining({
+            stages: [expect.objectContaining({ "source-table": PRODUCTS_ID })],
+          }),
+        }),
+      ]);
     });
   });
 

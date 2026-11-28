@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -59,6 +59,27 @@ describe("FilterColumnPicker", () => {
       await screen.findByText("The timestamp the order was created"),
     ).toBeInTheDocument();
     expect(screen.getByText("Creation timestamp")).toBeInTheDocument();
+  });
+
+  it("should show the foreign key info hovercard and hide it on unhover", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    setup({ query, stageIndexes: [0] });
+    const infoIcon = within(screen.getByLabelText("Product ID")).getByLabelText(
+      "More info",
+    );
+
+    await userEvent.hover(infoIcon);
+    expect(
+      await screen.findByText("The unique identifier of the product"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Foreign Key")).toBeInTheDocument();
+
+    await userEvent.unhover(infoIcon);
+    await waitFor(() =>
+      expect(
+        screen.queryByText("The unique identifier of the product"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("should filter columns by the search text", async () => {

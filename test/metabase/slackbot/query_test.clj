@@ -3,7 +3,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.render.core :as channel.render]
    [metabase.config.core :as config]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.slackbot.query :as slackbot.query]
@@ -348,6 +350,40 @@
               (mt/with-temp [:model/Card {card-id :id} {:display display}]
                 (let [result (#'slackbot.query/generate-card-output card-id)]
                   (is (= :table (:type result))))))))))))
+
+(defn- count-query [table]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+        (lib/aggregate (lib/count)))))
+
+(defn- rendered-card-args
+  "The results and render options [[slackbot.query/generate-card-output]] hands the PNG renderer for the card with
+  `card-id`, as `{:results _ :options _}`."
+  [card-id]
+  (let [rendered (atom nil)]
+    (mt/with-dynamic-fn-redefs [channel.render/render-pulse-card-to-png (fn [_timezone _card results _width options]
+                                                                          (reset! rendered {:results results :options options})
+                                                                          (byte-array 0))]
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (= :image (:type (slackbot.query/generate-card-output card-id))))))
+    @rendered))
+
+(deftest generate-card-output-dynamic-goal-test
+  (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (count-query :checkins)}
+                 :model/Card {card-id :id} {:display                :progress
+                                            :dataset_query          (count-query :venues)
+                                            :visualization_settings {:progress.goal {:id     goal-id
+                                                                                     :type   "card"
+                                                                                     :column "count"}}}]
+    (testing "a saved chart image gets the values of its dynamic goals (GDGT-3511)"
+      (is (=? {:status "completed"
+               :data   {:rows [[1000]]}}
+              (get-in (rendered-card-args card-id) [:options :channel.render/goal-values "card" (str goal-id)]))))
+    (testing "a failure getting the goals still renders the chart"
+      (mt/with-dynamic-fn-redefs [dynamic-goals/chart-goal-values (fn [& _] (throw (ex-info "boom" {})))]
+        (let [{:keys [results options]} (rendered-card-args card-id)]
+          (is (= [[100]] (get-in results [:data :rows])))
+          (is (nil? (:channel.render/goal-values options))))))))
 
 (deftest generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"

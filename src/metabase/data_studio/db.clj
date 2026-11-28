@@ -115,8 +115,9 @@
   [[settings-join]], where the flag is nil when the settings do not set it."
   [:model/Table :id :db_id :name :display_name :schema :s.is_published])
 
-(def ^:private settings-join
+(defn- settings-join
   "The `:left-join` value that joins the TableUserSettings of each Table as `s`."
+  []
   [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id (table-column :id)]])
 
 (mu/defn selection-columns-for-selectors
@@ -124,11 +125,11 @@
   out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
-  (into [] (take limit) (select-by-selectors #(t2/select selection-columns {:left-join settings-join, :where %, :limit limit})
+  (into [] (take limit) (select-by-selectors #(t2/select selection-columns {:left-join (settings-join), :where %, :limit limit})
                                              selectors)))
 
 (mu/defn selection-columns-for-tables
   "The id, database, name, display name, schema, and published flag (nil when not set) of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (app-db/select-batched #(t2/select selection-columns {:left-join settings-join, :where [:in (table-column :id) %]})
+  (app-db/select-batched #(t2/select selection-columns {:left-join (settings-join), :where [:in (table-column :id) %]})
                          table-ids))

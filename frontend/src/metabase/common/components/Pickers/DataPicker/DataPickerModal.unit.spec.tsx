@@ -1,17 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -19,6 +23,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { TableVisibilityToggle } from "metabase/metadata/pages/DataModelV1/components/TablePicker/components/TableVisibilityToggle";
+import { reinitialize } from "metabase/plugins";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -38,6 +45,7 @@ import {
   createMockRecentTableItem,
   createMockSearchResult,
   createMockTable,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import {
@@ -74,6 +82,7 @@ type SetupOpts = {
   collections?: Collection[];
   collectionItems?: { collection: Collection; items: CollectionItem[] }[];
   hasNestedQueries?: boolean;
+  hasLibrary?: boolean;
 };
 
 async function setup({
@@ -90,6 +99,7 @@ async function setup({
   ],
   collectionItems = [],
   hasNestedQueries = true,
+  hasLibrary = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect();
   process.env.OVERSCAN = "20";
@@ -108,6 +118,16 @@ async function setup({
   );
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections"]);
   setupSearchEndpoints(searchItems, undefined, { filterByScope: true });
+  const storeInitialState = createMockState({
+    ...(currentUser ? { currentUser } : {}),
+    settings: mockSettings({
+      "enable-nested-queries": hasNestedQueries,
+      "token-features": createMockTokenFeatures({ library: hasLibrary }),
+    }),
+  });
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+  }
 
   renderWithProviders(
     <DataPickerModal
@@ -117,12 +137,7 @@ async function setup({
       onChange={onChange}
       onClose={onClose}
     />,
-    {
-      storeInitialState: createMockState({
-        ...(currentUser ? { currentUser } : {}),
-        settings: mockSettings({ "enable-nested-queries": hasNestedQueries }),
-      }),
-    },
+    { storeInitialState },
   );
 
   await waitForLoaderToBeRemoved();
@@ -131,6 +146,68 @@ async function setup({
 }
 
 describe("DataPickerModal", () => {
+  it.each([
+    { title: "one database", hasOtherDatabase: false },
+    { title: "two databases", hasOtherDatabase: true },
+  ])(
+    "should open the databases by default, with no table selected, with $title",
+    async ({ hasOtherDatabase }) => {
+      const tableNames = [
+        "Accounts",
+        "Analytic Events",
+        "Feedback",
+        "Invoices",
+        "Orders",
+        "People",
+        "Products",
+        "Reviews",
+      ];
+      const sampleDatabase = createMockDatabase({
+        id: 2,
+        name: "Sample Database",
+        tables: tableNames.map((name, index) =>
+          createMockTable({
+            id: 20 + index,
+            db_id: 2,
+            schema: "PUBLIC",
+            display_name: name,
+          }),
+        ),
+      });
+      await setup({
+        databases: hasOtherDatabase
+          ? [
+              createMockDatabase({ id: 1, name: "Other Database" }),
+              sampleDatabase,
+            ]
+          : [sampleDatabase],
+        collections: [ROOT],
+        collectionItems: [{ collection: ROOT, items: [] }],
+      });
+
+      await waitFor(() =>
+        expect(getPickerItem(0, "Databases")).toHaveAttribute(
+          "data-active",
+          "true",
+        ),
+      );
+      expect(getPickerItem(0, "Our analytics")).not.toHaveAttribute(
+        "data-active",
+      );
+
+      await userEvent.click(getPickerItem(1, "Sample Database"));
+      for (const name of tableNames) {
+        expect(await findPickerItem(2, name)).not.toHaveAttribute(
+          "data-active",
+        );
+      }
+      expect(getPickerItem(1, "Sample Database")).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+    },
+  );
+
   describe("recents", () => {
     const recentItems = [
       createMockRecentTableItem({
@@ -669,4 +746,429 @@ describe("DataPickerModal", () => {
       expect(screen.queryByText("Orders Model")).not.toBeInTheDocument();
     });
   });
+
+  describe("nested collections (metabase#14178)", () => {
+    const SECOND_COLLECTION_ID = 21;
+    const THIRD_COLLECTION_ID = 22;
+    const collectionItem = (opts: Partial<CollectionItem>) =>
+      createMockCollectionItem({ model: "collection", ...opts });
+
+    const getLevel = (level: number) =>
+      screen.getByTestId(`item-picker-level-${level}`);
+    const expectActive = (level: number, name: string) =>
+      waitFor(() =>
+        expect(
+          within(getLevel(level)).getByRole("link", { name: new RegExp(name) }),
+        ).toHaveAttribute("data-active", "true"),
+      );
+
+    it("lists only the collections that hold questions in them or below them", async () => {
+      await setup({
+        collections: [ROOT, FIRST_COLLECTION],
+        collectionItems: [
+          {
+            collection: ROOT,
+            items: [
+              collectionItem({
+                id: FIRST_COLLECTION_ID,
+                name: FIRST_COLLECTION.name,
+                here: ["collection"],
+                below: ["card", "collection"],
+              }),
+            ],
+          },
+          {
+            collection: FIRST_COLLECTION,
+            items: [
+              collectionItem({
+                id: SECOND_COLLECTION_ID,
+                name: "Second collection",
+                location: `/${FIRST_COLLECTION_ID}/`,
+                here: ["card", "collection"],
+              }),
+            ],
+          },
+          {
+            collection: createMockCollection({ id: SECOND_COLLECTION_ID }),
+            items: [
+              collectionItem({
+                id: THIRD_COLLECTION_ID,
+                name: "Third collection",
+                location: `/${FIRST_COLLECTION_ID}/${SECOND_COLLECTION_ID}/`,
+              }),
+              createMockCollectionItem({
+                id: 1,
+                name: "Orders",
+                model: "card",
+                collection_id: SECOND_COLLECTION_ID,
+              }),
+            ],
+          },
+        ],
+      });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(
+        await within(getLevel(1)).findByText(FIRST_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Second collection")).not.toBeInTheDocument();
+      expect(screen.queryByText("Third collection")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(getLevel(1)).getByText(FIRST_COLLECTION.name),
+      );
+      await expectActive(0, "Our analytics");
+      await expectActive(1, FIRST_COLLECTION.name);
+      expect(
+        await within(getLevel(2)).findByText("Second collection"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Third collection")).not.toBeInTheDocument();
+
+      await userEvent.click(within(getLevel(2)).getByText("Second collection"));
+      await expectActive(0, "Our analytics");
+      await expectActive(1, FIRST_COLLECTION.name);
+      await expectActive(2, "Second collection");
+      expect(
+        await within(getLevel(3)).findByText("Orders"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Third collection")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("picking a table (metabase#45003)", () => {
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: ["Orders", "People", "Products"].map((name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          display_name: name,
+        }),
+      ),
+    });
+
+    it("records the picked table as a recent selection, and closes with the Close button", async () => {
+      const { onChange, onClose } = await setup({
+        databases: [SAMPLE_DATABASE],
+        collections: [ROOT],
+        collectionItems: [{ collection: ROOT, items: [] }],
+      });
+
+      const dialog = await screen.findByRole("dialog", {
+        name: "Pick your starting data",
+      });
+      await userEvent.click(await within(dialog).findByText("Databases"));
+      await userEvent.click(await within(dialog).findByText("Sample Database"));
+      await userEvent.click(await within(dialog).findByText("People"));
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 11, model: "table" }),
+      );
+      // picking closes the modal
+      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/activity/recents", {
+            method: "POST",
+          }),
+        ).toHaveLength(1),
+      );
+      const [recentCall] = fetchMock.callHistory.calls(
+        "path:/api/activity/recents",
+        { method: "POST" },
+      );
+      const body: unknown = JSON.parse(String(recentCall.options.body));
+      expect(body).toEqual({
+        context: "selection",
+        model: "table",
+        model_id: 11,
+      });
+
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /Close/ }),
+      );
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("hidden tables", () => {
+    const TABLES = ["Orders", "People", "Products", "Reviews"].map(
+      (name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          name: name.toUpperCase(),
+          display_name: name,
+        }),
+    );
+    const [ORDERS_TABLE] = TABLES;
+    const SCHEMA_TABLES_URL = "path:/api/database/1/schema/PUBLIC";
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: TABLES,
+    });
+
+    /**
+     * Keeps the visibility of the tables the way the backend does: the PUT that
+     * hides a table changes it, and the schema endpoint leaves hidden tables out
+     * unless it is asked for them.
+     */
+    function setupStatefulTables() {
+      const hiddenTableIds = new Set<number>();
+      fetchMock.get(SCHEMA_TABLES_URL, (call) => {
+        const includeHidden =
+          new URL(call.url).searchParams.get("include_hidden") === "true";
+        return TABLES.filter(
+          (table) => includeHidden || !hiddenTableIds.has(Number(table.id)),
+        );
+      });
+      fetchMock.put(`path:/api/table/${ORDERS_TABLE.id}`, (call) => {
+        const body = JSON.parse(String(call.options.body));
+        if (body.visibility_type === "hidden") {
+          hiddenTableIds.add(Number(ORDERS_TABLE.id));
+        }
+        return { ...ORDERS_TABLE, ...body };
+      });
+    }
+
+    function TestApp() {
+      const [isPickerOpen, setIsPickerOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setIsPickerOpen(true)}>Open picker</button>
+          <TableVisibilityToggle table={ORDERS_TABLE} onUpdate={jest.fn()} />
+          <UndoListing />
+          {isPickerOpen && (
+            <DataPickerModal
+              title="Pick your starting data"
+              onChange={jest.fn()}
+              onClose={() => setIsPickerOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    async function openSampleDatabase() {
+      await userEvent.click(
+        screen.getByRole("button", { name: "Open picker" }),
+      );
+      await userEvent.click(await screen.findByText("Databases"));
+      await userEvent.click(await screen.findByText("Sample Database"));
+    }
+
+    it("does not list a table after it was hidden, without a reload (metabase#19742)", async () => {
+      mockGetBoundingClientRect();
+      process.env.OVERSCAN = "20";
+      setupStatefulTables();
+      setupDatabasesEndpoints([SAMPLE_DATABASE]);
+      setupCollectionByIdEndpoint({ collections: [ROOT] });
+      setupCollectionsEndpoints({ collections: [ROOT], rootCollection: ROOT });
+      setupCollectionItemsEndpoint({ collection: ROOT, collectionItems: [] });
+      setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+      setupSearchEndpoints([]);
+      renderWithProviders(<TestApp />);
+
+      await openSampleDatabase();
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() =>
+        expect(screen.queryByText("Databases")).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByLabelText("eye icon"));
+      // the toast shows once the hide mutation has finished
+      expect(
+        await within(await screen.findByTestId("undo-list")).findByText(
+          "Hid Orders",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${ORDERS_TABLE.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+
+      await openSampleDatabase();
+      // the picker refetches the tables instead of showing the cached list
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls(SCHEMA_TABLES_URL)).toHaveLength(2),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+      for (const table of ["People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    });
+  });
 });
+
+describe("DataPickerModal > library", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
+  const LIBRARY_ID = 6464;
+  const DATA_COLLECTION_ID = 6465;
+  const METRICS_COLLECTION_ID = 6466;
+  const ORDERS_ID = 10;
+  const DATA_COLLECTION = createMockCollection({
+    id: DATA_COLLECTION_ID,
+    name: "Data",
+    type: "library-data",
+    location: `/${LIBRARY_ID}/`,
+    is_library_root: true,
+  });
+  const METRICS_COLLECTION = createMockCollection({
+    id: METRICS_COLLECTION_ID,
+    name: "Metrics",
+    type: "library-metrics",
+    location: `/${LIBRARY_ID}/`,
+    is_library_root: true,
+  });
+  const ACCOUNTS = createMockTable({
+    id: 9,
+    db_id: 1,
+    schema: "PUBLIC",
+    display_name: "Accounts",
+    collection: DATA_COLLECTION,
+  });
+  const ORDERS = createMockTable({
+    id: ORDERS_ID,
+    db_id: 1,
+    schema: "PUBLIC",
+    display_name: "Orders",
+    collection: DATA_COLLECTION,
+  });
+
+  function toTableItem(id: number, name: string) {
+    return createMockCollectionItem({
+      id,
+      name,
+      model: "table",
+      database_id: 1,
+      collection_id: DATA_COLLECTION.id,
+    });
+  }
+
+  async function setupLibrary({
+    value,
+    hasMetric = false,
+  }: { value?: DataPickerValue; hasMetric?: boolean } = {}) {
+    // Without a metric only the Data collection has items, so the library
+    // lists only tables
+    setupLibraryEndpoints({
+      hasLibrary: true,
+      library: {
+        id: LIBRARY_ID,
+        below: hasMetric ? ["metric", "table"] : ["table"],
+      },
+    });
+    // the database endpoints also answer GET /api/table/:id with `collection`
+    return setup({
+      value,
+      hasLibrary: true,
+      databases: [
+        createMockDatabase({ id: 1, name: "DB 1", tables: [ACCOUNTS, ORDERS] }),
+      ],
+      collections: [
+        createMockCollection({ id: LIBRARY_ID, name: "Library" }),
+        DATA_COLLECTION,
+        METRICS_COLLECTION,
+      ],
+      collectionItems: [
+        {
+          collection: createMockCollection({ id: LIBRARY_ID }),
+          items: [
+            createMockCollectionItem({
+              id: DATA_COLLECTION_ID,
+              name: DATA_COLLECTION.name,
+              type: DATA_COLLECTION.type,
+              location: DATA_COLLECTION.location,
+              is_library_root: true,
+              model: "collection",
+              here: ["table"],
+            }),
+            createMockCollectionItem({
+              id: METRICS_COLLECTION_ID,
+              name: METRICS_COLLECTION.name,
+              type: METRICS_COLLECTION.type,
+              location: METRICS_COLLECTION.location,
+              is_library_root: true,
+              model: "collection",
+              here: hasMetric ? ["metric"] : [],
+            }),
+          ],
+        },
+        {
+          collection: DATA_COLLECTION,
+          items: [toTableItem(9, "Accounts"), toTableItem(ORDERS_ID, "Orders")],
+        },
+        {
+          collection: METRICS_COLLECTION,
+          items: hasMetric
+            ? [
+                createMockCollectionItem({
+                  id: 50,
+                  name: "Trusted Orders Metric",
+                  model: "metric",
+                  collection_id: METRICS_COLLECTION_ID,
+                }),
+              ]
+            : [],
+        },
+      ],
+    });
+  }
+
+  const getLevel = (level: number) =>
+    screen.getByTestId(`item-picker-level-${level}`);
+
+  const findItem = async (level: number, name: string) => {
+    const element = await waitFor(() => getLevel(level));
+    return within(element).findByRole("link", { name: new RegExp(name) });
+  };
+
+  it("shows the library when only its Data collection has items", async () => {
+    await setupLibrary();
+
+    await userEvent.click(await findItem(0, "Library"));
+    await userEvent.click(await findItem(1, "Data"));
+
+    expect(await findItem(2, "Orders")).toBeInTheDocument();
+  });
+
+  it("builds the path to a published table from the value", async () => {
+    // A metric in the Metrics collection, like in the e2e test this replaces
+    await setupLibrary({
+      value: { model: "table", id: ORDERS_ID, database_id: 1 },
+      hasMetric: true,
+    });
+
+    expect(await findItem(2, "Orders")).toHaveAttribute("data-active", "true");
+    expect(await findItem(2, "Accounts")).not.toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(await findItem(1, "Data")).toHaveAttribute("data-active", "true");
+    expect(await findItem(0, "Library")).toHaveAttribute("data-active", "true");
+  });
+});
+
+function getPickerItem(level: number, name: string) {
+  const levelElement = screen.getByTestId(`item-picker-level-${level}`);
+  return checkNotNull(within(levelElement).getByText(name).closest("a"));
+}
+
+async function findPickerItem(level: number, name: string) {
+  const levelElement = await screen.findByTestId(`item-picker-level-${level}`);
+  const item = await within(levelElement).findByText(name);
+  return checkNotNull(item.closest("a"));
+}

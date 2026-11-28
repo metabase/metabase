@@ -155,12 +155,16 @@
 
 (t2/define-before-insert :model/FieldValues
   [field-values]
+  (when (seq (:human_readable_values field-values))
+    (mdb/check-default-worktree (tru "Display values can only be changed in the default worktree.")))
   (u/prog1 (update field-values :type #(keyword (or % :full)))
     (assert-valid-type-hash-combo <>)))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
   (let [changes (t2/changes field-values)]
+    (when (contains? changes :human_readable_values)
+      (mdb/check-default-worktree (tru "Display values can only be changed in the default worktree.")))
     (u/prog1 (update field-values :type #(keyword (or % :full)))
       (assert-no-identity-changes (:id field-values) changes)
       (when (some #(contains? changes %) [:values :human_readable_values])

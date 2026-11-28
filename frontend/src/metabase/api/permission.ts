@@ -50,6 +50,8 @@ export const permissionApi = Api.injectEndpoints({
         url: "/api/permissions/graph",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("group-table-access-policy")]),
     }),
     listPermissionsGroups: builder.query<
       GroupListQuery[],

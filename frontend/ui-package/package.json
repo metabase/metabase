@@ -1,8 +1,8 @@
 {
   "name": "@metabase/ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Metabase's UI components, theme and icons, for Metabase's own products",
-  "license": "SEE LICENSE IN LICENSE.txt",
+  "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/metabase/metabase.git",

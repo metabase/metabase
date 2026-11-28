@@ -3,6 +3,7 @@
   code that **topics and queues share** once topics exist."
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.mq.listener :as listener]
    [metabase.mq.payload :as payload]
    [metabase.util.log :as log]))
@@ -60,6 +61,25 @@
         (analytics/observe! :metabase-mq/handle-duration-ms labels
                             (/ (double (- (System/nanoTime) start)) 1e6))))))
 
+(defn tag-worktree
+  "`messages` tagged with the worktree scope this thread works in, unless it is the default worktree's, so that
+  [[deliver!]] runs their listener in it."
+  [messages]
+  (let [scope (mdb/worktree-scope)]
+    (if (= mdb/default-worktree-scope scope)
+      messages
+      (mapv (fn [message] {::scope scope ::message message}) messages))))
+
+(defn- run-listener-in-worktrees!
+  "Invokes `listener` once with the `messages` of each worktree scope they were published in, in that scope, for every
+  scope even when one throws. Returns nil on success, or the first `Throwable` a listener threw."
+  [channel listener messages]
+  (->> (group-by #(get % ::scope mdb/default-worktree-scope) messages)
+       (mapv (fn [[scope tagged]]
+               (mdb/with-worktree-scope scope
+                 (run-listener! channel listener (mapv #(get % ::message %) tagged)))))
+       (some identity)))
+
 (defn- decode-or-drop!
   "Decodes the opaque `payload` for `channel`. Returns the decoded messages on success. If the payload
   can't be decoded (corrupt/incompatible — something retrying can never fix) logs an error,
@@ -98,5 +118,5 @@
         (do
           (analytics/inc! :metabase-mq/messages-received
                           {:transport (namespace channel) :channel (name channel)} (count messages))
-          (run-listener! channel listener messages))
+          (run-listener-in-worktrees! channel listener messages))
         no-listener))))

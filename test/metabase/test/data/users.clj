@@ -242,14 +242,14 @@
       ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
       ;; transaction around the Session would also discard every app DB write made by the request. Delete only
       ;; the Session explicitly instead.
-      (t2/insert! :core_session {:id         session-id
-                                 :key_hashed (session/hash-session-key session-key)
-                                 :user_id    user-id
-                                 :created_at (mi/now)})
+      (t2/insert! (t2/table-name :model/Session) {:id         session-id
+                                                  :key_hashed (session/hash-session-key session-key)
+                                                  :user_id    user-id
+                                                  :created_at (mi/now)})
       (try
         (apply the-client session-key args)
         (finally
-          (t2/delete! :core_session :id session-id))))))
+          (t2/delete! (t2/table-name :model/Session) :id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request

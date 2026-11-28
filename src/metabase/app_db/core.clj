@@ -13,17 +13,17 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
-   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
-   [metabase.app-db.value-guard]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
@@ -31,10 +31,8 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
-         metabase.app-db.query-cancelation/keep-me
-         metabase.app-db.value-guard/keep-me)
+         metabase.app-db.query-cancelation/keep-me)
 
 (p/import-vars
  [mdb.connection
@@ -46,6 +44,7 @@
   with-application-db
   do-before-commit
   do-after-commit
+  do-after-rollback
   in-transaction?
   mariadb?
   quartz-data-source
@@ -59,6 +58,16 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
+ [mdb.worktree
+  check-default-worktree
+  default-worktree-id
+  default-worktree-scope
+  do-with-worktree-scope
+  with-worktree-scope
+  worktree-id
+  non-default-worktree?
+  worktree-id->scope
+  worktree-scope]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption
@@ -77,17 +86,23 @@
   spec]
  [metabase.app-db.query
   compile
-  create-batched!
   create-partition-size
-  current-timestamp-string
-  delete-batched!
-  delete-oldest-rows!
   delete-partition-size
-  increment-counts!
-  insert-returning-instances!
   isa
   join
   qualify
+  select-partition-size
+  type-keyword->descendants
+  upsert-query
+  update-partition-size
+  with-conflict-retry]
+ [mdb.db
+  create-batched!
+  current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  increment-counts!
+  insert-returning-instances!
   query
   select-batched
   select-batched-by-keys
@@ -95,17 +110,13 @@
   select-batched-reducible
   select-batched-set
   select-or-insert!
-  select-partition-size
   select-partitions
   streaming-reducible
-  sum-batched
   streaming-reducible-query
-  type-keyword->descendants
-  update-or-insert!
+  sum-batched
   update-batched!
   update-grouped!
-  update-partition-size
-  with-conflict-retry]
+  update-or-insert!]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
@@ -122,6 +133,18 @@
   "Mark the bound Metabase DB as set up and ready."
   []
   (reset! (:status (mdb.connection/current-application-db)) ::setup-finished))
+
+(defn recompile-h2-views!
+  "Recompile every view of the H2 app DB on `conn`, which H2 leaves invalid when a script restore creates a view before
+  a table it reads (https://github.com/h2database/h2database/issues/3942)."
+  [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (let [view-names (with-open [rs (.executeQuery stmt (str "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS "
+                                                             "WHERE TABLE_SCHEMA = 'PUBLIC'"))]
+                       (loop [acc []]
+                         (if (.next rs) (recur (conj acc (.getString rs 1))) acc)))]
+      (doseq [view-name view-names]
+        (.execute stmt (format "ALTER VIEW \"%s\" RECOMPILE" view-name))))))
 
 (defn verify-application-db-connection!
   "Open a connection to the bound application DB and check its server version. Throws on failure.
@@ -181,6 +204,7 @@
             (mdb.setup/setup-db! db-type data-source {:auto-migrate?            auto-migrate?
                                                       :create-sample-content?   create-sample-content?
                                                       :manage-encryption-state? manage-encryption-state?}))
+          (mdb.worktree/init-worktree-tables!)
           (finish-db-setup!)))))
   :done)
 

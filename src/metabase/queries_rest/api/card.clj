@@ -10,6 +10,7 @@
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -39,7 +40,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -225,24 +225,11 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Card` with ID.
-
-  As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
-  instead, you can specify `?legacy-mbql=true`."
+  "Get `Card` with ID. Returns the MBQL query (`dataset_query`) as MBQL 5."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (cond-> card
-      legacy-mbql?
-      (update :dataset_query (fn [query]
-                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
-                               #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-                               (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (get-card (eid-translation/->id-or-404 :card id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -358,7 +345,7 @@
                          supported-series-display-type
                          last-cursor
                          exclude-ids
-                         (when query (h2x/like-substring query))
+                         (when query (funnysql.util/like-substring query))
                          ;; add a little buffer to the page to account for cards that are not
                          ;; compatible + do not have permissions to read
                          ;; this is just a heuristic, but it should be good enough
@@ -540,6 +527,7 @@
     (queries/with-copy-source-card source-card
       (queries/check-allowed-to-create-card! card card-type))
     (queries/check-new-dashboard-questions-timeline-permissions [card])
+    (queries/check-new-dashboard-questions-goal-permissions [card])
     (let [created-card (create-card! card)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
@@ -562,8 +550,10 @@
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (queries/with-copy-source-card orig-card
-      (api/create-check :model/Card new-card))
+      (api/create-check :model/Card new-card)
+      (queries/check-new-card-goal-references new-card))
     (queries/check-new-dashboard-questions-timeline-permissions [new-card])
+    (queries/check-new-dashboard-questions-goal-permissions [new-card])
     (-> (create-card! new-card)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
@@ -752,9 +742,8 @@
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
 (defn- collection-position-updates
-  "The updates that add the Cards that had a position in their previous Collection to the end of the new one, in the
-  order of their old positions, ties between Cards of several old Collections falling in the order the database
-  returned them."
+  "The updates that move `sorted-cards` into the Collection `new-collection-id-or-nil`, or the root when nil.
+  They take the positions after the Collection's highest, in the order given."
   [new-collection-id-or-nil sorted-cards]
   (let [max-position      (:max_position (queries-rest.db/max-collection-position new-collection-id-or-nil))
         ;; collection_position for the next card in the collection
@@ -785,9 +774,10 @@
       ;; get duplicates
       (t2/with-transaction [_conn]
         (t2/with-transaction [_conn]
-          ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
-          ;; are gone and update the position in the new collection
-          (let [with-position (sort-by :collection_position (filter :collection_position cards))]
+          ;; Cards with a `:collection_position` go to the end of the new Collection, and the positions they leave
+          ;; behind are closed. They arrive in no fixed order and Cards from several old Collections can share a
+          ;; position, so the id breaks ties.
+          (let [with-position (sort-by (juxt :collection_position :id) (filter :collection_position cards))]
             (queries.card/update-cards! (into (collection-position-updates new-collection-id-or-nil with-position)
                                               (comp (remove :collection_position)
                                                     (map (fn [card] {:id (u/the-id card) :collection_id new-collection-id-or-nil})))

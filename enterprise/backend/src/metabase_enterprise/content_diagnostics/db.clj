@@ -13,6 +13,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.queries.core :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -24,7 +25,7 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn insert-findings!
   "Insert one chunk of `content_diagnostics_finding` `rows`."
@@ -253,7 +254,7 @@
   `eligible-clause` allows."
   [eligible-clause :- vector?]
   (t2/query {:select [:id :collection_id]
-             :from   [:report_card]
+             :from   [(t2/table-name :model/Card)]
              :where  [:and
                       [:= :archived false]
                       [:= :dashboard_id nil]
@@ -263,8 +264,8 @@
 (mu/defn cards-with-empty-latest-run
   "The `(card_id, started_at)` rows of the non-archived Cards in the containers `eligible-clause` allows
   whose latest *clean* run since `cutoff` returned zero rows. Clean means unparameterized, unsandboxed, not
-  a cache hit and error-free; `parameterized` is matched strictly against `false`, so legacy rows predating
-  these columns (NULL) fall out, and a NULL `is_sandboxed` is treated as not sandboxed.
+  a cache hit, error-free and not in `referenced-run-contexts`; `parameterized` is matched strictly against `false`, so
+  legacy rows predating these columns (NULL) fall out, and a NULL `is_sandboxed` is treated as not sandboxed.
 
   `cutoff` bounds the window the way `card-run-medians` does; without it the ranking covered every
   `query_execution` row ever recorded, which on Postgres means every monthly partition."
@@ -278,8 +279,8 @@
                                            :order-by     [[:qe.started_at :desc]
                                                           [:qe.id :desc]]}]]
                                   :rn]]
-                        :from   [[:query_execution :qe]]
-                        :join   [[:report_card :c] [:= :c.id :qe.card_id]]
+                        :from   [[(t2/table-name :model/QueryExecution) :qe]]
+                        :join   [[(t2/table-name :model/Card) :c] [:= :c.id :qe.card_id]]
                         :where  [:and
                                  [:= :c.archived false]
                                  [:>= :qe.started_at cutoff]
@@ -287,13 +288,15 @@
                                  [:= [:coalesce :qe.is_sandboxed false] false]
                                  [:not= :qe.cache_hit true]
                                  [:= :qe.error nil]
+                                 (queries/not-referenced-run :qe.context)
                                  eligible-clause]}
                        :ranked]]
              :where  [:and [:= :rn 1] [:= :result_rows 0]]}))
 
 (mu/defn card-run-medians
   "The `(card_id, median_ms)` rows of the non-archived Cards in the containers `eligible-clause` allows
-  whose median `running_time` over their non-cache-hit executions since `cutoff` exceeds `threshold-ms`.
+  whose median `running_time` over their non-cache-hit executions since `cutoff` exceeds `threshold-ms`. Runs in
+  `referenced-run-contexts` don't count.
   The app DBs share no median aggregate (H2 has MEDIAN, Postgres percentile_cont, MySQL neither), so it
   is computed portably: rank each card's executions by `running_time`, keep the middle row (odd count)
   or middle two (even), and AVG them. `median_ms` comes back as a BigDecimal."
@@ -308,11 +311,12 @@
                                              :order-by     [[:qe.running_time :asc]]}]]
                                     :rn]
                                    [[:over [[:count :*] ^:allow-subquery {:partition-by :qe.card_id}]] :cnt]]
-                          :from   [[:query_execution :qe]]
-                          :join   [[:report_card :c] [:= :c.id :qe.card_id]]
+                          :from   [[(t2/table-name :model/QueryExecution) :qe]]
+                          :join   [[(t2/table-name :model/Card) :c] [:= :c.id :qe.card_id]]
                           :where  [:and
                                    [:not= :qe.running_time nil]
                                    [:not= :qe.cache_hit true]
+                                   (queries/not-referenced-run :qe.context)
                                    [:= :c.archived false]
                                    [:>= :qe.started_at cutoff]
                                    eligible-clause]}
@@ -330,7 +334,7 @@
   allows."
   [eligible-clause :- vector?]
   (t2/query {:select [:id :collection_id]
-             :from   [:report_dashboard]
+             :from   [(t2/table-name :model/Dashboard)]
              :where  [:and [:= :archived false] eligible-clause]}))
 
 (mu/defn dashboard-dashcard-counts
@@ -339,14 +343,14 @@
   counted."
   []
   (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-             :from     [:report_dashboardcard]
+             :from     [(t2/table-name :model/DashboardCard)]
              :group-by [:dashboard_id]}))
 
 (mu/defn dashboard-tab-dashcard-counts
   "The `(dashboard_id, dashboard_tab_id, cnt)` primary-dashcard counts, one row per tab."
   []
   (t2/query {:select   [:dashboard_id :dashboard_tab_id [[:count :*] :cnt]]
-             :from     [:report_dashboardcard]
+             :from     [(t2/table-name :model/DashboardCard)]
              :group-by [:dashboard_id :dashboard_tab_id]}))
 
 (mu/defn dashboard-tab-counts
@@ -354,7 +358,7 @@
   dashboard."
   []
   (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-             :from     [:dashboard_tab]
+             :from     [(t2/table-name :model/DashboardTab)]
              :group-by [:dashboard_id]}))
 
 (mu/defn dashboard-primary-card-pairs
@@ -363,8 +367,8 @@
   [eligible-clause :- vector?
    card-ids        :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
-                                  :from   [[:report_dashboardcard :dc]]
-                                  :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                  :from   [[(t2/table-name :model/DashboardCard) :dc]]
+                                  :join   [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
                                   :where  [:and eligible-clause [:in :dc.card_id %]]})
                       card-ids))
 
@@ -374,9 +378,9 @@
   [eligible-clause :- vector?
    card-ids        :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
-                                  :from   [[:dashboardcard_series :s]]
-                                  :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
-                                           [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
+                                  :from   [[(t2/table-name :model/DashboardCardSeries) :s]]
+                                  :join   [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.id :s.dashboardcard_id]
+                                           [(t2/table-name :model/Dashboard) :d]      [:= :d.id :dc.dashboard_id]]
                                   :where  [:and eligible-clause [:in :s.card_id %]]})
                       card-ids))
 
@@ -415,7 +419,7 @@
   `archived` column to filter on."
   []
   (t2/query {:select [:id :collection_id]
-             :from   [:transform]}))
+             :from   [(t2/table-name :model/Transform)]}))
 
 (mu/defn transforms
   "The whole Transform rows matching `where` - `mi/can-read?` reads `:source`, so the caller needs them
@@ -433,7 +437,7 @@
   (t2/query {:select   [:transform_id
                         [[:max :start_time] :start_time]
                         [[:max :end_time] :end_time]]
-             :from     [:transform_run]
+             :from     [(t2/table-name :model/TransformRun)]
              :where    [:and
                         [:in :status ["succeeded" "failed" "timeout"]]
                         [:>= :start_time cutoff]]

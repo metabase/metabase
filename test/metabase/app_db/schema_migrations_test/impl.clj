@@ -71,13 +71,15 @@
 
 (defn do-with-app-db-bindings
   "Call `f` with the app DB bound to `data-source`, a DB of type `driver`, and with the bindings migrating a throwaway
-  app DB needs: no work handed to Quartz, and no test dataset prewarmed into it."
+  app DB needs: no work handed to Quartz, no test dataset prewarmed into it, and queries across every worktree, since
+  its tables may not have `worktree_id` yet."
   [driver ^javax.sql.DataSource data-source f]
   ;; Quartz would outlive the throwaway DB, and the DB must hold only what the test loads.
   (binding [custom-migrations.util/*allow-temp-scheduling* false
             data.impl/*skip-dataset-prewarm?*              true]
     (mdb/with-application-db (mdb.connection/application-db driver data-source)
-      (f))))
+      (mdb/with-worktree-scope {:type :all}
+        (f)))))
 
 (defn do-with-temp-empty-app-db
   "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the
@@ -181,7 +183,7 @@
 
 (defn- migrate-to-start!
   "Bring an empty app DB up to, but not including, `start-id`, without sample content.
-  It loads the checked-in snapshot first when `start-id` falls after the snapshot's boundary changeset."
+  It loads a checked-in snapshot first when `start-id` falls after a snapshot's boundary changeset."
   [^java.sql.Connection conn driver start-id]
   ;; Either way the whole range before `start-id` then runs with `:skip-ran?`, so a changeset that sits before the
   ;; boundary but is missing from the snapshot, such as a backport merged after the snapshot was cut, still runs after
@@ -189,9 +191,9 @@
   ;; is off on both paths because the snapshot is dumped without it, so whether a test gets it cannot depend on where
   ;; its start falls.
   (binding [custom-migrations/*create-sample-content* false]
-    (when (snapshot/usable-for-start? conn driver start-id)
-      (log/debugf "Loading app db snapshot %s before running migrations up to %s..." snapshot/snapshot-version start-id)
-      (snapshot/load-snapshot! conn driver))
+    (when-let [version (snapshot/version-for-start conn driver start-id)]
+      (log/debugf "Loading app db snapshot %s before running migrations up to %s..." version start-id)
+      (snapshot/load-snapshot! conn driver version))
     (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false, :skip-ran? true})))
 

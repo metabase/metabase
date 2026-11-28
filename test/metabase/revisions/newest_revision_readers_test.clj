@@ -17,15 +17,15 @@
   "Insert two Revisions of the `model-name` row with `model-id`, both flagged `most_recent`, the newer by `:lucky`."
   [model-name model-id]
   (doseq [[user timestamp] [[:rasta (t/offset-date-time 2020 1 1)] [:lucky (t/offset-date-time 2021 1 1)]]]
-    (t2/insert! :revision {:model        model-name
-                           :model_id     model-id
-                           :user_id      (mt/user->id user)
-                           :timestamp    timestamp
-                           :object       "{}"
-                           :is_creation  false
-                           :is_reversion false
-                           :most_recent  true}))
-  (is (= 2 (t2/count :revision :model model-name :model_id model-id :most_recent true))))
+    (t2/insert! (t2/table-name :model/Revision) {:model        model-name
+                                                 :model_id     model-id
+                                                 :user_id      (mt/user->id user)
+                                                 :timestamp    timestamp
+                                                 :object       "{}"
+                                                 :is_creation  false
+                                                 :is_reversion false
+                                                 :most_recent  true}))
+  (is (= 2 (t2/count (t2/table-name :model/Revision) :model model-name :model_id model-id :most_recent true))))
 
 (deftest last-edit-info-test
   (mt/with-temp [:model/Card      card {}
@@ -95,9 +95,9 @@
         (is (= #{[exploration-id (mt/user->id :lucky)] [untouched-id nil]} (set items)))
         (is (= 2 (count items)))))
     (testing "a Revision of its Summary document newer than its own is the last edit"
-      (t2/insert! :revision {:model "Document" :model_id document-id :user_id (mt/user->id :crowberto)
-                             :timestamp (t/offset-date-time 2022 1 1) :object "{}" :is_creation false
-                             :is_reversion false :most_recent true})
+      (t2/insert! (t2/table-name :model/Revision) {:model "Document" :model_id document-id :user_id (mt/user->id :crowberto)
+                                                   :timestamp (t/offset-date-time 2022 1 1) :object "{}" :is_creation false
+                                                   :is_reversion false :most_recent true})
       (is (= [(mt/user->id :crowberto)]
              (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models "exploration")
                   :data

@@ -1809,3 +1809,84 @@
   (testing "and an instant for any other type"
     (doseq [database-type ["timestamptz" "timestamp with time zone" "DateTime64(3, 'UTC')"]]
       (is (true? (#'sql.qp/zoned-type? database-type)) database-type))))
+
+(defn- nested-field-metadata-provider
+  "`categories` with a struct column `INFO`, which has a nested field with the same name as the column `NAME`."
+  []
+  (lib.tu/merged-mock-metadata-provider
+   meta/metadata-provider
+   {:fields [{:id            999901
+              :table-id      (meta/id :categories)
+              :name          "INFO"
+              :display-name  "Info"
+              :base-type     :type/Dictionary
+              :database-type "STRUCT"
+              :position      100
+              :active        true}
+             {:id            999902
+              :table-id      (meta/id :categories)
+              :name          "NAME"
+              :display-name  "Name"
+              :base-type     :type/Text
+              :database-type "CHARACTER VARYING"
+              :parent-id     999901
+              :position      101
+              :active        true}]}))
+
+(deftest ^:parallel nested-field-through-join-test
+  (testing "a nested field (with a parent-id) that comes from a join uses the alias that the join subquery gives it"
+    (let [mp    (nested-field-metadata-provider)
+          field (fn [id] (lib.metadata/field mp id))
+          query (-> (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+                    (lib/with-fields [(field (meta/id :venues :id))])
+                    (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :categories))
+                                                   [(lib/= (field (meta/id :venues :category-id))
+                                                           (field (meta/id :categories :id)))])
+                                  (lib/with-join-fields [(field (meta/id :categories :name)) (field 999902)]))))]
+      (is (= ["SELECT"
+              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
+              "  \"Categories\".\"NAME\" AS \"Categories__NAME\","
+              "  \"Categories\".\"NAME_2\" AS \"Categories__NAME_2\""
+              "FROM"
+              "  \"PUBLIC\".\"VENUES\""
+              "  LEFT JOIN ("
+              "    SELECT"
+              "      \"PUBLIC\".\"CATEGORIES\".\"ID\" AS \"ID\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"NAME\" AS \"NAME\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"INFO\" AS \"INFO\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"INFO\".\"NAME\" AS \"NAME_2\""
+              "    FROM"
+              "      \"PUBLIC\".\"CATEGORIES\""
+              "  ) AS \"Categories\" ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = \"Categories\".\"ID\""
+              "LIMIT"
+              "  1048575"]
+             (->> (driver/with-driver :h2 (:query (qp.compile/compile query)))
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))
+
+(deftest ^:parallel nested-field-in-later-stage-test
+  (testing "a nested field (with a parent-id) that comes from an earlier stage uses the alias of that stage"
+    (let [mp    (nested-field-metadata-provider)
+          field (fn [id] (lib.metadata/field mp id))
+          query (-> (lib/query mp (lib.metadata/table mp (meta/id :categories)))
+                    (lib/with-fields [(field (meta/id :categories :name)) (field 999902)])
+                    lib/append-stage
+                    (lib/filter (lib/= (field 999902) "a")))]
+      (is (= ["SELECT"
+              "  \"__mb_source\".\"NAME\" AS \"NAME\","
+              "  \"__mb_source\".\"NAME_2\" AS \"NAME_2\""
+              "FROM"
+              "  ("
+              "    SELECT"
+              "      \"PUBLIC\".\"CATEGORIES\".\"NAME\" AS \"NAME\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"INFO\".\"NAME\" AS \"NAME_2\""
+              "    FROM"
+              "      \"PUBLIC\".\"CATEGORIES\""
+              "  ) AS \"__mb_source\""
+              "WHERE"
+              "  \"__mb_source\".\"NAME_2\" = ?"
+              "LIMIT"
+              "  1048575"]
+             (->> (driver/with-driver :h2 (:query (qp.compile/compile query)))
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))

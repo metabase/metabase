@@ -1228,12 +1228,12 @@
           ;; Direct SQL bypasses the :model/Field before-update hook that would otherwise null
           ;; dependent fk_target_field_id values — reproducing the customer state where an FK
           ;; still points to a since-deactivated PK.
-          (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
+          (mdb/query {:update (t2/table-name :model/Field) :set {:active false} :where [:= :id %users.id]})
           (is (= [{:lhs {:table $$messages, :field %messages.company_id}
                    :rhs {:table $$companies, :field %companies.id}}]
                  (#'chain-filter/find-joins (fk-graph false) $$messages $$companies)))
           (finally
-            (mdb/query {:update :metabase_field :set {:active true} :where [:= :id %users.id]})))))))
+            (mdb/query {:update (t2/table-name :model/Field) :set {:active true} :where [:= :id %users.id]})))))))
 
 (deftest ^:parallel database-fk-relationships-drops-inactive-target-rows-test
   (testing "FKs pointing to an inactive target don't leak nil-endpoint edges into the graph (#80557)"
@@ -1245,12 +1245,12 @@
                               []]]
       (mt/$ids nil
         (try
-          (mdb/query {:update :metabase_field :set {:active false} :where [:= :id %users.id]})
+          (mdb/query {:update (t2/table-name :model/Field) :set {:active false} :where [:= :id %users.id]})
           (let [graph (#'chain-filter/database-fk-relationships (mt/id) true)]
             (is (not (contains? graph nil)))
             (is (not-any? #(contains? % nil) (vals graph))))
           (finally
-            (mdb/query {:update :metabase_field :set {:active true} :where [:= :id %users.id]})))))))
+            (mdb/query {:update (t2/table-name :model/Field) :set {:active true} :where [:= :id %users.id]})))))))
 
 ;;; --------------------- chain-filter-mbql-query metadata app-DB call counts (no metadata N+1) ---------------------
 ;;;

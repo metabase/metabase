@@ -16,108 +16,19 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize();
   });
 
-  it("selected dimensions become pinned to the top of the dimensions list (with the table alias for another table), and removing all aggregations shows the add aggregation button", () => {
-    H.getDimensionByName({ name: "Total" })
-      .should("have.attr", "aria-selected", "false")
-      .click({ position: "left" });
-
-    H.getDimensionByName({ name: "Total" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-
-    cy.button("Done").click();
-
-    H.summarize();
-
-    // Removed from the unpinned list
-    cy.findByTestId("unpinned-dimensions").within(() => {
-      cy.findByText("Total").should("not.exist");
-    });
-
-    // Displayed in the pinned list
-    cy.findByTestId("pinned-dimensions").within(() => {
-      cy.findByText("Orders → Total").should("not.exist");
-      H.getDimensionByName({ name: "Total" }).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-    });
-
-    H.getRemoveDimensionButton({ name: "Total" }).click();
-
-    // Becomes visible in the unpinned list again
-    cy.findByTestId("unpinned-dimensions").within(() => {
-      cy.findByText("Total");
-    });
-
-    H.getDimensionByName({ name: "State" }).click();
-
-    cy.button("Done").click();
-
-    H.summarize();
-
-    cy.findByTestId("pinned-dimensions").within(() => {
-      H.getDimensionByName({ name: "User → State" }).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-    });
-
-    H.getRemoveDimensionButton({ name: "User → State" }).click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("User → State").should("not.exist");
-
-    cy.findByTestId("aggregation-item").within(() => {
-      cy.icon("close").click();
-    });
-
-    cy.findByTestId("add-aggregation-button").should(
-      "have.text",
-      "Add a function or metric",
-    );
-  });
-
-  it("selecting a binning adds a dimension", () => {
-    H.getDimensionByName({ name: "Total" }).click({ position: "left" });
-
-    H.changeBinningForDimension({
-      name: "Quantity",
-      toBinning: "10 bins",
-    });
-
-    H.getDimensionByName({ name: "Total" })
-      .scrollIntoView()
-      .should("have.attr", "aria-selected", "true")
-      .findByLabelText("Binning strategy")
-      .should("be.visible");
-    H.getDimensionByName({ name: "Quantity" })
-      .should("have.attr", "aria-selected", "true")
-      .findByLabelText("Binning strategy")
-      .should("be.visible");
-    H.getDimensionByName({ name: "Discount" }).within(() => {
-      cy.button("Add dimension").realHover();
-      cy.findByLabelText("Binning strategy").should("be.visible");
-    });
-  });
-
-  it("should only have one scrollbar for the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
-    cy.findByTestId("summarize-aggregation-item-list").then(($el) => {
+  it("should only scroll the field list in the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
+    cy.findByTestId("summary-panel").then(($el) => {
       const element = $el[0];
       expectNoScrollbar(element);
     });
 
-    cy.findByTestId("summarize-breakout-column-list").then(($el) => {
+    cy.findByTestId("summary-wells").then(($el) => {
       const element = $el[0];
       expectNoScrollbar(element);
     });
 
-    // the sidebar is the only element with a scrollbar
-    cy.findByTestId("sidebar-content").then(($el) => {
+    // the field list is the only element with a scrollbar
+    cy.findByTestId("summary-field-list-scroll").then(($el) => {
       const element = $el[0];
       expect(element.scrollHeight > element.clientHeight).to.be.true;
       expect(element.offsetWidth > element.clientWidth).to.be.true;
@@ -125,7 +36,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset", (req) => req.destroy());
 
-    H.rightSidebar().button("Done").click();
+    H.addSummaryValue("Count of rows");
     H.main()
       .findByText("We're experiencing server issues")
       .should("be.visible");
@@ -161,6 +72,60 @@ describe("scenarios > question > summarize", () => {
     H.getNotebookStep("summarize")
       .findByText("Distinct values of Created At: Hour of day")
       .should("be.visible");
+  });
+
+  it("summarizes the results of a SQL question, with a date unit and a cut-off column name shown in full", () => {
+    const longColumnName =
+      "Customer state of residence at the time of their signup";
+
+    H.createNativeQuestion(
+      {
+        name: "SQL orders",
+        native: {
+          query: `SELECT o.CREATED_AT AS CREATED_AT, o.TOTAL AS TOTAL, pe.STATE AS "${longColumnName}" FROM ORDERS o JOIN PEOPLE pe ON pe.ID = o.USER_ID`,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
+    cy.wait("@dataset");
+    H.summarize();
+
+    H.addSummaryValue("TOTAL");
+    cy.wait("@dataset");
+    H.clickSummaryField("CREATED_AT");
+    cy.wait("@dataset");
+    H.clickSummaryField(longColumnName, { add: true });
+    cy.wait("@dataset");
+    H.summaryWellItem("values", "Sum of TOTAL").should("be.visible");
+    H.assertSummaryWellItems("columns", ["CREATED_AT: Month", longColumnName]);
+
+    H.changeSummaryGroupingBucket("CREATED_AT: Month", "Year");
+    cy.wait("@dataset").then(({ request, response }) => {
+      expect(request.body.stages[0].breakout[0][1]["temporal-unit"]).to.eq(
+        "year",
+      );
+      expect(response.body.data.cols.map((col) => col.display_name)).to.eql([
+        "CREATED_AT: Year",
+        longColumnName,
+        "Sum of TOTAL",
+      ]);
+    });
+    H.assertSummaryWellItems("columns", ["CREATED_AT: Year", longColumnName]);
+
+    cy.log("a name too long for its chip or its row shows in full on hover");
+    H.summaryWellItem("columns", longColumnName)
+      .findByText(longColumnName)
+      .realHover();
+    H.tooltip().should("have.text", longColumnName);
+
+    H.summaryWellItem("values", "Sum of TOTAL").realHover();
+    H.tooltip().should("not.exist");
+
+    H.summaryField(longColumnName).findByText(longColumnName).realHover();
+    H.tooltip().should("have.text", longColumnName);
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
@@ -241,15 +206,10 @@ function removeMetricFromSidebar(metricName) {
     alias: "dataset",
   });
 
-  H.rightSidebar().within(() => {
-    cy.findByLabelText(metricName)
-      .find(".Icon-close")
-      .should("be.visible")
-      .click();
-    cy.wait("@dataset");
+  H.removeSummaryItem(metricName);
+  cy.wait("@dataset");
 
-    cy.findByLabelText(metricName).should("not.exist");
-  });
+  H.summaryWellItem("values", metricName).should("not.exist");
 }
 
 function expectNoScrollbar(element) {

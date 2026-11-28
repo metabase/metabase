@@ -1415,9 +1415,9 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (= #{"Library" "Data" "Metrics"}
-                 (t2/select-fn-set :name :collection :entity_id [:in ["librarylibrarylibrary"
-                                                                      "librarylibrarydatadat"
-                                                                      "librarylibrarymetrics"]]))))))))
+                 (t2/select-fn-set :name (t2/table-name :model/Collection) :entity_id [:in ["librarylibrarylibrary"
+                                                                                            "librarylibrarydatadat"
+                                                                                            "librarylibrarymetrics"]]))))))))
 
 (deftest translated-library-collection-name-import-test
   (testing "Library collection exported with its translated name loads with its stored name"
@@ -1432,7 +1432,7 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (= "Library"
-                 (t2/select-one-fn :name :collection :entity_id "librarylibrarylibrary"))))))))
+                 (t2/select-one-fn :name (t2/table-name :model/Collection) :entity_id "librarylibrarylibrary"))))))))
 
 (deftest transform-test-expectations-round-trip-test
   (testing "A transform test's expectations come back from an import as validated records, payload intact"
@@ -1827,11 +1827,11 @@
           (load!))))
     {:revisions     (frequencies (map (juxt :model :is_creation :user_id)
                                       (t2/query {:select [:model :is_creation :user_id]
-                                                 :from   [:revision]
+                                                 :from   [(t2/table-name :model/Revision)]
                                                  :where  [:in :model ["Card" "Dashboard"]]})))
      :audit         (frequencies (map (juxt :topic :user_id)
                                       (t2/query {:select [:topic :user_id]
-                                                 :from   [:audit_log]
+                                                 :from   [(t2/table-name :model/AuditLog)]
                                                  :where  [:in :model ["Card" "Dashboard"]]})))
      :persisted     (set (t2/select-fn-vec :card_id :model/PersistedInfo))
      :syncs         @syncs}))

@@ -6,6 +6,7 @@ import {
   setupMfaStatusEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulSettingsEndpoints,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
@@ -36,6 +37,7 @@ type SetupOpts = {
   isEnrolled?: boolean;
   isPasswordLoginEnabled?: boolean;
   isLdapEnabled?: boolean;
+  isStateful?: boolean;
 };
 
 function setup({
@@ -47,6 +49,7 @@ function setup({
   isEnrolled = true,
   isPasswordLoginEnabled = true,
   isLdapEnabled = false,
+  isStateful = false,
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "mfa-enforcement": enforcement,
@@ -58,7 +61,13 @@ function setup({
     }),
   });
 
-  setupPropertiesEndpoints(settings);
+  if (isStateful) {
+    setupStatefulSettingsEndpoints(settings);
+  } else {
+    setupPropertiesEndpoints(settings);
+    setupUpdateSettingEndpoint();
+    setupUpdateSettingsEndpoint();
+  }
   setupSettingsEndpoints([
     createMockSettingDefinition({ key: "mfa-enforcement", value: enforcement }),
     createMockSettingDefinition({
@@ -71,8 +80,6 @@ function setup({
     }),
     createMockSettingDefinition({ key: "ldap-enabled", value: isLdapEnabled }),
   ]);
-  setupUpdateSettingEndpoint();
-  setupUpdateSettingsEndpoint();
   setupMfaAdminOverviewEndpoint(overview);
   setupMfaStatusEndpoint(createMockMfaStatus({ enrolled: isEnrolled }));
 
@@ -94,6 +101,13 @@ async function findBulkSettingUpdate() {
 
   expect(put).toBeDefined();
   return put;
+}
+
+async function findBulkSettingUpdates() {
+  const puts = await findRequests("PUT");
+  return puts
+    .filter(({ url }: { url: string }) => url.endsWith("/api/setting"))
+    .map(({ body }: { body: unknown }) => body);
 }
 
 const ALLOW_LABEL = "Allow two-factor authentication";
@@ -233,6 +247,60 @@ describe("AdminAuthCard", () => {
       });
     });
 
+    it("should reveal enforcement and the counts once allowed, and hide them again once turned off", async () => {
+      setup({
+        enforcement: "off",
+        isEnrolled: false,
+        isStateful: true,
+        overview: createMockMfaAdminOverview({
+          enrolled_count: 0,
+          unenrolled_count: 3,
+        }),
+      });
+
+      expect(
+        await screen.findByText("Two-factor authentication"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText(ALLOW_LABEL)).not.toBeChecked();
+      expect(screen.queryByText("Require now")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(DEADLINE_LABEL)).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText(ALLOW_LABEL));
+
+      expect(await screen.findByText("0 enrolled users")).toBeInTheDocument();
+      expect(screen.getByText("3 users without 2FA")).toBeInTheDocument();
+      expect(screen.getByLabelText(ALLOW_LABEL)).toBeChecked();
+      expect(await findBulkSettingUpdates()).toEqual([
+        { "mfa-enforcement": "optional", "mfa-requirement-deadline": null },
+      ]);
+
+      expect(screen.getByLabelText("Don't require")).toBeChecked();
+      // the admin has not enrolled, so requiring would lock them out
+      expect(screen.getByLabelText("Require by a certain date")).toBeDisabled();
+      expect(
+        screen.getByText(/for your own account before requiring it/),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText(ALLOW_LABEL));
+
+      await waitFor(() =>
+        expect(screen.getByLabelText(ALLOW_LABEL)).not.toBeChecked(),
+      );
+      expect(screen.queryByText(/enrolled/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Don't require")).not.toBeInTheDocument();
+      expect((await findBulkSettingUpdates()).at(-1)).toEqual({
+        "mfa-enforcement": "off",
+        "mfa-requirement-deadline": null,
+      });
+
+      await userEvent.click(screen.getByLabelText(ALLOW_LABEL));
+
+      await waitFor(() =>
+        expect(screen.getByLabelText(ALLOW_LABEL)).toBeChecked(),
+      );
+      expect(await findBulkSettingUpdates()).toHaveLength(3);
+    });
+
     it("should turn it off and clear the deadline", async () => {
       const chosen = dayjs().add(30, "day").startOf("day").toISOString();
 
@@ -254,9 +322,16 @@ describe("AdminAuthCard", () => {
 
   describe("default grace period", () => {
     it("should seed a two-week deadline when enforcement becomes required", async () => {
-      setup({ enforcement: "optional", deadline: null });
+      setup({ enforcement: "optional", deadline: null, isStateful: true });
+
+      expect(screen.queryByLabelText(DEADLINE_LABEL)).not.toBeInTheDocument();
 
       await selectEnforcement("Require by a certain date");
+
+      expect(await screen.findByLabelText(DEADLINE_LABEL)).toHaveValue(
+        dayjs().add(14, "day").format("MMMM D, YYYY"),
+      );
+      expect(screen.getByLabelText("Require by a certain date")).toBeChecked();
 
       await waitFor(async () => {
         const put = await findBulkSettingUpdate();

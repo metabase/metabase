@@ -9,6 +9,7 @@
   structure of those views. Scope each query to `current_database()` because a connection can access multiple
   databases."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
@@ -16,6 +17,7 @@
    [metabase.driver.postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -24,6 +26,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util.connection :as u.connection]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -179,9 +182,6 @@
                  ;; The endpoint's information_schema reports virtual generated columns as not
                  ;; generated. The field preprocessor below removes this unreliable value.
                  :describe-is-generated
-                 :uploads
-                 ;; Uploads only. DuckDB has no BIGSERIAL, and the endpoint doesn't implement `GENERATED ... AS IDENTITY`.
-                 :upload-with-auto-pk
                  :persist-models
                  ;; Before enabling: the inherited SET ROLE quotes role names on the server with Postgres's
                  ;; `quote_ident(?)`. Check that DuckDB's quote_ident escapes identically, or SET ROLE is injectable.
@@ -772,7 +772,161 @@
 ;;; |                                          Driver-managed table DDL                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- connection-spec
+  "The pooled connection spec for `db-id`, as the inherited `:sql-jdbc` DDL methods use it."
+  [db-id]
+  (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id)))
+
+(defn- execute-ddl!
+  "Run `sqls` in order on `db-id`, in one transaction. DDL is transactional on MotherDuck's Postgres endpoint."
+  [db-id sqls]
+  (jdbc/with-db-transaction [conn (connection-spec db-id)]
+    (doseq [sql sqls]
+      (jdbc/execute! conn sql))))
+
+(defn- schema+table
+  "Split a `schema.table` string or a `:schema/table` keyword into `[schema table]`. `schema` is nil when absent."
+  [table-name]
+  (let [kw (keyword table-name)]
+    (if-let [schema (namespace kw)]
+      [schema (name kw)]
+      (let [[a b] (str/split (name kw) #"\." 2)]
+        (if b
+          [a b]
+          [nil a])))))
+
+(defn- pk-sequence-name
+  "The quoted, schema-qualified name of the sequence that feeds `column` of `table-name`: `schema.table_column_seq`.
+  The test data loader names its sequences the same way."
+  [driver table-name column]
+  (let [[schema table] (schema+table table-name)
+        sequence       (str table "_" (name column) "_seq")]
+    (if schema
+      (sql.u/quote-name driver :table schema sequence)
+      (sql.u/quote-name driver :table sequence))))
+
+(defn- owned-sequences
+  "The sequences `create-table!` made for `table-name`: those a column of the table defaults to, named as
+  [[pk-sequence-name]] names them. A sequence with another name belongs to someone else."
+  [driver conn table-name]
+  (let [[schema table] (schema+table table-name)
+        sql            (str "SELECT column_name, column_default FROM duckdb_columns()"
+                            " WHERE database_name = current_database()"
+                            " AND schema_name = " (if schema "?" "current_schema()")
+                            " AND table_name = ? AND column_default LIKE 'nextval(%'")
+        params         (if schema
+                         [schema table]
+                         [table])]
+    (into []
+          (keep (fn [{:keys [column_name column_default]}]
+                  (let [sequence (pk-sequence-name driver table-name column_name)]
+                    (when (str/includes? column_default sequence)
+                      sequence))))
+          (jdbc/query conn (into [sql] params)))))
+
+;; Drop the sequences the table's key columns were fed from as well, since DROP TABLE leaves them behind. They go
+;; after the table, not with CASCADE: a cascading DROP SEQUENCE drops the table that depends on it.
+(defmethod driver/drop-table! :motherduck
+  [driver db-id table-name]
+  (let [[drop-table-sql] (sql/format {:drop-table [:if-exists (sql-jdbc.quoting/dot-qualified table-name)]}
+                                     :quoted  true
+                                     :dialect (sql.qp/quote-style driver))]
+    (jdbc/with-db-transaction [conn (connection-spec db-id)]
+      (let [sequences (owned-sequences driver conn table-name)]
+        (jdbc/execute! conn drop-table-sql)
+        (doseq [sequence sequences]
+          (jdbc/execute! conn (str "DROP SEQUENCE IF EXISTS " sequence)))))))
+
 ;; The endpoint does not support Postgres COPY FROM STDIN. Use SQL-JDBC's batched INSERTs.
 (defmethod driver/insert-into! :motherduck
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Uploads                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private auto-incrementing-pk-type
+  "The column type an upload's auto-incrementing primary key gets from `upload-type->database-type`. DuckDB has no
+  `BIGSERIAL`, and MotherDuck's Postgres endpoint doesn't implement `GENERATED ... AS IDENTITY`, so `create-table!`
+  turns the column into a `BIGINT` that defaults to a sequence of its own, as MotherDuck recommends."
+  [::auto-incrementing-pk])
+
+(defmethod driver/upload-type->database-type :motherduck
+  [driver upload-type]
+  (case upload-type
+    :metabase.upload/auto-incrementing-int-pk auto-incrementing-pk-type
+    ;; Postgres's `float` is `double precision`; through MotherDuck's Postgres endpoint it's DuckDB's 4-byte FLOAT.
+    :metabase.upload/float                    [:double-precision]
+    ;; DuckDB's VARCHAR(255) is plain VARCHAR; the length isn't enforced. Say so, rather than promise a limit that
+    ;; an upload longer than 255 characters would show to be hollow.
+    :metabase.upload/varchar-255              [:text]
+    ((get-method driver/upload-type->database-type :postgres) driver upload-type)))
+
+(defn- with-pk-sequences
+  "Replace each [[auto-incrementing-pk-type]] column of `column-definitions` with a `BIGINT` that defaults to a
+  sequence named for it. Returns `[sequence-names column-definitions]`, the latter as ordered pairs."
+  [driver table-name column-definitions]
+  (let [*sequences  (volatile! (transient []))
+        coltype-for (fn [column]
+                      (let [seq-name (pk-sequence-name driver table-name column)]
+                        (vswap! *sequences conj! seq-name)
+                        (str "BIGINT DEFAULT nextval('" (str/replace seq-name "'" "''") "')")))
+        columns     (perf/mapv (fn [[column type]]
+                                 (if (= type auto-incrementing-pk-type)
+                                   [column (coltype-for column)]
+                                   [column type]))
+                               column-definitions)]
+    [(persistent! @*sequences)
+     columns]))
+
+(defn- drop-sequences!
+  "Drop `sequences` after `create-table!` failed to make the table that would use them. A failure to drop them is
+  added to `e` as suppressed, so `e` stays the error the caller sees."
+  [db-id sequences ^Throwable e]
+  (try
+    (execute-ddl! db-id (map #(str "DROP SEQUENCE IF EXISTS " %) sequences))
+    (catch Throwable drop-error
+      (.addSuppressed e drop-error))))
+
+;; The sequences are made in a transaction of their own, before the table, since the inherited method opens its own
+;; transaction for the table. If the table can't be made, drop them again rather than leave them behind: upload
+;; table names carry a timestamp, so nothing retries under the same name.
+(defmethod driver/create-table! :motherduck
+  [driver db-id table-name column-definitions & {:as opts}]
+  (let [[sequences column-definitions] (with-pk-sequences driver table-name column-definitions)
+        create-table!                  (get-method driver/create-table! :sql-jdbc)]
+    (when (seq sequences)
+      (execute-ddl! db-id (map #(str "CREATE SEQUENCE " %) sequences)))
+    (try
+      (apply create-table! driver db-id table-name column-definitions (mapcat identity opts))
+      (catch Throwable e
+        (when (seq sequences)
+          (drop-sequences! db-id sequences e))
+        (throw e)))))
+
+;; MotherDuck's Postgres endpoint takes one ALTER command per statement, so the inherited methods, which put every
+;; column in one statement, fail for two or more columns.
+(defmethod driver/add-columns! :motherduck
+  ;; No `:primary-key`: uploads only add a key column for drivers whose `create-auto-pk-with-append-csv?` is true,
+  ;; which is for tables made before 0.49. MotherDuck inherits `false`.
+  [driver db-id table-name column-definitions & _opts]
+  (->> column-definitions
+       (perf/mapv (fn [[column type]]
+                    (-> {:alter-table (sql-jdbc.quoting/dot-qualified table-name)
+                         :add-column  [(into [(sql-jdbc.quoting/quote-identifier column)]
+                                             (if (string? type)
+                                               [[:raw type]]
+                                               type))]}
+                        (sql/format :quoted  true
+                                    :dialect (sql.qp/quote-style driver))
+                        first)))
+       (sql-jdbc.quoting/with-quoting driver)
+       (execute-ddl! db-id)))
+
+(defmethod driver/alter-table-columns! :motherduck
+  [driver db-id table-name column-definitions & opts]
+  (->> column-definitions
+       (perf/mapv (fn [[column type]]
+                    (apply sql-jdbc.sync/alter-table-columns-sql driver table-name {column type} opts)))
+       (execute-ddl! db-id)))

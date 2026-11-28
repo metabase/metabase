@@ -51,10 +51,10 @@
 
 (deftest check-args-test
   (binding [mu.closed-schemas/*enabled* true]
-    (is (nil? (mu.closed-schemas/check-args! `f [[:cat :int [:map [:a :int]]]])))
+    (is (nil? (mu.closed-schemas/check-args `f [[:cat :int [:map [:a :int]]]])))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"The arguments of metabase.util.malli.closed-schemas-test/f reach schemas that accept anything"
-                          (mu.closed-schemas/check-args! `f [[:cat :int] [:cat [:map [:a :any]]]])))))
+                          (mu.closed-schemas/check-args `f [[:cat :int] [:cat [:map [:a :any]]]])))))
 
 (defn- eval-error-message [form]
   (try

@@ -11,8 +11,9 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver.connection :as driver.conn]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
@@ -143,11 +144,14 @@
 (def ^:private ImplicitActionKind
   [:enum :model.row/create :model.row/update :model.row/delete])
 
-(mu/defn- build-implicit-query :- [:map
-                                   [:query          ::mbql.s/Query]
-                                   [:row-parameters ::actions.args/row]
-                                   [:pk-column :string]
-                                   [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
+(mu/defn- build-implicit-action-args :- [:map
+                                         [:arg-map             [:or
+                                                                ::actions.args/model.row.common
+                                                                ::actions.args/model.row.delete]]
+                                         [:row-parameters      ::actions.args/row]
+                                         [:pk-column           :string]
+                                         [:pk-field-id         ::lib.schema.id/field]
+                                         [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
   [{:keys [parameters] :as action} :- ::actions.schema/action.executable
    implicit-action                           :- ImplicitActionKind
    request-parameters                        :- RequestParameters]
@@ -183,15 +187,14 @@
                400
                (tru "Missing primary key parameter: {0}"
                     (pr-str (u/slugify (:name pk-field)))))
-    (cond-> {:query {:database database-id,
-                     :type :query,
-                     :query {:source-table table-id}}
+    (cond-> {:arg-map        {:database database-id
+                              :table-id table-id}
              :row-parameters row-parameters
-             :pk-column      pk-field-name}
+             :pk-column      pk-field-name
+             :pk-field-id    (:id pk-field)}
 
       requires-pk?
-      (assoc-in [:query :query :filter]
-                [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
+      (assoc-in [:arg-map :pk] {pk-field-name (get simple-parameters pk-field-name)})
 
       requires-pk?
       (assoc :prefetch-parameters [{:id     "metabase.actions.execution/prefetch-parameters-pk"
@@ -215,11 +218,11 @@
 (defn- execute-implicit-action!
   [{model-id :model_id, :as action} request-parameters opts]
   (let [implicit-action (parse-implicit-action action)
-        {:keys [query row-parameters pk-column]} (build-implicit-query action implicit-action request-parameters)
+        {:keys [arg-map row-parameters pk-column]} (build-implicit-action-args action implicit-action request-parameters)
         _               (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
                                    400
                                    (tru "Implicit parameters must be provided."))
-        arg-map         (cond-> query
+        arg-map         (cond-> arg-map
                           (= implicit-action :model.row/create)
                           (assoc :create-row row-parameters)
 
@@ -289,6 +292,15 @@
                               :action_id (:id action)})
      (execute-action! action request-parameters (assoc opts :dashboard-id dashboard-id)))))
 
+(defn- pk-row-query
+  "A query for the row with the primary key `pk` of the Table with `table-id`, whose primary key Field is
+  `pk-field-id`."
+  [{database-id :database, :keys [table-id pk]} pk-field-id]
+  (let [mp (lib-be/application-database-metadata-provider database-id)]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= (lib.metadata/field mp pk-field-id)
+                           (val (first pk)))))))
+
 (defn- fetch-implicit-action-values
   [action request-parameters]
   (api/check (contains? #{:model.row/update :model.row/delete} (parse-implicit-action action))
@@ -296,7 +308,7 @@
              (tru "Values can only be fetched for actions that require a Primary Key."))
   (check-action-read-perms action)
   (let [implicit-action (parse-implicit-action action)
-        {:keys [query prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
+        {:keys [arg-map pk-field-id prefetch-parameters]} (build-implicit-action-args action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
               :context     :action
               :action-id   (:id action)}
@@ -305,7 +317,7 @@
                   (qp/userland-query
                    (if-let [model-id (:model_id action)]
                      (qp.card/query-for-card (actions.db/card model-id) prefetch-parameters nil nil)
-                     query)
+                     (pk-row-query arg-map pk-field-id))
                    info)))
         ;; only expose values for fields that are not hidden
         hidden-param-ids (keep #(when (:hidden %) (:id %))

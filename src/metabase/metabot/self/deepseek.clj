@@ -136,7 +136,12 @@
   "Whether the open turn holds a tool call we cannot vouch for. Parts are grouped the way they merge
   onto the wire: a run of assistant-role parts becomes one message, and a run holding a `:tool-input`
   with no signed `:reasoning` is a message DeepSeek rejects. Metabot's synthetic dialect preload
-  (`skill_preload_*`, injected for SQL-editor sessions) is exactly that shape."
+  (`skill_preload_*`) is exactly that shape. Only the first SQL-editor turn on each dialect sends it, so thinking is
+  off only in that turn. Later turns replay the pair in a closed turn, which this check does not see. So the mode
+  changes in two places: thinking goes on in the next turn that sends no new preload, in the editor or not, and
+  it goes off in a preload turn that follows a turn with thinking on. In one probe on `deepseek-flash`, the
+  thinking mode was part of the cached prefix: a request whose mode differed from the request before it read 0
+  cached tokens, against 3,200 in the same mode."
   [input]
   (->> (open-turn-parts input)
        (partition-by (comp boolean assistant-part-type? :type))

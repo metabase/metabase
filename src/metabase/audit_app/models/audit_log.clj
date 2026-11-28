@@ -23,7 +23,8 @@
 (set! *warn-on-reflection* true)
 
 (doto :model/AuditLog
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (m/defmethod t2/table-name :model/AuditLog
   [_model]

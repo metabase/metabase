@@ -131,7 +131,7 @@
   writable-settings]
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms
-  cache-last-updated-at
+  cached-marker
   restore-cache!
   restore-cache-if-needed!]
  [metabase.settings.models.setting.multi-setting

@@ -65,12 +65,17 @@
   nil)
 
 (defn- collect-text-from-parts
-  "Collect all text content from parts into a single string."
+  "The text of `parts` as one string, with the text blocks separated by a blank line.
+
+  Example: the parts `\"First \"` and `\"point.\"` of block `t1` and `\"Second point.\"` of block `t2` give
+  `\"First point.\\n\\nSecond point.\"`. A text block that is only whitespace is left out."
   [parts]
   (->> parts
+       (into [] (streaming/combine-text-parts-xf))
        (filter #(= :text (:type %)))
        (map :text)
-       (str/join "")))
+       (remove str/blank?)
+       (str/join "\n\n")))
 
 (defn- summarize-tool-ios
   "Summarize tool inputs and outputs from parts."
@@ -144,7 +149,8 @@
   [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
-   [:content :string]])
+   [:content :string]
+   [:is_error {:optional true} :boolean]])
 
 (mr/def ::message
   "A single message in the conversation history.
@@ -432,20 +438,22 @@
    parts))
 
 (defn- step-parts
-  "The `parts` of an iteration, with each run of text parts merged into one part and no text that is only whitespace.
+  "The `parts` of an iteration, each text block merged; blank text stays, and the request drops it.
 
   Examples:
-  `[{:type :text :text \"Let me \"} {:type :text :text \"check.\"} {:type :tool-input ...}]` becomes
-  `[{:type :text :text \"Let me check.\"} {:type :tool-input ...}]`, and
-  `[{:type :text :text \"\\n\\n\"} {:type :tool-input ...}]` becomes `[{:type :tool-input ...}]`."
+
+  - The deltas `[{:type :text :id \"t1\" :text \"Let me \"} {:type :text :id \"t1\" :text \"check.\"}
+    {:type :tool-input ...}]` become `[{:type :text :id \"t1\" :text \"Let me check.\"} {:type :tool-input ...}]`.
+  - The parts `[{:type :text :id \"t1\" :text \"First.\"} {:type :text :id \"t2\" :text \"Second.\"}]` have two ids, so
+    they stay two parts.
+
+  Blank text is text that is only whitespace. [[messages/sent-part?]] is the one place that drops it before the
+  request goes to a provider adapter."
   [parts]
-  (into []
-        ;; Memory must keep the parts in the form that [[metabase.metabot.persistence/history]] replays in the next
-        ;; turn. Text streams as one part per delta. When memory keeps the deltas or the blank text, the next turn's
-        ;; history does not start with the bytes that this turn sent, and the provider's prompt cache misses.
-        (comp (streaming/combine-text-parts-xf)
-              (remove #(and (= :text (:type %)) (str/blank? (:text %)))))
-        parts))
+  ;; Memory must keep each text block as one part, as the stored turn does (both use `combine-text-parts-xf`).
+  ;; Text streams as one part per delta. When memory keeps the deltas, the next turn's history does not start with
+  ;; the bytes that this turn sent, and the provider's prompt cache misses.
+  (into [] (streaming/combine-text-parts-xf) parts))
 
 (defn- update-memory
   "Update memory with parts from an iteration."
@@ -613,10 +621,10 @@
 
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
-  does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps. The web
-  chat stores the turn with that block."
+  does (see [[turn-input-parts]]). So are the `<context>` block of the user's message and the SQL dialect preload,
+  which memory keeps. The web chat stores the turn with both."
   [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan
-           full-context-replayed?]
+           full-context-replayed? preloaded-skill-ids]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -644,7 +652,8 @@
                                 :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context))
                          (as-> m (memory/set-context-block
-                                  m (messages/render-context-block context m (not full-context-replayed?)))))
+                                  m (messages/render-context-block context m (not full-context-replayed?))))
+                         (memory/set-dialect-preload (messages/dialect-preload context base-tools preloaded-skill-ids)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
@@ -1027,6 +1036,9 @@
             ;; True when `:messages` replay the full `<context>` block of an earlier turn, so this turn's block holds
             ;; only the time and what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`).
             [:full-context-replayed? {:optional true} [:maybe :boolean]]
+            ;; The ids of the SQL dialect skills that `:messages` already preload, so this turn does not preload them
+            ;; again (see `metabase.metabot.persistence/replayed-skill-preloads`).
+            [:preloaded-skill-ids {:optional true} [:maybe [:set :string]]]
             ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)

@@ -1329,17 +1329,13 @@ describe("scenarios > visualizations > bar chart", () => {
     };
 
     function removeAggregationItem(item) {
-      cy.findAllByTestId("aggregation-item")
-        .contains(item)
-        .siblings(".Icon-close")
-        .click();
+      H.removeSummaryItem(item);
 
       cy.wait("@dataset");
     }
 
     function addAggregationItem(item) {
-      cy.findByTestId("add-aggregation-button").click();
-      H.popover().contains(item).click();
+      H.addSummaryValue(item);
 
       cy.wait("@dataset");
     }
@@ -1365,7 +1361,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
       H.chartPathWithFillColor("#509EE3").should("not.exist");
 
-      addAggregationItem("Count");
+      addAggregationItem("Count of rows");
       // Ensure bars of two series exist
       H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
       H.chartPathWithFillColor("#509EE3").should("have.length", 4);

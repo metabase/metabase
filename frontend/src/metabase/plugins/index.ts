@@ -134,6 +134,7 @@ export {
   type RemoteSyncChangesTarget,
   type RemoteSyncSettingsModalProps,
   type RemoteSyncSetupMenuItemProps,
+  type RemoteSyncWorktreesNavItemProps,
 } from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,

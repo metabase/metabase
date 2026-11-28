@@ -20,6 +20,15 @@
   3. Regenerate every flavor.
   4. Run [[metabase.app-db.snapshot-test]] against each dialect with `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`.
 
+  To add a snapshot at another boundary:
+
+  1. Add `test_resources/app_db_snapshots/<version>/meta.edn` with its `:through-changeset-id` and `:executed-at`.
+  2. Add the version to [[metabase.app-db.snapshot-test-util/snapshot-versions]].
+  3. Generate every flavor with `(generate! flavor version)`, and run the drift test as above.
+
+  Editing a changeset or custom migration that more than one snapshot records means regenerating each of them.
+  Called without a version, [[generate!]] writes only the newest snapshot.
+
   The boundary can go no later than the last changeset with a `vNN.` id until this namespace also writes the snapshot's
   `databasechangelog_version` rows, because loading a snapshot backfills its version from those ids.
 
@@ -123,31 +132,35 @@
                               (dump/dump-statements (flavor->dumper flavor) server conn))})))
 
 (defn dump-snapshot!
-  "Migrate an empty app DB of `flavor` through [[metabase.app-db.snapshot-test-util/through-changeset-id]] and dump it.
+  "Migrate an empty app DB of `flavor` through [[metabase.app-db.snapshot-test-util/through-changeset-id]] of `version`
+  (default [[metabase.app-db.snapshot-test-util/snapshot-version]]) and dump it.
   Returns `{:flavor ..., :content ...}`: the dialect it was taken as, and the text its snapshot file should hold.
   It writes nothing, so a test can ask what regenerating would produce without touching what is checked in.
 
   Every flavor but `:h2` runs against a server this starts itself, from the image
   [[metabase.app-db.snapshot-test-util.server]] pins for it.
   All it needs is a working `docker`, with no `MB_<DB>_TEST_*` settings and no server already running."
-  [flavor]
-  (let [version snapshot/snapshot-version]
-    (if (= flavor :h2)
-      (migrate-and-dump! flavor version nil)
-      (server/do-with-server! flavor #(migrate-and-dump! flavor version %)))))
+  ([flavor]
+   (dump-snapshot! flavor snapshot/snapshot-version))
+  ([flavor version]
+   (if (= flavor :h2)
+     (migrate-and-dump! flavor version nil)
+     (server/do-with-server! flavor #(migrate-and-dump! flavor version %)))))
 
 (defn generate!
-  "Regenerate the checked-in snapshot for `flavor` and return the file written.
+  "Regenerate the checked-in snapshot of `version` (default [[metabase.app-db.snapshot-test-util/snapshot-version]])
+  for `flavor` and return the file written.
 
   The flavor is the dialect the file is for, one of [[metabase.app-db.snapshot-test-util/flavors]].
   There is a file per flavor, so regenerating the MariaDB one means passing `:mariadb`, not the `:mysql` it is reached
   as.
   See [[dump-snapshot!]] for what this needs."
-  [flavor]
-  (let [{:keys [flavor content]} (dump-snapshot! flavor)
-        file                     (io/file "test_resources"
-                                          (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
-    (io/make-parents file)
-    (spit file content)
-    (log/info (u/format-color 'green "Wrote %s" (str file)))
-    file))
+  ([flavor]
+   (generate! flavor snapshot/snapshot-version))
+  ([flavor version]
+   (let [{:keys [flavor content]} (dump-snapshot! flavor version)
+         file                     (io/file "test_resources" (snapshot/resource-path version flavor "sql"))]
+     (io/make-parents file)
+     (spit file content)
+     (log/info (u/format-color 'green "Wrote %s" (str file)))
+     file)))

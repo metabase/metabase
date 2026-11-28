@@ -67,6 +67,7 @@
     {:role :assistant, :content \"...\", :tool_calls [...]}
     {:role :assistant, :content [{:type \"tool_use\" ...}]}
     {:role :tool,      :tool_call_id \"...\", :content \"...\"}
+    {:role :tool,      :tool_call_id \"...\", :content \"...\", :is_error true}
 
   Returns a sequence of AISDK parts (may be >1 for messages with tool calls)."
   [{:keys [content tool_calls] :as msg}]
@@ -125,7 +126,12 @@
       :tool
       [{:type   :tool-output
         :id     (:tool_call_id msg)
-        :result {:output (tool-result-content content)}}]
+        :result (cond-> {:output (tool-result-content content)}
+                  ;; The Claude and Gemini adapters mark a result with `:error` as failed. The OpenAI
+                  ;; Responses and Chat Completions adapters send only its text. History keeps only that
+                  ;; the call failed, not the class and code of the failure. In a later turn the model can
+                  ;; try again, so the failure is recoverable.
+                  (:is_error msg) (assoc :error {:class :recoverable :code ::replayed-failure}))}]
 
       ;; system — pass through as-is (not really an AISDK part, but adapters
       ;; handle it separately via the :system option anyway)
@@ -141,6 +147,13 @@
 ;;; History construction
 ;;; ──────────────────────────────────────────────────────────────────
 
+(defn- sent-part?
+  "Whether a request sends `part`. No request sends text that is only whitespace: it adds nothing for the model, and
+  some providers reject it. The steps of this turn and the history of earlier turns both leave it out here, before
+  they go into a request, so the next turn's request starts with the bytes that this turn sent."
+  [part]
+  (not (and (= :text (:type part)) (str/blank? (:text part)))))
+
 (defn- step->parts
   "Extract AISDK parts from a step, filtering out non-message types."
   [step]
@@ -148,9 +161,9 @@
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn steps->parts
-  "The AISDK parts of agent `steps`, in order."
+  "The AISDK parts of agent `steps` that a request sends, in order."
   [steps]
-  (into [] (mapcat step->parts) steps))
+  (into [] (comp (mapcat step->parts) (filter sent-part?)) steps))
 
 (defn- later-turn-context
   "The template variables of a later turn's `<context>` block: the current time and what the user is viewing."
@@ -207,6 +220,26 @@
     (cond-> all-messages
       block (update (dec (count all-messages)) update :content #(str block %)))))
 
+(defn dialect-preload
+  "The parts that preload the SQL dialect skill of the engine the user views in `context`, or [] when the turn sends
+  none.
+
+  `tools` is the active tool registry (name -> tool). The skill is preloaded only when it contains a SQL-writing
+  tool: the dialect body is SQL-writing guidance, and a profile without those tools (e.g. `:embedding_next` with the
+  native editor open in a full-app embed) has no tool that could act on it.
+
+  `preloaded-skill-ids` holds the ids, as strings, of the dialect skills that the replayed history has already
+  preloaded. A skill in it is not preloaded again: the history holds it, and a second copy would change the prefix
+  that later turns replay. nil counts as an empty set."
+  [context tools preloaded-skill-ids]
+  (let [parts     (if (prompts/sql-generation-tools? tools)
+                    (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+                    [])
+        skill-ids (get-in (first parts) [:arguments :ids])]
+    (if (some (set preloaded-skill-ids) skill-ids)
+      []
+      parts)))
+
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
 
@@ -218,11 +251,10 @@
   - `{:type :tool-input, :id ..., :function ..., :arguments ...}` for tool calls
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
-  `tools` is the active tool registry (name -> tool). The SQL dialect skill is preloaded only when it
-  contains a SQL-writing tool: the dialect body is SQL-writing guidance, and a profile without those
-  tools (e.g. `:embedding_next` with the native editor open in a full-app embed) has no tool that could
-  act on it, and its prompt makes no SQL promise the preload would have to back. The 2-arity has no
-  tools and never preloads.
+  After the input messages come the parts of the SQL dialect preload: the ones memory keeps (see
+  [[memory/set-dialect-preload]]), or, when memory has kept no preload for this turn (see
+  [[memory/dialect-preload-rendered?]]), [[dialect-preload]] of `context` and `tools`. An empty kept preload is
+  used as is. The 2-arity has no tools, so it preloads only what memory keeps.
 
   Each LLM adapter converts this to its own wire format."
   ([context memory]
@@ -230,15 +262,16 @@
   ([context memory tools]
    (let [input-messages (messages-with-injected-context context memory)
          steps          (memory/get-steps memory)
-         input-parts    (mapcat input-message->parts input-messages)
+         input-parts    (into [] (comp (mapcat input-message->parts) (filter sent-part?)) input-messages)
          step-parts     (steps->parts steps)
          ;; Preload the active SQL dialect (if any) as a synthetic load_skill
          ;; tool-call/result pair. It is placed after the input messages (so the
          ;; first message is still the user's) and before this turn's steps, which
-         ;; keeps it below the system cache breakpoint.
-         preload-parts  (if (prompts/sql-generation-tools? tools)
-                          (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
-                          [])
+         ;; keeps it below the system cache breakpoint. The web chat stores it before
+         ;; the turn's first step, so later turns replay it at this position.
+         preload-parts  (if (memory/dialect-preload-rendered? memory)
+                          (memory/dialect-preload memory)
+                          (dialect-preload context tools nil))
          result         (vec (concat input-parts preload-parts step-parts))]
      (log/info "Building message history"
                {:input-message-count (count input-messages)
@@ -267,8 +300,7 @@
                           (ctx-fn context))
         content         (prompts/build-system-message-content
                          profile
-                         (merge {:sql_dialect (user-context/extract-sql-dialect context)}
-                                profile-context)
+                         profile-context
                          tools
                          (:capabilities context))]
     {:role    "system"

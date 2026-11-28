@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
@@ -129,13 +130,13 @@
   (let [snapshot-name (str (random-uuid))]
     (mt/with-temp-empty-app-db [_conn :h2]
       (jdbc/execute! {:datasource (mdb/app-db)} ["create table test_table (a int)"])
-      (jdbc/execute! {:datasource (mdb/app-db)} ["insert into test_table (a) values (1)"])
+      (jdbc/execute! {:datasource (mdb/app-db)} (sql/format {:insert-into :test_table :columns [:a] :values [[1]]} {:quoted false}))
       (jdbc/execute! {:datasource (mdb/app-db)} ["create or replace view test_view as select a from test_table"])
       (jdbc/execute! {:datasource (mdb/app-db)} ["alter table test_table add column b int"])
       (#'testing/save-snapshot! snapshot-name))
     (mt/with-temp-empty-app-db [_conn :h2]
       (#'testing/restore-snapshot! snapshot-name)
-      (is (= [{:a 1}] (jdbc/query {:datasource (mdb/app-db)} ["select a from test_view"]))))))
+      (is (= [{:a 1}] (jdbc/query {:datasource (mdb/app-db)} (sql/format {:select [:a] :from [:test_view]} {:quoted false})))))))
 
 (deftest set-time-test
   (try

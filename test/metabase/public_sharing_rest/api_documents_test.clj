@@ -6,6 +6,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.test-util :as documents.test-util]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -139,6 +141,44 @@
           (let [result (mt/client :get 202 (format "public/document/%s/card/%d" (:public_uuid document) (:id card)))]
             (is (some? result))
             (is (= "completed" (:status result)))))))))
+
+(defn- venues-count-measure
+  "A measure definition counting venues."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
+
+(deftest public-document-card-goal-values-test
+  (testing "GET /api/public/document/:uuid/card/:card-id/goal-values runs the goals in the card's saved settings"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card     {goal-id :id}    {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                     :model/Measure  {measure-id :id} {:name       "Venue count"
+                                                       :table_id   (mt/id :venues)
+                                                       :definition (venues-count-measure)}
+                     :model/Document document         (document-with-public-link {})
+                     :model/Card     card             {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                                       :display                :scalar
+                                                       :document_id            (:id document)
+                                                       :visualization_settings
+                                                       {:scalar.segments [{:min   {:id goal-id :type "card" :column "count"}
+                                                                           :max   {:id measure-id :type "measure" :column "count"}
+                                                                           :color "red"}]}}]
+        (t2/update! :model/Document :id (:id document)
+                    {:document (documents.test-util/cards->prose-mirror-ast [(:id card)])})
+        (is (=? {:card    {goal-id    {:status "completed" :data {:rows [[1000]]}}}
+                 :measure {measure-id {:status "completed" :data {:rows [[100]]}}}}
+                (mt/client :get 202 (format "public/document/%s/card/%d/goal-values"
+                                            (:public_uuid document) (:id card)))))))))
+
+(deftest public-document-card-goal-values-validates-association-test
+  (testing "GET /api/public/document/:uuid/card/:card-id/goal-values 404s for a card not in the document"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document (document-with-public-link {})
+                     :model/Card     card     {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+        (is (= "Not found."
+               (mt/client :get 404 (format "public/document/%s/card/%d/goal-values"
+                                           (:public_uuid document) (:id card)))))))))
 
 (deftest public-document-card-validates-association-test
   (testing "GET /api/public/document/:uuid/card/:card-id validates card is associated with document"

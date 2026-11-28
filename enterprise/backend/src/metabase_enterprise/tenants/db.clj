@@ -17,6 +17,8 @@
 (mu/defn tenant-by-slug
   "The Tenant with `slug`, or nil."
   [slug :- :string]
+  (when-not (string? slug)
+    (throw (ex-info "slug must be a string" {:slug slug})))
   (t2/select-one :model/Tenant :slug slug))
 
 (mu/defn tenant-slug
@@ -80,7 +82,7 @@
    excluded-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (let [excluded (set excluded-ids)]
     (boolean (some (comp not excluded)
-                   (mdb/select-batched #(t2/select-pks-vec :model/Tenant :name [:in [:auto/param %]])
+                   (mdb/select-batched #(t2/select-pks-vec :model/Tenant :name [:in %])
                                        (distinct tenant-names))))))
 
 (mu/defn active-member-counts

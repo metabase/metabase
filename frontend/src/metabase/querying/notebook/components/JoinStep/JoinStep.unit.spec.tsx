@@ -1,4 +1,5 @@
 import _userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { useEffect, useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -99,6 +100,14 @@ const QUESTION = createMockCard({
   database_id: ANOTHER_DATABASE.id,
 });
 
+const PEOPLE_QUESTION = createMockCard({
+  id: 301,
+  name: "People - Saved Question",
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+  }),
+});
+
 const ROOT_COLLECTION = createMockCollection({
   id: "root",
   name: "Our Analytics",
@@ -108,13 +117,13 @@ const PERSONAL_COLLECTION = createMockCollection({ id: 1, name: "Personal" });
 const STATE = createMockState({
   entities: createMockEntitiesState({
     databases: DATABASES,
-    questions: [MODEL, QUESTION],
+    questions: [MODEL, QUESTION, PEOPLE_QUESTION],
   }),
 });
 
 const metadata = createMockMetadata({
   databases: DATABASES,
-  questions: [MODEL, QUESTION],
+  questions: [MODEL, QUESTION, PEOPLE_QUESTION],
 });
 
 const provider = createMetadataProvider({ metadata });
@@ -142,6 +151,51 @@ function getJoinedQuery() {
                   name: "PRODUCT_ID",
                 },
                 right: { type: "column", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+}
+
+function getQueryWithMultipleJoins() {
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: PRODUCTS_ID },
+        joins: [
+          {
+            source: { type: "card", id: MODEL.id },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "ID" },
+                right: { type: "column", name: "PRODUCT_ID" },
+              },
+            ],
+          },
+          {
+            source: { type: "card", id: PEOPLE_QUESTION.id },
+            strategy: "right-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "ID" },
+                right: { type: "column", name: "ID" },
+              },
+            ],
+          },
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            strategy: "inner-join",
+            conditions: [
+              {
+                operator: "=",
+                left: { type: "column", name: "ID" },
+                right: { type: "column", name: "PRODUCT_ID" },
               },
             ],
           },
@@ -219,11 +273,13 @@ function setup({
   readOnly = false,
   recentItems = [],
   searchItems = [],
+  rootCollectionItems = [],
 }: {
   step?: NotebookStep;
   readOnly?: boolean;
   recentItems?: RecentItem[];
   searchItems?: CollectionItem[];
+  rootCollectionItems?: CollectionItem[];
 } = {}) {
   const updateQuery = jest.fn();
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
@@ -236,7 +292,7 @@ function setup({
   });
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
-    collectionItems: [],
+    collectionItems: rootCollectionItems,
   });
   setupCollectionItemsEndpoint({
     collection: PERSONAL_COLLECTION,
@@ -431,6 +487,48 @@ describe("Notebook Editor > Join Step", () => {
 
     expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
     expect(await within(modal).findByText(MODEL.name)).toBeInTheDocument();
+  });
+
+  it("should not list metrics in the right table picker (metabase#66210)", async () => {
+    setup({
+      rootCollectionItems: [
+        createMockCollectionItem({
+          id: 401,
+          name: "66210 metric",
+          model: "metric",
+          database_id: SAMPLE_DATABASE.id,
+        }),
+        createMockCollectionItem({
+          id: 402,
+          name: "Orders question",
+          model: "card",
+          database_id: SAMPLE_DATABASE.id,
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
+    );
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
+    const modal = await screen.findByTestId("entity-picker-modal");
+    await userEvent.click(await within(modal).findByText("Our analytics"));
+
+    expect(await within(modal).findByText("Orders question")).toBeVisible();
+    expect(within(modal).queryByText("66210 metric")).not.toBeInTheDocument();
+
+    const itemsRequests = fetchMock.callHistory.calls(
+      "path:/api/collection/root/items",
+    );
+    expect(itemsRequests.length).toBeGreaterThan(0);
+    itemsRequests.forEach((call) => {
+      const models = new URL(call.url).searchParams.getAll("models");
+      expect(models).toContain("card");
+      expect(models).not.toContain("metric");
+    });
   });
 
   it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
@@ -2022,6 +2120,12 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   describe("link to data source", () => {
+    afterEach(() => {
+      if (jest.isMockFunction(window.open)) {
+        jest.mocked(window.open).mockRestore();
+      }
+    });
+
     it("should show the tooltip on hover only for the actual data source (right table)", async () => {
       setup({ step: createMockNotebookStep({ query: getJoinedQuery() }) });
 
@@ -2098,6 +2202,87 @@ describe("Notebook Editor > Join Step", () => {
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
 
       mockWindowOpen.mockClear();
+    });
+
+    it.each([
+      {
+        itemIndex: 0,
+        title: "a joined model",
+        name: MODEL.name,
+        url: `/question/${MODEL.id}-my-cool-model`,
+      },
+      {
+        itemIndex: 1,
+        title: "a joined saved question",
+        name: PEOPLE_QUESTION.name,
+        url: `/question/${PEOPLE_QUESTION.id}-people-saved-question`,
+      },
+      {
+        itemIndex: 2,
+        title: "a joined table",
+        name: "Reviews",
+        url: `/table/${REVIEWS_ID}-reviews`,
+      },
+    ])(
+      "meta click should open $title at its URL",
+      ({ itemIndex, name, url }) => {
+        const { mockWindowOpen } = setup({
+          step: createMockNotebookStep({
+            query: getQueryWithMultipleJoins(),
+            itemIndex,
+          }),
+        });
+
+        const rhsTable = screen.getByLabelText("Right table");
+        expect(rhsTable).toHaveTextContent(name);
+        fireEvent.click(within(rhsTable).getByText(name), { metaKey: true });
+
+        expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+        expect(mockWindowOpen).toHaveBeenCalledWith(url, "_blank");
+        expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
+        mockWindowOpen.mockClear();
+      },
+    );
+
+    it.each([
+      { label: "Change join type", expected: /^Inner join$/ },
+      { label: "Pick columns", expected: /→ Discount$/ },
+      { label: "Left column", expected: /^Vendor$/ },
+      { label: "Change operator", expected: /^>=$/ },
+      { label: "Right column", expected: /→ Discount$/ },
+    ])(
+      "meta click on $label should open its popover",
+      async ({ label, expected }) => {
+        const { mockWindowOpen } = setup({
+          step: createMockNotebookStep({ query: getQueryWithMultipleJoins() }),
+        });
+
+        expect(screen.queryByText(expected)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByLabelText(label), { metaKey: true });
+
+        expect(
+          await within(await screen.findByRole("dialog")).findByText(expected),
+        ).toBeInTheDocument();
+        expect(mockWindowOpen).not.toHaveBeenCalled();
+      },
+    );
+
+    it("meta click on Add condition should add a new join condition", async () => {
+      const { mockWindowOpen } = setup({
+        step: createMockNotebookStep({ query: getQueryWithMultipleJoins() }),
+      });
+
+      expect(
+        screen.queryByTestId("new-join-condition"),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText("Add condition"), {
+        metaKey: true,
+      });
+
+      expect(
+        await screen.findByTestId("new-join-condition"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
     });
 
     it("opening in new window does not affect unrelated join step elements", () => {

@@ -20,6 +20,7 @@
 
 (doto :model/StoredResultUse
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (t2/define-before-insert :model/StoredResultUse
@@ -36,8 +37,7 @@
   (let [snapshots (queries.db/stored-result-gate-inputs-for-card card-id)]
     (when (empty? snapshots)
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
-    (doseq [snapshot snapshots]
-      (cached-result/assert-can-view-cached-result! snapshot))))
+    (cached-result/check-can-view-cached-results snapshots)))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

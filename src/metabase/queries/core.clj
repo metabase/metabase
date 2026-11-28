@@ -33,7 +33,8 @@
   card-param-remapped-value]
  [metabase.queries.db
   card-query-info
-  cards-queries-info]
+  cards-queries-info
+  not-referenced-run]
  [metabase.queries.models.card
   can-delete?
   card-read-check-columns
@@ -41,6 +42,10 @@
   check-new-dashboard-questions-timeline-permissions
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
+  check-new-card-goal-references
+  check-new-dashboard-questions-goal-permissions
+  check-newly-exposed-dashcards-goal-permissions!
+  card-reads-parameters?
   card-exposed-timeline-ids
   dashcard-hides-card-events?
   with-copy-source-card]
@@ -81,7 +86,7 @@
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!
-  viewer-can-view-cached-result?
+  cached-result-view-answers
   cached-dataset]
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!

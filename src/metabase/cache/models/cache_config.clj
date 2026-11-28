@@ -34,6 +34,7 @@
 
 (doto :model/CacheConfig
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
@@ -246,6 +247,8 @@
   "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id; a
   concurrent first save of the same target makes one of them retry as an update."
   [{:keys [model model_id] :as config}]
+  (when (#{"root" "database"} (name model))
+    (mdb/check-default-worktree (tru "Root and database caching can only be changed in the default worktree.")))
   (let [save! (fn []
                 (t2/with-transaction [_conn]
                   (let [data    (config->row config)

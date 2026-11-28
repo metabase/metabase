@@ -18,11 +18,14 @@
                                                         io.opentelemetry/opentelemetry-api]}
   ;; Required for service account impersonation in workspace isolation
   ;; Version matches what google-cloud-bigquery depends on
-  com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}
+  com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"
+                                                   :exclusions  [com.google.guava/guava]}
   ;; Required for granting project-level IAM roles to workspace service accounts
-  com.google.cloud/google-cloud-resourcemanager {:mvn/version "1.82.0"}
+  com.google.cloud/google-cloud-resourcemanager {:mvn/version "1.82.0"
+                                                   :exclusions  [com.google.guava/guava]}
   ;; Required for creating service accounts for workspace isolation
-  com.google.cloud/google-iam-admin {:mvn/version "3.54.0"}
+  com.google.cloud/google-iam-admin {:mvn/version "3.54.0"
+                                                   :exclusions  [com.google.guava/guava]}
   ;; pin arrow formats to 17 for cve about parquet files
   org.apache.arrow/arrow-format          {:mvn/version "18.3.0"}
   org.apache.arrow/arrow-memory-core     {:mvn/version "18.3.0"}
@@ -38,4 +41,6 @@
   ;; shaded netty, but these modules are still pulled through arrow-memory-netty
   ;; and must be pinned for security scanning.
   io.netty/netty-common                  {:mvn/version "4.2.17.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.17.Final"}}}
+  io.netty/netty-buffer                  {:mvn/version "4.2.17.Final"}
+  ;; pinned: google-cloud-bigquery pulls org.json 20250517 (CVE-2026-59171)
+  org.json/json                          {:mvn/version "20260719"}}}

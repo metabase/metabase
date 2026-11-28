@@ -54,7 +54,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/worktree-id :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
@@ -287,16 +287,19 @@
   "The predicate each permission key of a transform is answered with."
   {:can_read    (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))
    :can_write   transform-deletable?
-   :can_query   (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))})
+   :can_query   (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))
+   :can_execute (fn [transform models-cache _db-perms]
+                  (and (not (mdb/non-default-worktree?))
+                       (transform-readable? transform models-cache)))})
 
 (mu/defn assoc-permissions :- [:sequential [:maybe :map]]
-  "Attach each of the permissions `ks` (`:can_read`, `:can_write`, `:can_query`) to each of `transforms`, all
+  "Attach each of the permissions `ks` (`:can_read`, `:can_write`, `:can_query`, `:can_execute`) to each of `transforms`, all
   answered from the source models of `models-cache`, as [[transforms.u/prefetch-source-models]] loads them, and the
   permissions on their Databases, read once."
   [transforms   :- [:sequential [:maybe ::instance]]
    models-cache :- ::transforms.u/source-models
-   ks           :- [:sequential [:enum :can_read :can_write :can_query]]]
-  (let [db-perms (if (or api/*is-superuser?* (every? #{:can_read :can_query} ks))
+   ks           :- [:sequential [:enum :can_read :can_write :can_query :can_execute]]]
+  (let [db-perms (if (or api/*is-superuser?* (every? #{:can_read :can_query :can_execute} ks))
                    {:transforms {} :create-queries {}}
                    (prefetch-database-permissions (into [] (remove nil?) transforms)))]
     (reduce (fn [acc k]
@@ -308,7 +311,7 @@
 (mu/defn- hydrate-permissions :- [:sequential [:maybe :map]]
   "`transforms` with the permissions `ks` attached, the source models loaded once."
   [transforms :- [:sequential [:maybe ::instance]]
-   ks         :- [:sequential [:enum :can_read :can_write :can_query]]]
+   ks         :- [:sequential [:enum :can_read :can_write :can_query :can_execute]]]
   (assoc-permissions transforms (transforms.u/prefetch-source-models (into [] (remove nil?) transforms)) ks))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_read]
@@ -325,6 +328,12 @@
   "Whether the current user can query each of `transforms`, which is whether they can read it."
   [_model _k transforms]
   (hydrate-permissions transforms [:can_query]))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
+  "Whether the current user can run each of `transforms`: they can query it, in the default remote sync worktree, the
+  only one where transforms run."
+  [_model _k transforms]
+  (hydrate-permissions transforms [:can_execute]))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),

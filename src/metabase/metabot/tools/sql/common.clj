@@ -202,9 +202,9 @@
        (some? api/*current-user-id*)
        ;; The check the QP makes before it runs SQL. Native permission alone is not enough: the user also needs
        ;; unrestricted data access, and no sandbox on the database from any of their groups.
-       (query-perms/can-run-query? {:database database-id
-                                    :type     :native
-                                    :native   {:query "SELECT 1"}})))
+       (first (query-perms/query-run-answers [{:database database-id
+                                               :type     :native
+                                               :native   {:query "SELECT 1"}}]))))
 
 (defn check-native-query-access!
   "Throw an unrecoverable error for the audit database or a user without native query permission on `database-id`."

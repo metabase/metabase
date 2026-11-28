@@ -54,8 +54,8 @@
   [_db :- ::lib.schema.metadata/database]
   false)
 
-(defenterprise refuses-anonymous-access?
-  "OSS version, always false."
+(defenterprise anonymous-access-refusing-database-ids
+  "The ids among `database-ids` of the router databases not granted anonymous access; OSS has no routers, so none."
   metabase-enterprise.database-routing.models
-  [_database-id]
-  false)
+  [_database-ids]
+  #{})

@@ -82,8 +82,9 @@
       (spec model))))
 
 (def implicit-columns
-  "The columns that no spec lists: the key, which never changes, and the timestamps that every write sets."
-  #{:id :created_at :updated_at})
+  "The columns that no spec lists: the key, which never changes, the timestamps that every write sets, and the remote
+  sync worktree of the row, which the sandbox writes on insert and no update changes."
+  #{:id :created_at :updated_at :worktree_id})
 
 (defn audited-models
   "The audited models that have loaded."

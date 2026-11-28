@@ -357,19 +357,6 @@ describe("scenarios > data studio > table collection permissions", () => {
       });
       H.assertQueryBuilderRowCount(93);
     });
-
-    it("should show a permission error when accessing a published table when some columns are remapped to unpublished tables", () => {
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-        name: "Product ID",
-        type: "external",
-        human_readable_field_id: PRODUCTS.TITLE,
-      });
-
-      cy.signIn("nodata");
-      H.visitQuestionAdhoc(ordersQuestionDetails);
-      assertQueryPermissionError();
-    });
   });
 
   describe("sandboxing", () => {

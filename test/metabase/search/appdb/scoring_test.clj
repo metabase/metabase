@@ -86,7 +86,7 @@
                                    (filter (comp #{:this :search_index} first))
                                    (map (comp keyword u/->kebab-case-en name second))
                                    ;; Remove db-specific fields
-                                   (remove #{:search-vector :query}))
+                                   (remove #{:search-vector :query :search-terms :name-terms}))
                              (vals (scoring/scorers {:search-engine :search.engine/appdb
                                                      :search-string ""}
                                                     {})))
@@ -110,7 +110,7 @@
      {:model "card" :id 5 :name "orders, invoices, other stuff", :description "a verbose description"}
      {:model "card" :id 6 :name "ordering"}]
     (case (mdb/db-type)
-      :postgres
+      (:postgres :mysql)
       ;; WARNING: this is likely to diverge between appdb types as we support more.
       (testing "Preferences according to textual matches"
         ;; Note that, ceteris paribus, the ordering in the database is currently stable - this might change!
@@ -127,6 +127,19 @@
       ;; TODO text ranking (probably in-memory
       nil)))
 
+(deftest connection-collation-test
+  (when (= :mysql (mdb/db-type))
+    (testing "Search works when the connection's collation differs from the index columns'"
+      (with-index-contents
+        [{:model "card", :id 1, :name "orders"}]
+        (t2/with-connection [_conn]
+          (let [{:keys [collation]} (t2/query-one {:select [[[:system-variable :collation_connection] :collation]]})]
+            (t2/query ["SET SESSION collation_connection = 'utf8mb4_general_ci'"])
+            (try
+              (is (= [["card" 1 "orders"]] (search-results* "orders")))
+              (finally
+                (t2/query [(str "SET SESSION collation_connection = '" collation "'")])))))))))
+
 (deftest ^:parallel exact-test
   (with-index-contents
     [{:model "card" :id 1 :name "the any most of stop words very"}
@@ -137,6 +150,9 @@
         (is (= [["card" 1 "the any most of stop words very"]
                 ["card" 2 "stop words"]]
                (search-results :exact "the any most of stop words very"))))
+      :mysql
+      (is (= [["card" 1 "the any most of stop words very"]]
+             (search-results* "the any most of stop words very")))
       :h2
       ;; TODO text ranking (probably in-memory
       nil)))
@@ -149,6 +165,22 @@
       (is (= [["card" 1 "Sales,  Revenue"]
               ["card" 2 "Sales Revenue Report"]]
              (search-results :exact "sales revenue"))))))
+
+(deftest ^:parallel title-scores-respect-accents-test
+  (when (#{:mysql :postgres} (mdb/db-type))
+    (testing "An accented title that matched only through its description scores no title match"
+      (with-index-contents
+        [{:model "card", :id 1, :name "Café", :description "cafe"}
+         {:model "card", :id 2, :name "Cafe"}]
+        (is (= [["card" 2 "Cafe"]
+                ["card" 1 "Café"]]
+               (search-results :exact "cafe"))))
+      (with-index-contents
+        [{:model "card", :id 1, :name "Cafés",     :description "cafeteria"}
+         {:model "card", :id 2, :name "Cafeteria"}]
+        (is (= [["card" 2 "Cafeteria"]
+                ["card" 1 "Cafés"]]
+               (search-results :prefix "cafe")))))))
 
 (deftest ^:parallel prefix-test
   (with-index-contents
@@ -235,8 +267,7 @@
                 card-with-view  #(merge (mt/with-temp-defaults :model/Card)
                                         {:name       search-term
                                          :view_count %})
-                ;; Flake alert - we need to insert the outlier so that it is not chosen over the card it ties with.
-                ;; NOTE: we have brought in the outlier *a lot* to compensate for h2 not calculating a real percentile.
+                ;; Keep the outlier below H2's approximate percentile ceiling.
                 outlier-card-id (t2/insert-returning-pk! :model/Card (card-with-view 88 #_100000))
                 _               (t2/insert! :model/Card (concat (repeatedly 20 #(card-with-view 0))
                                                                 (for [i (range 1 81)]
@@ -245,11 +276,15 @@
                                  (#'search.ingestion/query->documents
                                   (#'search.ingestion/spec-index-reducible "card" [:= :this.name search-term]))
                                  [])
-                first-result-id (-> (search-results* search-term) first second)]
-            (is (some? first-result-id))
-            ;; Ideally we would make the outlier slightly less attractive in another way, with a weak weight,
-            ;; but we can solve this later if it actually becomes a flake
-            (is (not= outlier-card-id first-result-id))))))))
+                results         (search-results** search-term {})
+                view-score      (fn [result]
+                                  (some (fn [{scorer-name :name, :keys [score]}]
+                                          (when (= scorer-name :view-count) score))
+                                        (:all-scores result)))
+                outlier-score   (some #(when (= outlier-card-id (:id %)) (view-score %)) results)]
+            (is (== 1 outlier-score))
+            (testing "the outlier ties with other cards at the percentile ceiling"
+              (is (<= 2 (count (filter #(== 1 (view-score %)) results)))))))))))
 
 (deftest ^:parallel dashboard-count-test
   (testing "cards used in dashboard have higher rank"
@@ -555,7 +590,7 @@
     [{:model "table"  :id 1 :name "foo orders" :data_layer "final"}
      {:model "metric" :id 2 :name "bar metric" :description "mentions foo"}]
     (case (mdb/db-type)
-      :postgres
+      (:postgres :mysql)
       (testing "with Metabot weights, a final-layer table whose name matches outranks a metric that only mentions the term"
         (is (= [1 2] (map second (search-results* "foo" :context :metabot)))))
       :h2

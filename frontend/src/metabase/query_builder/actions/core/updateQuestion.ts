@@ -19,7 +19,9 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getRawSeries,
+  getSummaryGeneratedExpressions,
 } from "../../store/selectors";
+import { reconcileSummaryFormulas } from "../../utils/summary-formulas";
 import { getAdHocQuestionWithVizSettings } from "../../utils/viz-settings";
 import { runQuestionQuery } from "../querying";
 import { setQueryBuilderMode } from "../ui";
@@ -107,7 +109,9 @@ export const updateQuestion = (
     newQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      run = computedPivotQuestion.shouldRun;
+      run =
+        computedPivotQuestion.shouldRun ||
+        (run && computedPivotQuestion.hasStaleResults);
     }
 
     const isNewQuestionNative = Lib.queryDisplayInfo(
@@ -124,6 +128,17 @@ export const updateQuestion = (
     }
 
     newQuestion = newQuestion.applyTemplateTagParameters();
+
+    const generatedExpressions = getSummaryGeneratedExpressions(getState());
+    const reconciledExpressions = reconcileSummaryFormulas(
+      newQuestion.query(),
+      generatedExpressions,
+    );
+    if (reconciledExpressions.length !== generatedExpressions.length) {
+      dispatch(
+        setUIControls({ summaryGeneratedExpressions: reconciledExpressions }),
+      );
+    }
 
     await dispatch({
       type: UPDATE_QUESTION,

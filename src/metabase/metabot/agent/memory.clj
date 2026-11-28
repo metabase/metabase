@@ -167,3 +167,19 @@
   "Whether [[set-context-block]] has kept this turn's block, even a nil one."
   [memory]
   (contains? memory :context-block))
+
+(defn set-dialect-preload
+  "Keep `parts`, the SQL dialect preload this turn sends after its user message, or [] when it sends none.
+  The web chat stores them with the turn, so that later turns replay the same bytes."
+  [memory parts]
+  (assoc memory :dialect-preload (vec parts)))
+
+(defn dialect-preload
+  "The parts kept with [[set-dialect-preload]], or nil."
+  [memory]
+  (:dialect-preload memory))
+
+(defn dialect-preload-rendered?
+  "Whether [[set-dialect-preload]] has kept this turn's preload, even an empty one."
+  [memory]
+  (contains? memory :dialect-preload))

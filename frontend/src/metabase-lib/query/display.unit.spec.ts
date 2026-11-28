@@ -166,6 +166,33 @@ describe("defaultDisplay", () => {
     expect(defaultDisplay(query)).toEqual({ display: "line" });
   });
 
+  it("returns the display for the given stage, and for the last stage by default", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
+        },
+        {
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "count" },
+                { type: "literal", value: 10 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(defaultDisplay(query, undefined, 0)).toEqual({ display: "line" });
+    expect(defaultDisplay(query)).toEqual({ display: "table" });
+  });
+
   it("uses result columns when query metadata is unavailable (UXW-4958)", () => {
     const queryWithMetadata = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [

@@ -207,18 +207,18 @@
           (mt/with-perm-for-group-and-table! (perms-group/all-users) (mt/id :people) :perms/create-queries :no
             (testing "a data analyst who cannot read a test cannot list its runs"
               (mt/user-http-request :lucky :get 403 "ee/data-test-run" :test-type "transform" :test-id old-test-id))
-            (t2/delete! :transform_test :id old-test-id)
+            (t2/delete! (t2/table-name :model/TransformTest) :id old-test-id)
             (testing "a test row deleted without the model leaves its id on the run"
               (is (= old-test-id (t2/select-one-fn :test_id :model/DataTestRun :id run-id))))
-            (t2/insert! :transform_test {:id           old-test-id
-                                         :transform_id open-transform
-                                         :name         "reused id"
-                                         :entity_id    "reused_test_id_entity"
-                                         :inputs       "[]"
-                                         :expectations "[]"
-                                         :creator_id   (mt/user->id :lucky)
-                                         :created_at   #t "2001-01-04T11:00:00Z"
-                                         :updated_at   #t "2001-01-04T11:00:00Z"})
+            (t2/insert! (t2/table-name :model/TransformTest) {:id           old-test-id
+                                                              :transform_id open-transform
+                                                              :name         "reused id"
+                                                              :entity_id    "reused_test_id_entity"
+                                                              :inputs       "[]"
+                                                              :expectations "[]"
+                                                              :creator_id   (mt/user->id :lucky)
+                                                              :created_at   #t "2001-01-04T11:00:00Z"
+                                                              :updated_at   #t "2001-01-04T11:00:00Z"})
             (try
               (testing "the data analyst can read the test that has the reused id"
                 (mt/user-http-request :lucky :get 200 (str "ee/transform-test/" old-test-id)))

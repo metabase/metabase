@@ -260,13 +260,17 @@ class Question {
     return this;
   }
 
-  setDefaultDisplay(): Question {
+  setDefaultDisplay(stageIndex = -1): Question {
     if (this.displayIsLocked()) {
       return this;
     }
 
     const query = this.query();
-    const { display, settings = {} } = Lib.defaultDisplay(query);
+    const { display, settings = {} } = Lib.defaultDisplay(
+      query,
+      undefined,
+      stageIndex,
+    );
 
     return this.setDisplay(display).updateSettings(settings);
   }

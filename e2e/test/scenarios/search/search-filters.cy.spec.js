@@ -392,7 +392,7 @@ describe("scenarios > search", () => {
             cy.signInAsNormalUser();
             cy.visit(`/question/${questionId}`);
             H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
+            H.addSummaryValue("Count of rows");
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
@@ -406,7 +406,7 @@ describe("scenarios > search", () => {
             cy.signInAsAdmin();
             cy.visit(`/question/${questionId}`);
             H.summarize();
-            cy.findByTestId("sidebar-right").findByText("Done").click();
+            H.addSummaryValue("Count of rows");
             cy.findByTestId("qb-header-action-panel")
               .findByText("Save")
               .click();
@@ -465,7 +465,7 @@ describe("scenarios > search", () => {
               cy.signInAsNormalUser();
               cy.visit(`/question/${questionId}`);
               H.summarize();
-              cy.findByTestId("sidebar-right").findByText("Done").click();
+              H.addSummaryValue("Count of rows");
               cy.findByTestId("qb-header-action-panel")
                 .findByText("Save")
                 .click();

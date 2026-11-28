@@ -17,7 +17,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.ui-logic :as ui-logic]
+   [metabase.visualization-settings.ui-logic :as ui-logic]
    [potemkin :as p]
    [potemkin.types :as p.types])
   (:import
@@ -334,6 +334,12 @@
      (or (isa? (:semantic_type col) :type/SerializedJSON)
          (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary))
      dictionary-formatter
+
+     (and apply-formatting? (isa? ((some-fn :effective_type :base_type) col) :type/JSON))
+     (fn [value]
+       (if (instance? java.util.Map value)
+         (json/encode value)
+         (->TextWrapper (str value) value)))
 
      :else
      (if apply-formatting?

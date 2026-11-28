@@ -2,6 +2,8 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import {
   act,
   fireEvent,
@@ -463,6 +465,114 @@ describe("dashboard client-side sorting", () => {
   });
 });
 
+describe("query builder sort indicators", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  function setupSortedByCustomAggregation(direction: "asc" | "desc") {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              name: "CE",
+              value: {
+                type: "operator",
+                operator: "count-where",
+                args: [
+                  {
+                    type: "operator",
+                    operator: ">",
+                    args: [
+                      { type: "column", name: "TOTAL" },
+                      { type: "literal", value: 0 },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+          orderBys: [{ type: "column", name: "CE", direction }],
+        },
+      ],
+    });
+    const series = [
+      createMockSingleSeries(
+        { display: "table", dataset_query: Lib.toJsQuery(query) },
+        {
+          data: {
+            cols: [
+              createMockColumn({
+                id: ORDERS.CREATED_AT,
+                name: "CREATED_AT",
+                display_name: "Created At: Month",
+                base_type: "type/DateTime",
+                effective_type: "type/DateTime",
+                source: "breakout",
+                unit: "month",
+                field_ref: [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  { "base-type": "type/DateTime", "temporal-unit": "month" },
+                ],
+              }),
+              createMockNumericColumn({
+                name: "CE",
+                display_name: "CE",
+                source: "aggregation",
+                field_ref: ["aggregation", 0],
+              }),
+            ],
+            rows: [
+              ["2025-01-01T00:00:00Z", 584],
+              ["2025-02-01T00:00:00Z", 1],
+            ],
+          },
+        },
+      ),
+    ];
+
+    renderWithProviders(
+      <Visualization rawSeries={series} width={600} height={400} />,
+      {
+        storeInitialState: createMockState({
+          entities: createMockEntitiesState({
+            databases: [createSampleDatabase()],
+          }),
+        }),
+      },
+    );
+  }
+
+  it.each([
+    { direction: "asc" as const, icon: "chevronup", otherIcon: "chevrondown" },
+    { direction: "desc" as const, icon: "chevrondown", otherIcon: "chevronup" },
+  ])(
+    "shows the $direction sort direction on the header of a custom aggregation (metabase#6239)",
+    ({ direction, icon, otherIcon }) => {
+      setupSortedByCustomAggregation(direction);
+
+      const ceHeader = screen.getByRole("columnheader", { name: /CE/ });
+      expect(
+        within(ceHeader).getByLabelText(`${icon} icon`),
+      ).toBeInTheDocument();
+      expect(
+        within(ceHeader).queryByLabelText(`${otherIcon} icon`),
+      ).not.toBeInTheDocument();
+
+      const createdAtHeader = screen.getByRole("columnheader", {
+        name: /Created At: Month/,
+      });
+      expect(
+        within(createdAtHeader).queryByLabelText(/^chevron(up|down) icon$/),
+      ).not.toBeInTheDocument();
+    },
+  );
+});
+
 describe("table.striped", () => {
   beforeAll(() => {
     mockGetBoundingClientRect();
@@ -537,6 +647,68 @@ describe("table.striped", () => {
       ["3", true],
       ["2", false],
       ["1", true],
+    ]);
+  });
+});
+
+describe("currency column settings", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("formats a column keyed by its legacy field ref with the currency code", () => {
+    const totalColumn = createMockNumericColumn({
+      id: ORDERS.TOTAL,
+      name: "TOTAL",
+      display_name: "Total",
+      field_ref: ["field", ORDERS.TOTAL, null],
+    });
+    const subtotalColumn = createMockNumericColumn({
+      id: ORDERS.SUBTOTAL,
+      name: "SUBTOTAL",
+      display_name: "Subtotal",
+      field_ref: ["field", ORDERS.SUBTOTAL, null],
+    });
+    const series = [
+      createMockSingleSeries(
+        {
+          display: "table",
+          visualization_settings: {
+            column_settings: {
+              [`["ref",["field",${ORDERS.TOTAL},null]]`]: {
+                currency: "USD",
+                currency_in_header: false,
+                currency_style: "code",
+                number_style: "currency",
+              },
+            },
+          },
+        },
+        {
+          data: {
+            cols: [subtotalColumn, totalColumn],
+            rows: [
+              [37.65, 39.72],
+              [110.93, 117.03],
+            ],
+          },
+        },
+      ),
+    ];
+
+    renderWithProviders(
+      <Visualization rawSeries={series} width={600} height={400} />,
+    );
+
+    const cellValues = screen
+      .getAllByRole("gridcell")
+      .map((cell) => cell.textContent)
+      .filter((text) => text !== "");
+    expect(cellValues).toEqual([
+      "37.65",
+      "USD\u00a039.72",
+      "110.93",
+      "USD\u00a0117.03",
     ]);
   });
 });

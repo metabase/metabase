@@ -1,0 +1,15 @@
+/* takes the chip's own type and color, and widens with the name it holds */
+.input {
+  field-sizing: content;
+  min-width: 3ch;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  box-shadow: inset 0 -1px 0 currentColor;
+  cursor: text;
+  user-select: text;
+}

@@ -21,7 +21,9 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  ColumnNameColumnSplitSetting,
   TableId,
+  TestBreakoutSpec,
   TestNativeQuerySpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
@@ -714,6 +716,102 @@ describe("getSubmittableQuestion", () => {
     const question = checkNotNull(getQuestion(state));
 
     expect(getSubmittableQuestion(state, question).display()).toBe("table");
+  });
+
+  describe("column split of a pivot table", () => {
+    const CATEGORY: TestBreakoutSpec = {
+      type: "column",
+      name: "CATEGORY",
+      sourceFieldId: ORDERS.PRODUCT_ID,
+    };
+    const CREATED_AT: TestBreakoutSpec = {
+      type: "column",
+      name: "CREATED_AT",
+      unit: "month",
+    };
+
+    function getPivotCard(
+      breakouts: TestBreakoutSpec[],
+      columnSplit: ColumnNameColumnSplitSetting,
+    ) {
+      return createMockCard({
+        display: "pivot",
+        displayIsLocked: true,
+        dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts,
+            },
+          ],
+        }),
+        visualization_settings: { "pivot_table.column_split": columnSplit },
+      });
+    }
+
+    function getResults(breakoutNames: string[]) {
+      return [
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              ...breakoutNames.map((name) =>
+                createMockColumn({ name, source: "breakout" }),
+              ),
+              createMockColumn({ name: "count", source: "aggregation" }),
+            ],
+          }),
+        }),
+      ];
+    }
+
+    it("keeps the column split of the question when the results are of an earlier query", () => {
+      const columnSplit = {
+        rows: ["CATEGORY"],
+        columns: ["CREATED_AT"],
+        values: ["count"],
+      };
+      const state = getBaseState({
+        card: getPivotCard([CATEGORY, CREATED_AT], columnSplit),
+        lastRunCard: getPivotCard([CATEGORY], {
+          rows: ["CATEGORY"],
+          columns: [],
+          values: ["count"],
+        }),
+        queryResults: getResults(["CATEGORY"]),
+      });
+      const question = checkNotNull(getQuestion(state));
+
+      expect(
+        getSubmittableQuestion(state, question).setting(
+          "pivot_table.column_split",
+        ),
+      ).toEqual(columnSplit);
+    });
+
+    it("adds a column that the column split doesn't have from the results of the question's query", () => {
+      const card = getPivotCard([CATEGORY, CREATED_AT], {
+        rows: ["CATEGORY"],
+        columns: [],
+        values: ["count"],
+      });
+      const state = getBaseState({
+        card,
+        lastRunCard: card,
+        queryResults: getResults(["CATEGORY", "CREATED_AT"]),
+      });
+      const question = checkNotNull(getQuestion(state));
+
+      expect(
+        getSubmittableQuestion(state, question).setting(
+          "pivot_table.column_split",
+        ),
+      ).toEqual({
+        rows: ["CATEGORY", "CREATED_AT"],
+        columns: [],
+        values: ["count"],
+      });
+    });
   });
 });
 

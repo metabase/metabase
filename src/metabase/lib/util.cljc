@@ -392,6 +392,7 @@
    stage-number :- :int
    f            :- ifn?
    & args       :- [:* [:maybe [:or
+                                :boolean
                                 :keyword
                                 ifn?
                                 :int

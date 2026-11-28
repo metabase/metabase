@@ -24,6 +24,21 @@ import {
 
 registerVisualizations();
 
+async function addCountOfRows() {
+  await userEvent.type(
+    await screen.findByLabelText("Add a value by name"),
+    "count",
+  );
+  const options = await screen.findAllByRole("option");
+  const countOption = options.find(
+    (option) => option.textContent === "Count of rows",
+  );
+  if (countOption == null) {
+    throw new Error("No Count of rows option");
+  }
+  await userEvent.click(countOption);
+}
+
 describe("QueryBuilder - beforeunload events", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
 
@@ -182,8 +197,10 @@ describe("QueryBuilder - beforeunload events", () => {
 
       expect(screen.queryByText("Count")).not.toBeInTheDocument();
       await userEvent.click(await screen.findByText("Summarize"));
-      await userEvent.click(await screen.findByText("Done"));
-      expect(await screen.findByText("Count")).toBeInTheDocument();
+      await addCountOfRows();
+      expect(
+        await within(screen.getByTestId("qb-header")).findByText("Count"),
+      ).toBeInTheDocument();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -197,8 +214,10 @@ describe("QueryBuilder - beforeunload events", () => {
 
       expect(screen.queryByText("Count")).not.toBeInTheDocument();
       await userEvent.click(await screen.findByText("Summarize"));
-      await userEvent.click(await screen.findByText("Done"));
-      expect(await screen.findByText("Count")).toBeInTheDocument();
+      await addCountOfRows();
+      expect(
+        await within(screen.getByTestId("qb-header")).findByText("Count"),
+      ).toBeInTheDocument();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();

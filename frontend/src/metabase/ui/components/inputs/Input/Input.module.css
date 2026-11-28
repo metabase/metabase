@@ -90,6 +90,32 @@
   background-color: var(--mb-color-background_surface-disabled);
 }
 
+/*
+ * A field that only shows a value to copy (copy fields, one-time keys): gray
+ * with no border at rest, and it stays gray when focused so it doesn't look
+ * editable. It's a variant rather than a `[readonly]` rule because a
+ * non-searchable Select also renders a read-only input.
+ */
+.wrapper .input[data-variant="read-only"] {
+  &,
+  &:focus-within {
+    background-color: var(--mb-color-background_surface-disabled);
+  }
+
+  &:not([data-error]) {
+    --input-border-color: transparent;
+  }
+
+  /*
+   * The normal focus ring stays: the field is still focusable (WCAG 2.4.7).
+   * A separate rule, not `:not(:focus-within)` above, because Storybook's
+   * pseudo-states addon breaks a pseudo-class inside `:not()`.
+   */
+  &:focus-within {
+    --input-border-color: var(--mb-color-border-highlight);
+  }
+}
+
 .wrapper[data-with-left-section] .input {
   --input-padding-inline-start: var(--input-left-section-size);
 }

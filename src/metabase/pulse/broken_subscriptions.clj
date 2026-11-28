@@ -3,10 +3,12 @@
   the dashboard they belong to."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.models.interface :as mi]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -173,14 +175,23 @@
     (into #{} (map :id) (mi/readable (pulse.db/pulses-with-ids pulse-ids)))
     #{}))
 
+(defn- send-in-background!
+  "Call `f` on a background thread. Tests replace this to run `f` at once, where the notifications are scheduled."
+  [f]
+  (future-call f))
+
 (defn handle-broken-subscriptions!
   "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard, and email each
   one's creator and the dashboard's creator.
   Must run after the update: it compares the dashboard's current resolved params against each pulse's stored params.
   Takes the dashboard's `:resolved-params` from before the update as `original-dashboard-params`.
+  Sends the emails on a background thread once the surrounding transaction commits, or at once outside a
+  transaction, so an update that rolls back sends none. A notification that fails is logged, not thrown, and the
+  others still go out.
   Returns what [[archived-subscription]] describes for each archived subscription, in archive order."
   [dashboard-id original-dashboard-params]
-  (let [broken       (broken-subscription-data dashboard-id original-dashboard-params)
+  ;; Realized here, so every query it runs is part of the update, not of the background send.
+  (let [broken       (vec (broken-subscription-data dashboard-id original-dashboard-params))
         readable-ids (readable-pulse-ids (map :pulse-id broken))
         channels     (visible-enabled-channels broken readable-ids)
         archived     (mapv #(archived-subscription original-dashboard-params
@@ -189,5 +200,18 @@
                                                    %)
                            broken)]
     (pulse/update-pulses! (mapv #(hash-map :id (:pulse-id %) :archived true) broken))
-    (run! messages/send-broken-subscription-notification! broken)
+    (when (seq broken)
+      ;; One background thread sends them in order, so a slow render or SMTP retry doesn't hold the committing
+      ;; thread or its connection.
+      (app-db/do-after-commit
+       #(send-in-background!
+         (fn []
+           (doseq [{:keys [pulse-id] :as broken-subscription} broken]
+             ;; `send-message!` logs SMTP failures, but the email is built before it is called, and nothing would see
+             ;; a throw from this thread. Logging it here also lets the remaining notifications go out.
+             (try
+               (messages/send-broken-subscription-notification! broken-subscription)
+               (catch Throwable e
+                 (log/errorf e "Failed to notify the owners of broken subscription %d on dashboard %d"
+                             pulse-id dashboard-id))))))))
     archived))

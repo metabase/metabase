@@ -47,9 +47,10 @@ const REVERT_REVISION = createMockRevision({
 
 interface SetupOpts {
   canWrite: boolean;
+  revertError?: { status: number; message: string };
 }
 
-async function setupRevisionHistory({ canWrite }: SetupOpts) {
+async function setupRevisionHistory({ canWrite, revertError }: SetupOpts) {
   const card = createMockCard({
     ...TEST_STRUCTURED_CARD,
     name: "Orders renamed",
@@ -66,6 +67,18 @@ async function setupRevisionHistory({ canWrite }: SetupOpts) {
 
   // Registered before `setup` so this route wins over its static card mock.
   fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+  if (revertError) {
+    // Registered first, so it answers the revert of this card instead of the
+    // route `setupRevertableRevisionsEndpoints` adds.
+    fetchMock.post(
+      "path:/api/revision/revert",
+      {
+        status: revertError.status,
+        body: { message: revertError.message },
+      },
+      { body: { entity: "card", id: card.id }, matchPartialBody: true },
+    );
+  }
   setupRevertableRevisionsEndpoints({
     entity: "card",
     id: card.id,
@@ -78,7 +91,7 @@ async function setupRevisionHistory({ canWrite }: SetupOpts) {
   setupUsersEndpoints([createMockUserListResult()]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
 
-  await setup({ card });
+  await setup({ card, withUndos: true });
 
   return { card };
 }
@@ -123,6 +136,38 @@ describe("QueryBuilder > revision history", () => {
     );
 
     await waitFor(() => expect(getHeaderTitle()).toHaveValue("Orders"));
+    const revertCalls = fetchMock.callHistory.calls(
+      "path:/api/revision/revert",
+      { method: "POST" },
+    );
+    expect(revertCalls).toHaveLength(1);
+    const body: unknown = JSON.parse(String(revertCalls[0].options.body));
+    expect(body).toEqual({
+      entity: "card",
+      id: card.id,
+      revision_id: CREATION_REVISION.id,
+    });
+  });
+
+  it("shows the backend message in a toast when a revert fails (UXW-310)", async () => {
+    const { card } = await setupRevisionHistory({
+      canWrite: true,
+      revertError: { status: 500, message: "Cannot revert: missing card" },
+    });
+
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    const history = await findHistory();
+    await userEvent.click(
+      await within(history).findByRole("button", {
+        name: "revert to You created this",
+      }),
+    );
+
+    expect(
+      await within(await screen.findByTestId("toast-undo")).findByText(
+        "Cannot revert: missing card",
+      ),
+    ).toBeInTheDocument();
     const revertCalls = fetchMock.callHistory.calls(
       "path:/api/revision/revert",
       { method: "POST" },
@@ -239,5 +284,82 @@ describe("QueryBuilder > last edit info", () => {
     expect(putCalls).toHaveLength(1);
     const body: unknown = JSON.parse(String(putCalls[0].options.body));
     expect(body).toMatchObject({ name: "Orders!" });
+  });
+});
+
+describe("QueryBuilder > description", () => {
+  async function setupDescription() {
+    const card = createMockCard({
+      ...TEST_STRUCTURED_CARD,
+      name: "Orders",
+      description: null,
+      can_write: true,
+    });
+    let currentCard: Card = card;
+
+    // Registered before `setup` so these routes win over its static card mocks.
+    fetchMock.get(`path:/api/card/${card.id}`, () => currentCard);
+    fetchMock.put(`path:/api/card/${card.id}`, (call) => {
+      const body: unknown = JSON.parse(String(call.options.body));
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("description" in body) ||
+        typeof body.description !== "string"
+      ) {
+        return { status: 400, body: {} };
+      }
+      currentCard = { ...currentCard, description: body.description };
+      return currentCard;
+    });
+    setupRevertableRevisionsEndpoints({
+      entity: "card",
+      id: card.id,
+      revisions: [CREATION_REVISION],
+      revertRevision: REVERT_REVISION,
+      onRevert: () => undefined,
+    });
+    setupUsersEndpoints([createMockUserListResult()]);
+    setupListNotificationEndpoints({ card_id: card.id }, []);
+
+    await setup({ card });
+
+    return { card };
+  }
+
+  it("saves a description typed into the info sidesheet (metabase#11719)", async () => {
+    const { card } = await setupDescription();
+
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    const sidesheet = await screen.findByTestId("sidesheet");
+    await userEvent.type(
+      within(sidesheet).getByPlaceholderText("Add description"),
+      "foo",
+    );
+    await userEvent.tab();
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls(`path:/api/card/${card.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1),
+    );
+    const [putCall] = fetchMock.callHistory.calls(`path:/api/card/${card.id}`, {
+      method: "PUT",
+    });
+    const body: unknown = JSON.parse(String(putCall.options.body));
+    expect(body).toMatchObject({ description: "foo" });
+
+    await userEvent.click(
+      within(sidesheet).getByRole("button", { name: "Close" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("sidesheet")).not.toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByTestId("qb-header-info-button"));
+    expect(
+      await within(await screen.findByTestId("sidesheet")).findByText("foo"),
+    ).toBeInTheDocument();
   });
 });
