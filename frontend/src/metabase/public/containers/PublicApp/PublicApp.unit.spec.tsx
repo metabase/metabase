@@ -121,6 +121,36 @@ describe("PublicApp", () => {
     expect(screen.queryByText("Powered by")).not.toBeInTheDocument();
   });
 
+  describe("page background (metabase#62391)", () => {
+    // jsdom has no stylesheet to give the page its background, so the test sets one
+    const PAGE_BACKGROUND = "rgb(255, 255, 255)";
+    const TRANSPARENT = "rgba(0, 0, 0, 0)";
+
+    beforeEach(() => {
+      document.body.style.backgroundColor = PAGE_BACKGROUND;
+    });
+
+    afterEach(() => {
+      delete window.overrideIsWithinIframe;
+      document.body.style.removeProperty("background-color");
+    });
+
+    it("keeps the page background with #background=false outside of an iframe", () => {
+      setup({ hash: "#background=false" });
+
+      expect(screen.getByTestId("embed-frame")).toBeInTheDocument();
+      expect(document.body).toHaveStyle({ backgroundColor: PAGE_BACKGROUND });
+    });
+
+    it("makes the page background transparent inside an iframe", () => {
+      window.overrideIsWithinIframe = true;
+      setup({ hash: "#background=false" });
+
+      expect(screen.getByTestId("embed-frame")).toBeInTheDocument();
+      expect(document.body).toHaveStyle({ backgroundColor: TRANSPARENT });
+    });
+  });
+
   describe("theming", () => {
     it("renders correctly without a theme parameter", () => {
       setup();

@@ -42,6 +42,17 @@ describe("PublicOrEmbeddedQuestion", () => {
       ).toBeInTheDocument();
     });
 
+    it("should allow downloading the results with #downloads=results", async () => {
+      await setupPremium({
+        hash: { downloads: "results" },
+        enterprisePlugins: ["resource_downloads"],
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Download results" }),
+      ).toBeInTheDocument();
+    });
+
     it("should not allow downloading results when downloads are disabled", async () => {
       await setupPremium({
         hash: { downloads: "false" },
@@ -68,6 +79,16 @@ describe("PublicOrEmbeddedQuestion", () => {
       await userEvent.hover(getIcon("download"));
 
       expect(loadLocalizationSpy).toHaveBeenCalledWith(expectedLocale);
+    });
+
+    it("should fall back to the language of a locale that has no catalogue", async () => {
+      // there is no de_CH catalogue among the available locales, only de
+      await setupPremium({
+        hash: { locale: "de-CH" },
+      });
+
+      expect(loadLocalizationSpy).toHaveBeenCalledWith("de");
+      expect(loadLocalizationSpy).not.toHaveBeenCalledWith("de-CH");
     });
   });
 });

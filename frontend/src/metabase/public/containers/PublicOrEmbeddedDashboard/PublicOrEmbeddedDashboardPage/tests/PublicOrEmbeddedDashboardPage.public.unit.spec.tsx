@@ -1,16 +1,22 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import * as embeddingConfig from "metabase/embedding/config";
-import type { TimelineEvent } from "metabase-types/api";
+import type { Parameter, TimelineEvent } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
   createMockImplicitQueryAction,
+  createMockParameter,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { setup } from "./setup";
+import { MOCK_UUID, type SetupOpts, setup } from "./setup";
 import {
   RC1,
   RC2,
@@ -28,6 +34,106 @@ jest.mock("metabase/static-viz/register", () => ({
 }));
 
 const DASHBOARD_TITLE = "Actions Dashboard";
+
+const TEXT_FILTER = createMockParameter({
+  id: "1",
+  name: "Text",
+  slug: "text",
+  type: "string/=",
+  sectionId: "string",
+  values_query_type: "none",
+});
+
+const UNUSED_FILTER = createMockParameter({
+  id: "2",
+  name: "Number",
+  slug: "number",
+  type: "number/=",
+  sectionId: "number",
+});
+
+const COUNT_ALL = 200;
+const COUNT_DOOHICKEY = 42;
+
+// The question dashcard of tab 1 is the only one mapped to the text filter
+const DASHCARD_ID = 1;
+const CARD_ID = 1;
+const DASHCARD_QUERY_PATH = `path:/api/public/dashboard/${MOCK_UUID}/dashcard/${DASHCARD_ID}/card/${CARD_ID}`;
+
+type QueryParameter = Pick<Parameter, "id"> & {
+  type?: unknown;
+  value?: unknown;
+};
+
+function getQueryParameters(url: string): unknown {
+  return JSON.parse(new URL(url).searchParams.get("parameters") ?? "[]");
+}
+
+function isQueryParameterList(value: unknown): value is QueryParameter[] {
+  return Array.isArray(value);
+}
+
+/** Answers the count for the text filter the request carries, as the backend filters the rows. */
+function setupFilteredCountEndpoint() {
+  fetchMock.get(DASHCARD_QUERY_PATH, (call) => {
+    const parameters = getQueryParameters(call.url);
+    const textFilter = isQueryParameterList(parameters)
+      ? parameters.find((parameter) => parameter.id === TEXT_FILTER.id)
+      : undefined;
+    // the backend rejects a value whose type does not match the dashboard parameter
+    const isDoohickey =
+      textFilter?.type === "string/=" &&
+      Array.isArray(textFilter.value) &&
+      textFilter.value.includes("Doohickey");
+
+    return createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+        rows: [[isDoohickey ? COUNT_DOOHICKEY : COUNT_ALL]],
+      }),
+    });
+  });
+}
+
+function getDashcardQueryParameters() {
+  return fetchMock.callHistory
+    .calls(DASHCARD_QUERY_PATH)
+    .map((call) => getQueryParameters(call.url));
+}
+
+const setupFilteredDashboard = (opts: Partial<SetupOpts> = {}) =>
+  setup({
+    dashboardTitle: DASHBOARD_TITLE,
+    accessType: "public",
+    numberOfTabs: 2,
+    ...opts,
+    dashboard: {
+      parameters: [TEXT_FILTER, UNUSED_FILTER],
+      ...opts.dashboard,
+    },
+    getTabDashcard: (tabId) => ({
+      card: createMockCard({ id: tabId, display: "scalar", can_write: false }),
+      parameter_mappings:
+        tabId === 1
+          ? [
+              {
+                parameter_id: TEXT_FILTER.id,
+                card_id: CARD_ID,
+                target: ["dimension", ["template-tag", "c"]],
+              },
+            ]
+          : [],
+    }),
+  });
+
+async function addTextFilterValue(value: string) {
+  await userEvent.click(screen.getByRole("button", { name: TEXT_FILTER.name }));
+  const popover = await screen.findByTestId("parameter-value-dropdown");
+  await userEvent.type(within(popover).getByRole("combobox"), `${value},`);
+  await userEvent.click(
+    within(popover).getByRole("button", { name: "Add filter" }),
+  );
+}
 
 // The public route registers request interceptors for the whole module, so it
 // gets its own spec file instead of sharing one with the static embed route.
@@ -62,6 +168,123 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
     expect(
       screen.getByRole("link", { name: "Powered by Metabase" }),
     ).toBeInTheDocument();
+  });
+
+  describe("filters", () => {
+    it("should run the dashcard query with a filter value from the dashboard filter", async () => {
+      setupFilteredCountEndpoint();
+      await setupFilteredDashboard();
+
+      expect(await screen.findByText(String(COUNT_ALL))).toBeInTheDocument();
+
+      await addTextFilterValue("Doohickey");
+
+      expect(
+        await screen.findByText(String(COUNT_DOOHICKEY)),
+      ).toBeInTheDocument();
+      expect(getDashcardQueryParameters().at(-1)).toEqual([
+        expect.objectContaining({
+          id: TEXT_FILTER.id,
+          type: "string/=",
+          value: ["Doohickey"],
+        }),
+      ]);
+    });
+
+    it("should respect 'disable auto-apply filters'", async () => {
+      setupFilteredCountEndpoint();
+      await setupFilteredDashboard({
+        dashboard: { auto_apply_filters: false },
+      });
+
+      expect(await screen.findByText(String(COUNT_ALL))).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("filter-apply-toast"),
+      ).not.toBeInTheDocument();
+      const queryCountBeforeApply = getDashcardQueryParameters().length;
+
+      await addTextFilterValue("Doohickey");
+
+      const toast = await screen.findByTestId("filter-apply-toast");
+      expect(
+        within(toast).getByRole("button", { name: "Apply" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(String(COUNT_ALL))).toBeInTheDocument();
+      expect(getDashcardQueryParameters()).toHaveLength(queryCountBeforeApply);
+
+      await userEvent.click(
+        within(toast).getByRole("button", { name: "Apply" }),
+      );
+
+      expect(
+        await screen.findByText(String(COUNT_DOOHICKEY)),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("filter-apply-toast"),
+      ).not.toBeInTheDocument();
+      expect(getDashcardQueryParameters().at(-1)).toEqual([
+        expect.objectContaining({
+          id: TEXT_FILTER.id,
+          type: "string/=",
+          value: ["Doohickey"],
+        }),
+      ]);
+    });
+
+    it("should only display filters mapped to cards on the selected tab", async () => {
+      await setupFilteredDashboard();
+
+      const parameters = screen.getByTestId(
+        "dashboard-parameters-widget-container",
+      );
+      expect(
+        within(parameters).getByText(TEXT_FILTER.name),
+      ).toBeInTheDocument();
+      expect(
+        within(parameters).queryByText(UNUSED_FILTER.name),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Tab 2" }));
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("dashboard-parameters-widget-container"),
+        ).not.toBeInTheDocument(),
+      );
+      const embedFrame = screen.getByTestId("embed-frame");
+      expect(
+        within(embedFrame).queryByText(TEXT_FILTER.name),
+      ).not.toBeInTheDocument();
+      expect(
+        within(embedFrame).queryByText(UNUSED_FILTER.name),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should keep a filter value starting with '0' from the URL (metabase#41483)", async () => {
+      setupFilteredCountEndpoint();
+      const { router } = await setupFilteredDashboard({
+        queryString: "?text=002",
+      });
+
+      expect(screen.getByTestId("parameter-widget")).toHaveTextContent("002");
+      await waitFor(() =>
+        expect(getDashcardQueryParameters().at(-1)).toEqual([
+          expect.objectContaining({
+            id: TEXT_FILTER.id,
+            type: "string/=",
+            value: ["002"],
+          }),
+        ]),
+      );
+      await waitFor(() =>
+        expect(new URLSearchParams(router?.location.search).get("tab")).toBe(
+          "1-tab-1",
+        ),
+      );
+      expect(new URLSearchParams(router?.location.search).get("text")).toBe(
+        "002",
+      );
+    });
   });
 
   describe("timeline events", () => {
