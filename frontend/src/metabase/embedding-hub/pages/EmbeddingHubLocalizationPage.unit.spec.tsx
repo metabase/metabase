@@ -63,6 +63,9 @@ describe("EmbeddingHubLocalizationPage", () => {
     expect(
       screen.queryByText("Translate embedded dashboards and questions"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("content-translation-configuration"),
+    ).not.toBeInTheDocument();
   });
 
   it("mounts the dictionary configuration when licensed", async () => {
@@ -70,6 +73,9 @@ describe("EmbeddingHubLocalizationPage", () => {
 
     expect(
       await screen.findByText("Translate embedded dashboards and questions"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("content-translation-configuration"),
     ).toBeInTheDocument();
 
     expect(
