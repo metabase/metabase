@@ -1,1 +1,1 @@
-export const RIGHT_SECTION_WIDTH = 38;
+export const INPUT_HEIGHT = 32;
