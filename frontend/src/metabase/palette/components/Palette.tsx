@@ -1,11 +1,12 @@
 import { KBarPortal, VisualState, useKBar } from "kbar";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useLocation, useParams } from "metabase/router";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
+import { useBlockShortcuts } from "metabase/ui/hooks/use-block-shortcuts";
 import { type SearchQuery, parseSearchQuery } from "metabase/utils/browser";
 import { isWithinIframe } from "metabase/utils/iframe";
 
@@ -35,11 +36,8 @@ export const Palette = () => {
 
   useCommandPaletteBasicActions({ location, params, isLoggedIn });
 
-  const { query } = useKBar();
   const disabled = isWithinIframe() || !isLoggedIn || isDisabledForPath;
-  useEffect(() => {
-    query.disable(disabled);
-  }, [disabled, query]);
+  useBlockShortcuts(disabled);
 
   return (
     <KBarPortal>
