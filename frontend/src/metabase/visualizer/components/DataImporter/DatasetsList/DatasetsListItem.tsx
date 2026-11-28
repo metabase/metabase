@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Box, Button, Ellipsified, Icon, Tooltip } from "metabase/ui";
 import type {
   Field,
+  SearchModel,
   VisualizationDisplay,
   VisualizerDataSource,
 } from "metabase-types/api";
@@ -10,6 +13,7 @@ import type {
 import S from "./DatasetsListItem.module.css";
 
 export type Item = VisualizerDataSource & {
+  model: SearchModel;
   notRecommended?: boolean;
   display: VisualizationDisplay | null;
   result_metadata?: Field[];
@@ -25,6 +29,7 @@ interface DatasetsListItemProps {
 
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { selected, item, onToggle, onRemove } = props;
+  const getIcon = useGetIcon();
 
   return (
     <Button
@@ -43,8 +48,11 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         }
       }}
       leftSection={
-        <Box>
-          <Icon c="inherit" name="table2" mr="xxs" />
+        <Box mr="xxs">
+          <EntityIcon
+            {...getIcon({ model: item.model, display: item.display })}
+            c="inherit"
+          />
           {item.notRecommended && (
             <Tooltip
               label={t`This dataset might not be fully compatible with your current selection.`}
