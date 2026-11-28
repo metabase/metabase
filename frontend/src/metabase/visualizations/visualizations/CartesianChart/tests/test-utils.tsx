@@ -112,13 +112,24 @@ export function createSeries({
 
 interface SetupChartOpts {
   rawSeries: SingleSeries[];
+  /** Dashboards and the query builder let users hide series in the legend */
+  canToggleSeriesVisibility?: boolean;
 }
 
-export async function setupChart({ rawSeries }: SetupChartOpts) {
+/** Renders the series as a dashboard card does, and returns the chart root */
+export async function setupChart({
+  rawSeries,
+  canToggleSeriesVisibility = false,
+}: SetupChartOpts) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
-  renderWithProviders(<Visualization isDashboard rawSeries={rawSeries} />, {
-    storeInitialState: { settings: mockSettings() },
-  });
+  renderWithProviders(
+    <Visualization
+      isDashboard
+      rawSeries={rawSeries}
+      canToggleSeriesVisibility={canToggleSeriesVisibility}
+    />,
+    { storeInitialState: { settings: mockSettings() } },
+  );
   // the chart draws its series once it is measured
   await waitFor(() =>
     expect(
