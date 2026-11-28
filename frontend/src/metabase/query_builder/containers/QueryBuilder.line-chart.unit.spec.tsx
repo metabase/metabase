@@ -54,11 +54,15 @@ import {
   createProductsRatingDatasetColumn,
   createProductsTitleDatasetColumn,
   createReviewsReviewerDatasetColumn,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { setup, waitForQueryToStart } from "./test-utils";
 
 registerVisualizations();
+
+// as in a real instance, the sample database runs a query again when it changes
+const SAMPLE_DATABASE = createSampleDatabase({ auto_run_queries: true });
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
 // the fill of the data point circles, which an out-of-range point does not get
@@ -252,6 +256,7 @@ async function setupSavedQuestion({
       dataset_query: query,
     }),
     dataset,
+    database: SAMPLE_DATABASE,
   });
 }
 
@@ -297,6 +302,7 @@ interface AdhocQuestionOpts {
 async function setupAdhocQuestion({ card, dataset }: AdhocQuestionOpts) {
   const result = await setup({
     card,
+    database: SAMPLE_DATABASE,
     initialRoute: `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
     waitForLoad: false,
   });
@@ -958,10 +964,18 @@ describe("QueryBuilder > line chart", () => {
           rowIndex + 1,
           new Date(Date.UTC(2026, 0, rowIndex + 2)).toISOString().slice(0, 10),
           ...valueColumns.map(
-            (_, columnIndex) => ((rowIndex * 7 + columnIndex * 13) % 100) / 100,
+            (_, columnIndex) =>
+              ((rowIndex * 7 + columnIndex * 13) % 100) /
+              // a series with a small range makes the chart split its y-axis
+              (columnIndex === 0 ? 10000 : 100),
           ),
         ]),
       ),
+      // every column is a series, so the y-axis split weighs all of them
+      settings: {
+        "graph.dimensions": ["DATE"],
+        "graph.metrics": valueColumns,
+      },
     });
 
     const chart = await getChart();
@@ -1492,18 +1506,59 @@ describe("QueryBuilder > line chart", () => {
     expect(within(tooltip).getByText("12,345.67%")).toBeInTheDocument();
   });
 
-  it("should not crash when the dimension column is gone from the results (metabase#59671)", async () => {
-    await setupSavedQuestion({
-      query: createStructuredQuery({
-        source: { type: "table", id: ORDERS_ID },
-        aggregations: [{ type: "operator", operator: "count", args: [] }],
-      }),
-      dataset: createDataset([COUNT_COLUMN], [[18760]]),
-      settings: {
+  it("should not crash when removing dimension aggregation column from the query (metabase#59671)", async () => {
+    const card = createMockCard({
+      id: 1,
+      name: "Line question",
+      display: "line",
+      visualization_settings: {
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["count"],
       },
+      dataset_query: createStructuredQuery(COUNT_BY_MONTH_STAGE),
     });
+    await setup({
+      card,
+      dataset: COUNT_BY_MONTH_DATASET,
+      database: SAMPLE_DATABASE,
+      initialRoute: `/question/${card.id}/notebook`,
+    });
+    // the query without the breakout returns only the count
+    fetchMock.modifyRoute("dataset-post", {
+      response: (call: CallLog) => {
+        const body = getRequestBody(call);
+        const isCountWithoutBreakout =
+          _.isObject(body) &&
+          _.isEqual(
+            removeUuids(Reflect.get(body, "stages")),
+            removeUuids(
+              Reflect.get(
+                createStructuredQuery({
+                  source: { type: "table", id: ORDERS_ID },
+                  aggregations: [
+                    { type: "operator", operator: "count", args: [] },
+                  ],
+                }),
+                "stages",
+              ),
+            ),
+          );
+        return isCountWithoutBreakout
+          ? createDataset([COUNT_COLUMN], [[18760]])
+          : EMPTY_DATASET;
+      },
+    });
+
+    const breakoutStep = await screen.findByTestId("breakout-step");
+    await userEvent.click(
+      within(
+        within(breakoutStep).getByText("Created At: Month"),
+      ).getByLabelText("close icon"),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(1),
+    );
 
     expect(
       await screen.findByTestId("visualization-placeholder"),
