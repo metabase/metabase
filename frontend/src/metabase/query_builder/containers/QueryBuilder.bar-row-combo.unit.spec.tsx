@@ -59,7 +59,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { setup, waitForQueryToStart } from "./test-utils";
+import { setup, waitForQueryToFinish, waitForQueryToStart } from "./test-utils";
 
 registerVisualizations();
 
@@ -767,7 +767,7 @@ describe("QueryBuilder > bar, row and combo charts", () => {
       }
       return EMPTY_DATASET;
     };
-    await setup({
+    const { store } = await setup({
       card,
       database: SAMPLE_DATABASE_WITH_AUTO_RUN,
       dataset: createDataset(
@@ -790,6 +790,7 @@ describe("QueryBuilder > bar, row and combo charts", () => {
     await userEvent.click(screen.getByRole("button", { name: /Summarize/ }));
 
     await userEvent.click(await screen.findByLabelText("Remove Count"));
+    await waitForQueryToFinish(store);
     // bars of only one series
     await waitFor(() =>
       expect(getPathsWithFill(chart, "#509EE3")).toHaveLength(0),
@@ -800,6 +801,7 @@ describe("QueryBuilder > bar, row and combo charts", () => {
     ).toBe(1);
 
     await addCountOfRows();
+    await waitForQueryToFinish(store);
     // bars of two series
     await waitFor(() =>
       expect(getPathsWithFill(chart, "#509EE3")).toHaveLength(4),
@@ -816,6 +818,7 @@ describe("QueryBuilder > bar, row and combo charts", () => {
     ).toHaveLength(1);
 
     await openVizSettings();
+    await openSettingsTab("Data");
     expect(
       within(getSettingsSidebar()).getByDisplayValue("Count"),
     ).toBeInTheDocument();
@@ -868,12 +871,13 @@ describe("QueryBuilder > bar, row and combo charts", () => {
             )
           : EMPTY_DATASET,
     });
-    await getChart();
+    // the first run has answered, so the chart or its error is on the page
     expect(
       screen.queryByText(
         "This chart type doesn't support more than 100 series of data.",
       ),
     ).not.toBeInTheDocument();
+    await getChart();
 
     await openVizSettings();
     await openSettingsTab("Data");
