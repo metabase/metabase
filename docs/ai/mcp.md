@@ -77,6 +77,8 @@ If you use Claude on the web or Claude Desktop, go to [Claude's connector direct
 
 If you can't connect, check with your Metabase admins that they haven't [turned off the MCP server](#turn-the-mcp-server-on-or-off). You'll authenticate against your Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
 
+If your Metabase is on a private network, Claude Desktop may not be able to reach it. Claude Desktop's connection error can suggest that you check the URL for typos, but if you copied the URL from Metabase, the URL is probably correct. Talk to your IT team about how to connect Claude Desktop to a private URL.
+
 ## MCP tools
 
 The MCP server gives your agent tools for searching, browsing, querying, and creating content in your Metabase. For the full list and the permission each one needs, see [MCP server tools](./mcp-tools.md).
