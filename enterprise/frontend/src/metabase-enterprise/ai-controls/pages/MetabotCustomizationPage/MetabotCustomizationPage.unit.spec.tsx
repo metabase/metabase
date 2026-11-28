@@ -107,6 +107,19 @@ describe("MetabotCustomizationPage", () => {
     expect(preview).toHaveAttribute("src", "data:image/png;base64,abc123");
   });
 
+  it("shows sad Metabot preview when illustrations are turned off", async () => {
+    setup({ showIllustrations: false });
+
+    const toggle = await screen.findByRole("switch", {
+      name: /Show Metabot illustrations/,
+    });
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(
+      screen.queryByAltText("Metabot illustration preview"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Metabot" })).toBeInTheDocument();
+  });
+
   it("saves the name once after the user stops typing", async () => {
     setup({ metabotName: "Metabot" });
 

@@ -4,6 +4,7 @@ import { type ChangeEvent, useRef, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
 import {
@@ -169,14 +170,18 @@ export function MetabotIconField() {
         </Text>
         <Group gap="xl" align="center" wrap="nowrap">
           <Flex align="center" gap="sm" flex="1" miw={0}>
-            <Box
-              component="img"
-              src={EmptyDashboardBot}
-              alt={t`Metabot illustration preview`}
-              w="3rem"
-              h="3rem"
-              flex="0 0 auto"
-            />
+            {showIllustrations ? (
+              <Box
+                component="img"
+                src={EmptyDashboardBot}
+                alt={t`Metabot illustration preview`}
+                w="3rem"
+                h="3rem"
+                flex="0 0 auto"
+              />
+            ) : (
+              <MetabotLogo variant="sad" width="3rem" height="3rem" />
+            )}
             <Text fz="md" c="text-secondary" flex="1">
               {t`Show Metabot illustrations in the chat sidebar`}
             </Text>
