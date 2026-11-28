@@ -12,6 +12,8 @@ interface SetupOpts {
   initialRoute?: string;
   isPasswordLoginEnabled?: boolean;
   isGoogleAuthEnabled?: boolean;
+  googleAuthClientId?: string | null;
+  isLdapEnabled?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }
@@ -20,6 +22,8 @@ export const setup = ({
   initialRoute = "/auth/login",
   isPasswordLoginEnabled = true,
   isGoogleAuthEnabled = false,
+  googleAuthClientId = null,
+  isLdapEnabled = false,
   enterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
@@ -27,6 +31,8 @@ export const setup = ({
     settings: mockSettings({
       "enable-password-login": isPasswordLoginEnabled,
       "google-auth-enabled": isGoogleAuthEnabled,
+      "google-auth-client-id": googleAuthClientId,
+      "ldap-enabled": isLdapEnabled,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });

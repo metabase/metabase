@@ -7,7 +7,13 @@ import {
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -23,6 +29,7 @@ const GROUPS = [
   createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
   createMockGroup({ id: 4, name: "bar", magic_group_type: null }),
   createMockGroup({ id: 5, name: "flamingos", magic_group_type: null }),
+  createMockGroup({ id: 6, name: "readonly", magic_group_type: null }),
 ];
 
 const DEFAULT_USER_FILTER =
@@ -86,10 +93,22 @@ const setup = async ({
       { name: "update-settings" },
     );
   }
-  fetchMock.get("path:/api/permissions/group", GROUPS);
+  // a deleted group leaves the list, so the refetch after a deletion no longer offers it
+  let groups = GROUPS;
+  fetchMock.get("path:/api/permissions/group", () => groups);
   fetchMock.put("express:/api/permissions/membership/:id/clear", 204);
-  fetchMock.delete("express:/api/permissions/group/:id", 204);
-  fetchMock.put("path:/api/ldap/settings", { status: 204 });
+  fetchMock.delete("express:/api/permissions/group/:id", ({ url }) => {
+    const groupId = Number(url.split("/").pop());
+    groups = groups.filter(({ id }) => id !== groupId);
+    return 204;
+  });
+  fetchMock.put(
+    "path:/api/ldap/settings",
+    { status: 204 },
+    {
+      name: "update-ldap-settings",
+    },
+  );
 
   renderWithProviders(<SettingsLdapForm />, {
     withUndos: true,
@@ -125,15 +144,36 @@ const clickWhenEnabled = async (element: HTMLElement) => {
   await userEvent.click(element);
 };
 
-const addMapping = async (name: string, groupName: string) => {
+const addMapping = async (name: string, ...groupNames: string[]) => {
   await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
   await userEvent.type(
     screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER),
     name,
   );
   await userEvent.click(screen.getByPlaceholderText("Pick Metabase group..."));
-  await userEvent.click(await screen.findByRole("option", { name: groupName }));
+  for (const groupName of groupNames) {
+    await userEvent.click(
+      await screen.findByRole("option", { name: groupName }),
+    );
+  }
   await userEvent.click(screen.getByRole("button", { name: "Add mapping" }));
+};
+
+const deleteMapping = async (
+  name: string,
+  cascadeLabel: RegExp,
+  submitLabel: string,
+) => {
+  await clickWhenEnabled(
+    within(findMappingRow(name)!).getByRole("button", {
+      name: "Delete mapping",
+    }),
+  );
+  const dialog = within(await screen.findByRole("dialog"));
+  expect(dialog.getByText("Remove this group mapping?")).toBeInTheDocument();
+  await userEvent.click(dialog.getByRole("radio", { name: cascadeLabel }));
+  await userEvent.click(dialog.getByRole("button", { name: submitLabel }));
+  await waitFor(() => expect(findMappingRow(name)).toBeUndefined());
 };
 
 describe("SettingsLdapForm", () => {
@@ -348,6 +388,88 @@ describe("SettingsLdapForm", () => {
         expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
       },
     );
+
+    it("rejects a port that is not a whole number, keeps the typed fields when the connection check fails, and saves a valid port (metabase#13313, metabase#16173, metabase#16226)", async () => {
+      await setup();
+      // the connection check only reaches the server on the right port, the way the backend reports a wrong one
+      fetchMock.removeRoute("update-ldap-settings");
+      fetchMock.put(
+        "path:/api/ldap/settings",
+        ({ options }) =>
+          JSON.parse(String(options.body))["ldap-port"] === 389
+            ? { status: 204 }
+            : {
+                status: 500,
+                body: {
+                  errors: {
+                    "ldap-host": "Wrong host or port",
+                    "ldap-port": "Wrong host or port",
+                  },
+                },
+              },
+        { name: "update-ldap-settings" },
+      );
+      const port = screen.getByLabelText(/LDAP port/);
+      const typePort = async (value: string) => {
+        await userEvent.clear(port);
+        await userEvent.type(port, value);
+        await userEvent.tab();
+      };
+      await userEvent.type(screen.getByLabelText(/LDAP host/), "localhost");
+      await userEvent.type(
+        screen.getByLabelText(/Username or DN/),
+        "cn=admin,dc=example,dc=org",
+      );
+      await userEvent.type(screen.getByLabelText(/Password/), "adminpass");
+      await userEvent.type(
+        screen.getByLabelText(/User search base/),
+        "ou=users,dc=example,dc=org",
+      );
+
+      await typePort("asd");
+      expect(screen.queryByDisplayValue("asd")).not.toBeInTheDocument();
+      expect(port).toHaveValue(null);
+
+      await typePort("21.3");
+      expect(
+        await screen.findByText(
+          "Port must be a whole number between 1 and 65535",
+        ),
+      ).toBeInTheDocument();
+
+      await typePort("1");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save and enable" }),
+      );
+      expect(await screen.findAllByText("Wrong host or port")).toHaveLength(2);
+      expect(screen.getByLabelText(/LDAP host/)).toHaveValue("localhost");
+      expect(screen.getByLabelText(/User search base/)).toHaveValue(
+        "ou=users,dc=example,dc=org",
+      );
+      expect(port).toHaveValue(1);
+
+      await typePort("389 ");
+      expect(
+        screen.queryByText("Port must be a whole number between 1 and 65535"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: /Save and enable|Failed/ }),
+      );
+      expect(
+        await screen.findByRole("button", { name: "Success" }),
+      ).toBeInTheDocument();
+
+      const puts = await findRequests("PUT");
+      expect(puts.map(({ body }) => body["ldap-port"])).toEqual([1, 389]);
+      expect(puts[1].body).toMatchObject({
+        "ldap-host": "localhost",
+        "ldap-bind-dn": "cn=admin,dc=example,dc=org",
+        "ldap-password": "adminpass",
+        "ldap-user-base": "ou=users,dc=example,dc=org",
+        "ldap-enabled": true,
+      });
+      await act(() => fetchMock.callHistory.flush(true));
+    });
 
     it("stays clean after typing the saved port back", async () => {
       await setup({ settingValues: { "ldap-port": 636 } });
@@ -771,6 +893,115 @@ describe("SettingsLdapForm", () => {
         ),
       ).toBe(false);
       await waitFor(() => expect(findMappingRow(DEVS_DN)).toBeUndefined());
+    });
+
+    it("deletes or clears the groups of mappings, drops deleted groups from the other mappings and never touches Administrators", async () => {
+      await setupConfigured({ settingValues: { "ldap-group-sync": true } });
+
+      await addMapping("cn=People1", "Administrators", "foo", "bar");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People1")).toHaveTextContent(
+          "Administrators, foo, bar",
+        ),
+      );
+      await addMapping("cn=People2", "foo", "flamingos");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People2")).toHaveTextContent(
+          "foo, flamingos",
+        ),
+      );
+      await addMapping("cn=People3", "flamingos", "readonly");
+      await waitFor(() =>
+        expect(findMappingRow("cn=People3")).toHaveTextContent(
+          "flamingos, readonly",
+        ),
+      );
+
+      await deleteMapping(
+        "cn=People2",
+        /delete the groups/i,
+        "Remove mapping and delete groups",
+      );
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
+      const deletes = await findRequests("DELETE");
+      expect(deletes.map(({ url }) => new URL(url).pathname)).toEqual([
+        "/api/permissions/group/3",
+        "/api/permissions/group/5",
+      ]);
+      await waitFor(() =>
+        expect(findMappingRow("cn=People1")).toHaveTextContent(
+          "Administrators, bar",
+        ),
+      );
+      expect(findMappingRow("cn=People3")).toHaveTextContent("readonly");
+      expect(findMappingRow("cn=People3")).not.toHaveTextContent("flamingos");
+
+      await clickWhenEnabled(screen.getByRole("button", { name: "New" }));
+      await userEvent.click(
+        screen.getByPlaceholderText("Pick Metabase group..."),
+      );
+      // the list refetches after the deletion, so the deleted groups leave it once that lands
+      await waitFor(() => {
+        const listbox = screen.getByRole("listbox");
+        expect(
+          within(listbox).queryByRole("option", { name: "foo" }),
+        ).not.toBeInTheDocument();
+        expect(
+          within(listbox).queryByRole("option", { name: "flamingos" }),
+        ).not.toBeInTheDocument();
+      });
+      expect(
+        within(screen.getByRole("listbox")).getByRole("option", {
+          name: "readonly",
+        }),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await deleteMapping(
+        "cn=People3",
+        /remove all members/i,
+        "Remove mapping and members",
+      );
+      await deleteMapping(
+        "cn=People1",
+        /remove all members/i,
+        "Remove mapping and members",
+      );
+      await waitFor(async () =>
+        expect(
+          (await findRequests("PUT")).filter(({ url }) =>
+            url.includes("/clear"),
+          ),
+        ).toHaveLength(2),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+
+      const puts = await findRequests("PUT");
+      expect(
+        puts
+          .filter(({ url }) => url.includes("/clear"))
+          .map(({ url }) => new URL(url).pathname),
+      ).toEqual([
+        "/api/permissions/membership/6/clear",
+        "/api/permissions/membership/4/clear",
+      ]);
+      expect(
+        puts
+          .filter(({ url }) => new URL(url).pathname === "/api/setting")
+          .map(({ body }) => body["ldap-group-mappings"]),
+      ).toEqual([
+        { "cn=People1": [2, 3, 4] },
+        { "cn=People1": [2, 3, 4], "cn=People2": [3, 5] },
+        { "cn=People1": [2, 3, 4], "cn=People2": [3, 5], "cn=People3": [5, 6] },
+        { "cn=People1": [2, 3, 4], "cn=People3": [5, 6] },
+        { "cn=People1": [2, 4], "cn=People3": [6] },
+        { "cn=People1": [2, 4] },
+        {},
+      ]);
+      expect(groupMappingSwitch()).toBeChecked();
+      expect(screen.getByText("No mappings yet")).toBeInTheDocument();
+      await act(() => fetchMock.callHistory.flush(true));
     });
   });
 });

@@ -9,7 +9,28 @@ import { screen, waitFor, within } from "__support__/ui";
 import type { AuthSettingsPageTab } from "metabase/plugins";
 import type { EnterpriseSettings } from "metabase-types/api";
 
-import { setup as OSSSetup } from "./AuthenticationSettingsPage.setup";
+import {
+  type AuthCardCase,
+  setup as OSSSetup,
+  pauseResumeAndDeactivate,
+  setupStatefulAuthCards,
+} from "./AuthenticationSettingsPage.setup";
+
+const SAML_CARD: AuthCardCase = {
+  name: "SAML",
+  cardTestId: "saml-setting",
+  enabledKey: "saml-enabled",
+  configuredKey: "saml-configured",
+  requiredKey: "saml-identity-provider-uri",
+};
+
+const JWT_CARD: AuthCardCase = {
+  name: "JWT",
+  cardTestId: "jwt-setting",
+  enabledKey: "jwt-enabled",
+  configuredKey: "jwt-configured",
+  requiredKey: "jwt-identity-provider-uri",
+};
 
 const setup = async (
   extraSettings?: Partial<EnterpriseSettings>,
@@ -76,4 +97,29 @@ describe("AuthenticationSettingsPage (EE)", () => {
     expect(await screen.findByText("Sign in with Google")).toBeInTheDocument();
     expect(await screen.findByText("LDAP")).toBeInTheDocument();
   });
+
+  it.each([
+    { card: SAML_CARD, otherCard: JWT_CARD },
+    { card: JWT_CARD, otherCard: SAML_CARD },
+  ])(
+    "pauses, resumes and deactivates $card.name and leaves $otherCard.name alone",
+    async ({ card, otherCard }) => {
+      const { settings } = await setup({
+        "saml-enabled": true,
+        "saml-configured": true,
+        "saml-identity-provider-uri": "https://idp.example.test",
+        "jwt-enabled": true,
+        "jwt-configured": true,
+        "jwt-identity-provider-uri": "https://jwt.example.test",
+      });
+      setupStatefulAuthCards(settings, [SAML_CARD, JWT_CARD]);
+
+      const deactivation = await pauseResumeAndDeactivate(card, otherCard);
+
+      expect(deactivation).toMatchObject({
+        [card.enabledKey]: false,
+        [card.requiredKey]: null,
+      });
+    },
+  );
 });
