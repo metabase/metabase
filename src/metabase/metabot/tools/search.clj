@@ -333,6 +333,11 @@
             (= profile-id "nlq"))
     (:collection_id metabot)))
 
+(def ^:private max-queries-per-list
+  "Cap on keyword queries, and on semantic queries, per search. Each runs as its own search of the full ranked pool,
+  concurrently."
+  10)
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
   Abstracted from the API endpoint logic.
@@ -347,7 +352,8 @@
   Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
   fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
-  `:total` metadata, and the queries whose search failed as `:failed-queries`."
+  `:total` metadata, and the queries whose search failed as `:failed-queries`.
+  Throws a 400 when `term-queries` or `semantic-queries` holds more than [[max-queries-per-list]] distinct queries."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot profile-id weights
            created-by archived collection-id offset filters-only? partial-results?]}]
@@ -365,7 +371,18 @@
               :collection-id        collection-id
               :offset               offset
               :filters-only?        filters-only?})
-  (let [search-models   (if (seq entity-types)
+  ;; A repeated query would add its ranking to the fusion twice, so each list is searched without repeats.
+  (let [terms           (vec (distinct term-queries))
+        phrases         (vec (distinct semantic-queries))
+        ;; The tool schema caps the lists too; this also covers callers that skip it, such as the Agent API.
+        _               (when (some #(> (count %) max-queries-per-list) [terms phrases])
+                          (throw (ex-info (format (str "Pass at most %d keyword queries and %d semantic queries. "
+                                                       "Combine related queries or drop some.")
+                                                  max-queries-per-list max-queries-per-list)
+                                          {:status-code      400
+                                           :keyword-queries  (count terms)
+                                           :semantic-queries (count phrases)})))
+        search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
@@ -418,7 +435,8 @@
                             ranked))
         ranked-fn*      (fn [search-engine queries]
                           (let [searches (search.engine/disjunction search-engine queries)
-                                ;; A disjunction either keeps the queries apart or folds them all into one search.
+                                ;; An engine may fold the queries into one search; a failure is then charged to
+                                ;; every query that search held.
                                 covered  (if (= 1 (count searches)) [queries] (map vector queries))]
                             (mapv #(assoc %1 :queries %2) (run-searches ranked-fn search-engine searches) covered)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
@@ -429,20 +447,20 @@
         engine-outcomes (cond
                           ;; A pure listing over the filters: one search with no search string.
                           (and filters-only?
-                               (empty? term-queries)
-                               (empty? semantic-queries))
+                               (empty? terms)
+                               (empty? phrases))
                           [[{:ranked (ranked-fn nil nil)}]]
 
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           semantic-engine
                           (into []
                                 (keep (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries))))
-                                {semantic-engine semantic-queries
-                                 fallback-engine term-queries})
+                                {semantic-engine phrases
+                                 fallback-engine terms})
 
                           ;; Search for all the terms on equal footing, using the default engine.
                           :else
-                          [(ranked-fn* nil (distinct (concat term-queries semantic-queries)))])
+                          [(ranked-fn* nil (distinct (concat terms phrases)))])
         outcomes        (apply concat engine-outcomes)
         failed          (filter :error outcomes)
         _               (when (seq failed)
@@ -748,11 +766,13 @@
                     :results (mapv search-result->item results)})]}))
 
 (def ^:private semantic-queries-schema
-  [:sequential {:error/message "must be an array of strings"}
+  [:sequential {:max           max-queries-per-list
+                :error/message (str "must be an array of at most " max-queries-per-list " strings")}
    [:string {:description semantic-query-desc}]])
 
 (def ^:private keyword-queries-schema
-  [:sequential {:error/message "must be an array of strings"}
+  [:sequential {:max           max-queries-per-list
+                :error/message (str "must be an array of at most " max-queries-per-list " strings")}
    [:string {:description keyword-query-desc}]])
 
 (defn- entity-types-schema

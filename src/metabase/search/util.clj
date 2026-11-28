@@ -178,7 +178,9 @@
    (when input
      (let [trimmed        (str/trim input)
            complete?      (not (str/ends-with? trimmed "\""))
-           ;; TODO also only complete if the :context is appropriate
+           ;; The prefix serves search as you type. metabase#88181 measured other prefix rules for Metabot; see it
+           ;; before changing this.
+           ;; TODO: decide per context whether to complete at all.
            maybe-complete (if complete? complete-last-word identity)]
        (->> (str/replace trimmed "\\" "\\\\")
             search-clauses

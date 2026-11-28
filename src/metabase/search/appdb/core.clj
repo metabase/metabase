@@ -46,13 +46,6 @@
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (supported-db? (mdb/db-type)))
 
-(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
-  (when (seq terms)
-    (if (or (#{:h2 :mysql} (mdb/db-type))
-            (= 1 (count terms)))
-      terms
-      [(str/join " OR " (map #(str "(" % ")") terms))])))
-
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 

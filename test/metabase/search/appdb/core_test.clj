@@ -19,6 +19,14 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+(deftest ^:parallel keyword-queries-run-as-separate-searches-test
+  (testing "appdb keeps Metabot's keyword queries apart, so each is searched, scored and prefixed on its own"
+    (is (= ["orders" "monthly revenue"]
+           (search.engine/disjunction :search.engine/appdb ["orders" "monthly revenue"]))))
+  (testing "appdb has no disjunction of its own, whatever the app DB"
+    (is (= (get-method search.engine/disjunction :default)
+           (get-method search.engine/disjunction :search.engine/appdb)))))
+
 (deftest locale-change-reindexes-after-commit-test
   (when (contains? #{:mysql :postgres} (mdb/db-type))
     (let [reindex-connectable (promise)]

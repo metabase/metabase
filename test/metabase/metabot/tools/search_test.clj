@@ -26,6 +26,7 @@
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- invoke-search
@@ -45,16 +46,15 @@
   `string->ranked`, and `search-results` paginating whatever ranking it is handed. A search string that
   `string->ranked` has no entry for throws, as a failing query would."
   [engines string->ranked thunk]
-  (with-redefs [perms/impersonated-user?     (constantly false)
-                perms/sandboxed-user?        (constantly false)
-                search.engine/active-engines (constantly engines)
-                search.engine/disjunction    (fn [_ terms] terms)
-                search-core/ranked-results   (fn [{:keys [search-string]}]
-                                               (or (string->ranked search-string)
-                                                   (throw (ex-info "Search index unavailable" {}))))
-                search-core/search-results   (fn [{:keys [limit-int]} _ ranked]
-                                               {:data  (vec (cond->> ranked limit-int (take limit-int)))
-                                                :total (count ranked)})]
+  (mt/with-dynamic-fn-redefs [perms/impersonated-user?     (constantly false)
+                              perms/sandboxed-user?        (constantly false)
+                              search.engine/active-engines (constantly engines)
+                              search-core/ranked-results   (fn [{:keys [search-string]}]
+                                                             (or (string->ranked search-string)
+                                                                 (throw (ex-info "Search index unavailable" {}))))
+                              search-core/search-results   (fn [{:keys [limit-int]} _ ranked]
+                                                             {:data  (vec (cond->> ranked limit-int (take limit-int)))
+                                                              :total (count ranked)})]
     (thunk)))
 
 (defn- result-notes
@@ -373,22 +373,21 @@
             per-query counts — the real reciprocal-rank-fusion feeds search-results, so an item
             appearing in both queries is counted once"
     (mt/with-test-user :rasta
-      (with-redefs [perms/impersonated-user? (fn [] false)
-                    perms/sandboxed-user? (fn [] false)
-                    ;; default engine only, so both queries run through the same ranked-fn* branch
-                    search.engine/active-engines (constantly [:search.engine/appdb])
-                    search.engine/disjunction (fn [_ terms] terms)
-                    ;; two queries, overlapping on item 1 (in both) — union is {1 2 3}, sum is 4
-                    search-core/ranked-results (fn [context]
-                                                 (if (= (:search-string context) "a")
-                                                   [{:id 1 :model "card" :name "Shared"}
-                                                    {:id 2 :model "card" :name "OnlyA"}]
-                                                   [{:id 1 :model "card" :name "Shared"}
-                                                    {:id 3 :model "card" :name "OnlyB"}]))
-                    ;; the real search-results is app-db-bound; stand in with a faithful passthrough
-                    ;; that reports total over the (already fused + deduped) ranking it is handed.
-                    search-core/search-results (fn [_ctx _model-set ranked]
-                                                 {:data (vec ranked) :total (count ranked)})]
+      (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
+                                  perms/sandboxed-user? (fn [] false)
+                                  ;; default engine only, so both queries run through the same ranked-fn* branch
+                                  search.engine/active-engines (constantly [:search.engine/appdb])
+                                  ;; two queries, overlapping on item 1 (in both) — union is {1 2 3}, sum is 4
+                                  search-core/ranked-results (fn [context]
+                                                               (if (= (:search-string context) "a")
+                                                                 [{:id 1 :model "card" :name "Shared"}
+                                                                  {:id 2 :model "card" :name "OnlyA"}]
+                                                                 [{:id 1 :model "card" :name "Shared"}
+                                                                  {:id 3 :model "card" :name "OnlyB"}]))
+                                  ;; the real search-results is app-db-bound; stand in with a faithful passthrough
+                                  ;; that reports total over the (already fused + deduped) ranking it is handed.
+                                  search-core/search-results (fn [_ctx _model-set ranked]
+                                                               {:data (vec ranked) :total (count ranked)})]
         (let [results (search/search {:term-queries ["a" "b"] :entity-types ["question"] :limit 10})]
           ;; three distinct items survive fusion; total counts them once, not 2+2=4
           (is (= 3 (:total (meta results))))
@@ -419,7 +418,7 @@
                                      (search* {:term-queries     ["broken" "also broken"]
                                                :semantic-queries []
                                                :partial-results? true})))))))))
-    (testing "a failed search that folded several queries into one lists every one of them"
+    (testing "a failed search that an engine folded from several queries lists every one of them"
       (do-with-search-stub!
        [:search.engine/semantic :search.engine/appdb]
        {"orders" [{:id 1 :model "card" :name "Orders"}]}
@@ -433,6 +432,35 @@
                                         :term-queries     ["a" "b"]
                                         :entity-types     ["question"]
                                         :partial-results? true}))))))))))
+
+(deftest repeated-queries-are-searched-once-test
+  (testing "a repeated keyword or semantic query is searched once, so its ranking enters the fusion once"
+    (let [searched (atom [])]
+      (mt/with-test-user :rasta
+        (do-with-search-stub!
+         [:search.engine/semantic :search.engine/appdb]
+         {}
+         (fn []
+           (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [{:keys [search-string]}]
+                                                                    (swap! searched conj search-string)
+                                                                    [{:id 1 :model "card" :name "Orders"}])]
+             (search/search {:term-queries     ["orders" "orders"]
+                             :semantic-queries ["monthly sales" "monthly sales"]
+                             :entity-types     ["question"]})
+             (is (= #{"orders" "monthly sales"} (set @searched)))
+             (is (= 2 (count @searched))))))))))
+
+(deftest ^:parallel queries-are-capped-test
+  (testing "a search takes at most ten keyword and ten semantic queries, since each runs as its own search"
+    (doseq [schema [@#'search/keyword-queries-schema @#'search/semantic-queries-schema]]
+      (is (mr/validate schema (repeat 10 "orders")))
+      (is (not (mr/validate schema (repeat 11 "orders"))))))
+  (testing "a caller that skips the tool schema, such as the Agent API, is refused too"
+    (let [eleven (map #(str "query " %) (range 11))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10 keyword queries"
+                            (search/search {:term-queries eleven})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"at most 10 keyword queries and 10 semantic queries"
+                            (search/search {:semantic-queries eleven}))))))
 
 (deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
@@ -797,9 +825,9 @@
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
     (doseq [[field value message]
             [[:keyword_queries  "metabot byok"
-              "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."]
+              "Invalid tool arguments: `keyword_queries` must be an array of at most 10 strings; received a string."]
              [:semantic_queries "monthly revenue"
-              "Invalid tool arguments: `semantic_queries` must be an array of strings; received a string."]
+              "Invalid tool arguments: `semantic_queries` must be an array of at most 10 strings; received a string."]
              [:entity_types     "table"
               "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
       (testing (str "a scalar " field)
@@ -821,7 +849,7 @@
                                    [#'metabot.tools/sql-search-tool {:database_id 1}]
                                    [#'metabot.tools/nlq-search-tool {}]]]
       (testing (str tool-var)
-        (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
+        (is (= "Invalid tool arguments: `keyword_queries` must be an array of at most 10 strings; received a string."
                (test-util/tool-boundary-error "search" tool-var
                                               (assoc extra-args :keyword_queries "metabot byok"))))))))
 
