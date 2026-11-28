@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.sparksql-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sparksql-test]}}}}}}
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -190,3 +191,17 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest describe-table-skips-partition-section-test
+  (testing "partition columns listed again after `# Partition Information` are not described twice (#67965)"
+    (with-redefs [sql-jdbc.execute/do-with-connection-with-options (fn [_driver _db _opts f] (f nil))
+                  jdbc/query                                       (constantly
+                                                                    [{:col_name "id" :data_type "int"}
+                                                                     {:col_name "dt" :data_type "string"}
+                                                                     {:col_name "# Partition Information" :data_type ""}
+                                                                     {:col_name "# col_name" :data_type "data_type"}
+                                                                     {:col_name "dt" :data_type "string"}])]
+      (is (= #{{:name "id" :database-position 0}
+               {:name "dt" :database-position 1}}
+             (set (map #(select-keys % [:name :database-position])
+                       (:fields (driver/describe-table :sparksql {} {:name "t" :schema "s"})))))))))

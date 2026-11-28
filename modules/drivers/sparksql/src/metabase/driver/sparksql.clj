@@ -149,6 +149,11 @@
                       (complement #(str/starts-with? % "#")))
           [col_name data_type]))
 
+(defn- describe-table-section-header?
+  "Whether a describe row starts a section, such as `# Partition Information`, that repeats or follows the columns."
+  [{:keys [col_name]}]
+  (some-> col_name (str/starts-with? "#")))
+
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql
   [driver database {table-name :name, schema :schema}]
@@ -166,7 +171,7 @@
                                                                        (dash-to-underscore schema)
                                                                        (dash-to-underscore table-name)))])]
         (set
-         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
+         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed (take-while (complement describe-table-section-header?) results))
                :when (valid-describe-table-row? result)]
            {:name              col-name
             :database-type     data-type
