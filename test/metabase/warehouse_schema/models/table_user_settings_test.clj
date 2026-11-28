@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -133,11 +134,11 @@
                  :visibility_type_set true :data_layer_set true}
                 (t2/select-one :model/TableUserSettings :table_id table-id))))
       (testing "a change the Table refuses rolls back its settings too"
-        (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative})
+        (table-user-settings/upsert-table-user-settings! table {:data_authority :computed})
         (is (thrown-with-msg? Exception #"Cannot set data_authority back to unconfigured"
                               (table-user-settings/upsert-table-user-settings! table {:data_authority :unconfigured})))
-        (is (= :authoritative (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)))
-        (is (= :authoritative (:data_authority (user-table table-id))))))))
+        (is (= :computed (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)))
+        (is (= :computed (:data_authority (user-table table-id))))))))
 
 (deftest bulk-upsert-rolls-back-settings-test
   (testing "a bulk change one Table refuses leaves the settings of every Table as they were"
@@ -162,11 +163,11 @@
 (deftest deleting-settings-keeps-table-row-test
   (testing "deleting the settings leaves the Table as it is for sync to take over"
     (mt/with-temp [:model/Table {table-id :id :as table} {:name "sync_name" :data_authority :unconfigured}]
-      (table-user-settings/upsert-table-user-settings! table {:data_authority :authoritative
+      (table-user-settings/upsert-table-user-settings! table {:data_authority :computed
                                                               :display_name   "User Name"
                                                               :description    "user description"})
       (table-user-settings/delete-table-user-settings! (table-user-settings/ids-of-tables [table-id]))
-      (is (=? {:data_authority :authoritative :description "user description" :display_name "User Name"}
+      (is (=? {:data_authority :computed :description "user description" :display_name "User Name"}
               (user-table table-id)))
       (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
@@ -190,3 +191,14 @@
       (is (=? [{:display_name "Other Writer" :description "User Description" :description_set true}]
               (t2/select :model/TableUserSettings :table_id table-id)))
       (is (= "User Description" (:description (user-table table-id)))))))
+
+(deftest retired-authoritative-data-authority-serdes-import-test
+  (testing "Importing the retired authoritative data_authority in settings keeps the Table's own value (BOT-2735)"
+    (mt/with-temp [:model/Table {table-id :id :as table} {:is_upload true :data_authority :ingested}]
+      (table-user-settings/upsert-table-user-settings! table {:data_authority :ingested})
+      (let [settings  (t2/select-one :model/TableUserSettings :table_id table-id)
+            extracted (first (serialization/export-batch :model/TableUserSettings [settings]))]
+        (serialization/load :model/TableUserSettings [(assoc extracted :data_authority "authoritative")])
+        (is (= {:settings nil, :table :ingested}
+               {:settings (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)
+                :table    (t2/select-one-fn :data_authority :model/Table :id table-id)}))))))

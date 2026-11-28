@@ -117,27 +117,27 @@
            :root_collection_type (when library? (root-collection-type-of coll roots collection_id))}])))
 
 (defn- table-curation-signals
-  "`[id signal-map]` pairs for tables, whose curation comes from is_published, data_layer, and data_authority. An
-  inactive or hidden table, or one on a routing destination or the audit database, gets no pair: search never
-  returns it, so it isn't curated.
-  root_collection_type is intentionally omitted: the table search spec joins the collection only for
+  "The `[id signal-map]` pairs for tables, whose curation comes from is_published and data_layer.
+  An inactive or hidden table, or one on a routing destination or the audit database, gets no pair: search
+  never returns it, so it isn't curated.
+  The pairs intentionally omit root_collection_type: the table search spec joins the collection only for
   published tables, and for a published table is_published already decides curation, so the root type never
-  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id; is_published is
-  coerced to a boolean here, so a Table without settings counts as unpublished."
+  changes a table's verdict.
+  Omitting it avoids re-deriving from a possibly-stale collection_id.
+  The is_published signal is coerced to a boolean here, so a Table without settings counts as unpublished."
   [ids]
   (let [{:keys [library?]} (feature-gates)
         rows          (metabot.db/table-curation-rows ids)
         destinations  (let [db-ids (into #{} (keep :db_id) rows)]
                         (if (seq db-ids) (metabot.db/destination-database-ids db-ids) #{}))]
-    (for [{:keys [id db_id active visibility_type is_published data_layer data_authority]} rows
+    (for [{:keys [id db_id active visibility_type is_published data_layer]} rows
           :when (and active
                      (nil? visibility_type)
                      (not (contains? destinations db_id))
                      (not= db_id audit-app/audit-db-id))]
-      [id {:model          "table"
-           :is_published   (boolean (and library? is_published))
-           :data_layer     data_layer
-           :data_authority data_authority}])))
+      [id {:model        "table"
+           :is_published (boolean (and library? is_published))
+           :data_layer   data_layer}])))
 
 (defn- curation-signals
   "`[id signal-map]` pairs for the given search-model string and ids, read from source-of-truth tables."

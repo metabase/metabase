@@ -94,7 +94,6 @@
              :verified               true
              :official               true
              :curated                true
-             :data_authority         "x"
              :data_layer             "x"
              :model_id               1
              :table_id               1

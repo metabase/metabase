@@ -200,11 +200,17 @@
           (is (= [:= [:inline 0] [:inline 1]]
                  (:where (#'search.in-place.filter/build-optional-filter-query :curated model {} true)))))))))
 
-(deftest in-place-curated-table-filter-counts-authoritative-test
-  (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
-            mirroring collections.curation/curated? (BOT-1570)"
-    (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
-      (is (some #{"authoritative"} (tree-seq coll? seq where))))))
+(deftest in-place-curated-table-filter-test
+  (testing "the in-place curated table filter counts only tables published at the final layer (BOT-2735)"
+    (mt/with-premium-features #{:library}
+      (is (= [:and
+              [:= :table_settings.is_published true]
+              [:= :table.data_layer "final"]]
+             (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))))))
+  (testing "and matches nothing without the :library feature"
+    (mt/with-premium-features #{}
+      (is (= [:= [:inline 0] [:inline 1]]
+             (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true)))))))
 
 (defn- table-measure-definition
   "A full query on `table-id` with a count aggregation."

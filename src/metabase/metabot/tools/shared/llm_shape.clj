@@ -925,7 +925,7 @@
    Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
    `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
    identifies a card source. `source_unavailable` means that no usable source can be offered."
-  [{:keys [id type name description verified official curated can_write data_authority data_layer collection
+  [{:keys [id type name description verified official curated can_write data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
   (let [fqn (cond
@@ -958,8 +958,6 @@
       :search_has_can_write (some? can_write)
       :search_can_write can_write
       :search_data_layer (some-> data_layer clojure.core/name)
-      :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
-                               (clojure.core/name data_authority))
       :search_description description
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))

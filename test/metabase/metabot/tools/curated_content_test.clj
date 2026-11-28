@@ -152,8 +152,9 @@
                    :model/Table {published :id} {:db_id db-id :name "published_orders" :schema "curated_schema"
                                                  :active true :data_layer :final}
                    :model/TableUserSettings _ {:table_id published :is_published true}
-                   :model/Table {authoritative :id} {:db_id db-id :name "authoritative_people" :schema "curated_schema"
-                                                     :active true :data_authority :authoritative}
+                   :model/Table {people :id} {:db_id db-id :name "published_people" :schema "curated_schema"
+                                              :active true :data_layer :final}
+                   :model/TableUserSettings _ {:table_id people :is_published true}
                    :model/Table {raw :id} {:db_id db-id :name "raw_products" :schema "raw_schema" :active true}
                    :model/Metabot curated-metabot {:name "curated metabot" :use_verified_content true}
                    :model/Metabot open-metabot {:name "open metabot" :use_verified_content false}]
@@ -168,9 +169,9 @@
           (is (=? [{:content {:structured-output map?}} {:content {:structured-output map?}}]
                   (read-uris curated-metabot :internal
                              (str "metabase://table/" published)
-                             (str "metabase://table/" authoritative)))))
+                             (str "metabase://table/" people)))))
         (testing "lists only curated tables"
-          (is (= #{published authoritative}
+          (is (= #{published people}
                  (item-ids (first (read-uris curated-metabot :internal (str "metabase://database/" db-id "/tables"))))))
           (is (= #{}
                  (item-ids (first (read-uris curated-metabot :internal
@@ -183,7 +184,7 @@
                 (e.g. the agent API), and for the nlq profile"
         (doseq [[metabot profile-id] [[open-metabot :internal] [nil nil] [curated-metabot :nlq]]]
           (is (not (denied? (first (read-uris metabot profile-id (str "metabase://table/" raw))))))
-          (is (= #{published authoritative raw}
+          (is (= #{published people raw}
                  (item-ids (first (read-uris metabot profile-id
                                              (str "metabase://database/" db-id "/tables")))))))))))
 
@@ -328,30 +329,30 @@
                      :model/Document {doc-id :id} {:collection_id official}
                      :model/Card {doc-card :id} {:collection_id official :document_id doc-id
                                                  :dataset_query (orders-query)}
-                     :model/Table {hidden :id} {:db_id (mt/id) :name "hidden_authoritative" :active true
-                                                :visibility_type :hidden :data_authority :authoritative}
-                     :model/Table {live :id} {:db_id (mt/id) :name "live_authoritative" :active true
-                                              :data_authority :authoritative}]
+                     :model/Table {hidden :id} {:db_id (mt/id) :name "hidden_published" :active true
+                                                :visibility_type :hidden :data_layer :final}
+                     :model/TableUserSettings _ {:table_id hidden :is_published true}
+                     :model/Table {live :id} {:db_id (mt/id) :name "live_published" :active true
+                                              :data_layer :final}
+                     :model/TableUserSettings _ {:table_id live :is_published true}]
         (is (= #{["table" live]}
                (curation/curated-ids [["card" archived] ["dashboard" archived-dash] ["card" doc-card]
                                       ["table" hidden] ["table" live]])))))))
 
 (deftest premium-gates-test
-  (testing "verified, official, and Library signals count only while their feature is active; authoritative always"
+  (testing "verified, official, and Library signals count only while their feature is active"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Collection {official :id} {:authority_level "official"}
                      :model/Card {verified :id} {:dataset_query (orders-query)}
                      :model/Card {in-official :id} {:collection_id official :dataset_query (orders-query)}
                      :model/Table {published :id} {:db_id (mt/id) :name "gated_published" :active true
                                                    :data_layer :final}
-                     :model/TableUserSettings _ {:table_id published :is_published true}
-                     :model/Table {authoritative :id} {:db_id (mt/id) :name "gated_authoritative" :active true
-                                                       :data_authority :authoritative}]
+                     :model/TableUserSettings _ {:table_id published :is_published true}]
         (verify-card! verified)
-        (let [items [["card" verified] ["card" in-official] ["table" published] ["table" authoritative]]]
+        (let [items [["card" verified] ["card" in-official] ["table" published]]]
           (is (= (set items) (curation/curated-ids items)))
           (mt/with-premium-features #{}
-            (is (= #{["table" authoritative]} (curation/curated-ids items)))))))))
+            (is (= #{} (curation/curated-ids items)))))))))
 
 (deftest metric-read-judges-metric-cards-only-test
   (testing "the metric rule judges metric Cards with structured definitions, and nothing else passes through it"
@@ -1187,8 +1188,9 @@
                                        :engine         :h2
                                        :default_schema "raw"}
                    :model/Table    _  {:name "orders" :schema "raw" :db_id (:id db)}
-                   :model/Table    _  {:name "orders" :schema "clean" :db_id (:id db)
-                                       :data_authority :authoritative}
+                   :model/Table    {clean :id} {:name "orders" :schema "clean" :db_id (:id db)
+                                                :data_layer :final}
+                   :model/TableUserSettings _ {:table_id clean :is_published true}
                    :model/Table    _  {:name "events" :schema "raw" :db_id (:id db)}
                    :model/Table    _  {:name "events" :schema "staging" :db_id (:id db)}]
       (let [db-name   (:name db)

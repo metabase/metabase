@@ -1,0 +1,32 @@
+## Retire the `authoritative` Table data authority, which made every uploaded CSV count as curated.
+## Uploaded tables become `ingested`; any other table an admin marked `authoritative` becomes `unconfigured`.
+## Tables with any other data authority keep it.
+## In Table user settings, where a value means a user set it, the retired value is cleared, as a serialization
+## import of it is.
+
+databaseChangeLog:
+  - changeSet:
+      id: dsgsuy
+      author: christruter
+      comment: Replace the authoritative data authority on Tables with ingested for uploads and unconfigured otherwise
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_authority = CASE WHEN is_upload = TRUE THEN 'ingested' ELSE 'unconfigured' END
+              WHERE data_authority = 'authoritative'
+      # The changed rows can't be told apart from ones that already held these values.
+      rollback:
+
+  - changeSet:
+      id: m6suhc
+      author: christruter
+      comment: Clear the authoritative data authority in Table user settings, so each Table keeps its migrated value
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table_user_settings
+              SET data_authority = NULL
+              WHERE data_authority = 'authoritative'
+      # The cleared rows can't be told apart from ones where no user set a data authority.
+      rollback:

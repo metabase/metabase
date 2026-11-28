@@ -93,17 +93,15 @@
 (def writable-data-authority-types
   "Valid values we can configure for `Table.data_authority`.
   `:unconfigured`  - no data authority status has been set yet;
-  `:authoritative` - this table is the authoritative source of truth;
-  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
-  `:ingested`      - this table is ingested from external sources;"
-  #{:unconfigured :authoritative :computed :ingested})
+  `:computed`      - this table is derived/computed from other sources within metabase;
+  `:ingested`      - this table is ingested from external sources, e.g. an uploaded CSV;"
+  #{:unconfigured :computed :ingested})
 
 (def readable-data-authority-types
   "Valid values we can return for `Table.data_authority`.
   `:unconfigured`  - no data authority status has been set yet;
-  `:authoritative` - this table is the authoritative source of truth;
-  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
-  `:ingested`      - this table is ingested from external sources;
+  `:computed`      - this table is derived/computed from other sources within metabase;
+  `:ingested`      - this table is ingested from external sources, e.g. an uploaded CSV;
   `:unknown`       - fallback for an unexpected value from the database, e.g. from a newer version we rolled back from."
   (conj writable-data-authority-types :unknown))
 
@@ -642,6 +640,37 @@
         values
         (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
+(defn retired-data-authority?
+  "Whether `data-authority`, a string or keyword, is the retired `authoritative`.
+  Older exports can hold it."
+  [data-authority]
+  (= "authoritative" (some-> data-authority name)))
+
+(defn- import-data-authorities
+  "A transform fn importing data authorities.
+  Older exports can hold the retired `authoritative`.
+  It imports as `ingested` for an upload and `unconfigured` otherwise, as the app DB migration that retired it does."
+  [_store entities values _opts]
+  (mapv (fn [{:keys [is_upload]} v]
+          (if (retired-data-authority? v)
+            (if is_upload :ingested :unconfigured)
+            (some-> v keyword)))
+        entities
+        values))
+
+(defn- keep-configured-data-authorities
+  "The load `items` of Tables, where an entity holding the retired `authoritative` keeps the stored Table's
+  configured data authority.
+  A configured data authority can't go back to `unconfigured`, which an authoritative non-upload imports as."
+  [items]
+  (mapv (fn [{:keys [entity local] :as item}]
+          (let [stored (keyword (:data_authority local :unconfigured))]
+            (cond-> item
+              (and (retired-data-authority? (:data_authority entity))
+                   (not= :unconfigured stored))
+              (assoc-in [:row :data_authority] stored))))
+        items))
+
 (defn- storage-paths
   "The storage path of each of the Table `entities`, in the directory of its Database and schema."
   [entities _ctx]
@@ -668,16 +697,17 @@
    :identity            [:db_id :schema :name]
    :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-                         :database_require_filter :is_writable :data_authority :data_source :data_layer
-                         :owner_email]
+                         :database_require_filter :is_writable :data_source :data_layer :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
                          :is_defective_duplicate :unique_table_helper]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
-                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)}
+                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
+                         :data_authority {:export serialization/export-unchanged :import import-data-authorities}}
    :defaults            {:is_upload               false
                          :show_in_getting_started false}
+   :before-load         keep-configured-data-authorities
    :storage-paths       storage-paths
    :insert!             create-tables!
    :update!             #(do (update-tables! %) %)
@@ -712,8 +742,7 @@
                    :collection-type     :collection.type
                    :collection-location :collection.location
                    :root-collection-type {:batch-fn collection/root-collection-types}
-                   :data-layer          :data_layer
-                   :data-authority      :data_authority}
+                   :data-layer          :data_layer}
     :search-terms {:name         search/explode-camel-case
                    :display_name true
                    :description  true}

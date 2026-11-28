@@ -10610,7 +10610,7 @@
         "type" : "object"
       },
       "metabase.data-studio.api.table.data-authorities" : {
-        "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ],
+        "enum" : [ "computed", "unconfigured", "ingested" ],
         "type" : "string"
       },
       "metabase.data-studio.api.table.data-layers" : {
@@ -34069,12 +34069,12 @@
       },
       "metabase.warehouse-schema-rest.api.table.data-authority-read" : {
         "description" : "Schema for returning a table data authority type.",
-        "enum" : [ "computed", "unknown", "authoritative", "unconfigured", "ingested" ],
+        "enum" : [ "computed", "unknown", "unconfigured", "ingested" ],
         "type" : "string"
       },
       "metabase.warehouse-schema-rest.api.table.data-authority-write" : {
         "description" : "Schema for writing a valid table data authority.",
-        "enum" : [ "computed", "authoritative", "unconfigured", "ingested" ],
+        "enum" : [ "computed", "unconfigured", "ingested" ],
         "type" : "string"
       },
       "metabase.warehouse-schema-rest.api.table.data-layers" : {

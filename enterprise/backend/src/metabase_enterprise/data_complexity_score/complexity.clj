@@ -229,10 +229,9 @@
         verified-ids      (when curated-only? (verified-card-id-set))
         official-cids     (when curated-only? (official-collection-id-set))
         routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`,
-        ;; `:data_layer`, `:data_authority`) are selected purely to drive the in-memory
-        ;; library/metabot derivations below — they're ignored by `->card-entity` /
-        ;; `->table-entity`.
+        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`, `:data_layer`) are
+        ;; selected purely to drive the in-memory library/metabot derivations below — they're ignored by
+        ;; `->card-entity` / `->table-entity`.
         universe-cards    (data-complexity-score.db/universe-cards audit/audit-db-id)
         universe-tables   (data-complexity-score.db/universe-tables audit/audit-db-id)
         field-counts      (table-field-counts  (mapv :id universe-tables))
@@ -270,7 +269,7 @@
                             (and (nil? visibility_type)
                                  (not (contains? routed-db-ids db_id))
                                  (or (not curated-only?)
-                                     (curation/curated? (assoc (select-keys table-row [:is_published :data_layer :data_authority])
+                                     (curation/curated? (assoc (select-keys table-row [:is_published :data_layer])
                                                                :model "table")))))]
     {:universe (into card-entities table-entities)
      :library  (into (pick-by-row in-library-card?  universe-cards  card-entities)

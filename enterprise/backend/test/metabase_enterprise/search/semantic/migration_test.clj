@@ -18,6 +18,7 @@
    [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]
@@ -526,24 +527,76 @@
                       "7" "library-data"}  ; pre-existing value preserved
                      rows-by-id)))))))))
 
-(deftest candidate-table-ids-test
-  (testing "Migration 5 sweeps only active published/authoritative tables, sorted into the two id lists it
-            backfills — others are implicitly not curated (table curation never uses root_collection_type)"
+(deftest curated-table-ids-test
+  (testing "the table curation backfills sweep only active published-final tables"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {pub :id}      {:db_id db-id :active true :data_layer :final}
                    :model/TableUserSettings _ {:table_id pub :is_published true}
-                   :model/Table {auth :id}     {:db_id db-id :active true  :data_authority :authoritative}
+                   :model/Table {staged :id}   {:db_id db-id :active true :data_layer :internal}
+                   :model/TableUserSettings _ {:table_id staged :is_published true}
                    :model/Table {inactive :id} {:db_id db-id :active false :data_layer :final}
                    :model/TableUserSettings _ {:table_id inactive :is_published true}
-                   :model/Table {plain :id}    {:db_id db-id :active true}]
-      (let [{:keys [authoritative published]} (#'semantic.db.migration.impl/candidate-table-ids)
-            authoritative (set authoritative)
-            published     (set published)]
-        (is (contains? published (str pub))      "published-final tables go in :published")
-        (is (contains? authoritative (str auth)) "authoritative tables go in :authoritative")
-        (is (not (contains? published (str inactive))) "inactive tables are skipped")
-        (is (not (contains? published (str plain)))    "plain tables aren't candidates")
-        (is (not (contains? authoritative (str plain))))))))
+                   :model/Table {plain :id}    {:db_id db-id :active true :data_layer :final}]
+      (let [ids (set (#'semantic.db.migration.impl/curated-table-ids))]
+        (is (= {:published-final    true
+                :published-internal false
+                :inactive           false
+                :unpublished        false}
+               {:published-final    (contains? ids (str pub))
+                :published-internal (contains? ids (str staged))
+                :inactive           (contains? ids (str inactive))
+                :unpublished        (contains? ids (str plain))}))))))
+
+(deftest migration-7-uncurates-authoritative-tables-test
+  (testing "migration 7 un-curates tables indexed as authoritative unless they are published-final (BOT-2735)"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {pub :id} {:db_id db-id :active true :data_layer :final}
+                       :model/TableUserSettings _ {:table_id pub :is_published true}
+                       :model/Table {pub-other :id} {:db_id db-id :active true :data_layer :final}
+                       :model/TableUserSettings _ {:table_id pub-other :is_published true}]
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.env/get-index-metadata)
+                meta-tbl       (keyword (:metadata-table-name index-metadata))
+                table-name     (active-index-table-name! pgvector index-metadata)
+                kw-tbl         (keyword table-name)
+                rows           #(jdbc/execute! pgvector
+                                               (sql/format {:select [:model_id :curated :data_authority :legacy_input]
+                                                            :from   [kw-tbl]}
+                                                           :quoted true)
+                                               {:builder-fn jdbc.rs/as-unqualified-maps})]
+            ;; the last flag stores legacy_input double-encoded, as a JSON string, which some older rows hold
+            (doseq [[model model-id authority double-encoded?] [["table" (str pub)       "authoritative" false]
+                                                                ["table" (str pub-other) "unconfigured"  false]
+                                                                ["table" "999999"        "authoritative" false]
+                                                                ["table" "999997"        "authoritative" true]
+                                                                ["table" "999998"        "ingested"      false]
+                                                                ["card"  "1"             nil             false]]]
+              (let [legacy-input (cond-> (json/encode {:curated true, :data_authority authority})
+                                   double-encoded? json/encode)]
+                (insert-index-row! pgvector kw-tbl {:model          [:inline model]
+                                                    :model_id       [:inline model-id]
+                                                    :data_authority [:inline authority]
+                                                    :curated        [:inline true]
+                                                    :legacy_input   [:cast [:inline legacy-input] :jsonb]})))
+            (jdbc/execute! pgvector (sql/format {:update meta-tbl :set {:index_version 6}}))
+            (semantic.core/init! (semantic.tu/mock-documents) nil)
+            (let [by-id (u/index-by :model_id #(update % :legacy_input (comp json/decode+kw str)) (rows))]
+              (testing "in the curated column and in legacy_input, which results are rebuilt from"
+                (is (= {(str pub)       [true true]
+                        (str pub-other) [true true]
+                        "999999"        [false false]
+                        "999997"        [false false]
+                        "999998"        [true true]
+                        "1"             [true true]}
+                       (update-vals by-id (juxt :curated (comp :curated :legacy_input))))))
+              (testing "and neither the column nor legacy_input carries the retired authoritative"
+                (is (not-any? #(= "authoritative" (or (:data_authority %) (get-in % [:legacy_input :data_authority])))
+                              (vals by-id))))
+              (testing "but rows that weren't authoritative are left as they were"
+                (is (=? {:data_authority "unconfigured", :legacy_input {:data_authority "unconfigured"}}
+                        (get by-id (str pub-other))))))))))))
 
 (deftest official-collection-dashboard-ids-test
   (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so

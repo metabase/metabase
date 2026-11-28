@@ -511,11 +511,11 @@
   (mdb/select-batched #(t2/select [:model/Table :id :name :schema :db_id] :id [:in %]) table-ids))
 
 (mu/defn table-curation-rows
-  "The ID, Database ID, active flag, visibility type, data layer, data authority, and published flag (nil when not set)
-  of the Tables with `table-ids`."
+  "The ID, Database ID, active flag, visibility type, data layer, and published flag (nil when not set) of the
+  Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (mdb/select-batched
-   #(t2/select [:model/Table :t.id :t.db_id :t.active :t.visibility_type :t.data_layer :t.data_authority :s.is_published]
+   #(t2/select [:model/Table :t.id :t.db_id :t.active :t.visibility_type :t.data_layer :s.is_published]
                {:from      [[(t2/table-name :model/Table) :t]]
                 :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
                 :where     [:in :t.id %]})

@@ -23,9 +23,9 @@
 (set! *warn-on-reflection* true)
 
 (def table-columns
-  "The Table columns an entry carries. `data_authority` is carried also when `data_source` is not (see
-  [[sent-data-sources]]): it is a curation of the Table that Metabot reads, and a seeded Metabase should treat the
-  Table as its sender does."
+  "The Table columns an entry carries.
+  The data authority is carried also when `data_source` is not (see [[sent-data-sources]]): it is a curation of the
+  Table, and a seeded Metabase should treat the Table as its sender does."
   [:schema :name :display_name :description :entity_type :visibility_type :data_layer :data_source :data_authority
    :field_order :caveats :points_of_interest :show_in_getting_started :owner_email :database_require_filter])
 

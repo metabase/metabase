@@ -138,7 +138,6 @@
    :dataset_query       :text
    ;; returned for Table
    :is_published        :boolean
-   :data_authority      :text
    :data_layer          :text
    ;; returned for DataApp
    :slug                :text
@@ -294,13 +293,13 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
-                               ;; data_authority/data_layer are curation signals, not name/text fields —
-                               ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
+                               ;; data_layer is a curation signal, not a name/text field: exclude it from
+                               ;; exact-match ranking, and to keep in-place ordering stable.
                                ;; data_app_slug repeats a data app's slug.
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
-                                         :collection_location :data_authority
-                                         :data_layer :document :data_app_slug}))
+                                         :collection_location :data_layer
+                                         :document :data_app_slug}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -452,7 +451,6 @@
      :collection.name] :collection_name]
    [:collection.authority_level :collection_authority_level]
    [:collection.type :collection_type]
-   [:table.data_authority :data_authority]
    [:table.data_layer :data_layer]
    [:db.name :database_name]])
 

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.index-metadata :as semantic.index-metadata]
@@ -152,7 +153,7 @@
 (def dynamic-schema-version
   "Code version of dynamic schema (the index_<provider>_<model>_<dims> index tables). If higher than what's found in
   db dynamic schema migration will be attempted."
-  6)
+  7)
 
 (defn- alter-index-tables!
   "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
@@ -255,25 +256,14 @@
                                [:= :root_collection_type nil]
                                [:in :collection_id (mapv key entries)]]})))))))
 
-(defn- candidate-table-ids
-  "The table id lists Migration 5 backfills, as strings matching `model_id`.
-  `:authoritative` are authoritative tables; `:published` are published-final tables. Together these are
-  exactly the curated tables: fresh ingestion only sets a table's `root_collection_type` when it is
-  published, so table curation reduces to published-final-or-authoritative. The index's `root_collection_type`
-  is not a reliable table signal (migration 4 set it from collection_id without an is_published check), so it
-  is never used for table curation.
-  Scans only active published/authoritative tables via a streamed reduce, so it stays bounded.
+(defn- curated-table-ids
+  "The ids of the curated tables, the active published-final ones, as strings matching `model_id`.
   Throws outside tests if the appdb lookup fails; a silent skip would corrupt curation in prod."
   []
+  ;; the index's root_collection_type can't stand in for this: migration 4 set it on tables from collection_id
+  ;; without checking is_published
   (try
-    (reduce
-     (fn [acc {:keys [id is_published data_layer data_authority]}]
-       (let [id (str id)]
-         (cond-> acc
-           (= :authoritative data_authority)        (update :authoritative conj id)
-           (and is_published (= :final data_layer)) (update :published conj id))))
-     {:authoritative [] :published []}
-     (semantic-search.db/curated-tables-reducible))
+    (into [] (map (comp str :id)) (semantic-search.db/published-final-table-ids-reducible))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
@@ -307,12 +297,19 @@
 
 (defn- update-model-rows-in-batches!
   "Apply `set-map` to the index table's `model` rows for `model-ids`, chunked so a large id list never
-  becomes one oversized statement. `model-ids` are already strings."
-  [execute! kw-tbl model model-ids set-map]
-  (doseq [chunk (partition-all 5000 model-ids)]
-    (execute! {:update kw-tbl
-               :set    set-map
-               :where  [:and [:= :model ^:allow-raw-sql [:inline model]] [:in :model_id (vec chunk)]]})))
+  becomes one oversized statement.
+  The `model-ids` are already strings.
+  An `extra-where` clause, when given, narrows the rows further."
+  ([execute! kw-tbl model model-ids set-map]
+   (update-model-rows-in-batches! execute! kw-tbl model model-ids set-map nil))
+  ([execute! kw-tbl model model-ids set-map extra-where]
+   (doseq [chunk (partition-all 5000 model-ids)]
+     (execute! {:update kw-tbl
+                :set    set-map
+                :where  (cond-> [:and
+                                 [:= :model ^:allow-raw-sql [:inline model]]
+                                 [:in :model_id (vec chunk)]]
+                          extra-where (conj extra-where))}))))
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
@@ -320,19 +317,20 @@
   Non-table rows compute `curated` from index columns via [[metabase.collections.curation/curated-honeysql]]
   (is_published forced false — the index lacks it), covering verified cards, official cards, and library
   content via `root_collection_type`. Two bounded appdb sweeps fix what the index columns can't express for
-  existing rows: tables are curated only when published-final or authoritative (the index's
-  `root_collection_type` isn't is_published-gated for tables, so it's never used for table curation), and
-  official-only dashboards (whose official_collection column is new and unset on existing rows).
+  existing rows: tables are curated only when published-final (the index's `root_collection_type` isn't
+  is_published-gated for tables, so it's never used for table curation), and official-only dashboards (whose
+  official_collection column is new and unset on existing rows).
   Empty (freshly migrated, not-yet-populated) index tables are skipped, since ingestion populates them.
-  Known limitation: the backfill writes the `curated`/`data_authority` columns (used for filtering) but not
-  `legacy_input`, from which results are reconstructed — so migrated rows surface the new is_curated/
-  data_layer/data_authority LLM annotations only after their next reindex; the curated *filter* is correct
-  immediately. Changing the rule needs a new migration to recompute this."
+  Known limitation: the backfill writes the `curated` column (used for filtering) but not `legacy_input`, from
+  which results are reconstructed.
+  So migrated rows surface the new is_curated/data_layer LLM annotations only after their next reindex, while
+  the curated *filter* is correct immediately.
+  Changing the rule needs a new migration to recompute this, as [[uncurate-authoritative-tables!]] does."
   [tx index-metadata]
   (let [curated-expr (collections.curation/curated-honeysql
                       (fn [signal] (if (= signal :is_published) [:inline false] signal)))
         ;; resolved lazily so the appdb sweeps only run once a non-empty index table is found
-        tables       (delay (candidate-table-ids))
+        tables       (delay (curated-table-ids))
         dashboards   (delay (official-collection-dashboard-ids))]
     (alter-index-tables!
      tx index-metadata 5
@@ -341,19 +339,16 @@
          (execute! {:alter-table [kw-tbl] :add-column [[:data_authority :text :if-not-exists]]})
          (execute! {:alter-table [kw-tbl] :add-column [[:curated :boolean :if-not-exists]]})
          (when-not (index-empty? execute! kw-tbl)
-           (let [{:keys [authoritative published]} @tables]
-             ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
-             (execute! {:update kw-tbl
-                        :set   {:curated curated-expr}
-                        :where [:and [:= :curated nil] [:!= :model ^:allow-raw-sql [:inline "table"]]]})
-             ;; Tables: curated only from the appdb sweep. Authoritative rows also get data_authority.
-             (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
-                                            {:data_authority ^:allow-raw-sql [:inline "authoritative"] :curated true})
-             (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
-             ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
-             ;; official dashboards (curated alone would leave them scoring as non-official until reindex).
-             (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
-                                            {:curated true :official_collection true}))))))))
+           ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
+           (execute! {:update kw-tbl
+                      :set   {:curated curated-expr}
+                      :where [:and [:= :curated nil] [:!= :model ^:allow-raw-sql [:inline "table"]]]})
+           ;; Tables: curated only from the appdb sweep.
+           (update-model-rows-in-batches! execute! kw-tbl "table" @tables {:curated true})
+           ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
+           ;; official dashboards (curated alone would leave them scoring as non-official until reindex).
+           (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
+                                          {:curated true :official_collection true})))))))
 
 (defn- content-btree-index-names
   "Names of the B-tree indexes on `content` of index table `table-name`, read from the catalog."
@@ -397,6 +392,40 @@
                                   (qualified temp-name)
                                   (semantic.util/quote-ident final-name))])))))
 
+(defn- uncurate-authoritative-tables!
+  "Migration 7: un-curate the table rows indexed as `authoritative`.
+  An `authoritative` data authority used to make a table curated.
+  The value is gone from the appdb, so those rows lose `curated` unless they are published-final, and their
+  `data_authority` is cleared.
+  Only those rows change; other table rows already have the right `curated`.
+  Both the `curated` column (used for filtering) and `legacy_input` (from which results are reconstructed)
+  change, so results stop showing those tables as curated before their next reindex.
+  Empty (freshly migrated, not-yet-populated) index tables are skipped, since ingestion populates them."
+  [tx index-metadata]
+  (let [;; resolved lazily so the appdb sweep only runs once a non-empty index table is found
+        tables        (delay (curated-table-ids))
+        authoritative [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]
+        ;; some older rows hold legacy_input double-encoded, as a JSON string; deleting a key from one fails
+        legacy-object [:case [:= [:jsonb_typeof :legacy_input] ^:allow-raw-sql [:inline "string"]]
+                       [:cast [sql.pg-ops/hash>> :legacy_input ^:allow-raw-sql [:inline "{}"]] :jsonb]
+                       :else :legacy_input]
+        set-curated   (fn [curated?]
+                        {:curated        curated?
+                         :data_authority nil
+                         :legacy_input   [:jsonb_set [:- legacy-object ^:allow-raw-sql [:inline "data_authority"]]
+                                          ^:allow-raw-sql [:inline "{curated}"]
+                                          [:cast ^:allow-raw-sql [:inline (str curated?)] :jsonb]]})]
+    (alter-index-tables!
+     tx index-metadata 7
+     (fn [execute! table-name]
+       (let [kw-tbl (keyword table-name)]
+         (when-not (index-empty? execute! kw-tbl)
+           ;; published-final rows first: clearing data_authority takes a row out of the second update
+           (update-model-rows-in-batches! execute! kw-tbl "table" @tables (set-curated true) authoritative)
+           (execute! {:update kw-tbl
+                      :set    (set-curated false)
+                      :where  [:and [:= :model ^:allow-raw-sql [:inline "table"]] authoritative]})))))))
+
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, i.e. the schema of the `index_...` index tables. Migration author is responsible for
   removing leftovers if necessary."
@@ -407,8 +436,10 @@
   ;; migration 4: add root_collection_type column to index tables
   ;; migration 5: add data_authority and precomputed curated columns to index tables
   ;; migration 6: replace the B-tree index on content with a hash index
+  ;; migration 7: stop counting authoritative tables as curated
   (add-personal-owner-id-column! tx index-metadata)
   (add-collection-type-and-data-layer-columns! tx index-metadata)
   (add-root-collection-type-column! tx index-metadata)
   (add-data-authority-and-curated-columns! tx index-metadata)
-  (replace-content-btree-with-hash-index! tx index-metadata))
+  (replace-content-btree-with-hash-index! tx index-metadata)
+  (uncurate-authoritative-tables! tx index-metadata))
