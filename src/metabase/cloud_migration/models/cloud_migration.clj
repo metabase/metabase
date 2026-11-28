@@ -225,7 +225,8 @@
   ;; in the same process, so use a random name.
   ;; The docker image process runs in non-root, so write to a dir it can access.
   (let [dump-file (io/file (System/getProperty "java.io.tmpdir")
-                           (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
+                           (str "cloud_migration_dump_" (random-uuid) ".mv.db"))
+        scheduler-stopped? (volatile! false)]
     (try
       (when retry?
         (set-cloud-migration-state! id :init))
@@ -237,6 +238,7 @@
         (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
+      (vreset! scheduler-stopped? true)
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-cloud-migration-progress! id :dump 20)
       (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
@@ -254,6 +256,7 @@
       (app-db.quartz/set-jdbc-backend-properties! (mdb/db-type))
       (log/info "Restarting scheduler")
       (task/start-scheduler!)
+      (vreset! scheduler-stopped? false)
       (log/info "Migration finished")
       (set-cloud-migration-progress! id :done 100)
       (catch Exception e
@@ -265,6 +268,15 @@
             (throw (ex-info "Error performing migration" {} e)))))
       (finally
         (cloud-migration.settings/read-only-mode! false)
+        ;; If we got here after stopping the scheduler without restarting it (migration failed or was cancelled),
+        ;; bring it back, otherwise no scheduled task would run until the instance is restarted.
+        (when @scheduler-stopped?
+          (try
+            (app-db.quartz/set-jdbc-backend-properties! (mdb/db-type))
+            (log/info "Restarting scheduler")
+            (task/start-scheduler!)
+            (catch Throwable e
+              (log/error e "Failed to restart scheduler after interrupted migration"))))
         (io/delete-file dump-file :silently)))))
 
 (defn get-store-migration
