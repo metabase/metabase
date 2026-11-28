@@ -9,7 +9,8 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,16 +83,16 @@
                                     {:severity "critical" :acknowledged "false"})))))))
 
 (deftest refresh-metrics!-last-sync-timestamp-test
-  (testing "last-sync-timestamp-seconds gauge reflects the security-center-last-synced-at setting"
+  (testing "last-sync-timestamp-seconds gauge reflects the last sync time"
     (mt/with-premium-features #{:admin-security-center}
       (mt/with-prometheus-system! [_ system]
         (testing "no sync yet → gauge stays at 0 (initial value)"
-          (mt/with-temporary-setting-values [security-center-last-synced-at nil]
+          (mt/with-temporary-setting-values [security-center-sync-state nil]
             (metrics/refresh-metrics!)
             (is (= 0.0 (mt/metric-value system :metabase-security-center/last-sync-timestamp-seconds)))))
         (testing "after a sync → gauge is the unix epoch seconds of the setting"
           (let [ts (t/offset-date-time 2026 5 6 12 0 0 0 (t/zone-offset 0))]
-            (mt/with-temporary-setting-values [security-center-last-synced-at ts]
+            (mt/with-temporary-setting-values [security-center-sync-state {:last-synced-at (u.date/format ts)}]
               (metrics/refresh-metrics!)
               (is (= (double (.toEpochSecond ts))
                      (mt/metric-value system :metabase-security-center/last-sync-timestamp-seconds))))))))))

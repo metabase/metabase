@@ -13,9 +13,10 @@
    [metabase-enterprise.security-center.metrics :as metrics]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :as setting]
    [metabase.task.core :as task]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -56,12 +57,13 @@
 
 (defn sync-and-evaluate!
   "Fetch advisories, re-evaluate all, and send repeat notifications. Records the outcome of the run in
-   `security-center-last-sync-attempted-at` and `security-center-last-sync-error`, and moves
-   `security-center-last-synced-at` only when the fetch succeeds."
+   `security-center-sync-state`: `:last-synced-at` moves only when the fetch succeeds, and `:evaluated-version` is
+   the running version's tag."
   []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
-    (let [attempted-at (t/offset-date-time)
+    (let [tag          (:tag config/mb-version-info)
+          attempted-at (t/offset-date-time)
           sync-error   (try
                          (fetch/sync-advisories!)
                          nil
@@ -76,10 +78,12 @@
         (send-repeat-notifications!)
         (catch Exception e
           (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
-      (setting/set-many!
-       (cond-> {:security-center-last-sync-attempted-at attempted-at
-                :security-center-last-sync-error        sync-error}
-         (nil? sync-error) (assoc :security-center-last-synced-at attempted-at))))
+      (settings/security-center-sync-state!
+       (merge (settings/security-center-sync-state)
+              (cond-> {:last-sync-attempted-at (u.date/format attempted-at)
+                       :last-sync-error        sync-error}
+                (nil? sync-error) (assoc :last-synced-at (u.date/format attempted-at))
+                tag               (assoc :evaluated-version tag)))))
     (metrics/refresh-metrics!)))
 
 (task/defjob SyncAdvisories
@@ -105,9 +109,18 @@
                      (cron/cron-schedule cron-str)
                      (cron/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger)
+      (let [tag (:tag config/mb-version-info)]
+        (cond
+          ;; first run of the feature: sync right away to seed advisories
+          (not (settings/last-synced-at))
+          (task/trigger-now! (jobs/key job-key))
+
+          ;; statuses were computed for another version: re-evaluate on this node, which runs the new version. A build
+          ;; without a tag skips this, so it neither re-evaluates on every start nor clears the stored version.
+          (and tag (not= tag (settings/last-evaluated-version)))
+          (do (matching/evaluate-all-advisories!)
+              (settings/security-center-sync-state!
+               (assoc (settings/security-center-sync-state) :evaluated-version tag)))))
       ;; Populate metrics from existing appdb state so freshness and vulnerability
       ;; gauges survive restarts without waiting for the next scheduled sync.
-      (metrics/refresh-metrics!)
-      ;; on first run of the feature, we sync immediately to seed advisories
-      (when-not (settings/security-center-last-synced-at)
-        (task/trigger-now! (jobs/key job-key))))))
+      (metrics/refresh-metrics!))))

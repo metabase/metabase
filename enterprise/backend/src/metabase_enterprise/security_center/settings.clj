@@ -3,6 +3,7 @@
   (:require
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting security-center-email-recipients
@@ -62,9 +63,10 @@
                 (some-> (setting/get-value-of-type :json :security-center-severity-repeat-days)
                         (update-keys keyword))))
 
-(defsetting security-center-last-synced-at
-  "Timestamp of the last successful Security Center advisory sync."
-  :type               :timestamp
+(defsetting security-center-sync-state
+  "Outcome of the advisory syncs: `:last-synced-at` (last successful fetch), `:last-sync-attempted-at`,
+  `:last-sync-error`, and `:evaluated-version`, the version tag that last evaluated the advisories."
+  :type               :json
   :default            nil
   :encryption         :no
   :feature            :admin-security-center
@@ -75,31 +77,25 @@
   :include-in-list?   false
   :can-read-from-env? false)
 
-(defsetting security-center-last-sync-attempted-at
-  "Timestamp of the last Security Center advisory sync attempt, successful or not."
-  :type               :timestamp
-  :default            nil
-  :encryption         :no
-  :feature            :admin-security-center
-  :visibility         :internal
-  :export?            false
-  :doc                false
-  :audit              :never
-  :include-in-list?   false
-  :can-read-from-env? false)
+(defn last-synced-at
+  "Timestamp of the last successful advisory sync."
+  []
+  (some-> (security-center-sync-state) :last-synced-at u.date/parse))
 
-(defsetting security-center-last-sync-error
-  "Error message of the last Security Center advisory sync, or nil if it succeeded."
-  :type               :string
-  :default            nil
-  :encryption         :no
-  :feature            :admin-security-center
-  :visibility         :internal
-  :export?            false
-  :doc                false
-  :audit              :never
-  :include-in-list?   false
-  :can-read-from-env? false)
+(defn last-sync-attempted-at
+  "Timestamp of the last advisory sync attempt, successful or not."
+  []
+  (some-> (security-center-sync-state) :last-sync-attempted-at u.date/parse))
+
+(defn last-sync-error
+  "Error message of the last advisory sync, or nil if it succeeded."
+  []
+  (some-> (security-center-sync-state) :last-sync-error))
+
+(defn last-evaluated-version
+  "Version tag of the Metabase that last evaluated the advisories."
+  []
+  (some-> (security-center-sync-state) :evaluated-version))
 
 (defsetting security-center-health-check-results
   "The last result of each background health check, keyed by check id: what its refresh returned, and when."
