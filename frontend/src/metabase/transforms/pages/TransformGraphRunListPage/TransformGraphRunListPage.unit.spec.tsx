@@ -13,6 +13,7 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
+  mockTextOverflow,
   renderWithProviders,
   screen,
   waitFor,
@@ -162,6 +163,24 @@ describe("TransformGraphRunListPage", () => {
     expect(
       within(sidebar).queryByRole("link", { name: "View this job" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a single tooltip when a deleted-entity run name is truncated", async () => {
+    const deletedRun = createMockTransformGraphRun({
+      run_type: "transform",
+      id: 302,
+      entity_id: null,
+      name: "Removed transform",
+    });
+    setup({ runs: [deletedRun] });
+    mockTextOverflow();
+
+    await userEvent.hover(await screen.findByText("Removed transform"));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Removed transform has been deleted",
+    );
+    expect(screen.getAllByRole("tooltip")).toHaveLength(1);
   });
 
   it("still shows member transforms for a DAG run whose seed transform was deleted", async () => {
