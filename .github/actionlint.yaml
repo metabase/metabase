@@ -11,6 +11,10 @@ paths:
   .github/workflows/backend.yml:
     ignore:
       - 'step must run script with "run" section or run action with "uses" section'
+  .github/workflows/e2e-test.yml:
+    ignore:
+      - 'unexpected key "background" for step to run shell command'
+      - 'step must run script with "run" section or run action with "uses" section'
   .github/workflows/lint.yml:
     ignore:
       - 'step must run script with "run" section or run action with "uses" section'
