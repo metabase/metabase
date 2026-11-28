@@ -18,14 +18,24 @@
 (mr/def ::field-id-or-name->filters
   [:map-of [:or ::lib.schema.id/field :string] [:sequential ::lib.schema.expression/boolean]])
 
+(defn- conjuncts
+  "Flatten the nested `:and` clauses of `filters`, which all have to hold for a row to match."
+  [filters]
+  (mapcat (fn [[op _opts & args :as clause]]
+            (if (= op :and)
+              (conjuncts args)
+              [clause]))
+          filters))
+
 (mu/defn filters->field-map :- ::field-id-or-name->filters
-  "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses that
-  reference it."
+  "Find any comparison or `:between` filter that every row has to satisfy and return a map of referenced Field ID or
+  Name -> all the clauses that reference it."
   [filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
   (reduce
    (partial merge-with concat)
    {}
-   (for [subclause        (match/match-many filters [#{:between :< :<= :> :>=} & _] &match)
+   (for [subclause        (conjuncts filters)
+         :when            (#{:between :< :<= :> :>=} (first subclause))
          field-id-or-name (match/match-many subclause [:field _opts field-id-or-name] field-id-or-name)]
      {field-id-or-name [subclause]})))
 

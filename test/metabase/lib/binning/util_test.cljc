@@ -31,6 +31,16 @@
               [:< {} [:field {} 2] 10]
               [:between {} [:field {} 3] 5 10]]])))))
 
+(deftest ^:parallel filters->field-map-ignores-clauses-inside-or-test
+  (testing "range clauses nested inside an OR do not bound the column (#85716)"
+    (is (= {}
+           (lib.binning.util/filters->field-map
+            (lib.normalize/normalize
+             ::lib.schema/filters
+             [[:or
+               [:> {} [:field {} 1] 100]
+               [:> {} [:field {} 2] 2]]]))))))
+
 (def ^:private test-min-max-fingerprint
   {:type {:type/Number {:min 100 :max 1000}}})
 
