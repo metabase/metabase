@@ -96,16 +96,17 @@ export const debouncedReportAnalytics = _.debounce(
  */
 let isAnalyticsReported = false;
 function reportAnalyticsOnce(activeEmbeds: Set<MetabaseEmbedElement>) {
-  if (!isAnalyticsReported) {
-    isAnalyticsReported = true;
-    const [firstEmbed] = activeEmbeds;
-    firstEmbed.addEventListener("ready", () => {
-      firstEmbed.sendMessage("metabase.embed.reportAnalytics", {
-        usageAnalytics: createEmbeddedAnalyticsJsUsage(activeEmbeds),
-        embedHostUrl: window.location.href,
-      });
-    });
+  const [firstEmbed] = activeEmbeds;
+  if (isAnalyticsReported || !firstEmbed) {
+    return;
   }
+  isAnalyticsReported = true;
+  firstEmbed.addEventListener("ready", () => {
+    firstEmbed.sendMessage("metabase.embed.reportAnalytics", {
+      usageAnalytics: createEmbeddedAnalyticsJsUsage(activeEmbeds),
+      embedHostUrl: window.location.href,
+    });
+  });
 }
 
 export function createEmbeddedAnalyticsJsUsage(
