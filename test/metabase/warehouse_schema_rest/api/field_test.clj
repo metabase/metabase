@@ -1080,3 +1080,23 @@
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
         (is (not (t2/exists? :model/FieldValues :id fv)))))))
+
+(deftest update-unrelated-property-keeps-custom-mapping-test
+  (testing "PUT /api/field/:id keeps the internal dimension and human-readable values of a field"
+    (mt/with-temp
+      [:model/Database    db    {:name "field-db" :engine :h2}
+       :model/Table       table {:schema "PUBLIC" :name "reviews" :db_id (:id db)}
+       :model/Field       field {:name "RATING" :display_name "Rating" :table_id (:id table)
+                                 :base_type :type/Integer :semantic_type :type/Score}
+       :model/FieldValues _fv   {:field_id (:id field) :values [1 2] :human_readable_values ["Bad" "Good"]}
+       :model/Dimension   _dim  {:field_id (:id field) :name "Rating" :type :internal}]
+      (let [update-field! #(mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) %)]
+        (testing "description update response"
+          (is (=? {:dimensions [{:type "internal"}]}
+                  (update-field! {:description "The rating a user left"}))))
+        (testing "display name update response"
+          (is (=? {:dimensions [{:type "internal"}]}
+                  (update-field! {:display_name "Stars"}))))
+        (testing "persisted after the updates"
+          (is (=? {:type :internal}
+                  (dimension-for-field (:id field)))))))))
