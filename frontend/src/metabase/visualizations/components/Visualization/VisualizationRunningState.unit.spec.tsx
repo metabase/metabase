@@ -49,6 +49,27 @@ describe("VisualizationRunningState", () => {
     ).toBeInTheDocument();
   });
 
+  it("should switch to the slow loading message after 4 seconds, not before", async () => {
+    jest.useFakeTimers();
+
+    setup();
+    expect(await screen.findByText("Doing science...")).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(3999);
+    });
+    expect(screen.getByText("Doing science...")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Waiting for results..."),
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(screen.getByText("Waiting for results...")).toBeInTheDocument();
+    expect(screen.queryByText("Doing science...")).not.toBeInTheDocument();
+  });
+
   it("should only render the custom loading message when it was customized", async () => {
     const customMessage = (isSlow?: boolean) =>
       isSlow ? `Custom message (slow)...` : `Custom message...`;
