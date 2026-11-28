@@ -1,6 +1,7 @@
 (ns metabase.mq.init
   "Initializes the mq subsystem at startup."
   (:require
+   [metabase.global-system.system :as global-system]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
@@ -35,8 +36,9 @@
    `queue-be` may be either a keyword identifier (e.g. `:queue.backend/memory`)
    or a concrete backend instance.
 
-   Called by [[startup/def-startup-logic!]] with production backends (handle discarded;
-   production shutdown uses [[startup/def-shutdown-logic!]] instead) and by
+   Called by [[startup/def-startup-logic!]] with production backends, as a global-system
+   component whose stop ignores the handle and calls the no-argument [[stop!]], so either
+   [[startup/def-shutdown-logic!]] or a halt stops it, and by
    `metabase.mq.test-util/with-test-mq` with isolated memory backends.
 
    Backends are set globally via `alter-var-root`. For test isolation, bind
@@ -117,12 +119,18 @@
                            "scheduler.")
                       {:backend explicit :scheduler-disabled true})))))
 
+;; The production MQ subsystem, as a global-system component, so halting the system stops it too.
+(def ^:private mq-component
+  (global-system/mutable-component-handle ::mq (constantly nil)))
+
 (defmethod startup/def-startup-logic! ::MqStart [_]
-  (start! (resolve-queue-be)))
+  (global-system/start! mq-component #(start! (resolve-queue-be)) (fn [_] (stop!))))
 
 ;; Run after all other startup logic so listener registration, transports, and polling threads
 ;; only come up once the rest of the system is ready.
 (defmethod startup/startup-priority ::MqStart [_] Long/MAX_VALUE)
 
+;; a start that failed part way registered nothing, but may have left services running
 (defmethod startup/def-shutdown-logic! ::MqShutdown [_]
-  (stop!))
+  (when-not (global-system/stop! mq-component)
+    (stop!)))

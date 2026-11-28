@@ -13,6 +13,9 @@
    [metabase-enterprise.api-keys.usage :as ee-usage]
    [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.usage :as usage]
+   [metabase.global-system.system :as system]
+   [metabase.global-system.test-util :as global-system.tu]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -480,6 +483,25 @@
       (is (true? (#'ee-usage/start-flush!)) "the first call creates the executor")
       (is (false? (#'ee-usage/start-flush!)) "a second call is a no-op")
       (finally (#'ee-usage/stop-flush!)))))
+
+(deftest flush-starts-through-the-global-system-test
+  (testing "startup starts the flush loop through the global system, so a halt stops it, and shutdown stops it once"
+    (let [handle @#'ee-usage/flush-component
+          stops  (atom 0)
+          halts? #(global-system.tu/halts? handle)]
+      (global-system.tu/with-root handle nil
+        (mt/with-dynamic-fn-redefs [ee-usage/start-flush! (constantly true)
+                                    ee-usage/stop-flush!  #(swap! stops inc)]
+          (try
+            (startup/def-startup-logic! ::ee-usage/ApiKeyUsageFlush)
+            (let [after-start {:halts? (halts?), :stops @stops}]
+              (startup/def-shutdown-logic! ::ee-usage/ApiKeyUsageFlush)
+              (is (= {:after-start {:halts? true, :stops 0}
+                      :after-stop  {:halts? false, :stops 1}}
+                     {:after-start after-start
+                      :after-stop  {:halts? (halts?), :stops @stops}})))
+            (finally
+              (system/stop! handle))))))))
 
 (deftest stop-flush!-force-flushes-pending-state-test
   (testing "stop-flush! flushes a pending last_used_at stamp without waiting for the interval"

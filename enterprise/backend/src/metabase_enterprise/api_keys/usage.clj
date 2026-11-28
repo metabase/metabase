@@ -23,6 +23,7 @@
    [metabase.api-keys.core :as api-keys]
    [metabase.api-keys.models.api-key-usage-log :as api-key-usage-log]
    [metabase.api-keys.usage :as api-keys.usage]
+   [metabase.global-system.system :as global-system]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.startup.core :as startup]
@@ -207,13 +208,21 @@
     (.shutdownNow exec))
   (safe-flush!))
 
+;; The flush loop, as a global-system component, so halting the system stops it, and flushes, too.
+(def ^:private flush-component
+  (global-system/mutable-component-handle ::flush (constantly nil)))
+
 (defmethod startup/def-startup-logic! ::ApiKeyUsageFlush
   [_]
-  (start-flush!))
+  (global-system/start! flush-component
+                        #(do (start-flush!) ::running)
+                        (fn [_] (stop-flush!))))
 
+;; flushes what is pending even when the loop never started through the global system
 (defmethod startup/def-shutdown-logic! ::ApiKeyUsageFlush
   [_]
-  (stop-flush!))
+  (when-not (global-system/stop! flush-component)
+    (stop-flush!)))
 
 ;;; ------------------------------------------------- entry point ---------------------------------------------------
 

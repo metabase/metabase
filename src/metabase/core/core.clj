@@ -110,17 +110,34 @@
 ;; order decides for it, so these edges take effect as steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
-  {:metabase.server.instance/server #{:metabase.analytics.prometheus/system
-                                      :metabase.driver.sql-jdbc.connection/pools
-                                      :metabase.tracing.core/otel-sdk}
-   ;; scheduled jobs run queries and record traces and metrics
-   :metabase.task.impl/scheduler    #{:metabase.analytics.prometheus/system
-                                      :metabase.driver.sql-jdbc.connection/pools
-                                      :metabase.tracing.core/otel-sdk}
-   ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics
-   :metabase.queue-listener.core/listeners #{:metabase.analytics.prometheus/system
-                                             :metabase.driver.sql-jdbc.connection/pools
-                                             :metabase.tracing.core/otel-sdk}})
+  (cond->
+   {;; requests publish MQ messages, queue search updates, schedule jobs, and record API key usage and metrics
+    :metabase.server.instance/server        #{:metabase.analytics.prometheus/system
+                                              :metabase.app-db.core/app-db
+                                              :metabase.driver.sql-jdbc.connection/pools
+                                              :metabase.mq.init/mq
+                                              :metabase.queue-listener.core/listeners
+                                              :metabase.task.impl/scheduler
+                                              :metabase.tracing.core/otel-sdk}
+    ;; scheduled jobs run queries, record traces and metrics, and keep their state in the app DB
+    :metabase.task.impl/scheduler           #{:metabase.analytics.prometheus/system
+                                              :metabase.app-db.core/app-db
+                                              :metabase.driver.sql-jdbc.connection/pools
+                                              :metabase.tracing.core/otel-sdk}
+    ;; the field-value listener runs warehouse queries
+    ;; the search listener writes the index in the app DB and records traces and metrics
+    :metabase.queue-listener.core/listeners #{:metabase.analytics.prometheus/system
+                                              :metabase.app-db.core/app-db
+                                              :metabase.driver.sql-jdbc.connection/pools
+                                              :metabase.tracing.core/otel-sdk}
+    ;; the default queue backend stores messages in the app DB and delivers them in scheduler jobs
+    ;; publishing and delivering record metrics
+    :metabase.mq.init/mq                    #{:metabase.analytics.prometheus/system
+                                              :metabase.app-db.core/app-db
+                                              :metabase.task.impl/scheduler}}
+    ;; an OSS classpath has no API key flush component to depend on
+    config/ee-available? (-> (assoc :metabase-enterprise.api-keys.usage/flush #{:metabase.app-db.core/app-db})
+                             (update :metabase.server.instance/server conj :metabase-enterprise.api-keys.usage/flush))))
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs. Requests queue search updates, MQ messages, API key usage and notifications, and schedule jobs.
@@ -151,6 +168,10 @@
    "release migration locks"      #{"halt the global system"}})
 
 ;; how long the halt waits for a start in flight, out of the 30 seconds the process has to shut down
+;; Other steps wait too, each against the same 30 seconds and each set on its own, among them the web server up to
+;; MB_JETTY_STOP_TIMEOUT (5 seconds by default), each queue listener up to 10 seconds, the token refresher up to 5,
+;; notifications up to MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS (20 by default) and the migration locks up to 20.
+;; Together they can outlast the 30 seconds, though each waits its full time only for work still in flight.
 (def ^:private halt-options {:start-timeout-ms 5000})
 
 (defn- halt-global-system!
@@ -187,8 +208,8 @@
    ;; after notifications, whose sends record traces and metrics while they drain
    ["shut down tracing"            #(tracing/shutdown!)]
    ["shut down analytics"          #(analytics.core/shutdown!)]
-   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
-   ["release migration locks"      #(mdb/release-migration-locks! 20)]
+   ;; waits, for a bounded time, for a migration this process is running
+   ["release migration locks"      #(mdb/stop-app-db!)]
    ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
    ;; after the migration locks are released, since a component this halts could be one that release needs
    ["halt the global system"       #(halt-global-system!)]
@@ -295,6 +316,8 @@
   (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
+  ;; registered before migrations run, so a halt during them releases their locks
+  (mdb/start-app-db!)
   ;; Cal 2024-04-03:
   ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
@@ -374,13 +397,20 @@
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
+    ;; before the web server, so a halt stops the recording after it; the call in [[init!*]] then does nothing
+    (perf/maybe-enable-monitoring!)
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes {:api        #'api-routes/routes
-                                             :auth       #'auth-wrapper/routes
-                                             :oauth      #'oauth-server.api/oauth-routes
-                                             :well-known #'oauth-server.api/well-known-routes})
-          handler       (server/make-handler server-routes #'mcp.http-handler/options)]
-      (server/start-web-server! handler))
+    (try
+      (let [server-routes (server/make-routes {:api        #'api-routes/routes
+                                               :auth       #'auth-wrapper/routes
+                                               :oauth      #'oauth-server.api/oauth-routes
+                                               :well-known #'oauth-server.api/well-known-routes})
+            handler       (server/make-handler server-routes #'mcp.http-handler/options)]
+        (server/start-web-server! handler))
+      ;; the exit below comes before [[init!*]] registers the shutdown hook, so nothing else would stop the recording
+      (catch Throwable e
+        (perf/stop-monitoring!)
+        (throw e)))
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing
