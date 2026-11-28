@@ -28,19 +28,13 @@ import type {
 } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import { modelToUrl } from "metabase/urls";
-import type {
-  Card,
-  Collection,
-  TokenFeatures,
-  UnsavedCard,
-} from "metabase-types/api";
+import type { Card, Collection, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
   createMockSearchResult,
   createMockTokenFeatures,
-  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
 import { AppBarContainer, getSearchResultSelection } from "./AppBar";
@@ -565,12 +559,18 @@ describe("AppBar question lineage", () => {
 
   it("links a changed saved question to the question it started from", async () => {
     const originalCard = createMockCard({ id: 5, name: "Cypress Pivot Table" });
-    setup({
-      card: createMockUnsavedCard({
+    // The query builder keeps a changed question in `qb.card` without an id,
+    // while the store type declares a saved card
+    const changedCard = {
+      ...createMockCard({
         display: "table",
         dataset_query: originalCard.dataset_query,
         original_card_id: originalCard.id,
       }),
+      id: undefined,
+    } as unknown as Card;
+    setup({
+      card: changedCard,
       originalCard,
       initialRoute: "/question",
       withKBar: true,
@@ -653,7 +653,7 @@ function setup({
   withKBar = false,
 }: {
   embedOptions?: Partial<InteractiveEmbeddingOptions>;
-  card?: Card | UnsavedCard;
+  card?: Card;
   originalCard?: Card;
   dashboardState?: { dashboard: DashboardState };
   initialRoute?: string;
