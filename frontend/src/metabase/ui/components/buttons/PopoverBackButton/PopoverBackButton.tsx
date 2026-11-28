@@ -1,8 +1,8 @@
 import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { Icon } from "metabase/ui";
-
+import { StaticIcon } from "../../icons/Icon/StaticIcon";
+import ChevronLeftIcon from "../../icons/Icon/icons/chevronleft.svg?component";
 import type { BoxProps } from "../../utils";
 import { Button } from "../Button";
 
@@ -19,7 +19,11 @@ export function PopoverBackButton(props: PopoverBackButtonProps) {
       p={0}
       aria-label={t`Back`}
       {...rest}
-      leftSection={withArrow && <Icon name="chevronleft" />}
+      leftSection={
+        withArrow && (
+          <StaticIcon component={ChevronLeftIcon} name="chevronleft" />
+        )
+      }
     />
   );
 }

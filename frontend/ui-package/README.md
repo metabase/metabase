@@ -31,6 +31,8 @@ For a nonce-based `style-src` Content Security Policy, install `get-nonce` in th
 
 The package can be imported in Node.js without browser globals. This does not imply support for server-side rendering or hydration.
 
+For one icon without the full icon registry, import the SVG component directly, for example `import TableIcon from "@metabase/ui/icons/table"`. These are raw SVG components. Pass standard SVG sizing and accessibility props instead of the legacy `Icon` component's `size`, `name` or `tooltip` props. `Icon` remains available for name-based lookup.
+
 The provider sets up the theme, the color variables, the font variable and what overlays (modals, tooltips, popovers) need. Wrap your app in it once.
 
 | Prop          | Type                               | Default                     |
