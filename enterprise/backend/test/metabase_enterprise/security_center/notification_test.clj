@@ -213,6 +213,22 @@
               ;; The second advisory should still be notified despite the first one failing
               (is (= 1 (count @notified))))))))))
 
+(deftest repeat-notification-failure-logged-as-error-test
+  (with-clean-advisories
+    (fn []
+      (testing "failure notifying advisory is logged as error"
+        (mt/with-temp [:model/SecurityAdvisory _
+                       (advisory-fixture {:advisory_id      "SC-LOG-001"
+                                          :severity         "critical"
+                                          :match_status     "active"
+                                          :last_notified_at nil})]
+          (mt/with-dynamic-fn-redefs [notification/notify-advisory! (fn [_] (throw (ex-info "Failed to deliver to channel/email" {})))]
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.task.sync-advisories :error]]
+              (task.sync/send-repeat-notifications!)
+              (is (=? [{:level   :error
+                        :message "Failed to send repeat notification for advisory SC-LOG-001: Failed to deliver to channel/email"}]
+                      (messages))))))))))
+
 ;;; ------------------------------------------------ notify-advisory! ------------------------------------------------
 
 (deftest notify-advisory-publishes-event-test
@@ -496,6 +512,21 @@
             (is (= {"email" "success" "slack" "failure"}
                    (tracked-results! #(notification/notify-advisory! advisory))))))
         (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory :id (:id advisory)))))))))
+
+(deftest notify-advisory-partial-delivery-logged-as-error-test
+  (testing "when Slack fails, its undelivered advisory is logged as error"
+    (mt/with-temp [:model/SecurityAdvisory advisory
+                   (advisory-fixture {:advisory_id  "SC-PARTIAL-LOG-001"
+                                      :severity     "critical"
+                                      :match_status "active"})]
+      (mt/with-temporary-setting-values [slack-token-valid? true]
+        (mt/with-dynamic-fn-redefs [settings/security-center-slack-channel (constantly "#security-alerts")]
+          (with-send-redef (fn [& _] (throw (delivery-failure :channel/slack)))
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.notification :error]]
+              (tracked-results! #(notification/notify-advisory! advisory))
+              (is (=? [{:level   :error
+                        :message "Advisory SC-PARTIAL-LOG-001 was not delivered to channel/slack"}]
+                      (messages))))))))))
 
 (deftest notify-advisory-every-channel-failed-test
   (testing "when no channel delivers, notify-advisory! throws and last_notified_at stays unset, so the next sync retries"
