@@ -57,7 +57,9 @@ export const useUpsertGroupTableAccessPolicies = ({
           }
 
           const existingPolicy = existingPolicies?.find(
-            (policy) => policy.table_id === selection.tableId,
+            (policy) =>
+              policy.group_id === tenantUsersGroupId &&
+              policy.table_id === selection.tableId,
           );
 
           return {
