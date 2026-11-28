@@ -335,6 +335,12 @@
          (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary))
      dictionary-formatter
 
+     (and apply-formatting? (isa? ((some-fn :effective_type :base_type) col) :type/JSON))
+     (fn [value]
+       (if (instance? java.util.Map value)
+         (json/encode value)
+         (->TextWrapper (str value) value)))
+
      :else
      (if apply-formatting?
        (fn [value]

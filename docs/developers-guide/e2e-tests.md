@@ -37,7 +37,7 @@ You can quickly test a single file only by using the official `--spec` flag.
 This flag can be used to run all specs within a folder, or to run multiple assorted specs. Consult [the official documentation](https://docs.cypress.io/app/references/command-line#cypress-run-spec-lt-spec-gt) for instructions.
 
 ```sh
-CYPRESS_GUI=false bun run test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
+CYPRESS_GUI=false bun run test-cypress --spec e2e/test/scenarios/question/new.cy.spec.ts
 ```
 
 You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/app/references/launching-browsers).

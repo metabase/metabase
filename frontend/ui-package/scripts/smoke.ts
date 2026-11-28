@@ -87,6 +87,10 @@ try {
     recursive: true,
     withFileTypes: true,
   });
+  assert(
+    !dependencies.some((entry) => entry.name === "kbar"),
+    "the standalone package must not install kbar",
+  );
   for (const name of ["react", "react-dom"]) {
     const paths = dependencies
       .filter(

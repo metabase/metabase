@@ -16,6 +16,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
@@ -26,6 +27,8 @@ import type {
   Card,
   Collection,
   Dashboard,
+  DashboardId,
+  RecentItem,
   SearchResult,
   User,
 } from "metabase-types/api";
@@ -34,6 +37,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockRecentCollectionItem,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -232,11 +236,51 @@ const getCollectionParentId = (collection: Collection) => {
   }
 };
 
+const getCollectionItems = (
+  collection: Collection,
+  collections: Collection[],
+  dashboards: Dashboard[],
+) => [
+  ...collections
+    .filter((c) => getCollectionParentId(c) === collection.id)
+    .map((c) =>
+      createMockCollectionItem({
+        ...c,
+        // Unjustified type cast. FIXME
+        id: c.id as number,
+        // Unjustified type cast. FIXME
+        entity_id: c.entity_id as BaseEntityId,
+        effective_location: c.location || "/",
+        location: c.location || "/",
+        type: undefined,
+        model: "collection",
+        here: ["collection", "dashboard"],
+        below: ["collection", "dashboard"],
+      }),
+    ),
+  ...dashboards
+    .filter(
+      (d) =>
+        (collection.id === "root" && !d.collection_id) ||
+        d.collection_id === collection.id,
+    )
+    .map((d) =>
+      createMockCollectionItem({
+        ...d,
+        // Unjustified type cast. FIXME
+        id: d.id as number,
+        model: "dashboard",
+      }),
+    ),
+];
+
 interface SetupOpts {
   card?: Card;
   collections?: Collection[];
+  currentUser?: User;
   error?: string;
   mostRecentlyViewedDashboard?: Dashboard;
+  recentItems?: RecentItem[];
   waitForContent?: boolean;
   searchResults?: SearchResult[];
 }
@@ -244,7 +288,9 @@ interface SetupOpts {
 const setup = async ({
   card = CARD_IN_ROOT_COLLECTION,
   collections = COLLECTIONS,
+  currentUser = CURRENT_USER,
   mostRecentlyViewedDashboard = undefined,
+  recentItems = [],
   error,
   waitForContent = true,
   searchResults = [],
@@ -256,7 +302,7 @@ const setup = async ({
 
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupCollectionByIdEndpoint({ collections, error });
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints(recentItems);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
   setupDatabasesEndpoints([]);
@@ -264,39 +310,7 @@ const setup = async ({
   collections.forEach((collection) => {
     setupCollectionItemsEndpoint({
       collection,
-      collectionItems: [
-        ...collections
-          .filter((c) => getCollectionParentId(c) === collection.id)
-          .map((c) =>
-            createMockCollectionItem({
-              ...c,
-              // Unjustified type cast. FIXME
-              id: c.id as number,
-              // Unjustified type cast. FIXME
-              entity_id: c.entity_id as BaseEntityId,
-              effective_location: c.location || "/",
-              location: c.location || "/",
-              type: undefined,
-              model: "collection",
-              here: ["collection", "dashboard"],
-              below: ["collection", "dashboard"],
-            }),
-          ),
-        ...dashboards
-          .filter(
-            (d) =>
-              (collection.id === "root" && !d.collection_id) ||
-              d.collection_id === collection.id,
-          )
-          .map((d) =>
-            createMockCollectionItem({
-              ...d,
-              // Unjustified type cast. FIXME
-              id: d.id as number,
-              model: "dashboard",
-            }),
-          ),
-      ],
+      collectionItems: getCollectionItems(collection, collections, dashboards),
     });
   });
 
@@ -323,7 +337,7 @@ const setup = async ({
     {
       withRouter: true,
       storeInitialState: {
-        currentUser: CURRENT_USER,
+        currentUser,
       },
     },
   );
@@ -662,6 +676,268 @@ describe("AddToDashSelectDashModal", () => {
   });
 });
 
+describe("AddToDashSelectDashModal for a question", () => {
+  const QUESTION_IN_ROOT = createMockCard({
+    id: getNextId(),
+    name: "Orders",
+    type: "question",
+  });
+  const QUESTION_IN_PERSONAL_COLLECTION = createMockCard({
+    id: getNextId(),
+    name: "Personal orders",
+    type: "question",
+    collection: PERSONAL_COLLECTION,
+    // Unjustified type cast. FIXME
+    collection_id: PERSONAL_COLLECTION.id as number,
+  });
+  const USERS = [
+    { userType: "an admin", currentUser: CURRENT_USER },
+    {
+      userType: "a normal user",
+      currentUser: { ...CURRENT_USER, is_superuser: false },
+    },
+  ];
+  const NEW_DASHBOARD_ID = 900;
+
+  const getLevel = (level: number) =>
+    screen.getByTestId(`item-picker-level-${level}`);
+  const expectActiveAt = (level: number, name: string) =>
+    waitFor(() =>
+      expect(
+        within(getLevel(level)).getByRole("link", { name: new RegExp(name) }),
+      ).toHaveAttribute("data-active", "true"),
+    );
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it.each(USERS)(
+    "should only list personal collections and dashboards for a question in a personal collection, for $userType",
+    async ({ currentUser }) => {
+      await setup({
+        card: QUESTION_IN_PERSONAL_COLLECTION,
+        currentUser,
+        mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
+      });
+
+      expect(
+        await screen.findByText("Add this question to a dashboard"),
+      ).toBeInTheDocument();
+      await expectActiveItem(PERSONAL_COLLECTION.name);
+      expect(
+        await findPickerItem(dashboardInPersonalCollection.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", {
+          name: new RegExp(DASHBOARD_AT_ROOT.name),
+        }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/our analytics/i)).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(USERS)(
+    "should list recent personal and public dashboards and all root collections for a question in a public collection, for $userType",
+    async ({ currentUser }) => {
+      await setup({
+        card: QUESTION_IN_ROOT,
+        currentUser,
+        recentItems: [
+          createMockRecentCollectionItem({
+            id: toNumberId(dashboardInPersonalCollection.id),
+            model: "dashboard",
+            name: dashboardInPersonalCollection.name,
+            parent_collection: {
+              id: PERSONAL_COLLECTION.id,
+              name: PERSONAL_COLLECTION.name,
+            },
+          }),
+          createMockRecentCollectionItem({
+            id: toNumberId(DASHBOARD_AT_ROOT.id),
+            model: "dashboard",
+            name: DASHBOARD_AT_ROOT.name,
+            parent_collection: { id: null, name: "Our analytics" },
+          }),
+        ],
+      });
+
+      expect(
+        await screen.findByText("Add this question to a dashboard"),
+      ).toBeInTheDocument();
+      await userEvent.click(await screen.findByText("Recent items"));
+      const recents = await within(getLevel(1)).findByRole("link", {
+        name: new RegExp(dashboardInPersonalCollection.name),
+      });
+      expect(recents).toBeInTheDocument();
+      expect(
+        within(getLevel(1)).getByRole("link", {
+          name: new RegExp(DASHBOARD_AT_ROOT.name),
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(getLevel(0)).getByText(PERSONAL_COLLECTION.name),
+      ).toBeInTheDocument();
+      expect(
+        within(getLevel(0)).getByText(/our analytics/i),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("should list the personal collection, root collections and dashboards, and offer a new dashboard for a question in the root collection", async () => {
+    await setup({ card: QUESTION_IN_ROOT });
+
+    expect(
+      await screen.findByText("Add this question to a dashboard"),
+    ).toBeInTheDocument();
+    expect(await findPickerItem(PERSONAL_COLLECTION.name)).toBeInTheDocument();
+    expect(await findPickerItem(COLLECTION.name)).toBeInTheDocument();
+    expect(await findPickerItem(DASHBOARD_AT_ROOT.name)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /New dashboard/ }),
+    ).toBeInTheDocument();
+  });
+
+  describe("creating a new dashboard", () => {
+    const setupCreateDashboard = () => {
+      fetchMock.post("path:/api/dashboard", async (call) => {
+        const body: unknown = JSON.parse(String(call.options.body));
+        if (
+          typeof body !== "object" ||
+          body === null ||
+          !("name" in body) ||
+          body.name !== "New Dashboard" ||
+          !("collection_id" in body)
+        ) {
+          return { status: 400, body: {} };
+        }
+        const collectionId = body.collection_id;
+        const collection = COLLECTIONS.find(({ id }) =>
+          collectionId === null ? id === "root" : id === collectionId,
+        );
+        if (!collection) {
+          return { status: 400, body: {} };
+        }
+        const newDashboard = createMockDashboard({
+          id: NEW_DASHBOARD_ID,
+          name: "New Dashboard",
+          // Unjustified type cast. FIXME
+          collection_id: collectionId as number | null,
+          model: "dashboard",
+        });
+        setupCollectionItemsEndpoint({
+          collection,
+          collectionItems: getCollectionItems(collection, COLLECTIONS, [
+            ...DASHBOARDS,
+            newDashboard,
+          ]),
+        });
+        fetchMock.get(`path:/api/dashboard/${NEW_DASHBOARD_ID}`, newDashboard);
+        return newDashboard;
+      });
+    };
+
+    const createNewDashboard = async () => {
+      await userEvent.click(
+        await screen.findByRole("button", { name: /New dashboard/ }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Create a new dashboard",
+      });
+      await userEvent.type(
+        within(dialog).getByRole("textbox"),
+        "New Dashboard",
+      );
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: "Create" }),
+      );
+    };
+
+    const getCreateDashboardBody = async () => {
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/dashboard", {
+            method: "POST",
+          }),
+        ).toHaveLength(1),
+      );
+      const [call] = fetchMock.callHistory.calls("path:/api/dashboard", {
+        method: "POST",
+      });
+      const body: unknown = JSON.parse(String(call.options.body));
+      return body;
+    };
+
+    const selectAndExpectNavigation = async (onChangeLocation: jest.Mock) => {
+      await userEvent.click(screen.getByRole("button", { name: /Select/ }));
+      expect(onChangeLocation).toHaveBeenCalledTimes(1);
+      expect(onChangeLocation).toHaveBeenCalledWith(
+        `/dashboard/${NEW_DASHBOARD_ID}-new-dashboard#add=${QUESTION_IN_ROOT.id}&edit`,
+      );
+    };
+
+    it("should create it in the selected collection", async () => {
+      setupCreateDashboard();
+      const { onChangeLocation } = await setup({ card: QUESTION_IN_ROOT });
+
+      await clickPickerItem(COLLECTION.name);
+      await clickPickerItem(SUBCOLLECTION.name);
+      expect(
+        await findPickerItem(dashboardInPublicSubcollection.name),
+      ).toBeInTheDocument();
+      await createNewDashboard();
+
+      expect(await getCreateDashboardBody()).toEqual({
+        name: "New Dashboard",
+        collection_id: SUBCOLLECTION.id,
+      });
+      await expectActiveAt(2, SUBCOLLECTION.name);
+      await expectActiveAt(3, "New Dashboard");
+      await selectAndExpectNavigation(onChangeLocation);
+    });
+
+    it("should create it in a selected collection with no child dashboards (metabase#47000)", async () => {
+      setupCreateDashboard();
+      expect(
+        getCollectionItems(COLLECTION, COLLECTIONS, DASHBOARDS).filter(
+          ({ model }) => model === "dashboard",
+        ),
+      ).toEqual([]);
+      const { onChangeLocation } = await setup({ card: QUESTION_IN_ROOT });
+
+      await clickPickerItem(COLLECTION.name);
+      expect(await findPickerItem(SUBCOLLECTION.name)).toBeInTheDocument();
+      await createNewDashboard();
+
+      expect(await getCreateDashboardBody()).toEqual({
+        name: "New Dashboard",
+        collection_id: COLLECTION.id,
+      });
+      await expectActiveAt(1, COLLECTION.name);
+      await expectActiveAt(2, "New Dashboard");
+      await selectAndExpectNavigation(onChangeLocation);
+    });
+
+    it("should create it in the collection of the selected dashboard", async () => {
+      setupCreateDashboard();
+      const { onChangeLocation } = await setup({
+        card: QUESTION_IN_ROOT,
+        mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
+      });
+
+      await expectActiveAt(1, DASHBOARD_AT_ROOT.name);
+      await createNewDashboard();
+
+      expect(await getCreateDashboardBody()).toEqual({
+        name: "New Dashboard",
+        collection_id: null,
+      });
+      await expectActiveAt(1, "New Dashboard");
+      await selectAndExpectNavigation(onChangeLocation);
+    });
+  });
+});
+
 describe("AddToDashSelectDashModal search", () => {
   const NO_COLLECTION_PERSONAL_COLLECTION = createMockCollection({
     id: 8,
@@ -909,6 +1185,13 @@ describe("AddToDashSelectDashModal search", () => {
     expect(getLastSearchParams().get("collection")).toBeNull();
   });
 });
+
+function toNumberId(id: DashboardId): number {
+  if (typeof id !== "number") {
+    throw new Error(`Expected a numeric dashboard id, got ${id}`);
+  }
+  return id;
+}
 
 async function assertPath(collections: Collection[]) {
   await waitForLoaderToBeRemoved();

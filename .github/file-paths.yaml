@@ -75,6 +75,12 @@ frontend_specs: &frontend_specs
 release_source: &release_sources
   - "release/**"
 
+ui_package:
+  - "frontend/fonts/Lato/**"
+  - "LICENSE-AGPL.txt"
+  - "frontend/src/metabase/ui/**"
+  - "frontend/ui-package/**"
+
 frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources

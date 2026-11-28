@@ -360,6 +360,16 @@ describe("formatNumber", () => {
   });
 
   describe("number_style = currency", () => {
+    it("places the currency code before the amount with currency_style = code", () => {
+      expect(
+        formatNumber(39.72, {
+          number_style: "currency",
+          currency: "USD",
+          currency_style: "code",
+        }),
+      ).toBe("USD\u00a039.72");
+    });
+
     it.each([
       ["symbol", "EUR", "1,234.56\u00a0€"],
       ["code", "EUR", "1,234.56\u00a0EUR"],
