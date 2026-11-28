@@ -50,8 +50,10 @@
     --mb-button-loader-size: 13.75px;
 
     /* 16px height with 16px line-height: Mantine's overflow: hidden on the root clips
-       the descenders of g/p/y. Text truncation is unaffected, it lives on .label. */
+       the descenders of g/p/y. A flex item with visible overflow cannot shrink below
+       its content width. min-width: 0 lets .label truncate in a flex row. */
     overflow: visible;
+    min-width: 0;
   }
 
   &[data-size="compact-sm"] {
