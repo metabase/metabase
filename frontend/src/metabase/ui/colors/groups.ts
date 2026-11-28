@@ -1,6 +1,5 @@
-import Color from "color";
-
 import { ACCENT_COLOR_NAMES_MAP } from "./constants/accents";
+import { parseColor, toHex } from "./css-color";
 import { ACCENT_COUNT, color } from "./palette";
 import type { AccentColorOptions, ColorPalette, NamedColor } from "./types";
 
@@ -38,7 +37,7 @@ export const getNamedAccentColors = (
 
   return names.map((name) => ({
     name,
-    value: Color(color(name, palette)).hex(),
+    value: toHex(parseColor(color(name, palette))),
   }));
 };
 
