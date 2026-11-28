@@ -164,6 +164,12 @@ function findGenerateOption(prompt: string) {
   });
 }
 
+function findGeneratingOption(prompt: string) {
+  return screen.findByRole("option", {
+    name: new RegExp(`Generating “${prompt}”…`),
+  });
+}
+
 async function getLastRequestBody(): Promise<unknown> {
   const body = fetchMock.callHistory.lastCall(GENERATE_ROUTE)?.options.body;
   return typeof body === "string" ? JSON.parse(body) : undefined;
@@ -259,11 +265,16 @@ describe("summary formula generator", () => {
     await userEvent.keyboard("{Enter}");
 
     expect(
-      await screen.findByRole("option", {
-        name: /Generating “revenue per customer”…/,
-      }),
+      await findGeneratingOption("revenue per customer"),
     ).toBeInTheDocument();
     expect(getInput("values")).toHaveAttribute("readonly");
+
+    const customOption = screen.getByRole("option", {
+      name: /Custom aggregation/,
+    });
+    expect(customOption).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(customOption);
+    expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
 
     response.resolve({ expression: "Average([Total])", name: "Average total" });
     await waitFor(() =>
@@ -279,9 +290,7 @@ describe("summary formula generator", () => {
 
     await userEvent.type(getInput("values"), "revenue per customer");
     await userEvent.keyboard("{Enter}");
-    const option = await screen.findByRole("option", {
-      name: /Generating “revenue per customer”…/,
-    });
+    const option = await findGeneratingOption("revenue per customer");
     await userEvent.keyboard("{Enter}");
     await userEvent.click(option);
     await userEvent.type(getInput("values"), " and more");
@@ -308,14 +317,12 @@ describe("summary formula generator", () => {
     await userEvent.type(getInput("values"), "revenue per customer");
     await userEvent.keyboard("{Enter}");
     expect(
-      await screen.findByRole("option", {
-        name: /Generating “revenue per customer”…/,
-      }),
+      await findGeneratingOption("revenue per customer"),
     ).toBeInTheDocument();
 
     await userEvent.type(getInput("columns"), "the day after the order");
     const columnsOption = await findGenerateOption("the day after the order");
-    expect(columnsOption).toHaveAttribute("data-combobox-disabled", "true");
+    expect(columnsOption).toHaveAttribute("aria-disabled", "true");
     expect(columnsOption).toHaveTextContent(
       "Wait for the other formula to finish generating",
     );
@@ -356,9 +363,7 @@ describe("summary formula generator", () => {
     await userEvent.type(getInput("values"), "revenue per customer");
     await userEvent.keyboard("{Enter}");
     expect(
-      await screen.findByRole("option", {
-        name: /Generating “revenue per customer”…/,
-      }),
+      await findGeneratingOption("revenue per customer"),
     ).toBeInTheDocument();
 
     await userEvent.click(
@@ -475,6 +480,36 @@ describe("summary formula generator", () => {
       "AI generation isn't available because the description is longer than 500 characters.",
     );
     expect(fetchMock.callHistory.calls(GENERATE_ROUTE)).toHaveLength(0);
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
+  it("preserves a draft opened in another well when the generated formula is invalid", async () => {
+    const response = defer<GenerateCustomExpressionResponse>();
+    const { onQueryChange } = await setup({ response: response.promise });
+
+    await userEvent.type(getInput("values"), "revenue per customer");
+    await userEvent.keyboard("{Enter}");
+    await findGeneratingOption("revenue per customer");
+
+    await userEvent.type(getInput("columns"), "zzz");
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Custom column/ }),
+    );
+    const editor = await screen.findByRole("textbox", { name: "Formula" });
+    await userEvent.type(editor, "123");
+
+    response.resolve({
+      expression: "Average([Missing])",
+      name: "Average missing",
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Invalid generated formula: Average([Missing])",
+    );
+    expect(screen.getByRole("textbox", { name: "Formula" })).toHaveTextContent(
+      "123",
+    );
+    expect(getInput("values")).toHaveValue("revenue per customer");
     expect(onQueryChange).not.toHaveBeenCalled();
   });
 

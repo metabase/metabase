@@ -47,6 +47,7 @@ export function GenerateFormulaOption({
   }
 
   const isGenerating = state.status === "loading";
+  const disabled = isGenerating || isBlocked;
   const errorMessage = state.status === "error" ? state.message : null;
   const hint = getHint(wellId, isBlocked);
 
@@ -54,7 +55,8 @@ export function GenerateFormulaOption({
     <Combobox.Group label={t`AI`}>
       <Combobox.Option
         value={GENERATE_OPTION_VALUE}
-        disabled={isGenerating || isBlocked}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
         aria-busy={isGenerating}
         className={S.generateOption}
       >
@@ -76,7 +78,7 @@ export function GenerateFormulaOption({
             {errorMessage ?? hint}
           </Text>
         </Box>
-        {!isGenerating && !isBlocked && <Kbd>{"↵"}</Kbd>}
+        {!disabled && <Kbd>{"↵"}</Kbd>}
       </Combobox.Option>
     </Combobox.Group>
   );
