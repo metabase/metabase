@@ -444,15 +444,16 @@ describe("bar, row and combo chart rendering", () => {
           40000 + index * 900,
         ]),
       });
-      const getGridLines = () =>
+      // a hidden grid line stays in the page with no opacity
+      const getVisibleGridLines = () =>
         chart.querySelectorAll(
-          "path[stroke='var(--mb-color-chart-axis)'][fill='none']:not([stroke-linecap='round'])",
+          "path[stroke='var(--mb-color-chart-axis)'][fill='none']:not([stroke-linecap='round']):not([stroke-opacity='0'])",
         );
 
       expect(getChartTexts(chart)).toEqual(
         expect.arrayContaining(["Sum of Quantity", "Sum of Total"]),
       );
-      expect(getGridLines().length).toBeGreaterThan(0);
+      expect(getVisibleGridLines().length).toBeGreaterThan(0);
 
       // a bar other than the first, so a fixed first bar cannot pass
       hoverChartElement(chart, withFill("#88BF4D"), 3);
@@ -460,14 +461,14 @@ describe("bar, row and combo chart rendering", () => {
         expect(getChartTexts(chart)).not.toContain("Sum of Total"),
       );
       expect(getChartTexts(chart)).toContain("Sum of Quantity");
-      expect(getGridLines().length).toBeGreaterThan(0);
+      expect(getVisibleGridLines().length).toBeGreaterThan(0);
 
       hoverChartElement(chart, withFill("#98D9D9"), 3);
       await waitFor(() =>
         expect(getChartTexts(chart)).not.toContain("Sum of Quantity"),
       );
       expect(getChartTexts(chart)).toContain("Sum of Total");
-      expect(getGridLines().length).toBeGreaterThan(0);
+      expect(getVisibleGridLines().length).toBeGreaterThan(0);
     });
   });
 
@@ -1018,10 +1019,12 @@ describe("bar, row and combo chart rendering", () => {
     const tickLabels = getChartTextRects(chart, (text) => text.includes("%"));
     expect(axisTitle).toBeDefined();
     expect(tickLabels.length).toBeGreaterThan(0);
-    // the y-axis title is rotated, so its right edge is its x plus its height
+    // the layout keeps the axis title's margin (24px for a chart this size)
+    // between the title and the widest tick label
+    const AXIS_TITLE_MARGIN = 24;
     const titleRight = axisTitle.x + axisTitle.width;
     tickLabels.forEach((label) => {
-      expect(label.x - titleRight).toBeGreaterThan(5);
+      expect(label.x - titleRight).toBeGreaterThanOrEqual(AXIS_TITLE_MARGIN);
     });
 
     // a bar other than the first, so a fixed first bar cannot pass
@@ -1116,7 +1119,7 @@ describe("bar, row and combo chart rendering", () => {
     });
 
     it("should draw 100 series, the most the chart supports", async () => {
-      await setup({
+      renderSeries({
         display: "row",
         cols: [
           createCreatedAtColumn("year"),
@@ -1141,6 +1144,7 @@ describe("bar, row and combo chart rendering", () => {
         },
       });
 
+      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
       expect(
         screen.queryByText(
           "This chart type doesn't support more than 100 series of data.",
