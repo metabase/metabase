@@ -88,6 +88,8 @@ In chart settings, click the **Data** tab to configure the chart's groupings and
 
 In chart settings, click the **Display** tab to show or hide labels and values. You can toggle **Show parent labels**, **Show parent values**, **Show leaf labels**, and **Show leaf values**.
 
+To choose how many decimal places the percentages show, set **Number of decimal places**. If you leave it empty, Metabase picks the number of decimal places for you.
+
 ## Limitations and alternatives
 
 - Treemaps display a single metric grouped by one or two dimensions. If your query returns more than one metric, the treemap uses the metric you select in the **Value** slot.

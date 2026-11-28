@@ -362,6 +362,35 @@ describe("TREEMAP_CHART_DEFINITION", () => {
     });
   });
 
+  describe("decimal places setting", () => {
+    const decimalPlacesSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap.decimal_places"],
+    );
+
+    it("is a number input in the display section", () => {
+      expect(checkNotNull(decimalPlacesSetting.getSection)([], {}, {})).toBe(
+        "Display",
+      );
+      expect(decimalPlacesSetting.widget).toBe("number");
+    });
+
+    it("has no default value, so the automatic precision applies", () => {
+      expect(decimalPlacesSetting.getDefault).toBeUndefined();
+    });
+
+    it("is always visible", () => {
+      expect(decimalPlacesSetting.getHidden).toBeUndefined();
+    });
+
+    it("accepts only whole numbers that are not negative", () => {
+      const getProps = checkNotNull(decimalPlacesSetting.getProps);
+      expect(getProps([], {}, jest.fn(), undefined, jest.fn())).toMatchObject({
+        placeholder: "Auto",
+        options: { isInteger: true, isNonNegative: true },
+      });
+    });
+  });
+
   describe("treemap.rows and rename settings", () => {
     const rowsSetting = checkNotNull(
       TREEMAP_CHART_DEFINITION.settings?.["treemap.rows"],
