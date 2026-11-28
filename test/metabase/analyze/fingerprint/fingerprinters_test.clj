@@ -98,6 +98,18 @@
                                  (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text :effective_type :type/Temporal}))
                                  ["2007-12-03T10:15:30.00Z" "1970-01-01T00:00:01.234Z"])))))))))))
 
+(deftest fingerprint-temporal-ignores-non-temporal-values-test
+  (mt/test-driver :h2
+    (testing "booleans and other objects in a temporal field are skipped instead of throwing"
+      (is (= {:global {:distinct-count 3
+                       :nil%           0.0}
+              :type   {:type/DateTime {:earliest "2007-12-03T10:15:30Z"
+                                       :latest   "2007-12-03T10:15:30Z"}}}
+             (temporal-core-fields
+              (transduce identity
+                         (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Temporal}))
+                         [true false "2007-12-03T10:15:30.00Z"])))))))
+
 (deftest ^:parallel disambiguate-test
   (testing "We should correctly disambiguate multiple competing multimethods (DateTime and FK in this case)"
     (let [field {:base_type     :type/DateTime
