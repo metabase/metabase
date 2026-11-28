@@ -25,10 +25,15 @@ import {
   selectTimelineEvents,
   setDashCardTimelineEventsEnabled,
   setDashCardTimelineEventsVisibility,
+  setPrefetchedDashboard,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 import { dashboardReducers as reducer } from "./reducers";
-import { linkTargets, timelineEvents } from "./reducers-typed";
+import {
+  linkTargets,
+  prefetchedDashboard,
+  timelineEvents,
+} from "./reducers-typed";
 
 const TEST_DASHBOARD = createMockDashboard();
 
@@ -49,6 +54,7 @@ describe("dashboard reducers", () => {
       linkTargets: { questions: {}, dashboards: {} },
       isAddParameterPopoverOpen: false,
       isNavigatingBackToDashboard: false,
+      prefetchedDashboard: null,
       editingDashboard: null,
       loadingDashCards: {
         loadingIds: [],
@@ -559,6 +565,40 @@ describe("dashboard reducers", () => {
     it("forgets the tracking when another dashboard is opened", () => {
       const state = reducer(trackedState(), { type: INITIALIZE });
       expect(state.timelineEvents.hasTrackedEventsShown).toBe(false);
+    });
+  });
+
+  describe("prefetchedDashboard", () => {
+    const dashboard = createMockDashboard({
+      id: 5,
+      name: "E-commerce insights",
+    });
+    const handedOverState = () =>
+      reducer(undefined, setPrefetchedDashboard(dashboard));
+
+    it("holds the dashboard that was handed over", () => {
+      expect(handedOverState().prefetchedDashboard).toEqual(dashboard);
+    });
+
+    it.each([
+      { name: "resets its state", action: reset() },
+      { name: "initializes", action: initialize() },
+    ])("keeps it when the dashboard page $name", ({ action }) => {
+      const state = reducer(handedOverState(), action);
+      expect(state.prefetchedDashboard).toEqual(dashboard);
+    });
+
+    it("forgets it when it is taken back", () => {
+      const state = reducer(handedOverState(), setPrefetchedDashboard(null));
+      expect(state.prefetchedDashboard).toBeNull();
+    });
+
+    it.each([
+      { name: "succeeds", type: fetchDashboard.fulfilled.type },
+      { name: "fails", type: fetchDashboard.rejected.type },
+    ])("forgets it when a dashboard load $name", ({ type }) => {
+      const state = prefetchedDashboard(dashboard, { type });
+      expect(state).toBeNull();
     });
   });
 

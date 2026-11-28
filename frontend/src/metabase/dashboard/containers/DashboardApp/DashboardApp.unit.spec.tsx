@@ -110,6 +110,8 @@ interface Options {
   deferDashboard?: boolean;
   /** Holds the query metadata response until `resolveQueryMetadata` is called. */
   deferQueryMetadata?: boolean;
+  /** Leaves the dashboard in the store as if it was loaded right before the page opened. */
+  isPrefetched?: boolean;
 }
 
 function renderDashboardApp({
@@ -118,6 +120,7 @@ function renderDashboardApp({
   deferQueryMetadata = false,
   currentUser = createMockUser(),
   deferDashboard = false,
+  isPrefetched = false,
 }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
@@ -177,7 +180,9 @@ function renderDashboardApp({
       withRouter: true,
       storeInitialState: {
         currentUser,
-        dashboard: createMockDashboardState(),
+        dashboard: createMockDashboardState({
+          prefetchedDashboard: isPrefetched ? mockDashboard : null,
+        }),
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE_WITH_ACTIONS],
         }),
@@ -541,6 +546,68 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  describe("prefetched dashboard", () => {
+    it("loads a dashboard fetched right before the page opened without requesting it again", async () => {
+      const { dashboardId, store } = await setup({
+        dashboard: { name: "E-commerce insights" },
+        isPrefetched: true,
+      });
+
+      expect(
+        await screen.findByDisplayValue("E-commerce insights"),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`),
+      ).toHaveLength(0);
+      expect(store.getState().dashboard.prefetchedDashboard).toBeNull();
+    });
+
+    it("draws the dashboard's real card layout while the rest of it loads", async () => {
+      const { resolveQueryMetadata } = renderDashboardApp({
+        dashboard: {
+          dashcards: [
+            createMockHeadingDashboardCard({ id: 1, text: "Heading" }),
+            createMockTextDashboardCard({
+              id: 2,
+              text: "First line\nSecond line",
+            }),
+          ],
+        },
+        deferQueryMetadata: true,
+        isPrefetched: true,
+      });
+
+      try {
+        // These can only come from the dashboard's own layout.
+        expect(
+          await screen.findAllByTestId("dashboard-skeleton-text"),
+        ).toHaveLength(2);
+      } finally {
+        resolveQueryMetadata();
+      }
+
+      await waitForDashboardToLoad();
+    });
+
+    it("requests the dashboard again on the next visit", async () => {
+      const { dashboardId, router } = await setup({ isPrefetched: true });
+
+      act(() => {
+        router.navigate("/");
+      });
+      act(() => {
+        router.navigate(`/dashboard/${dashboardId}`);
+      });
+      await waitForDashboardToLoad();
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls(`path:/api/dashboard/${dashboardId}`),
+        ).toHaveLength(1),
+      );
+    });
   });
 
   it("should show the error page instead of an endless loader for a non-numeric slug (metabase#78725)", async () => {

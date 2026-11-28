@@ -148,6 +148,8 @@ export interface DashboardState {
   editingDashboard: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
+  /** A dashboard loaded right before its page opens, which the next load uses instead of requesting it again. */
+  prefetchedDashboard: Dashboard | null;
 
   slowCards: Record<DashCardId, boolean>;
 

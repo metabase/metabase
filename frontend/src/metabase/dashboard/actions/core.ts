@@ -174,3 +174,11 @@ export const fetchDashboardFulfilled = createAction<
 export const dashboardLayoutFetched = createAction<
   ReturnType<typeof fetchDashboard.fulfilled>["payload"]["entities"]
 >("metabase/dashboard/DASHBOARD_LAYOUT_FETCHED");
+
+/**
+ * Hands a dashboard that was just loaded to the dashboard page that opens next, so the page does not request it again.
+ * Null takes it back.
+ */
+export const setPrefetchedDashboard = createAction<Dashboard | null>(
+  "metabase/dashboard/SET_PREFETCHED_DASHBOARD",
+);
