@@ -34,7 +34,6 @@
   Link and iframe virtual cards render as clickable links; placeholder (empty section slots) and action cards are
   skipped and just appear blank in the PDF. A card taller than a full page is scaled down to fit."
   (:require
-   [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
@@ -56,6 +55,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
+   [metabase.util.cond :as util.cond]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
@@ -1159,7 +1159,7 @@
       ;; whitespace ECharts/visx leave inside the image.
       (binding [js.svg/*svg-background-color* (when-not *debug-boxes*
                                                 js.svg/*svg-background-color*)]
-        (b/cond
+        (util.cond/cond
           ;; result too large to load: show its explanatory message rather than attempting (and failing) to draw a chart
           too-large?
           (draw-too-large! cs x body-top cell-w body-h

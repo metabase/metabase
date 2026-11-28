@@ -3,7 +3,6 @@
   appropriate [[metabase-enterprise.sandbox.models.sandbox]]s (Sandboxes). See dox
   for [[metabase.permissions.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require
-   [better-cond.core :as b]
    [medley.core :as m]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
@@ -280,9 +279,8 @@
                                  (get table-by-name col-name)
                                  (get table-by-flat-name col-name)))
         fixed-cols         (remove (fn [{:keys [table-id], :as sandbox-col}]
-                                     (b/cond
-                                       (and table-id
-                                            (not= table-id original-table-id))
+                                     (if (and table-id
+                                              (not= table-id original-table-id))
                                        (do
                                          (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
                                                           " query included column %s from Table %d. This is unsupported and may not"
@@ -291,21 +289,17 @@
                                                      (:id sandbox-col)
                                                      table-id)
                                          true)
-
-                                       :let [matching-table-col (find-table-col sandbox-col)]
-                                       (not matching-table-col)
-                                       (do
-                                         (log/errorf (str "Sandboxes can only include columns from the original Table,"
-                                                          " but query included column %s. This is unsupported and may not work in"
-                                                          " the future.")
-                                                     (:id sandbox-col))
-                                         true)
-
-                                       :else
-                                       (do
-                                         ;; this will throw an exception if types don't match up
-                                         (sandbox/check-column-types-match sandbox-col matching-table-col)
-                                         false)))
+                                       (if-let [matching-table-col (find-table-col sandbox-col)]
+                                         (do
+                                           ;; this will throw an exception if types don't match up
+                                           (sandbox/check-column-types-match sandbox-col matching-table-col)
+                                           false)
+                                         (do
+                                           (log/errorf (str "Sandboxes can only include columns from the original Table,"
+                                                            " but query included column %s. This is unsupported and may not work in"
+                                                            " the future.")
+                                                       (:id sandbox-col))
+                                           true))))
                                    sandbox-cols)]
     (if (= fixed-cols sandbox-cols)
       sandbox-query

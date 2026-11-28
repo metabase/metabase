@@ -13,11 +13,11 @@
     audited, and Metabase staff cannot hold the user's second factor.
   - SSO providers — exempt: the identity provider owns MFA there."
   (:require
-   [better-cond.core :as b]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.channel.settings :as channel.settings]))
+   [metabase.channel.settings :as channel.settings]
+   [metabase.util.cond :as util.cond]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,7 +50,9 @@
       - `:mfa/methods` is hard-coded to `\"totp\"`, since that's the method we want to configure, and we don't want to
         fall back to email here."
   [provider login-result]
-  (b/cond
+  (util.cond/cond
+    :let [challenged? (challenged-provider? provider)
+          suppressed? (contains? session-suppressed-providers provider)]
     ;; Pass through the first factor's `login-result` in two cases:
     ;; 1. First factor login failed
     (not (and (true? (:success? login-result))
@@ -58,16 +60,15 @@
     ;; 2. MFA is not enabled at all
     (not (mfa.settings/mfa-enabled?))                             login-result
     ;; 3. First factor does not need MFA (e.g. SSO, Google)
-    (and (not (challenged-provider? provider))
-         (not (contains? session-suppressed-providers provider))) login-result
+    (and (not challenged?)
+         (not suppressed?))                                       login-result
 
     ;; At this point, we could plausibly require an MFA challenge or enrollment.
-    :let [user-id (get-in login-result [:user :id])
-          method  (when user-id (enrollment/enrolled-method user-id))]
+    :let [method (some-> (get-in login-result [:user :id]) enrollment/enrolled-method)]
 
     ;; MFA configured and the provider supports MFA challenges: issue a challenge.
     ;; This signals `login!` not to mint a session yet.
-    (and method (challenged-provider? provider))
+    (and method challenged?)
     (assoc login-result
            :success?         :mfa-required
            :mfa/pending?     true
@@ -82,7 +83,7 @@
     ;; directly after the new password is accepted, when MFA is in play. Instead, they get redirected to the regular
     ;; login page to re-enter their password and then answer an MFA challenge (or enroll).
     ;; This signals the `login!` flow accordingly.
-    (contains? session-suppressed-providers provider)
+    suppressed?
     (assoc login-result :mfa/pending? true)
 
     ;; At this point, we know:

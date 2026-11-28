@@ -749,8 +749,7 @@
                                    "\\.sh$"
                                    "\\.yaml$"
                                    "\\.yml$"]
-                :exclude-patterns [".clj-kondo/better-cond/.*"
-                                   ".clj-kondo/com.github.seancorfield/.*"
+                :exclude-patterns [".clj-kondo/com.github.seancorfield/.*"
                                    "resources/i18n/.*\\.edn$"
                                    "resources/frontend_client"
                                    "resources/frontend_shared"

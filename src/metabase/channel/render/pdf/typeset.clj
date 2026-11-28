@@ -7,10 +7,10 @@
   ([[words->lines]], via the greedy [[pack-units->lines]]), with RTL word reordering ([[reorder-bidi-items]]) and
   block/line height measurement ([[block-height]], [[fit-scale]])."
   (:require
-   [better-cond.core :as b]
    [clojure.string :as str]
    [metabase.channel.render.pdf.common :as common]
-   [metabase.channel.render.pdf.font :as font])
+   [metabase.channel.render.pdf.font :as font]
+   [metabase.util.cond :as util.cond])
   (:import
    (com.ibm.icu.text Bidi)
    (java.awt Color)))
@@ -231,19 +231,17 @@
          line                                                   []
          line-w                                                 0.0
          lines                                                  (transient [])]
-    (b/cond
-      (empty? units)  (cond-> lines
-                        (seq line) (conj! line)
-                        :always    persistent!)
+    (util.cond/cond
+      (empty? units)  (persistent! (cond-> lines
+                                     (seq line) (conj! line)))
 
       ;; a hard break flushes the current line (which may be empty -> a blank line)
       break?          (recur (rest units) [] 0.0 (conj! lines line))
 
       :let [add-space? (and (seq line) space-before?)
-            advance    (+ ww (if add-space? sp 0.0))
+            advance    (cond-> ww add-space? (+ sp))
             ;; a unit alone on its line and wider than the whole line is a split candidate
-            parts      (when (and (empty? line)
-                                  (> ww max-w))
+            parts      (when (and (empty? line) (> ww max-w))
                          (split-fn u))]
 
       ;; the candidate actually split into more than one piece: retry with those in front

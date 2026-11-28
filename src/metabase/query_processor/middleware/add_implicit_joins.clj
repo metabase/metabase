@@ -3,7 +3,6 @@
   in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
-   [better-cond.core :as b]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -278,21 +277,17 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (b/cond
-    :let [next-path (lib.walk/next-path query path)]
-
-    (not next-path)
+  (cond
+    (not (lib.walk/next-path query path))
     stage
 
     (or (seq (lib.walk/apply-f-for-stage-at-path lib/aggregations query path))
         (seq (lib.walk/apply-f-for-stage-at-path lib/breakouts query path)))
     stage
 
-    :let [fields (lib.walk/apply-f-for-stage-at-path lib/fields query path)]
-
     ;; previous stage `:fields` should DEFINITELY be populated at this point, but it's done by other middleware; if for
     ;; some reason it is not populated then no-op.
-    (empty? fields)
+    (empty? (lib.walk/apply-f-for-stage-at-path lib/fields query path))
     (do
       (log/warnf "Expected :fields to be populated in stage at path %s, but it was not." (pr-str path))
       stage)

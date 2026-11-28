@@ -3,7 +3,6 @@
   `optimize-temporal-clauses` for more details."
   (:refer-clojure :exclude [get-in mapv])
   (:require
-   [better-cond.core :as b]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
@@ -156,8 +155,8 @@
     [#{:field :expression} {:temporal-unit #'optimizable-units} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 
-    [:absolute-datetime _opts t _unit]
-    [:absolute-datetime _opts t :default]))
+    [:absolute-datetime opts t _unit]
+    [:absolute-datetime opts t :default]))
 
 (defmulti ^:private temporal-value-lower-bound
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.
@@ -257,37 +256,28 @@
    path                        :- ::lib.walk/stage-path
    optimize-temporal-value-fn  :- ifn?
    [tag opts field temporal-value] :- [:or :mbql.clause/< :mbql.clause/<= :mbql.clause/> :mbql.clause/>=]
-   new-clause-type             :- [:enum :< :>=]]
-  (b/cond
-    (date-field-with-day-bucketing? query path field)
+   new-clause-constructor      :- ifn?]
+  (if (date-field-with-day-bucketing? query path field)
     [tag opts (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]
-
-    :let [new-bound (optimize-temporal-value-fn temporal-value (lib/raw-temporal-bucket field))]
-    new-bound
-    ((case new-clause-type
-       :<  lib/<
-       :>= lib/>=)
-     (change-temporal-unit-to-default field)
-     new-bound)
-
-    :else
-    (log/errorf "optimize-temporal-value-fn %s did not return a new bound" optimize-temporal-value-fn)))
+    (if-let [new-bound (optimize-temporal-value-fn temporal-value (lib/raw-temporal-bucket field))]
+      (new-clause-constructor (change-temporal-unit-to-default field) new-bound)
+      (log/errorf "optimize-temporal-value-fn %s did not return a new bound" optimize-temporal-value-fn))))
 
 (defmethod optimize-clause :<
   [query path clause]
-  (optimize-comparison-clause query path #'temporal-value-lower-bound clause :<))
+  (optimize-comparison-clause query path #'temporal-value-lower-bound clause lib/<))
 
 (defmethod optimize-clause :<=
   [query path clause]
-  (optimize-comparison-clause query path #'temporal-value-upper-bound clause :<))
+  (optimize-comparison-clause query path #'temporal-value-upper-bound clause lib/<))
 
 (defmethod optimize-clause :>
   [query path clause]
-  (optimize-comparison-clause query path #'temporal-value-upper-bound clause :>=))
+  (optimize-comparison-clause query path #'temporal-value-upper-bound clause lib/>=))
 
 (defmethod optimize-clause :>=
   [query path clause]
-  (optimize-comparison-clause query path #'temporal-value-lower-bound clause :>=))
+  (optimize-comparison-clause query path #'temporal-value-lower-bound clause lib/>=))
 
 (defmethod optimize-clause :between
   [query path [_tag _opts field lower-bound upper-bound]]
