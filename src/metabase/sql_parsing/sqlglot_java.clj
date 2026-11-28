@@ -16,6 +16,7 @@
    [metabase.sql-parsing.settings :as sql-parsing.settings]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as field-references]
+   [metabase.sql-parsing.sqlglot-java.join-steps :as join-steps]
    [metabase.sql-parsing.sqlglot-java.references :as references]
    [metabase.sql-parsing.sqlglot-java.rewrite :as rewrite]
    [metabase.sql-parsing.sqlglot-java.statements :as statements]
@@ -143,4 +144,6 @@
     (single-stmt-of-type [_ dialect sql stmt-type]
       (call #(statements/single-stmt-of-type dialect sql stmt-type)))
     (transpile-sql [_ sql from-dialect to-dialect]
-      (call #(transpile/transpile-sql sql from-dialect to-dialect)))))
+      (call #(transpile/transpile-sql sql from-dialect to-dialect)))
+    (join-steps [_ dialect sql]
+      (call #(join-steps/join-steps dialect sql)))))

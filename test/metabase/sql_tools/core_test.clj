@@ -15,6 +15,7 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.sql-tools.sqlglot.core :as sql-tools.sqlglot]
    [metabase.test :as mt]))
 
 (def ^:private all-backends [:macaw :sqlglot])
@@ -714,3 +715,61 @@
 (deftest ^:parallel read-only-select?-druid-test
   (testing "a Druid SELECT is read in the dialect sqlglot registers for Druid"
     (is (true? (sql-tools/read-only-select? :druid-jdbc "SELECT __time, COUNT(*) FROM wikipedia GROUP BY 1")))))
+
+;;; -------------------------------------------------- join-steps --------------------------------------------------
+
+(deftest join-steps-names-sources-test
+  (mt/test-driver :h2
+    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+      (testing "a table source is named for the driver, and any other source has no table"
+        (let [query (lib/native-query (mt/metadata-provider)
+                                      (str "with c as (select 1 as id) select o.id from orders o "
+                                           "left join people p on p.id = o.user_id "
+                                           "join c on c.id = o.id"))]
+          (is (=? {:from  {:source :table, :table "ORDERS", :alias "O"}
+                   :steps [{:source :table, :table "PEOPLE", :alias "P", :strategy :left-join}
+                           {:source :cte, :table nil, :alias "C", :strategy :inner-join}]}
+                  (sql-tools/join-steps driver/*driver* query))))))))
+
+(deftest join-steps-with-the-macaw-backend-test
+  (mt/test-driver :h2
+    (binding [sql-tools.settings/*parser-backend-override* :macaw]
+      (let [steps #(sql-tools/join-steps driver/*driver* (lib/native-query (mt/metadata-provider) %))]
+        (testing "the steps are built from Macaw's AST, with the matched count of an outer join from its condition"
+          (is (=? {:from  {:source :table, :table "ORDERS", :alias "O"}
+                   :steps [{:source   :table
+                            :table    "PEOPLE"
+                            :alias    "P"
+                            :strategy :left-join
+                            :sql      #"(?i)SELECT COUNT\(\*\), COUNT\(CASE WHEN .* THEN 1 END\) FROM .*LEFT JOIN.*"}]}
+                  (steps "select o.id from orders o left join people p on p.id = o.user_id"))))
+        (testing "a subquery source is refused"
+          (is (= {:unsupported :unsupported-source}
+                 (steps "select 1 from orders o join (select 1 as id) d on d.id = o.id"))))
+        (testing "SQL Macaw cannot parse is refused"
+          (is (= {:unsupported :unparseable}
+                 (steps "select from where"))))))))
+
+(deftest join-steps-without-a-sqlglot-dialect-test
+  (mt/test-driver :h2
+    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+      (testing "a driver whose name is no sqlglot dialect is read in the default dialect"
+        (mt/with-dynamic-fn-redefs [sql-tools.sqlglot/driver->dialect (constantly "not-a-dialect")]
+          (let [query (lib/native-query (mt/metadata-provider)
+                                        "select o.id from orders o join people p on p.id = o.user_id")]
+            (is (=? {:steps [{:strategy :inner-join
+                              :sql      "SELECT COUNT(*) AS n FROM orders AS o JOIN people AS p ON p.id = o.user_id"}]}
+                    (sql-tools/join-steps :h2 query)))))))))
+
+(deftest join-steps-parser-failure-is-not-retried-test
+  (mt/test-driver :h2
+    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+      (testing "a failure other than an unknown dialect propagates, with no second call in the default dialect"
+        (let [dialects (atom [])]
+          (mt/with-dynamic-fn-redefs [sql-tools.sqlglot/driver->dialect (constantly "postgres")
+                                      sql-parsing/join-steps            (fn [_parser dialect _sql]
+                                                                          (swap! dialects conj dialect)
+                                                                          (throw (ex-info "timed out" {})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"timed out"
+                                  (sql-tools/join-steps :h2 (lib/native-query (mt/metadata-provider) "select 1"))))
+            (is (= ["postgres"] @dialects))))))))

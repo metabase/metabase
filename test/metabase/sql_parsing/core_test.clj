@@ -108,6 +108,30 @@
         (is (= expected (sql-parsing/simple-query? (sql-tools/sqlglot-parser) dialect sql))
             (pr-str sql))))))
 
+;;; -------------------------------------------------- join-steps --------------------------------------------------
+
+(deftest ^:parallel join-steps-test
+  (testing "the count query of each join, one join at a time, or why the joins cannot be rebuilt"
+    (doseq [backend [:sqlglot :sqlglot-java]
+            {:keys [name sql dialect expected]} (case-files/cases "join_steps")]
+      (testing (str name ", backend " backend)
+        (is (= expected (sql-parsing/join-steps (sql-parsing/parser backend) dialect sql))
+            (pr-str sql))))))
+
+(deftest ^:parallel join-steps-large-literal-list-test
+  (let [big-list (str "a.x IN (" (str/join ", " (range 100000)) ")")
+        steps    #(sql-parsing/join-steps (sql-tools/sqlglot-parser) "postgres" %)]
+    (testing "a large literal list in a clause the steps leave out does not matter"
+      (is (=? {:status "ok"
+               :steps  [{:sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}
+              (steps (str "SELECT * FROM a JOIN b ON a.id = b.id WHERE " big-list)))))
+    (testing "one the steps would run is refused, not run with its list collapsed"
+      (is (= {:status "unsupported"
+              :reason "large-literal-list"
+              :from   {:source "table", :table [nil nil "a"], :alias "a"}
+              :steps  [{:source "table", :table [nil nil "b"], :alias "b", :strategy "inner"}]}
+             (steps (str "SELECT * FROM a JOIN b ON a.id = b.id AND " big-list)))))))
+
 ;;; ------------------------------------------------ transpile-sql -------------------------------------------------
 
 (deftest ^:parallel transpile-sql-test

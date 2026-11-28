@@ -11,7 +11,7 @@ logging.getLogger("sqlglot").setLevel(logging.CRITICAL)
 import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
-from sqlglot.errors import ParseError
+from sqlglot.errors import ParseError, TokenError
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
@@ -446,6 +446,321 @@ def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
         raise ValueError("SQL must be a SELECT statement")
 
     return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
+
+
+class _JoinStepsUnsupported(Exception):
+    """A query `join_steps` refuses, with the reason it gives."""
+
+    def __init__(self, reason):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def _set_args(node):
+    """The names of `node`'s arguments that hold a value."""
+    return {k for k, v in node.args.items() if v}
+
+
+def _effective_name(identifier, dialect):
+    """The name `identifier` resolves to in `dialect`, which folds an unquoted name and may keep a quoted one."""
+    # H2 has no sqlglot dialect, and it folds unquoted names up where sqlglot's default folds them down.
+    if dialect is None:
+        return identifier.name if identifier.quoted else identifier.name.upper()
+    return normalize_identifiers(identifier.copy(), dialect=dialect).name
+
+
+def _join_step_source(node, cte_names, dialect):
+    """A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its table parts or None, and its alias.
+
+    Anything that is not a plain named table is `derived`.
+    Raises `_JoinStepsUnsupported` for a nested join tree or a LATERAL or APPLY source.
+    """
+    # Step queries copy the node whole, so what it carries (a table hint, a PIVOT) stays in them.
+    if isinstance(node, exp.Lateral):
+        raise _JoinStepsUnsupported("unsupported-source")
+    # A join tree nested in a source would run in that source's step.
+    # In `JOIN b JOIN c ON ... ON ...`, the join to `c` hangs off `b`.
+    # A bracketed `JOIN (b JOIN c ON ...) ON ...` is a Subquery around something that is neither a query nor VALUES.
+    bracketed = isinstance(node, exp.Subquery) and not isinstance(node.this, (exp.Query, exp.Values))
+    if node.args.get("joins") or bracketed:
+        raise _JoinStepsUnsupported("nested-join")
+    if isinstance(node, exp.Table) and isinstance(node.this, exp.Identifier):
+        parts = table_parts(node)
+        if parts is not None:
+            if not node.db and not node.catalog and _effective_name(node.this, dialect) in cte_names:
+                return {"source": "cte", "table": None, "alias": node.alias_or_name}
+            return {"source": "table", "table": list(parts), "alias": node.alias_or_name}
+    return {"source": "derived", "table": None, "alias": node.alias_or_name}
+
+
+def _join_step_strategy(join):
+    """The join's strategy: `inner`, `left`, `right`, `full` or `cross`."""
+    side = (join.side or "").upper()
+    kind = (join.kind or "").upper()
+    method = (join.method or "").upper()
+    # A comma join has no side, kind, method or condition.
+    if kind == "CROSS" or not (side or kind or method or _set_args(join) & {"on", "using"}):
+        return "cross"
+    # A SEMI join keeps the left rows that found a match, so its one count is the matched rows, whatever its side.
+    if kind == "SEMI":
+        return "inner"
+    return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
+
+
+def _unsupported_join(join):
+    """Whether `join` is of a type whose step counts would be wrong: a POSITIONAL, ANTI, ANY or Snowflake ASOF join."""
+    # DuckDB's POSITIONAL join pairs rows by position and pads the shorter side, so no condition tells its matches.
+    # An ANTI join keeps the left rows that found no match, so its one count would be read as the matched rows.
+    # ClickHouse's ANY join keeps one match per left row, but its INNER form keeps one row per key on both sides.
+    # Snowflake's ASOF join keeps unmatched left rows like a LEFT join, and has no INNER form to count its matches.
+    return (
+        (join.method or "").upper() == "POSITIONAL"
+        or (join.kind or "").upper() in ("ANTI", "ANY")
+        # sqlglot reads `INNER ANY JOIN` with ANY as the side.
+        or (join.side or "").upper() == "ANY"
+        or bool(join.args.get("match_condition"))
+    )
+
+
+def _inner_variant(join):
+    """A copy of the outer `join` made an INNER join."""
+    inner = join.copy()
+    inner.set("side", None)
+    if (inner.kind or "").upper() == "OUTER":
+        inner.set("kind", None)
+    return inner
+
+
+def _whole_query(stmt, dialect):
+    """The statement `stmt` without brackets around the whole of it, and the effective names of its CTEs.
+
+    The CTEs are those of every WITH clause on the brackets and the statement.
+    A trailing ORDER BY or LIMIT on the brackets is dropped with the rest of what is outside FROM and JOIN.
+    Raises `_JoinStepsUnsupported` for brackets with any other clause of their own.
+    """
+    withs = []
+    while isinstance(stmt, exp.Subquery) and not stmt.alias:
+        if _set_args(stmt) - {"this", "with_", "order", "limit", "offset"}:
+            raise _JoinStepsUnsupported("not-a-select")
+        if stmt.args.get("with_"):
+            withs.append(stmt.args["with_"])
+        stmt = stmt.this
+    if isinstance(stmt, exp.Select) and stmt.args.get("with_"):
+        withs.append(stmt.args["with_"])
+    return stmt, {_effective_name(cte.args["alias"].this, dialect) for with_ in withs for cte in with_.expressions}
+
+
+def _count_star():
+    """The select expression `COUNT(*) AS n`."""
+    return exp.alias_(exp.Count(this=exp.Star()), "n")
+
+
+def _select(expressions, from_, joins):
+    """The query `SELECT <expressions> FROM <from_> <joins>`."""
+    return exp.Select(expressions=expressions, from_=from_.copy(), joins=[j.copy() for j in joins])
+
+
+def _count_select(from_, joins):
+    """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`."""
+    return _select([_count_star()], from_, joins)
+
+
+def _two_counts(first, second):
+    """Both one-row counts in one row: `SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`."""
+    # Each count is a derived table rather than a scalar subquery so the query has a FROM clause, which some databases
+    # (Oracle before 23c) require.
+    return exp.Select(
+        expressions=[exp.column("n", table="w"), exp.column("n", table="m")],
+        from_=exp.From(this=first.subquery("w")),
+        joins=[exp.Join(this=second.subquery("m"), kind="CROSS")],
+    )
+
+
+def _on_counts(from_, joins):
+    """The query `SELECT COUNT(*) AS n, COUNT(CASE WHEN <last join's ON> THEN 1 END) AS m FROM <from_> <joins>`."""
+    matched = exp.Case(ifs=[exp.If(this=joins[-1].args["on"].copy(), true=exp.Literal.number(1))])
+    return _select([_count_star(), exp.alias_(exp.Count(this=matched), "m")], from_, joins)
+
+
+_JOIN_COMPARISONS = (exp.EQ, exp.NEQ, exp.GT, exp.GTE, exp.LT, exp.LTE)
+
+
+def _conjuncts(node):
+    """The operands of the top-level ANDs in `node`, looking through brackets."""
+    if isinstance(node, exp.Paren):
+        return _conjuncts(node.this)
+    if isinstance(node, exp.And):
+        return _conjuncts(node.this) + _conjuncts(node.expression)
+    return [node]
+
+
+def _source_name(node, dialect):
+    """The effective name a column calls the source `node` by, or None for a source with no name."""
+    alias = node.args.get("alias")
+    identifier = alias.this if alias is not None and alias.this is not None else node.this
+    return _effective_name(identifier, dialect) if isinstance(identifier, exp.Identifier) else None
+
+
+def _on_counts_matches(from_, joins, strategy, dialect):
+    """Whether counting the rows where the last join's ON clause holds counts exactly the rows that found a match.
+
+    The clause must be an AND of comparisons between literals and columns that each name one source in the chain, so
+    it is safe to evaluate again.
+    It must also compare a column from each side that can be NULL-extended, so an unmatched row cannot satisfy it.
+    """
+    on = joins[-1].args.get("on")
+    names = [_source_name(node, dialect) for node in [from_.this, *(join.this for join in joins)]]
+    # ClickHouse fills unmatched columns with defaults rather than NULL, so an unmatched row can satisfy the clause.
+    if on is None or dialect == "clickhouse" or None in names or len(names) != len(set(names)):
+        return False
+    joined = names[-1]
+    columns = []
+    for conjunct in _conjuncts(on):
+        if not isinstance(conjunct, _JOIN_COMPARISONS):
+            return False
+        for operand in (conjunct.this, conjunct.expression):
+            # A column with a longer path may be a struct field, as in BigQuery's `a.payload.id`, whose `table` is
+            # `payload`, so it can't be attributed to a source.
+            if (
+                isinstance(operand, exp.Column)
+                and isinstance(operand.args.get("table"), exp.Identifier)
+                and operand.args.get("db") is None
+            ):
+                column = _effective_name(operand.args["table"], dialect)
+                # A qualifier that names no source is a struct field too.
+                if column not in names:
+                    return False
+                columns.append(column)
+            elif not isinstance(operand, exp.Literal):
+                return False
+    from_joined = joined in columns
+    from_earlier = any(column != joined for column in columns)
+    return {"left": from_joined, "right": from_earlier, "full": from_joined and from_earlier}[strategy]
+
+
+def _statement_refusal(stmt):
+    """Why the parsed statement `stmt` has no FROM and JOIN sources to describe, or None."""
+    if isinstance(stmt, exp.SetOperation):
+        return "set-operation"
+    if not isinstance(stmt, exp.Select):
+        return "not-a-select"
+    from_ = stmt.args.get("from_")
+    if from_ is None or from_.this is None:
+        return "no-from"
+    return None
+
+
+def _join_refusal(stmt):
+    """Why the SELECT `stmt`, whose sources can be described, cannot have the rows of its joins counted, or None."""
+    # Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
+    if stmt.args.get("laterals"):
+        return "unsupported-join"
+    # ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
+    # queries would leave them out.
+    if stmt.args.get("settings") or stmt.args.get("options"):
+        return "unsupported-join"
+    joins = stmt.args.get("joins") or []
+    kept = [stmt.args["from_"], *joins]
+    # A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
+    # clause the steps leave out does not matter.
+    if any(node.find(exp.Placeholder, exp.Parameter) for node in kept):
+        return "parameters"
+    # A sample in anything the steps keep would pick different rows in each step query.
+    if any(node.find(exp.TableSample) for node in kept):
+        return "unsupported-source"
+    if any(_unsupported_join(join) for join in joins):
+        return "unsupported-join"
+    # The condition of a comma or CROSS join, if it has one, is in WHERE, which the steps leave out, so its step would
+    # count the whole cross product.
+    if stmt.args.get("where") and any(_join_step_strategy(join) == "cross" for join in joins):
+        return "comma-join"
+    return None
+
+
+def join_steps(sql: str, dialect: str = None) -> str:
+    """
+    The row-count queries of each join in `sql`, a SELECT, taken one join at a time.
+
+    The FROM source and every join are described, each with the SQL of a query that counts its rows.
+    For the FROM source that is the source alone; for a join, the FROM source joined with every join up to and
+    including it.
+    The WHERE clause, the WITH clause and everything else outside FROM and JOIN are left out.
+
+    For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
+    and those where that last join found a match.
+    Both come from one evaluation of the chain when the ON clause alone identifies a match, and otherwise the second
+    count comes from the same chain with that join made INNER.
+    Every other step query returns one count.
+
+    Returns a JSON object.
+    On success it is `{"status": "ok", "from": <source>, "base_sql": <sql>, "steps": [<step>, ...]}`.
+    A source is `{"source": "table" | "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}`.
+    A step is a source with a `strategy` (`inner`, `left`, `right`, `full` or `cross`) and its `sql`.
+    Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
+    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`,
+    `parameters` and `non-table-source`.
+    A query refused after its sources are read still has its `from` and `steps`, without SQL.
+    One such reason is `non-table-source`, for a source that is a CTE or a derived table.
+    Of several statements, only the first is read.
+
+    Examples:
+        join_steps("SELECT * FROM a LEFT JOIN b ON a.id = b.a_id WHERE a.x > 1")
+        => '{"status": "ok", "from": {"source": "table", "table": [null, null, "a"], "alias": "a"},
+             "base_sql": "SELECT COUNT(*) AS n FROM a",
+             "steps": [{"source": "table", "table": [null, null, "b"], "alias": "b", "strategy": "left",
+                        "sql": "SELECT COUNT(*) AS n, COUNT(CASE WHEN a.id = b.a_id THEN 1 END) AS m FROM a
+                                LEFT JOIN b ON a.id = b.a_id"}]}'
+
+        join_steps("SELECT 1 UNION SELECT 2")
+        => '{"status": "unsupported", "reason": "set-operation"}'
+    """
+    try:
+        try:
+            stmts = _nonempty_statements(sqlglot.parse(sql, read=dialect))
+        except (ParseError, TokenError):
+            raise _JoinStepsUnsupported("unparseable")
+        if not stmts:
+            raise _JoinStepsUnsupported("unparseable")
+        stmt, cte_names = _whole_query(stmts[0], dialect)
+        reason = _statement_refusal(stmt)
+        if reason:
+            raise _JoinStepsUnsupported(reason)
+        from_ = stmt.args["from_"]
+        joins = stmt.args.get("joins") or []
+        from_source = _join_step_source(from_.this, cte_names, dialect)
+        sources = [
+            dict(_join_step_source(join.this, cte_names, dialect), strategy=_join_step_strategy(join)) for join in joins
+        ]
+        # A step that reads a CTE would fail, since the WITH clause is left out, and one that reads a derived table has
+        # no table to count against.
+        reason = _join_refusal(stmt) or (
+            "non-table-source" if any(src["source"] != "table" for src in [from_source, *sources]) else None
+        )
+        if reason:
+            return json.dumps({"status": "unsupported", "reason": reason, "from": from_source, "steps": sources})
+        steps = []
+        for n, (join, source) in enumerate(zip(joins, sources), start=1):
+            strategy = source["strategy"]
+            chain = joins[:n]
+            if strategy not in ("left", "right", "full"):
+                query = _count_select(from_, chain)
+            elif _on_counts_matches(from_, chain, strategy, dialect):
+                query = _on_counts(from_, chain)
+            else:
+                query = _two_counts(
+                    _count_select(from_, chain), _count_select(from_, chain[:-1] + [_inner_variant(join)])
+                )
+            steps.append(dict(source, sql=query.sql(dialect=dialect)))
+        return json.dumps(
+            {
+                "status": "ok",
+                "from": from_source,
+                "base_sql": _count_select(from_, []).sql(dialect=dialect),
+                "steps": steps,
+            }
+        )
+    except _JoinStepsUnsupported as e:
+        return json.dumps({"status": "unsupported", "reason": e.reason})
 
 
 def fold_keys(mapping):

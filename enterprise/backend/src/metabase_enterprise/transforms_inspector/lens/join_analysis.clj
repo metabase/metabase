@@ -3,7 +3,9 @@
 
    Cards returned:
    - base-count: COUNT(*) with 0 joins
-   - join-step-N: [COUNT(*), COUNT(CASE WHEN join_condition THEN 1 END)] for each join step
+   - join-step-N: [output COUNT(*), matched COUNT(*)] for each join step. MBQL counts the matched rows with
+     COUNT(CASE WHEN join_condition THEN 1 END); native step queries come from sql-tools, which counts them the same way
+     when the condition allows it, and otherwise from the same join chain with the last join made INNER.
    - table-N-count: COUNT(*) for each joined table (right-row-count)
 
    FE derives from card results:
@@ -16,7 +18,6 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase-enterprise.transforms-inspector.lens.query-util :as query-util]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -63,44 +64,18 @@
     (-> (lib/query mp table-metadata)
         (lib/aggregate (lib/count)))))
 
-;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
+;;; -------------------------------------------------- Native SQL --------------------------------------------------
 
-(def ^:private strategy->hsql-join-type
-  "Map our join strategy keywords to HoneySQL :join-by type keywords.
-   HoneySQL uses :join for INNER JOIN, not :inner-join."
-  {:inner-join :join
-   :left-join  :left-join
-   :right-join :right-join
-   :full-join  :full-join
-   :cross-join :cross-join})
-
-(defn- build-native-join-step-hsql
-  "Build a HoneySQL map for [COUNT(*), COUNT(CASE WHEN condition THEN 1 END)] with joins.
-   Uses :join-by to preserve original join ordering across different join types."
-  [from-table joins]
-  (let [last-join  (last joins)
-        outer?     (outer-join? (:strategy last-join))
-        condition  (:join-condition last-join)
-        join-by    (into [] (mapcat (fn [{:keys [strategy join-table join-condition]}]
-                                      [(strategy->hsql-join-type strategy) [join-table join-condition]]))
-                         joins)]
-    {:select (if (and outer? condition)
-               [[[:count :*]] [[:count [:case condition [:inline 1]]]]]
-               [[[:count :*]]])
-     :from   [from-table]
-     :join-by join-by}))
-
-(defn- format-native-query
-  "Format a HoneySQL map into a native query for the given driver and db-id."
-  [driver db-id hsql]
-  (let [mp (lib-be/application-database-metadata-provider db-id)]
-    (lib/native-query mp (first (sql.qp/format-honeysql driver hsql)))))
+(defn- native-count-query
+  "The count query `sql`, which [[metabase.sql-tools.core/join-steps]] generated, as a native query on `db-id`."
+  [db-id sql]
+  (lib/native-query (lib-be/application-database-metadata-provider db-id) sql))
 
 ;;; -------------------------------------------------- Card Generation --------------------------------------------------
 
 (defn- base-count-card
   [ctx params]
-  (let [{:keys [source-type from-table-id driver db-id]} ctx
+  (let [{:keys [source-type from-table-id db-id]} ctx
         source-table-id from-table-id]
     {:id         (lens.core/make-card-id "base-count" params)
      :section_id "join-stats"
@@ -109,15 +84,13 @@
      :dataset_query
      (case source-type
        :mbql   (-> (:preprocessed-query (:mbql-context ctx)) (query-util/bare-query-with-n-joins 0) make-count-query)
-       :native (format-native-query driver db-id
-                                    {:select [[[:count :*]]]
-                                     :from   [(:from-table (:native-context ctx))]}))
+       :native (native-count-query db-id (:from-count-sql (:native-context ctx))))
      :metadata {:dedup_key [:table_count source-table-id]
                 :card_type :base_count}}))
 
 (defn- join-step-card
   [ctx step params]
-  (let [{:keys [source-type driver db-id]} ctx
+  (let [{:keys [source-type db-id]} ctx
         join-structure (get-join-structure ctx)
         join (nth join-structure (dec step))
         {:keys [strategy alias]} join]
@@ -130,9 +103,7 @@
        :mbql   (let [preprocessed-query (:preprocessed-query (:mbql-context ctx))]
                  (make-join-step-query-mbql preprocessed-query step
                                             (nth (lib/joins preprocessed-query 0) (dec step))))
-       :native (format-native-query driver db-id
-                                    (build-native-join-step-hsql (:from-table (:native-context ctx))
-                                                                 (take step join-structure))))
+       :native (native-count-query db-id (:step-sql join)))
      :metadata {:card_type     :join_step
                 :join_step     step
                 :join_alias    alias
@@ -174,7 +145,10 @@
   [_ ctx]
   (and (:has-joins? ctx)
        (pos-int? (:from-table-id ctx))
-       (every? #(pos-int? (:source-table %)) (get-join-structure ctx))))
+       (every? #(pos-int? (:source-table %)) (get-join-structure ctx))
+       ;; A native query's joins are described even when they cannot be counted, and then have no step queries.
+       (or (some? (:mbql-context ctx))
+           (some? (:from-count-sql (:native-context ctx))))))
 
 (defmethod lens.core/lens-metadata :join-analysis
   [_ _ctx]

@@ -609,6 +609,67 @@
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type gate-limits))
 
+;; A transform can be long, so there is no length cap; the queries run, so the literal-list ceiling is an executing
+;; caller's; and H2 has no sqlglot dialect, so none is required.
+(def ^:private join-steps-limits
+  "Limits for the check of each query [[join-steps]] generates."
+  {:max-sql-chars        nil
+   :literal-list-ceiling executable-literal-list-ceiling
+   :require-dialect?     false})
+
+(defn- join-step-queries
+  "Every query in the `ok` result of [[join-steps]]."
+  [{:keys [base_sql steps]}]
+  (cons base_sql (map :sql steps)))
+
+(defn- refuse-join-steps
+  "The `ok` result of [[join-steps]] refused for `reason`, its sources kept without their queries."
+  [{:keys [from steps]} reason]
+  {:status "unsupported"
+   :reason reason
+   :from   from
+   :steps  (mapv #(dissoc % :sql) steps)})
+
+(defn join-steps
+  "The row-count queries of each join in `sql`, a SELECT, taken one join at a time, for a caller that will run them.
+
+   Returns `{:status \"ok\", :from <source>, :base_sql <sql>, :steps [<step> ...]}`.
+   A source is `{:source \"table\" | \"cte\" | \"derived\", :table [catalog schema table] or nil, :alias ...}`.
+   A step is a source with its `:sql` and a `:strategy`, the string `inner`, `left`, `right`, `full` or `cross`.
+   The `:base_sql` counts the rows of the FROM source alone.
+   A step's `:sql` counts the rows of the FROM source joined with every join up to and including that step.
+   Both leave out the WITH clause, the WHERE clause and everything else outside FROM and JOIN.
+   For an outer join the step query returns a second count in the same row, of the rows where that join found a match.
+
+   Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
+   A query refused after its sources are read still has its `:from` and `:steps`, without SQL.
+   One such reason is `\"non-table-source\"`, for a source that is a CTE or a derived table.
+   A generated query that is not read-only is refused as `\"not-read-only\"`.
+   SQL with a literal list too large to parse safely is read without it, and refused as `\"large-literal-list\"` if
+   the list is in a clause the queries keep."
+  [parser dialect sql]
+  ;; The check reads what will run, not `sql`: a lock or function call in a clause the steps leave out never executes,
+  ;; while a lock in a clause the steps keep would run once per query.
+  (let [stripped (strip-large-literal-lists sql executable-literal-list-ceiling)
+        result   (protocol/join-steps parser dialect stripped)
+        queries  (when (= "ok" (:status result))
+                   (join-step-queries result))
+        allowed? #(= :allowed (:verdict (classify-single-stmt parser dialect % "read-only" join-steps-limits)))]
+    (cond
+      (nil? queries)
+      result
+
+      ;; The pattern matches what `strip-large-literal-lists` leaves in place of a list: `(NULL, ...)` or `[NULL]`.
+      (and (not= stripped sql)
+           (some #(re-find #"\(NULL(, NULL)*\)|\[NULL\]" %) queries))
+      (refuse-join-steps result "large-literal-list")
+
+      (every? allowed? queries)
+      result
+
+      :else
+      (refuse-join-steps result "not-read-only"))))
+
 ;;;; Transpile sql
 
 (defn- normalize-transpilation-result

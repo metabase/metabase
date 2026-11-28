@@ -221,7 +221,7 @@
 
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod has a :sqlglot method, and every sql-parsing backend dispatches to it"
-    (is (= 11 (count (interface-multimethods))))
+    (is (= 12 (count (interface-multimethods))))
     (doseq [[sym ^clojure.lang.MultiFn multimethod] (interface-multimethods)]
       (testing sym
         (is (some? (get-method multimethod :sqlglot)))))
@@ -293,7 +293,8 @@
                       (protocol/simple-query java-parser "postgres" sql)
                       (protocol/field-references java-parser "postgres" sql)
                       (protocol/single-stmt-of-type java-parser "postgres" sql "read-only")
-                      (protocol/transpile-sql java-parser sql "postgres" "snowflake")]]
+                      (protocol/transpile-sql java-parser sql "postgres" "snowflake")
+                      (protocol/join-steps java-parser "postgres" sql)]]
         (is (not-any? sqlglot-java.ast/ast-node? (tree-seq coll? seq result))
             (pr-str result))))))
 

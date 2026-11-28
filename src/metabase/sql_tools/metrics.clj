@@ -26,7 +26,8 @@
    "referenced-tables-raw"
    "simple-query?"
    "add-into-clause"
-   "add-insert-clause"])
+   "add-insert-clause"
+   "join-steps"])
 
 (def ^:private operation-labels
   (vec (for [parser    parsers

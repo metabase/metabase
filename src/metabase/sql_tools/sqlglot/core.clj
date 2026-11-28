@@ -4,6 +4,7 @@
   [[metabase.sql-parsing.core/parser]], and the shared pipeline in [[metabase.sql-tools.common]] dispatches its
   nested calls with that same backend."
   (:require
+   [medley.core :as m]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -76,6 +77,43 @@
       (if (sql-parsing/parse-error? e)
         #{}
         (throw e)))))
+
+;;;; Join steps
+
+(def ^:private join-strategies
+  "The `join_steps` strategy names as Metabase join strategies."
+  {"inner" :inner-join
+   "left"  :left-join
+   "right" :right-join
+   "full"  :full-join
+   "cross" :cross-join})
+
+(defmethod sql-tools/join-steps-impl :sqlglot
+  [backend driver query]
+  (let [parser    (sql-parsing/parser backend)
+        dialect   (driver->dialect driver)
+        sql       (lib/raw-native-query query)
+        ;; A driver with no sqlglot dialect of its name, such as a third-party one, is read in the default dialect.
+        result    (try
+                    (sql-parsing/join-steps parser dialect sql)
+                    (catch Exception e
+                      (if (and dialect (re-find #"Unknown dialect" (str (ex-message e))))
+                        (sql-parsing/join-steps parser nil sql)
+                        (throw e))))
+        normalize #(sql-tools.common/normalize-name driver %)
+        describe  (fn [{:keys [source table alias]}]
+                    {:source (keyword source)
+                     :table  (some-> (last table) normalize)
+                     :alias  (normalize alias)})
+        ;; A refusal describes its sources without SQL, so `:sql` is set only when there is some.
+        sources   (when (:from result)
+                    {:from  (m/assoc-some (describe (:from result)) :sql (:base_sql result))
+                     :steps (mapv (fn [step]
+                                    (m/assoc-some (assoc (describe step) :strategy (join-strategies (:strategy step)))
+                                                  :sql (:sql step)))
+                                  (:steps result))})]
+    (cond-> sources
+      (not= "ok" (:status result)) (assoc :unsupported (keyword (:reason result))))))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [backend driver query]

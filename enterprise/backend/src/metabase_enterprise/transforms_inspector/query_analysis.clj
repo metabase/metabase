@@ -5,52 +5,19 @@
    - Join structure (strategy, alias, source table, conditions)
    - Visited fields (fields used in WHERE, JOIN, GROUP BY, ORDER BY)
 
-   For native queries, HoneySQL data structures are produced during analysis
-   to keep macaw AST details isolated to this namespace. Consumers format
-   these with [[metabase.driver.sql.query-processor/format-honeysql]]."
+   For native queries whose joins can be counted, each join comes with the SQL of its step query, which
+   [[metabase.sql-tools.core/join-steps]] generates, so no parser structure leaves sql-tools."
   (:require
-   ;; TODO (Bronsa 16/02/26): get rid of macaw
-   [macaw.ast :as macaw.ast]
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
-   [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-;; TODO (Bronsa 16/02/26): copied from metabase.sql-tools.macaw.core, until we can port everything to sql-tools
-
-(def ^:private considered-drivers
-  "The set of drivers for which we configure non-trivial macaw options."
-  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
-
-(defn- macaw-options
-  "Generate the options expected by Macaw based on the nature of the given driver."
-  [driver]
-  (merge
-   (when (contains? considered-drivers driver)
-     {:case-insensitive      :agnostic
-      :quotes-preserve-case? (not (contains? #{:mysql :sqlserver} driver))
-      :features              {:postgres-syntax        (isa? driver/hierarchy driver :postgres)
-                              :square-bracket-quotes  (= :sqlserver driver)
-                              :unsupported-statements false
-                              :backslash-escape-char  true
-                              :complex-parsing        true}
-      :timeout               10000})
-   {:non-reserved-words    (vec (remove nil? [(when-not (contains? #{:clickhouse} driver)
-                                                :final)]))}))
-
-(defn- macaw-parsed-query
-  "Parse SQL using Macaw with driver-specific options."
-  [sql driver & {:as opts}]
-  (macaw/parsed-query sql (merge (macaw-options driver) opts)))
 
 ;;; -------------------------------------------------- MBQL Analysis --------------------------------------------------
 
@@ -89,110 +56,7 @@
        :join-structure     (extract-mbql-join-structure preprocessed)
        :visited-fields     (extract-mbql-visited-fields preprocessed)})))
 
-;;; -------------------------------------------------- Macaw AST → HoneySQL --------------------------------------------------
-;;; These functions convert macaw AST nodes to HoneySQL data structures,
-;;; isolating macaw details to this namespace.
-
-(defn- macaw-table->hsql
-  "Convert a macaw table node to a HoneySQL table reference suitable for a FROM or JOIN entry.
-   Returns `[table-identifier :alias]` when aliased, or `[table-identifier]` when not."
-  [driver {:keys [schema table table-alias]}]
-  (let [table-id (apply h2x/identifier :table
-                        (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
-                                      (sql.normalize/normalize-name driver table)]))]
-    (if table-alias
-      [table-id (keyword (sql.normalize/normalize-name driver table-alias))]
-      [table-id])))
-
-(defn- macaw-column->hsql
-  "Convert a macaw column node to a HoneySQL column identifier."
-  [driver {:keys [schema table column]}]
-  (apply h2x/identifier :field
-         (remove nil? [(some->> schema (sql.normalize/normalize-name driver))
-                       (some->> table (sql.normalize/normalize-name driver))
-                       (sql.normalize/normalize-name driver column)])))
-
-(defn- macaw-expr->hsql
-  "Convert a macaw AST expression node to a HoneySQL form."
-  [driver node]
-  (case (:type node)
-    :macaw.ast/column  (macaw-column->hsql driver node)
-    :macaw.ast/literal (let [{:keys [value]} node]
-                         (cond
-                           (nil? value) nil
-                           :else        [:lift value]))
-    nil))
-
-(defn- macaw-condition->hsql
-  "Convert a macaw AST condition to a HoneySQL condition form.
-   Handles AND/OR compound conditions recursively."
-  [driver condition]
-  (when (= (:type condition) :macaw.ast/binary-expression)
-    (let [{:keys [operator left right]} condition
-          op-upper (u/upper-case-en (str operator))]
-      (cond
-        (contains? #{"AND" "OR"} op-upper)
-        (let [left-hsql  (macaw-condition->hsql driver left)
-              right-hsql (macaw-condition->hsql driver right)]
-          (when (and left-hsql right-hsql)
-            [(keyword op-upper) left-hsql right-hsql]))
-
-        :else
-        (let [left-hsql  (macaw-expr->hsql driver left)
-              right-hsql (macaw-expr->hsql driver right)]
-          (when (and left-hsql right-hsql)
-            [(keyword operator) left-hsql right-hsql]))))))
-
-(defn- build-join-condition-hsql
-  "Build a HoneySQL condition form from a macaw join node's conditions."
-  [driver ast-node]
-  (let [conditions-raw (:condition ast-node)
-        conditions-list (if (sequential? conditions-raw) conditions-raw [conditions-raw])
-        parts (keep (partial macaw-condition->hsql driver) conditions-list)]
-    (case (count parts)
-      0 nil
-      1 (first parts)
-      (into [:and] parts))))
-
 ;;; -------------------------------------------------- Native SQL Analysis --------------------------------------------------
-
-(defn- ast-join-type->strategy
-  "Map macaw AST join-type to metabase join strategy keyword."
-  [join-type]
-  (case join-type
-    :left    :left-join
-    :right   :right-join
-    :full    :full-join
-    :cross   :cross-join
-    :natural :inner-join
-    :inner   :inner-join
-    :inner-join))
-
-(defn- sources->table-id-lookup
-  "Build a normalized table name → table_id lookup map from sources."
-  [driver sources]
-  (into {} (map (fn [{:keys [table_name table_id]}]
-                  [(sql.normalize/normalize-name driver table_name) table_id]))
-        sources))
-
-(defn- extract-native-join-structure
-  "Extract join structure from macaw AST as HoneySQL data.
-   Returns join info with :join-table and :join-condition as HoneySQL forms."
-  [ast table->id driver]
-  (when-let [join-nodes (:join ast)]
-    (mapv (fn [join-node]
-            (let [strategy (ast-join-type->strategy (:join-type join-node))]
-              {:strategy       strategy
-               :alias          (sql.normalize/normalize-name
-                                driver
-                                (or (get-in join-node [:source :table-alias])
-                                    (get-in join-node [:source :table])))
-               :source-table   (table->id (sql.normalize/normalize-name
-                                           driver
-                                           (get-in join-node [:source :table])))
-               :join-table     (macaw-table->hsql driver (:source join-node))
-               :join-condition (build-join-condition-hsql driver join-node)}))
-          join-nodes)))
 
 (defn- resolve-native-visited-fields
   "Resolve native SQL column references to Metabase field IDs using sql-tools.
@@ -204,31 +68,65 @@
         all-ids (into #{} (keep :id) referenced)]
     {:all all-ids}))
 
+(defn- sources->table-id-lookup
+  "A map from the normalized name of each table in `sources` to its id."
+  [driver sources]
+  (u/for-map [{:keys [table_name table_id]} sources]
+    [(sql.normalize/normalize-name driver table_name) table_id]))
+
+(defn- native-join-structure
+  "The join structure of `native-query`, each join with its step query as `:step-sql`, from [[sql-tools/join-steps]].
+  Tables resolve by name among `sources`.
+  Returns nil when the query's sources cannot be read.
+  When its joins cannot be counted, `:from-count-sql` and every `:step-sql` are nil.
+  A join against a CTE or a derived table has a nil `:source-table`."
+  [driver native-query sources]
+  (let [{:keys [unsupported from steps]} (sql-tools/join-steps driver native-query)
+        table->id                        (sources->table-id-lookup driver sources)]
+    (when unsupported
+      (log/debugf "No join analysis for native query: %s" (name unsupported)))
+    (when from
+      {:from-table-id  (some-> (:table from) table->id)
+       :from-count-sql (:sql from)
+       :join-structure (mapv (fn [{:keys [strategy alias table sql]}]
+                               {:strategy     strategy
+                                :alias        alias
+                                :source-table (some-> table table->id)
+                                :step-sql     sql})
+                             steps)})))
+
+(defn- log-failure
+  "Log that `what` failed for a native query, naming only the exception's class."
+  [what e]
+  ;; A parse error's message quotes the SQL, which must stay out of the logs.
+  (log/warnf "Failed to %s for native SQL query: %s" what (.getName (class e))))
+
 (defn analyze-native-query
   "Analyze a native SQL query for join structure and visited fields.
-   Requires sources (with field info) for column resolution.
-   Returns HoneySQL data structures for table/column/condition references.
-   Uses sql-tools for visited field resolution, macaw directly for join structure."
+   The join structure carries the step queries from [[sql-tools/join-steps]], when its joins can be counted.
+   The visited fields come from [[sql-tools/referenced-fields]].
+   Either may be missing when its analysis fails, and the other is still returned.
+   `sources` are the transform's source tables, which the joins' tables resolve against."
   [transform sources]
   (try
     (let [native-query (-> (get-in transform [:source :query])
                            transforms-base.u/massage-sql-query
                            qp.preprocess/preprocess)
-          sql (lib/raw-native-query native-query)
-          db-id (transforms-base.u/transform-source-database transform)
-          driver (keyword (transforms-inspector.db/database-engine db-id))
-          parsed (macaw-parsed-query sql driver)
-          ast (macaw.ast/->ast parsed {:with-instance? false})]
-      (when (and ast (= (:type ast) :macaw.ast/select))
-        (let [table->id (sources->table-id-lookup driver sources)]
-          {:driver         driver
-           :from-table-id  (table->id (sql.normalize/normalize-name
-                                       driver (:table (:from ast))))
-           :from-table     (macaw-table->hsql driver (:from ast))
-           :join-structure (extract-native-join-structure ast table->id driver)
-           :visited-fields (resolve-native-visited-fields driver native-query)})))
+          db-id        (transforms-base.u/transform-source-database transform)
+          driver       (keyword (transforms-inspector.db/database-engine db-id))
+          joins        (try
+                         (native-join-structure driver native-query sources)
+                         (catch Exception e
+                           (log-failure "analyze joins" e)
+                           nil))
+          visited      (try
+                         (resolve-native-visited-fields driver native-query)
+                         (catch Exception e
+                           (log-failure "resolve visited fields" e)
+                           nil))]
+      (merge {:driver driver, :visited-fields visited} joins))
     (catch Exception e
-      (log/warnf "Failed to analyze native SQL query: %s" (ex-message e))
+      (log-failure "analyze" e)
       nil)))
 
 ;;; -------------------------------------------------- Unified Analysis --------------------------------------------------
@@ -240,15 +138,15 @@
    Arguments:
    - transform: the transform map
    - source-type: :mbql, :native, or :python
-   - sources: source table info (with fields) for native column resolution
+   - sources: source table info, which a native query's joins resolve against
 
    Returns:
    {:preprocessed-query <MBQL 5> (MBQL only)
     :driver <keyword> (native only)
     :from-table-id <int> (native only)
-    :from-table <honeysql> (native only)
+    :from-count-sql <sql> (native only)
     :join-structure [{:strategy :alias :source-table
-                      :conditions (MBQL) or :join-table/:join-condition/:lhs-column/:rhs-column (native)} ...]
+                      :conditions (MBQL) or :step-sql (native)} ...]
     :visited-fields {:all <set of field IDs>}}"
   [transform source-type sources]
   (case source-type

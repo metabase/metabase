@@ -16,7 +16,6 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -207,38 +206,20 @@
                         :name              (:name returned-col)
                         :id                (:id returned-col)}]})))
 
-(mr/def ::honeysql-value
-  "A HoneySQL scalar value from a parsed native join clause: an identifier or a lifted SQL literal."
-  [:or h2x/Identifier [:tuple [:= :lift] [:maybe [:or :string number? :boolean]]]])
-
-(mr/def ::honeysql-condition
-  "A single HoneySQL boolean condition from a parsed native join clause's ON expression."
-  [:or
-   [:tuple :keyword [:ref ::honeysql-condition] [:ref ::honeysql-condition]]
-   [:tuple :keyword ::honeysql-value ::honeysql-value]])
-
-(mr/def ::honeysql-table-ref
-  "A HoneySQL FROM/JOIN table reference: an identifier, optionally aliased."
-  [:or [:tuple h2x/Identifier] [:tuple h2x/Identifier :keyword]])
-
 (mr/def ::join-structure-entry
   [:map {:closed true}
    [:strategy       {:optional true} [:maybe [:or :keyword :string]]]
    [:alias          {:optional true} [:maybe :string]]
    [:source-table   {:optional true} [:maybe ::lib.schema.id/table]]
    [:conditions     {:optional true} ::lib.schema.join/conditions]
-   [:join-table     {:optional true} ::honeysql-table-ref]
-   [:join-condition {:optional true} [:maybe [:or ::honeysql-condition
-                                              [:and
-                                               [:fn {:error/message "an :and of conditions"} #(= :and (first %))]
-                                               [:sequential [:or [:= :and] [:ref ::honeysql-condition]]]]]]]])
+   [:step-sql       {:optional true} [:maybe :string]]])
 
 (def ^:private QueryInfo
   [:map {:closed true}
    [:preprocessed-query {:optional true} [:maybe ::lib.schema/query]]
    [:driver             {:optional true} [:maybe :keyword]]
    [:from-table-id      {:optional true} [:maybe ::lib.schema.id/table]]
-   [:from-table         {:optional true} [:maybe ::honeysql-table-ref]]
+   [:from-count-sql     {:optional true} [:maybe :string]]
    [:join-structure     {:optional true} [:maybe [:sequential ::join-structure-entry]]]
    [:visited-fields     {:optional true} [:maybe [:map {:closed true} [:all {:optional true} [:maybe [:set ::lib.schema.id/field]]]]]]])
 
@@ -264,13 +245,12 @@
    [:conditions :any]])
 
 (mr/def ::native-join-structure-entry
-  "A single join in a native query structure (HoneySQL forms)."
+  "A single join in a native query structure, with the SQL of its step query when the joins can be counted."
   [:map
    [:strategy :keyword]
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
-   [:join-table :any]
-   [:join-condition :any]])
+   [:step-sql [:maybe :string]]])
 
 (mr/def ::mbql-context
   "MBQL-specific context."
@@ -281,7 +261,7 @@
 (mr/def ::native-context
   "Native-specific context."
   [:map
-   [:from-table :any]
+   [:from-count-sql [:maybe :string]]
    [:join-structure [:maybe [:sequential ::native-join-structure-entry]]]])
 
 (mr/def ::context
@@ -337,5 +317,5 @@
       (assoc :mbql-context {:preprocessed-query (:preprocessed-query query-info)
                             :join-structure     join-structure})
       (= source-type :native)
-      (assoc :native-context {:from-table     (:from-table query-info)
+      (assoc :native-context {:from-count-sql (:from-count-sql query-info)
                               :join-structure join-structure}))))

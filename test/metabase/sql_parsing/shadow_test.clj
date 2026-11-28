@@ -20,7 +20,8 @@
     (field-references [_ dialect sql] (f :field-references [dialect sql]))
     (replace-names [_ dialect sql replacements] (f :replace-names [dialect sql replacements]))
     (single-stmt-of-type [_ dialect sql stmt-type] (f :single-stmt-of-type [dialect sql stmt-type]))
-    (transpile-sql [_ sql from-dialect to-dialect] (f :transpile-sql [sql from-dialect to-dialect]))))
+    (transpile-sql [_ sql from-dialect to-dialect] (f :transpile-sql [sql from-dialect to-dialect]))
+    (join-steps [_ dialect sql] (f :join-steps [dialect sql]))))
 
 (defn- shadow-parser
   [primary shadow & {:keys [sample? log-difference! record-difference!]
@@ -59,7 +60,8 @@
    :field-references         (protocol/field-references parser "postgres" "sql")
    :replace-names            (protocol/replace-names parser "postgres" "sql" {})
    :single-stmt-of-type      (protocol/single-stmt-of-type parser "postgres" "sql" "read")
-   :transpile-sql            (protocol/transpile-sql parser "sql" "postgres" "mysql")})
+   :transpile-sql            (protocol/transpile-sql parser "sql" "postgres" "mysql")
+   :join-steps               (protocol/join-steps parser "postgres" "sql")})
 
 (deftest every-method-answers-with-the-primary-test
   (mt/with-prometheus-system! [_ system]
@@ -212,6 +214,16 @@
     (is (= :error-type-mismatch (shadow/classify :simple-query (thrown "ParseError: x") (thrown "TokenError: x"))))
     (is (= :primary-only-error (shadow/classify :simple-query (thrown "ParseError: x") (outcome {:is_simple true}))))
     (is (= :shadow-only-error (shadow/classify :simple-query (outcome {:is_simple true}) (thrown "ParseError: x"))))))
+
+(deftest classify-join-steps-refusal-test
+  (testing "join-steps: refusals that describe their sources differently are mismatches"
+    (let [refused (fn [alias]
+                    (outcome {:status "unsupported"
+                              :reason "comma-join"
+                              :from   {:source "table", :table [nil nil "a"], :alias "a"}
+                              :steps  [{:source "table", :table [nil nil "b"], :alias alias, :strategy "cross"}]}))]
+      (is (= :match (shadow/classify :join-steps (refused "b") (refused "b"))))
+      (is (= :mismatch (shadow/classify :join-steps (refused "b") (refused "c")))))))
 
 (deftest classify-logical-value-test
   (testing "differences callers do not see are not mismatches"

@@ -67,7 +67,13 @@
     :single-stmt-of-type      (-> value (update :sql sql-tokens) (update :error some?))
     :transpile-sql            (if (= "success" (:status value))
                                 (update value :transpiled_sql sql-tokens)
-                                (select-keys value [:status :reason]))))
+                                (select-keys value [:status :reason]))
+    :join-steps               (if (= "ok" (:status value))
+                                (-> value
+                                    (update :base_sql sql-tokens)
+                                    (update :steps (partial mapv #(update % :sql sql-tokens))))
+                                ;; A refusal can still describe the sources, which the inspector matches columns by.
+                                (select-keys value [:status :reason :from :steps]))))
 
 (defn classify
   "Compare the `primary` and `shadow` [[outcome]]s of `method`. Returns `:match`, `:mismatch` (different
@@ -269,4 +275,6 @@
         (run ctx :single-stmt-of-type dialect sql [stmt-type] #(protocol/single-stmt-of-type % dialect sql stmt-type)))
       (transpile-sql [_ sql from-dialect to-dialect]
         (run ctx :transpile-sql from-dialect sql [to-dialect]
-             #(protocol/transpile-sql % sql from-dialect to-dialect))))))
+             #(protocol/transpile-sql % sql from-dialect to-dialect)))
+      (join-steps [_ dialect sql]
+        (run ctx :join-steps dialect sql [] #(protocol/join-steps % dialect sql))))))

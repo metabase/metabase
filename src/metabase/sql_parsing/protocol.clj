@@ -35,7 +35,10 @@
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
     reconstructed from the parsed AST.")
   (transpile-sql [parser sql from-dialect to-dialect]
-    "Transpile the SQL from one dialect to another, as a keywordized result map."))
+    "Transpile the SQL from one dialect to another, as a keywordized result map.")
+  (join-steps [parser dialect sql]
+    "The row-count queries of each join in a SELECT, one join at a time, as a keywordized map: `:status` `\"ok\"`
+    with `:from`, `:base_sql` and `:steps`, or `\"unsupported\"` with a `:reason`."))
 
 (defn call-failed-ex
   "The uniform exception for a failed sqlglot call, thrown by every backend so callers can handle parse

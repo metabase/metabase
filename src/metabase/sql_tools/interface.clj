@@ -80,3 +80,8 @@
   "Transpile sql from one dialect to another."
   {:arglists '([parser sql from-dialect to-dialect])}
   parser-driver-dispatch)
+
+(defmulti join-steps-impl
+  "Parser specific implementation of [[metabase.sql-tools.core/join-steps]]. Do not use directly."
+  {:arglists '([parser driver native-query])}
+  parser-driver-dispatch)
