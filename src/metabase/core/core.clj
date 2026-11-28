@@ -104,13 +104,16 @@
   (setup/create-token!)   ; we need this here to create the initial token
   (print-setup-url))
 
-;; Named here because no one module can see both sides: the web server's requests run queries on warehouse pools and
-;; record traces.
-;; For now the explicit steps in [[destroy!]] stop the server and tracing before this halt runs, so these edges take
-;; effect as those steps move into the halt.
+;; Named here because no one module can see both sides of an edge: the web server's requests, for one, run queries on
+;; warehouse pools and record traces.
+;; The halt orders only what it stops. While a step in [[shutdown-steps]] stops a component before the halt, that list's
+;; order decides for it, so these edges take effect as steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
   {:metabase.server.instance/server #{:metabase.driver.sql-jdbc.connection/pools
+                                      :metabase.tracing.core/otel-sdk}
+   ;; scheduled jobs run queries and record traces
+   :metabase.task.impl/scheduler    #{:metabase.driver.sql-jdbc.connection/pools
                                       :metabase.tracing.core/otel-sdk}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still

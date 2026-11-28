@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
    [metabase.task.job-factory :as job-factory]
@@ -23,7 +24,7 @@
    (java.time Duration Instant)
    (java.util Date)
    (java.util.concurrent LinkedBlockingQueue TimeUnit)
-   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext Scheduler SchedulerException
+   (org.quartz CronTrigger InterruptableJob Job JobDetail JobExecutionContext JobKey Scheduler SchedulerException
                Trigger)))
 
 (set! *warn-on-reflection* true)
@@ -168,21 +169,24 @@
                      (Thread/sleep 100)
                      (swap! attaches conj (some? (task/scheduler))))
           go       (promise)]
-      (mc/binding (task.impl/scheduler-handle) nil
-                  (fn []
-                    (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
-                                                task.impl/set-jdbc-backend-properties! (constantly nil)
-                                                task.impl/delete-jobs-with-no-class!   (constantly nil)
-                                                task.impl/reset-errored-triggers!      (constantly nil)
-                                                task.impl/init-tasks!                  (constantly nil)
-                                                job-factory/add-to-scheduler           attach]
-                      (let [racers (mapv (fn [_] (future @go (task/init-scheduler!))) (range 4))]
-                        (deliver go true)
-                        (run! deref racers))
-                      (is (= {:attaches-before-publishing [false]
-                              :published?                 true}
-                             {:attaches-before-publishing @attaches
-                              :published?                 (identical? quartz (task/scheduler))}))))))))
+      (global-system.tu/with-root (task.impl/scheduler-handle) nil
+        (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                    task.impl/set-jdbc-backend-properties! (constantly nil)
+                                    task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                    task.impl/reset-errored-triggers!      (constantly nil)
+                                    task.impl/init-tasks!                  (constantly nil)
+                                    task.impl/shut-down-scheduler!         (constantly nil)
+                                    job-factory/add-to-scheduler           attach]
+          (try
+            (let [racers (mapv (fn [_] (future @go (task/init-scheduler!))) (range 4))]
+              (deliver go true)
+              (run! deref racers))
+            (is (= {:attaches-before-publishing [false]
+                    :published?                 true}
+                   {:attaches-before-publishing @attaches
+                    :published?                 (identical? quartz (task/scheduler))}))
+            (finally
+              (task/stop-scheduler!))))))))
 
 (defn- init-with-failing-setup!
   "Run [[task/init-scheduler!]] with a job factory that throws and a scheduler whose shutdown throws
@@ -195,20 +199,19 @@
                       (swap! shutdowns inc)
                       (some-> shutdown-error throw)))
         failure   (ex-info "attach failed" {})]
-    (mc/binding (task.impl/scheduler-handle) nil
-                (fn []
-                  (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
-                                              task.impl/set-jdbc-backend-properties! (constantly nil)
-                                              job-factory/add-to-scheduler           (fn [_] (throw failure))]
-                    (let [thrown (try
-                                   (task/init-scheduler!)
-                                   nil
-                                   (catch Throwable e
-                                     e))]
-                      {:setup-error-thrown? (identical? failure thrown)
-                       :suppressed          (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
-                       :shutdowns           @shutdowns
-                       :published?          (some? (task/scheduler))}))))))
+    (global-system.tu/with-root (task.impl/scheduler-handle) nil
+      (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                  task.impl/set-jdbc-backend-properties! (constantly nil)
+                                  job-factory/add-to-scheduler           (fn [_] (throw failure))]
+        (let [thrown (try
+                       (task/init-scheduler!)
+                       nil
+                       (catch Throwable e
+                         e))]
+          {:setup-error-thrown? (identical? failure thrown)
+           :suppressed          (some->> ^Throwable thrown .getSuppressed (mapv ex-message))
+           :shutdowns           @shutdowns
+           :published?          (some? (task/scheduler))})))))
 
 (deftest init-scheduler-shuts-down-a-scheduler-it-cannot-ready-test
   (testing "a scheduler whose setup fails is shut down and not published, and the setup's own exception is thrown"
@@ -642,3 +645,82 @@
       (is (= {:standby? true, :shutdown? false}
              {:standby?  (.isInStandbyMode (task/scheduler))
               :shutdown? (.isShutdown (task/scheduler))})))))
+
+(deftest init-scheduler-registers-with-the-global-system-test
+  (testing "the scheduler starts through the global system, so a halt stops it, and stopping it unregisters it"
+    (let [quartz (reify Scheduler
+                   (standby [_]))
+          halts? #(global-system.tu/halts? (task.impl/scheduler-handle))]
+      (global-system.tu/with-root (task.impl/scheduler-handle) nil
+        (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                    task.impl/set-jdbc-backend-properties! (constantly nil)
+                                    task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                    task.impl/reset-errored-triggers!      (constantly nil)
+                                    task.impl/init-tasks!                  (constantly nil)
+                                    task.impl/shut-down-scheduler!         (constantly nil)
+                                    job-factory/add-to-scheduler           (constantly nil)]
+          (try
+            (task/init-scheduler!)
+            (let [after-init (halts?)]
+              (task/stop-scheduler!)
+              (is (= {:after-init true, :after-stop false}
+                     {:after-init after-init, :after-stop (halts?)})))
+            (finally
+              (task/stop-scheduler!))))))))
+
+(deftest init-scheduler-waits-for-another-init-to-finish-test
+  (testing "a second init returns only once the first has defined its tasks, so it cannot start Quartz before then"
+    (let [quartz   (reify Scheduler
+                     (standby [_]))
+          defining (promise)
+          finish   (promise)
+          events   (atom [])]
+      (global-system.tu/with-root (task.impl/scheduler-handle) nil
+        (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
+                                    task.impl/set-jdbc-backend-properties! (constantly nil)
+                                    task.impl/delete-jobs-with-no-class!   (constantly nil)
+                                    task.impl/reset-errored-triggers!      (constantly nil)
+                                    task.impl/init-tasks!                  (fn []
+                                                                             (deliver defining true)
+                                                                             @finish
+                                                                             (swap! events conj :tasks-defined))
+                                    task.impl/shut-down-scheduler!         (constantly nil)
+                                    job-factory/add-to-scheduler           (constantly nil)]
+          (try
+            (let [first-init  (future (task/init-scheduler!))
+                  _           (deref defining 5000 nil)
+                  second-init (future (task/init-scheduler!)
+                                      (swap! events conj :second-returned))]
+              ;; long enough for a second init that does not wait to return first
+              (Thread/sleep 100)
+              (deliver finish true)
+              @first-init
+              @second-init
+              (is (= [:tasks-defined :second-returned] @events)))
+            (finally
+              (deliver finish true)
+              (task/stop-scheduler!))))))))
+
+(deftest shut-down-scheduler-logs-running-jobs-test
+  (let [shutdowns  (atom 0)
+        quartz     (fn [running-jobs]
+                     (reify Scheduler
+                       (getCurrentlyExecutingJobs [_] (running-jobs))
+                       (shutdown [_] (swap! shutdowns inc))))
+        running    (reify JobExecutionContext
+                     (getJobDetail [_]
+                       (reify JobDetail
+                         (getKey [_] (JobKey. "a-job")))))]
+    (testing "the jobs still running are logged, and the scheduler is shut down"
+      (reset! shutdowns 0)
+      (mt/with-log-messages-for-level [messages [metabase.task.impl :warn]]
+        (#'task.impl/shut-down-scheduler! (quartz (constantly [running])))
+        (is (= {:messages  ["Stopping the scheduler while 1 jobs are still running: DEFAULT.a-job"]
+                :shutdowns 1}
+               {:messages  (map :message (messages))
+                :shutdowns @shutdowns}))))
+    (testing "the scheduler is shut down even when listing its running jobs throws"
+      (reset! shutdowns 0)
+      (is (thrown? SchedulerException
+                   (#'task.impl/shut-down-scheduler! (quartz #(throw (SchedulerException. "listing failed"))))))
+      (is (= 1 @shutdowns)))))
