@@ -1148,6 +1148,16 @@ describe("QueryBuilder > line chart", () => {
   });
 
   it("should show label for empty value series breakout (metabase#32107)", async () => {
+    const settings: VisualizationSettings = {
+      "graph.dimensions": ["ID", "VAL2"],
+      "graph.metrics": ["VAL1"],
+    };
+    // saved cards can hold null for these settings, as the reproduction's
+    // question did, though the type does not allow it
+    Object.assign(settings, {
+      "graph.series_order_dimension": null,
+      "graph.series_order": null,
+    });
     await setupSavedQuestion({
       query: createNativeQuery(
         "select 1 id, 50 val1, null val2 union all select 2, 75, null",
@@ -1166,12 +1176,7 @@ describe("QueryBuilder > line chart", () => {
           [5, 280, null],
         ],
       ),
-      settings: {
-        "graph.dimensions": ["ID", "VAL2"],
-        "graph.series_order_dimension": null,
-        "graph.series_order": null,
-        "graph.metrics": ["VAL1"],
-      },
+      settings,
     });
 
     const legendItem = await within(
