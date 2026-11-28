@@ -40,6 +40,15 @@
       (is (= "en"
              (:userLocale (#'index/template-parameters true {:params {:locale "es"}})))))))
 
+(deftest locale-script-emitted-once-when-user-and-site-locale-match-test
+  (with-redefs [index/locale-script-urls (constantly {"es" "app/dist/locale-es-json.abc123.js"
+                                                      "fr" "app/dist/locale-fr-json.def456.js"})]
+    (binding [i18n/*user-locale* "es"]
+      (mt/with-temporary-setting-values [site-locale "es"]
+        (let [scripts (:localeScripts (#'index/template-parameters false {}))]
+          (is (= 1 (count (re-seq #"<script" scripts))))
+          (is (str/includes? scripts "locale-es-json.abc123.js")))))))
+
 (deftest load-entrypoint-template-contains-user-locale
   (binding [i18n/*user-locale* "es"]
     (is (= "es" (:language (#'index/template-parameters false {})))))
