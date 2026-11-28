@@ -397,7 +397,8 @@
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
    [:context_tokens         {:optional true} [:maybe :int]]
    [:finish_reason          {:optional true} [:maybe :string]]
-   [:context_window_full    {:optional true} [:maybe :boolean]]])
+   [:context_window_full    {:optional true} [:maybe :boolean]]
+   [:finished_at            {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::metabot-message.update
   "What an update of a MetabotMessage takes: its `:id` and the columns to set."
@@ -500,6 +501,90 @@
   [:map {:closed true}
    [:message_id ms/PositiveInt]
    [:table_id   ::lib.schema.id/table]])
+
+(mr/def ::metabot-llm-call.status
+  "The state of an LLM call attempt. `running` until it ends; `aborted` when its turn ended first, or its consumer
+  stopped reading it."
+  [:enum "running" "ok" "error" "aborted"])
+
+(mr/def ::metabot-llm-call
+  "A MetabotLlmCall as selected from the app DB: every column of `:metabot_llm_call`."
+  [:merge
+   ::metabot-llm-call.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::metabot-llm-call.create
+  "What recording a MetabotLlmCall takes: its attempt number, start time and status, and any of its other columns."
+  [:map {:closed true}
+   [:message_id            {:optional true} [:maybe ms/PositiveInt]]
+   [:conversation_id       {:optional true} [:maybe :string]]
+   [:user_id               {:optional true} [:maybe ::lib.schema.id/user]]
+   [:request_id            {:optional true} [:maybe :string]]
+   [:source                {:optional true} [:maybe :string]]
+   [:profile_id            {:optional true} [:maybe :string]]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model                 {:optional true} [:maybe :string]]
+   [:iteration             {:optional true} [:maybe :int]]
+   [:attempt                                ms/PositiveInt]
+   [:started_at                             ms/TemporalInstant]
+   [:finished_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:status                                 ::metabot-llm-call.status]
+   [:error_class           {:optional true} [:maybe :string]]
+   [:error_status          {:optional true} [:maybe :int]]
+   [:retry_delay_ms        {:optional true} [:maybe :int]]
+   [:finish_reason         {:optional true} [:maybe :string]]
+   [:usage_log_id          {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::metabot-llm-call.update
+  "What an update of a MetabotLlmCall takes: its `:id` and the columns that the end of the attempt sets."
+  [:map {:closed true}
+   [:id                                     ms/PositiveInt]
+   [:finished_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:status                {:optional true} ::metabot-llm-call.status]
+   [:error_class           {:optional true} [:maybe :string]]
+   [:error_status          {:optional true} [:maybe :int]]
+   [:retry_delay_ms        {:optional true} [:maybe :int]]
+   [:finish_reason         {:optional true} [:maybe :string]]
+   [:usage_log_id          {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::metabot-tool-call.status
+  "The state of a tool call. `running` from its submit until it ends; `skipped` when a stream error came before it
+  started; `aborted` when its turn ended first."
+  [:enum "running" "ok" "error" "skipped" "aborted"])
+
+(mr/def ::metabot-tool-call
+  "A MetabotToolCall as selected from the app DB: every column of `:metabot_tool_call`."
+  [:merge
+   ::metabot-tool-call.create
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::metabot-tool-call.create
+  "What recording a MetabotToolCall takes: the provider's id of the call, the tool, the submit time and the status,
+  and any of its other columns."
+  [:map {:closed true}
+   [:llm_call_id  {:optional true} [:maybe ms/PositiveInt]]
+   [:message_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:tool_call_id                  :string]
+   [:tool_name                     :string]
+   [:created_at                    ms/TemporalInstant]
+   [:started_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:finished_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:status                        ::metabot-tool-call.status]
+   [:error_class  {:optional true} [:maybe :string]]
+   [:input        {:optional true} [:maybe ::schema.v2/tool-io]]
+   [:output       {:optional true} [:maybe ::schema.v2/tool-io]]])
+
+(mr/def ::metabot-tool-call.update
+  "What an update of a MetabotToolCall takes: its `:id` and the columns that the end of the call sets."
+  [:map {:closed true}
+   [:id                           ms/PositiveInt]
+   [:started_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:finished_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:status      {:optional true} ::metabot-tool-call.status]
+   [:error_class {:optional true} [:maybe :string]]
+   [:output      {:optional true} [:maybe ::schema.v2/tool-io]]])
 
 (mr/def ::external-metabot
   "A Metabot as serialization writes it, with portable references in place of ids."

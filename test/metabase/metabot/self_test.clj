@@ -1785,14 +1785,14 @@
       (let [calls (atom 0)]
         (is (= :ok (#'self/with-retries
                     {:model "test-model" :tag "agent"}
-                    (fn [] (swap! calls inc) :ok))))
+                    (fn [_call] (swap! calls inc) :ok))))
         (is (= 1 @calls))))
     (testing "retries on retryable error and succeeds"
       (let [calls (atom 0)]
         (is (= :ok (mt/with-log-level [metabase.metabot.self :fatal]
                      (#'self/with-retries
                       {:model "test-model" :tag "agent"}
-                      (fn []
+                      (fn [_call]
                         (when (< (swap! calls inc) 3)
                           (throw (ex-info "rate limited" {:status 429})))
                         :ok)))))
@@ -1803,7 +1803,7 @@
              clojure.lang.ExceptionInfo #"unauthorized"
              (#'self/with-retries
               {:model "test-model" :tag "agent"}
-              (fn []
+              (fn [_call]
                 (swap! calls inc)
                 (throw (ex-info "unauthorized" {:status 401}))))))
         (is (= 1 @calls))))
@@ -1814,7 +1814,7 @@
              (mt/with-log-level [metabase.metabot.self :fatal]
                (#'self/with-retries
                 {:model "test-model" :tag "agent"}
-                (fn []
+                (fn [_call]
                   (swap! calls inc)
                   (throw (ex-info "overloaded" {:status 529})))))))
         (is (= 3 @calls))))
@@ -1823,7 +1823,7 @@
         (is (= :ok (mt/with-log-level [metabase.metabot.self :fatal]
                      (#'self/with-retries
                       {:model "test-model" :tag "agent"}
-                      (fn []
+                      (fn [_call]
                         (when (< (swap! calls inc) 2)
                           (throw (java.net.ConnectException. "refused")))
                         :ok)))))

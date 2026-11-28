@@ -503,6 +503,30 @@
           (is (= (t2/select-one :model/Metabot :entity_id metabot.config/internal-metabot-id)
                  (:metabot (last @ai-request-calls)))))))))
 
+(deftest ^:synchronized slackbot-streaming-passes-assistant-message-id-test
+  (testing "a turn passes the pk of its assistant message to the agent loop, for the turn's LLM call and tool call records"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (tu/with-slackbot-mocks
+            {:ai-text "Hello!"}
+            (fn [{:keys [ai-request-calls stop-stream-calls]}]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(pos? (count @stop-stream-calls))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (let [{:keys [conversation-id tracking-opts]} (last @ai-request-calls)
+                    assistant-msg-id (t2/select-one-pk :model/MetabotMessage
+                                                       :conversation_id conversation-id
+                                                       :role "assistant")]
+                (is (some? assistant-msg-id))
+                (is (= {:source     "slackbot"
+                        :session-id conversation-id
+                        :message-id assistant-msg-id}
+                       tracking-opts))))))))))
+
 (deftest ^:synchronized slackbot-streaming-seeds-state-from-db-test
   (testing "a turn seeds the agent loop with the state earlier turns in the thread persisted (BOT-522)"
     (tu/with-slackbot-setup

@@ -55,3 +55,23 @@
         (#'ai-usage-trimmer/trim-old-usage-data!)
         (is (= #{recent-id old-id}
                (t2/select-fn-set :id :model/AiUsageLog {:where [:in :id [recent-id old-id]]})))))))
+
+(deftest trims-llm-call-and-tool-call-records-test
+  (testing "the records of LLM calls and tool calls older than the retention are deleted"
+    (let [now (t/offset-date-time)
+          old (t/minus now (t/days 200))]
+      (mt/with-temp
+        [:model/MetabotLlmCall  {recent-llm :id}  {:attempt 1 :status "ok" :started_at now}
+         :model/MetabotLlmCall  {old-llm :id}     {:attempt 1 :status "ok" :started_at old}
+         :model/MetabotToolCall {recent-tool :id} {:tool_call_id "c1" :tool_name "t" :status "ok" :created_at now
+                                                   :llm_call_id recent-llm}
+         :model/MetabotToolCall {old-tool :id}    {:tool_call_id "c2" :tool_name "t" :status "ok" :created_at old}
+         ;; a call that belongs to an old LLM call goes with it
+         :model/MetabotToolCall {child-tool :id}  {:tool_call_id "c3" :tool_name "t" :status "ok" :created_at now
+                                                   :llm_call_id old-llm}]
+        (#'ai-usage-trimmer/trim-old-usage-data!)
+        (is (= #{recent-llm}
+               (t2/select-fn-set :id :model/MetabotLlmCall {:where [:in :id [recent-llm old-llm]]})))
+        (is (= #{recent-tool}
+               (t2/select-fn-set :id :model/MetabotToolCall
+                                 {:where [:in :id [recent-tool old-tool child-tool]]})))))))

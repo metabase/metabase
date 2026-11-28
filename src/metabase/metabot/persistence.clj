@@ -7,6 +7,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.call-records :as call-records]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.models.metabot-message :as metabot-message]
@@ -48,7 +49,7 @@
   (when (map? structured)
     (not-empty (select-keys structured persisted-structured-output-keys))))
 
-(defn- tool-result->storable-output
+(defn tool-result->storable-output
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
   `:output` (the LLM-facing text adapters read on history replay) plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
@@ -64,6 +65,12 @@
       (cond-> (select-keys result [:output])
         structured (assoc :structured_output structured)))
     result))
+
+(defn tool-result->error-text
+  "The stored `:errorText` of a v2 tool part, for the `result` of a failed tool call: the text the model reads for
+  the failure on a replay (see [[tools.runtime/replay-text]])."
+  [result]
+  (tools.runtime/replay-text (assoc result :output (self.core/tool-result-text result))))
 
 (defn- internal-parts->storable
   "Convert internal agent-loop parts to v2 at-rest parts
@@ -111,9 +118,7 @@
                              ;; exception. It is stored as the neutral sentence of
                              ;; `tools.runtime/replay-text`. Its live text tells the model what to do,
                              ;; but that turn will have ended.
-                             (assoc :errorText (tools.runtime/replay-text
-                                                (assoc (:result output)
-                                                       :output (self.core/tool-result-text (:result output)))))))
+                             (assoc :errorText (tool-result->error-text (:result output)))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -402,7 +407,9 @@
   is captured into the `error` column via the `:error` kwarg; why the turn
   stopped early, if it did, is derived from those same parts into the
   `finish_reason` column, and whether a `length` stop filled the context window
-  into `context_window_full`.
+  into `context_window_full`. `finished_at` gets the time of this call, which is when the agent
+  loop ended, and the turn's LLM call and tool call records that are still open are set to
+  `aborted` (see [[metabase.metabot.call-records]]).
 
   Keyword args:
   - `:profile-id` — same value passed to [[start-turn!]]; tags the
@@ -436,6 +443,7 @@
         usage          (extract-usage parts)
         context-tokens (extract-context-tokens parts)
         finish-reason  (self.core/parts->incomplete-finish-reason parts)
+        finished-at    (OffsetDateTime/now)
         ;; used-table extraction needs the raw internal parts before conversion trims
         ;; tool outputs, so it can see keys the stored format discards, e.g. `:transform`
         kept-parts     (->> parts
@@ -447,6 +455,9 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
+    ;; Before the message UPDATE, so a reader that sees `finished_at` set on the message sees no open record that this
+    ;; turn will still close here. A tool that is still running writes its own end later, over `aborted`.
+    (call-records/abort-open-calls! assistant-msg-id finished-at)
     (metabot-message/update-metabot-messages! [(cond-> {:id             assistant-msg-id
                                                         :data           content
                                                         :data_version   schema.v2/current-data-version
@@ -456,6 +467,7 @@
                                                                              (reduce + 0))
                                                         :context_tokens context-tokens
                                                         :finished       (boolean finished?)
+                                                        :finished_at    finished-at
                                                         ;; Recorded whatever else the turn did: a turn the client
                                                         ;; abandoned, or one that also errored, was still truncated
                                                         ;; or filtered, and support and EE analytics read that back.
@@ -1039,7 +1051,12 @@
   returns nil otherwise, creating nothing. Cloned rows share the conversation and
   message insert shapes used by [[start-turn!]] but with fresh `id`/`external_id`s,
   `user-id` attribution, DB-stamped `created_at`, and zeroed token usage. Returns
-  the new conversation id."
+  the new conversation id.
+
+  The LLM call and tool call records of the cloned messages are not copied (see
+  [[metabase.metabot.call-records]]): the fork made none of those calls. A count of tool
+  calls from `metabot_tool_call` is therefore lower for a fork than a count of the tool
+  parts in its message data."
   [conversation-id  :- :string
    fork-external-id :- :string
    user-id          :- pos-int?]

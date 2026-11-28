@@ -211,9 +211,11 @@
           :model/Metabot
           :model/MetabotConversation
           :model/MetabotFeedback
+          :model/MetabotLlmCall
           :model/MetabotMessage
           :model/MetabotPrompt
           :model/MetabotSourceFeedback
+          :model/MetabotToolCall
           :model/MetabotUsedTable
           :model/ModelIndex
           :model/ModelIndexValue

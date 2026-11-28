@@ -1,0 +1,332 @@
+## Records of what a Metabot turn did: one metabot_llm_call row per LLM call attempt, one metabot_tool_call row per
+## tool call, and metabot_message.finished_at, the time the agent loop of an assistant message ended.
+
+databaseChangeLog:
+  - changeSet:
+      id: gbx519
+      author: lbrdnk
+      comment: Add metabot_message.finished_at
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: finished_at
+                  type: ${timestamp_type}
+                  remarks: When the agent loop of an assistant message ended. NULL for a user message, a turn in flight, and a row from before this column.
+
+  - changeSet:
+      id: q4m7wd
+      author: lbrdnk
+      comment: Add metabot_llm_call
+      changes:
+        - createTable:
+            tableName: metabot_llm_call
+            remarks: One row per attempt of an LLM call that Metabot made
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Unique ID
+              - column:
+                  name: message_id
+                  type: int
+                  remarks: The assistant metabot_message the call belongs to. NULL for a source with no assistant message.
+              - column:
+                  name: conversation_id
+                  type: varchar(36)
+                  remarks: The metabot_conversation the call belongs to. NULL for a call outside a conversation.
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The user the call was made for
+              - column:
+                  name: request_id
+                  type: varchar(36)
+                  remarks: UUID of the agent loop the call belongs to, as in ai_usage_log.request_id
+              - column:
+                  name: source
+                  type: varchar(255)
+                  remarks: The feature or workflow that made the call, as in ai_usage_log.source
+              - column:
+                  name: profile_id
+                  type: varchar(100)
+                  remarks: The AI profile used, e.g. nlq, sql, slackbot
+              - column:
+                  name: provider
+                  type: varchar(255)
+                  remarks: The type of the provider connection that served the call
+              - column:
+                  name: model
+                  type: varchar(255)
+                  remarks: The model reference, as in ai_usage_log.model
+              - column:
+                  name: iteration
+                  type: int
+                  remarks: The step of the agent loop that made the call. NULL for a call outside an agent loop.
+              - column:
+                  name: attempt
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: The number of the attempt within its call, from 1
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+                  remarks: When the attempt started, before the request to the provider
+              - column:
+                  name: finished_at
+                  type: ${timestamp_type}
+                  remarks: When the attempt ended. NULL while it runs.
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+                  remarks: 'One of: running, ok, error, aborted'
+              - column:
+                  name: error_class
+                  type: varchar(255)
+                  remarks: The class of the failure of a failed attempt
+              - column:
+                  name: error_status
+                  type: int
+                  remarks: The HTTP status of the failure of a failed attempt, when the provider sent one
+              - column:
+                  name: retry_delay_ms
+                  type: int
+                  remarks: How long Metabot waited after this failed attempt before the next one
+              - column:
+                  name: finish_reason
+                  type: varchar(254)
+                  remarks: Why the provider stopped generating
+              - column:
+                  name: usage_log_id
+                  type: bigint
+                  remarks: The ai_usage_log row with the tokens the provider reported for the attempt. NULL when it reported none.
+
+  - changeSet:
+      id: n8r2vx
+      author: lbrdnk
+      comment: Index on metabot_llm_call.message_id for the reads and the cascade from metabot_message
+      changes:
+        - createIndex:
+            tableName: metabot_llm_call
+            indexName: idx_metabot_llm_call_message_id
+            columns:
+              - column:
+                  name: message_id
+
+  - changeSet:
+      id: h5t9cj
+      author: lbrdnk
+      comment: Index on metabot_llm_call.conversation_id for the reads and the cascade from metabot_conversation
+      changes:
+        - createIndex:
+            tableName: metabot_llm_call
+            indexName: idx_metabot_llm_call_conversation_id
+            columns:
+              - column:
+                  name: conversation_id
+
+  - changeSet:
+      id: w3k6pz
+      author: lbrdnk
+      comment: Index on metabot_llm_call.started_at for the retention trimmer
+      changes:
+        - createIndex:
+            tableName: metabot_llm_call
+            indexName: idx_metabot_llm_call_started_at
+            columns:
+              - column:
+                  name: started_at
+
+  - changeSet:
+      id: y7d1sq
+      author: lbrdnk
+      comment: FK from metabot_llm_call.message_id to metabot_message
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_llm_call
+            baseColumnNames: message_id
+            constraintName: fk_metabot_llm_call_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: b2f8ne
+      author: lbrdnk
+      comment: FK from metabot_llm_call.conversation_id to metabot_conversation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_llm_call
+            baseColumnNames: conversation_id
+            constraintName: fk_metabot_llm_call_conversation_id
+            referencedTableName: metabot_conversation
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: j6p3lt
+      author: lbrdnk
+      comment: Index on metabot_llm_call.usage_log_id for the reads and the FK to ai_usage_log
+      changes:
+        - createIndex:
+            tableName: metabot_llm_call
+            indexName: idx_metabot_llm_call_usage_log_id
+            columns:
+              - column:
+                  name: usage_log_id
+
+  - changeSet:
+      id: z2g8mk
+      author: lbrdnk
+      comment: FK from metabot_llm_call.usage_log_id to ai_usage_log
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_llm_call
+            baseColumnNames: usage_log_id
+            constraintName: fk_metabot_llm_call_usage_log_id
+            referencedTableName: ai_usage_log
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: c9x4ha
+      author: lbrdnk
+      comment: Add metabot_tool_call
+      changes:
+        - createTable:
+            tableName: metabot_tool_call
+            remarks: One row per tool call that Metabot ran or skipped
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Unique ID
+              - column:
+                  name: llm_call_id
+                  type: bigint
+                  remarks: The metabot_llm_call attempt whose response made the call
+              - column:
+                  name: message_id
+                  type: int
+                  remarks: The assistant metabot_message the call belongs to. NULL for a source with no assistant message.
+              - column:
+                  name: tool_call_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                  remarks: The id the provider gave the call. It joins to the tool parts in metabot_message.data.
+              - column:
+                  name: tool_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                  remarks: The name of the tool the model called
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When the call was submitted to the tool executor
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: When the tool started to run. NULL while the call waits, and for a call that never ran.
+              - column:
+                  name: finished_at
+                  type: ${timestamp_type}
+                  remarks: When the call ended. NULL while it waits or runs.
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+                  remarks: 'One of: running, ok, error, skipped, aborted'
+              - column:
+                  name: error_class
+                  type: varchar(255)
+                  remarks: The class of the failure of a failed call
+              - column:
+                  name: input
+                  type: ${text.type}
+                  remarks: The arguments of the call, as JSON
+              - column:
+                  name: output
+                  type: ${text.type}
+                  remarks: The output of the call, as JSON, trimmed as in metabot_message.data
+
+  - changeSet:
+      id: e6j3ut
+      author: lbrdnk
+      comment: Index on metabot_tool_call.llm_call_id for the reads and the cascade from metabot_llm_call
+      changes:
+        - createIndex:
+            tableName: metabot_tool_call
+            indexName: idx_metabot_tool_call_llm_call_id
+            columns:
+              - column:
+                  name: llm_call_id
+
+  - changeSet:
+      id: r1v5mg
+      author: lbrdnk
+      comment: Index on metabot_tool_call.message_id for the reads and the cascade from metabot_message
+      changes:
+        - createIndex:
+            tableName: metabot_tool_call
+            indexName: idx_metabot_tool_call_message_id
+            columns:
+              - column:
+                  name: message_id
+
+  - changeSet:
+      id: k8z2bw
+      author: lbrdnk
+      comment: Index on metabot_tool_call.created_at for the retention trimmer
+      changes:
+        - createIndex:
+            tableName: metabot_tool_call
+            indexName: idx_metabot_tool_call_created_at
+            columns:
+              - column:
+                  name: created_at
+
+  - changeSet:
+      id: t4c7yf
+      author: lbrdnk
+      comment: FK from metabot_tool_call.llm_call_id to metabot_llm_call
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_tool_call
+            baseColumnNames: llm_call_id
+            constraintName: fk_metabot_tool_call_llm_call_id
+            referencedTableName: metabot_llm_call
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: u9g6xd
+      author: lbrdnk
+      comment: FK from metabot_tool_call.message_id to metabot_message
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_tool_call
+            baseColumnNames: message_id
+            constraintName: fk_metabot_tool_call_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE

@@ -9,6 +9,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.call-records :as call-records]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.runtime :as tools.runtime]
@@ -26,6 +27,7 @@
    [metabase.util.performance :as perf])
   (:import
    (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
+   (java.time OffsetDateTime)
    (java.util.concurrent CompletableFuture Executor Executors ThreadPoolExecutor)
    (java.util.function BiFunction Supplier)))
 
@@ -1170,6 +1172,23 @@
           (mapv (assoc-ms (u/since-ms start-ms))
                 results))))))
 
+(defn- run-recorded-tool
+  "[[run-tool]], with the end of the call recorded on the MetabotToolCall with `record-id`: when the tool started,
+  and its last result. `run-tool` does not throw; if it does, the record ends with `error` and the exception goes on."
+  [record-id tool-call-id tool-name tools chunks]
+  (let [started-at (OffsetDateTime/now)]
+    (try
+      (u/prog1 (run-tool tool-call-id tool-name tools chunks)
+        (call-records/record-tool-call-end!
+         record-id
+         {:started-at started-at
+          :result     (:result (last (filter #(= :tool-output-available (:type %)) <>)))}))
+      (catch Throwable e
+        (call-records/record-tool-call-end!
+         record-id
+         {:started-at started-at :status "error" :error-class (.getSimpleName (class e))})
+        (throw e)))))
+
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
 
@@ -1182,9 +1201,12 @@
   - Once an :error chunk comes through, starts no more tools, the calls already waiting to start included, and drops
     the tool-input chunks after it
   - At completion, waits for all tools and appends their results in call order
+  - Records each call whose input is complete as one MetabotToolCall (see [[call-records]]): at its submit here, and
+    its end on the tool's thread. `record-opts` names what the records belong to: `:llm-call-id`, the record of the
+    LLM call attempt that made the calls, and `:message-id`, the assistant MetabotMessage of the turn.
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
-  [tools]
+  [tools & [record-opts]]
   (fn [rf]
     (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
           errored? (volatile! false)
@@ -1217,9 +1239,17 @@
                (when-let [{:keys [chunks]} (get @active toolCallId)]
                  (let [runs-alone? (:runs-alone? (get tools toolName))
                        after       (if runs-alone? @started (some-> @alone list))
+                       record-id   (call-records/record-tool-call-submit!
+                                    (assoc record-opts
+                                           :tool-call-id toolCallId
+                                           :tool-name    toolName
+                                           :input        (delay (:arguments (into {} (aisdk-xf) chunks)))))
                        task        (submit-virtual after (bound-fn* #(if @errored?
-                                                                       []
-                                                                       (run-tool toolCallId toolName tools chunks))))]
+                                                                       (do (call-records/record-tool-call-end!
+                                                                            record-id {:status "skipped"})
+                                                                           [])
+                                                                       (run-recorded-tool record-id toolCallId toolName
+                                                                                          tools chunks))))]
                    (vswap! started conj task)
                    (when runs-alone?
                      (vreset! alone task))

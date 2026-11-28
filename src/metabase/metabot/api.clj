@@ -253,7 +253,8 @@
                                :preloaded-skill-ids    (set preloaded-skill-ids)
                                :eval-session-id        eval-session-id
                                :memory-atom            memory-atom
-                               :tracking-opts          {:session-id conversation-id}
+                               :tracking-opts          {:session-id conversation-id
+                                                        :message-id assistant-msg-id}
                                ;; A query a tool is running stops when the client goes away.
                                :request-canceled-chan  canceled-chan}
                         debug? (assoc :debug? true))))

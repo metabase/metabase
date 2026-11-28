@@ -367,7 +367,7 @@
       env-var-value)))
 
 (defsetting ai-usage-max-retention-days
-  (deferred-tru "Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.")
+  (deferred-tru "Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, metabot_llm_call, metabot_tool_call, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.")
   :type       :integer
   :visibility :admin
   :setter     :none
@@ -380,6 +380,8 @@
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
+- `metabot_llm_call`
+- `metabot_tool_call` (with the inputs and outputs of the tool calls)
 - `agent_api_call_log`
 - `api_key_usage_log`
 
