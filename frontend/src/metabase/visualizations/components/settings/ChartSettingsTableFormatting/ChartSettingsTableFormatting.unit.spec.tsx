@@ -271,11 +271,9 @@ describe("ChartSettingsTableFormatting rule list", () => {
   });
 
   const createTaxRule = (
-    id: number,
     value: number,
     color: string,
   ): ColumnFormattingSetting => ({
-    id,
     type: "single",
     operator: "<",
     value,
@@ -285,9 +283,9 @@ describe("ChartSettingsTableFormatting rule list", () => {
   });
 
   const RULES = [
-    createTaxRule(0, 3, "#509EE3"),
-    createTaxRule(1, 6, "#88BF4D"),
-    createTaxRule(2, 10, "#EF8C8C"),
+    createTaxRule(3, "#509EE3"),
+    createTaxRule(6, "#88BF4D"),
+    createTaxRule(10, "#EF8C8C"),
   ];
 
   const PREVIEW_HEIGHT = 100;
