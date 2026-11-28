@@ -2,15 +2,19 @@ import userEvent from "@testing-library/user-event";
 
 import { setupDashboardEndpoints } from "__support__/server-mocks";
 import { createMockDashboardState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import type { Dashboard, DashboardTabId } from "metabase-types/api";
 import {
   createMockCard,
+  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardTab,
+  createMockDataset,
+  createMockDatasetData,
+  createMockParameter,
 } from "metabase-types/api/mocks";
 
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar";
@@ -80,7 +84,103 @@ function setup({ tabId, targetDashboard = TARGET_DASHBOARD }: SetupOpts) {
   return { getStoredClickBehavior };
 }
 
+const ID_PARAMETER = createMockParameter({
+  id: "50c9eac6",
+  name: "ID",
+  slug: "id",
+  type: "id",
+});
+
+// Like a Postgres table whose `uuid` column is marked as the primary key and
+// whose integer `id` column is not
+const TABLE_COLUMNS = [
+  createMockColumn({
+    name: "id",
+    display_name: "ID",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    semantic_type: null,
+  }),
+  createMockColumn({
+    name: "uuid",
+    display_name: "UUID",
+    base_type: "type/UUID",
+    effective_type: "type/UUID",
+    semantic_type: "type/PK",
+  }),
+  createMockColumn({
+    name: "string",
+    display_name: "String",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    semantic_type: null,
+  }),
+];
+
+const TABLE_CARD_ID = 2;
+
+function setupTableDashcard() {
+  const dashcard = createMockDashboardCard({
+    card_id: TABLE_CARD_ID,
+    card: createMockCard({ id: TABLE_CARD_ID, display: "table" }),
+  });
+  const dashboard = createMockDashboard({
+    id: 1,
+    dashcards: [dashcard],
+    parameters: [ID_PARAMETER],
+  });
+
+  renderWithProviders(
+    <MockDashboardContext dashboardId={dashboard.id} dashboard={dashboard}>
+      <ClickBehaviorSidebar />
+    </MockDashboardContext>,
+    {
+      storeInitialState: createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: dashboard.id,
+          dashboards: {
+            [dashboard.id]: { ...dashboard, dashcards: [dashcard.id] },
+          },
+          dashcards: { [dashcard.id]: dashcard },
+          dashcardData: {
+            [dashcard.id]: {
+              [TABLE_CARD_ID]: createMockDataset({
+                data: createMockDatasetData({
+                  cols: TABLE_COLUMNS,
+                  rows: [[1, "4f01dcfd-13f7-430c-8e6f-e505c0851027", "a"]],
+                }),
+              }),
+            },
+          },
+          sidebar: {
+            name: SIDEBAR_NAME.clickBehavior,
+            props: { dashcardId: dashcard.id },
+          },
+        }),
+      }),
+    },
+  );
+}
+
 describe("ClickBehaviorSidebar", () => {
+  it("should offer a UUID primary key column for an ID filter in 'Update a dashboard filter' click behavior (metabase#15170)", async () => {
+    setupTableDashcard();
+
+    await userEvent.click(await screen.findByText("UUID"));
+    await userEvent.click(screen.getByText("Update a dashboard filter"));
+    const filters = await screen.findByTestId("unset-click-mappings");
+    expect(screen.getByText("Available filters")).toBeInTheDocument();
+    await userEvent.click(within(filters).getByRole("button", { name: "ID" }));
+
+    const listbox = await screen.findByRole("listbox");
+    expect(
+      within(listbox).getByRole("option", { name: "UUID" }),
+    ).toBeInTheDocument();
+    expect(
+      within(listbox).queryByRole("option", { name: "String" }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("link to a dashboard tab", () => {
     it("should allow saving when the selected tab exists", async () => {
       setup({ tabId: SECOND_TAB.id });
