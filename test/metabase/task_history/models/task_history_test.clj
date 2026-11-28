@@ -266,8 +266,8 @@
           (is (int? duration))
           (is (<= 250 duration 10000)))
         (testing "the end is the start plus the duration"
-          (is (<= (Math/abs (- (.between java.time.temporal.ChronoUnit/MILLIS (t/instant started_at) (t/instant ended_at))
-                               duration))
+          (is (<= (abs (- (.between java.time.temporal.ChronoUnit/MILLIS (t/instant started_at) (t/instant ended_at))
+                          duration))
                   1)))))))
 
 (deftest permission-hydration-statements-do-not-grow-with-rows-test
