@@ -59,8 +59,7 @@
     "csv-parse": "^7.0.2",
     "get-nonce": "^1.0.1",
     "react-use": "^17.5.1",
-    "ttag": "1.7.21",
-    "underscore": "^1.13.8"
+    "ttag": "1.7.21"
   },
   "peerDependencies": {
     "@mantine/core": "~8.3.18",
