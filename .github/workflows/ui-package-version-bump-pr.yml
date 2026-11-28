@@ -8,10 +8,6 @@ on:
         type: choice
         options: [patch, minor, major]
         required: true
-      note:
-        description: Changelog note for package consumers
-        type: string
-        required: true
 
 permissions:
   contents: read
@@ -28,16 +24,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+
+      - name: Draft a changelog note
+        env:
+          UI_CHANGELOG_OPENAI_API_KEY: ${{ secrets.UI_CHANGELOG_OPENAI_API_KEY }}
+        run: node bin/ui-package/draft-changelog.mjs > "$RUNNER_TEMP/ui-changelog-note"
 
       - name: Update version and changelog
         id: bump
         working-directory: frontend/ui-package
         env:
           BUMP: ${{ inputs.bump }}
-          NOTE: ${{ inputs.note }}
         run: |
-          version=$(node ../../bin/ui-package/bump-version.mjs "$BUMP" "$NOTE")
+          note=$(cat "$RUNNER_TEMP/ui-changelog-note")
+          version=$(node ../../bin/ui-package/bump-version.mjs "$BUMP" "$note")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Open release PR
@@ -51,6 +57,7 @@ jobs:
           git switch -c "$branch"
           git add frontend/ui-package/package.json frontend/ui-package/CHANGELOG.md
           git commit -m "Release @metabase/ui $VERSION"
+          gh auth setup-git
           git push origin "HEAD:refs/heads/$branch"
           gh pr create --base master --head "$branch" --label ui-release-trigger --label .Team/DevEx \
             --title "Release @metabase/ui $VERSION" \
