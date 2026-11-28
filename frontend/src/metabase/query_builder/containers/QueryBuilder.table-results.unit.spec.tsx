@@ -39,10 +39,10 @@ import {
   createOrdersTable,
   createOrdersTableDatasetColumns,
   createOrdersUserIdDatasetColumn,
-  createProductsCategoryDatasetColumn,
-  createProductsRatingDatasetColumn,
   createPeopleIdField,
   createPeopleTable,
+  createProductsCategoryDatasetColumn,
+  createProductsRatingDatasetColumn,
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
@@ -640,7 +640,6 @@ describe("QueryBuilder > table results", () => {
 
     it("should allow to switch between automatic pivot table and usual table visualization (metabase#56094)", async () => {
       const card = createMockUnsavedCard({
-        name: "56094",
         display: "table",
         dataset_query: Lib.toJsQuery(
           Lib.createTestQuery(PROVIDER, {
