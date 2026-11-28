@@ -1,7 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import {
+  createMockDOMRect,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -81,8 +88,12 @@ const NUMBER_OPERATORS = [
 
 const BOOLEAN_OPERATORS = ["is null", "is not null", "is true", "is false"];
 
-const Wrapper = (props: Partial<ChartSettingsTableFormattingProps> = {}) => {
-  const [value, setValue] = useState<ColumnFormattingSetting[]>([]);
+type WrapperProps = Partial<ChartSettingsTableFormattingProps> & {
+  initialValue?: ColumnFormattingSetting[];
+};
+
+const Wrapper = ({ initialValue = [], ...props }: WrapperProps = {}) => {
+  const [value, setValue] = useState<ColumnFormattingSetting[]>(initialValue);
 
   return (
     <ChartSettingsTableFormatting
@@ -94,7 +105,7 @@ const Wrapper = (props: Partial<ChartSettingsTableFormattingProps> = {}) => {
   );
 };
 
-const setup = (props = {}) => {
+const setup = (props: WrapperProps = {}) => {
   render(<Wrapper {...props} />);
 };
 
@@ -244,5 +255,176 @@ describe("ChartSettingsTableFormatting", () => {
         ).toBeInTheDocument();
       });
     });
+  });
+});
+
+describe("ChartSettingsTableFormatting rule list", () => {
+  const TAX_COLUMN = createMockColumn({
+    base_type: "type/Float",
+    display_name: "Tax",
+    name: "TAX",
+  });
+  const SUBTOTAL_COLUMN = createMockColumn({
+    base_type: "type/Float",
+    display_name: "Subtotal",
+    name: "SUBTOTAL",
+  });
+
+  const createTaxRule = (
+    id: number,
+    value: number,
+    color: string,
+  ): ColumnFormattingSetting => ({
+    id,
+    type: "single",
+    operator: "<",
+    value,
+    color,
+    highlight_row: false,
+    columns: ["TAX"],
+  });
+
+  const RULES = [
+    createTaxRule(0, 3, "#509EE3"),
+    createTaxRule(1, 6, "#88BF4D"),
+    createTaxRule(2, 10, "#EF8C8C"),
+  ];
+
+  const PREVIEW_HEIGHT = 100;
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const getPreviews = () => screen.getAllByTestId("formatting-rule-preview");
+
+  const getPreviewText = (columnName: string, value: number) =>
+    `${columnName}When a cell in these columns is less than ${value} it will be tinted this color.`;
+
+  const getPreviewTexts = () =>
+    getPreviews().map((preview) => preview.textContent);
+
+  /**
+   * jsdom has no layout. Gives each rule preview, and the sortable wrapper
+   * around it, a rect from its position in the list, so that dnd-kit can find
+   * the rule that a dragged one crosses.
+   */
+  const mockPreviewRects = ({ draggedIndex }: { draggedIndex: number }) => {
+    const ruleCount = getPreviews().length;
+    jest
+      .spyOn(Element.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: Element) {
+        if (!(this instanceof HTMLElement)) {
+          return createMockDOMRect();
+        }
+        const previews = within(this).queryAllByTestId(
+          "formatting-rule-preview",
+        );
+        const preview =
+          this.dataset.testid === "formatting-rule-preview"
+            ? this
+            : previews.length === 1
+              ? previews[0]
+              : null;
+        if (preview == null) {
+          return createMockDOMRect({ width: 300, height: 1000 });
+        }
+        const index = getPreviews().indexOf(preview);
+        // the drag overlay renders its copy of the dragged rule after the
+        // list, and the copy starts where the dragged rule is
+        const y = (index < ruleCount ? index : draggedIndex) * PREVIEW_HEIGHT;
+        return createMockDOMRect({
+          x: 0,
+          y,
+          top: y,
+          left: 0,
+          width: 300,
+          height: PREVIEW_HEIGHT,
+          right: 300,
+          bottom: y + PREVIEW_HEIGHT,
+        });
+      });
+  };
+
+  const dragPreview = async ({ from, to }: { from: number; to: number }) => {
+    const startY = from * PREVIEW_HEIGHT + PREVIEW_HEIGHT / 2;
+    const endY = to * PREVIEW_HEIGHT + PREVIEW_HEIGHT / 4;
+    const preview = getPreviews()[from];
+
+    fireEvent.mouseDown(preview, { button: 0, clientX: 10, clientY: startY });
+    fireEvent.mouseMove(document, { clientX: 10, clientY: startY - 20 });
+    fireEvent.mouseMove(document, { clientX: 10, clientY: endY });
+    fireEvent.mouseUp(document, { clientX: 10, clientY: endY });
+    // the drag overlay renders a copy of the rule until its drop animation ends
+    await waitFor(() => expect(getPreviews()).toHaveLength(3));
+  };
+
+  it("should be able to remove, add, and re-order rules", async () => {
+    setup({ cols: [TAX_COLUMN, SUBTOTAL_COLUMN], initialValue: RULES });
+    expect(getPreviewTexts()).toEqual([
+      getPreviewText("Tax", 3),
+      getPreviewText("Tax", 6),
+      getPreviewText("Tax", 10),
+    ]);
+
+    // remove the first rule
+    await userEvent.click(
+      within(getPreviews()[0]).getByRole("img", { name: /close/ }),
+    );
+    expect(getPreviewTexts()).toEqual([
+      getPreviewText("Tax", 6),
+      getPreviewText("Tax", 10),
+    ]);
+
+    // add a rule for another column, with an operator, a value and a color
+    // that are not the defaults
+    await userEvent.click(screen.getByRole("button", { name: /add a rule/i }));
+    // the column picker opens at once
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Subtotal" }),
+    );
+    await userEvent.click(
+      screen.getByText("Which columns should be affected?"),
+    );
+    await userEvent.click(
+      screen.getByTestId("conditional-formatting-value-operator-button"),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "is less than" }),
+    );
+    await userEvent.type(
+      screen.getByTestId("conditional-formatting-value-input"),
+      "20",
+    );
+    await userEvent.click(
+      screen.getByTestId("conditional-formatting-color-selector"),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /#F2A86F/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add rule" }));
+
+    expect(getPreviewTexts()).toEqual([
+      getPreviewText("Subtotal", 20),
+      getPreviewText("Tax", 6),
+      getPreviewText("Tax", 10),
+    ]);
+    // the new rule keeps the chosen color
+    await userEvent.click(getPreviews()[0]);
+    expect(
+      screen.getByTestId("conditional-formatting-color-selector"),
+    ).toHaveAccessibleName("#F2A86F");
+    await userEvent.click(screen.getByRole("button", { name: "Update rule" }));
+
+    // move the last rule to the top
+    mockPreviewRects({ draggedIndex: 2 });
+    await dragPreview({ from: 2, to: 0 });
+    await waitFor(() =>
+      expect(getPreviewTexts()).toEqual([
+        getPreviewText("Tax", 10),
+        getPreviewText("Subtotal", 20),
+        getPreviewText("Tax", 6),
+      ]),
+    );
   });
 });
