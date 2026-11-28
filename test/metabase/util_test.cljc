@@ -745,6 +745,11 @@
        (is (#{:https :unknown} (u/https-state {:scheme :http :headers {"origin" "https://example.com"}})))
        (is (nil? (#{:https :unknown} (u/https-state {:scheme :http :headers {}})))))))
 
+(deftest ^:parallel generate-nano-id-test
+  (let [ids (repeatedly 100 u/generate-nano-id)]
+    (is (every? #(re-matches #"[A-Za-z0-9_-]{21}" %) ids))
+    (is (= 100 (count (set ids))))))
+
 (deftest run-each!-test
   (testing "every step runs whatever the earlier ones did, and the ones that threw come back in order"
     (let [ran      (atom [])

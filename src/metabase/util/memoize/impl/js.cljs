@@ -131,7 +131,11 @@
   ([f tkey threshold] (lru f {} tkey threshold))
   ([f base key threshold]
    (assert (= key :lru/threshold) (str "wrong parameter key " key))
-   (memoizer f (cache/lru-cache-factory {} :threshold threshold) base)))
+   ;; An LRU cache fills its priority queue with `threshold` entries when it's created. Create it on the first call,
+   ;; so namespaces that define LRU-memoized functions load faster.
+   (let [memoized (delay (memoizer f (cache/lru-cache-factory {} :threshold threshold) base))]
+     (fn [& args]
+       (apply @memoized args)))))
 
 (defn memo
   "Used as a more flexible alternative to Clojure's core `memoization`
