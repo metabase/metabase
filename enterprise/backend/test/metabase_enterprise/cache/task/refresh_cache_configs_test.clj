@@ -172,6 +172,28 @@
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:parameterized true})]
           (is (nil? (@#'task.cache/scheduled-base-query-to-rerun card-id))))))))
 
+(deftest scheduled-base-query-to-rerun-ignores-download-executions-test
+  (let [question-query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}
+        download-query {:database (mt/id), :type :native, :native {:query "SELECT 2;"}}
+        now            (t/offset-date-time)]
+    (mt/with-temp [:model/Card {card-id :id} {:name "Cached card" :dataset_query question-query}
+                   :model/Query {} {:query_hash (qp.util/query-hash question-query)
+                                    :average_execution_time 1
+                                    :query {:marker "question"}}
+                   :model/Query {} {:query_hash (qp.util/query-hash download-query)
+                                    :average_execution_time 1
+                                    :query {:marker "download"}}
+                   :model/QueryExecution {} (merge (query-execution-defaults question-query)
+                                                   {:card_id    card-id
+                                                    :context    :question
+                                                    :started_at (t/minus now (t/minutes 10))})
+                   :model/QueryExecution {} (merge (query-execution-defaults download-query)
+                                                   {:card_id    card-id
+                                                    :context    :csv-download
+                                                    :started_at (t/minus now (t/minutes 5))})]
+      (is (= {:query {:marker "question"} :card-id card-id}
+             (@#'task.cache/scheduled-base-query-to-rerun card-id))))))
+
 (deftest scheduled-parameterized-queries-to-rerun-edge-cases-test
   (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
@@ -199,6 +221,13 @@
                                                           :parameterized true
                                                           :started_at (t/minus rerun-cutoff (t/days 1))
                                                           :context :cache-refresh})]
+            (is (= [] (@#'task.cache/scheduled-parameterized-queries-to-rerun card-id rerun-cutoff)))))
+        (testing "We don't rerun a download query execution"
+          (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)
+                                                         {:card_id card-id
+                                                          :parameterized true
+                                                          :started_at (t/plus rerun-cutoff (t/days 1))
+                                                          :context :xlsx-download})]
             (is (= [] (@#'task.cache/scheduled-parameterized-queries-to-rerun card-id rerun-cutoff)))))
         (testing "We don't rerun an errored query execution"
           (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query)

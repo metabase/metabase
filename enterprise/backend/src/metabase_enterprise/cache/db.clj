@@ -16,6 +16,17 @@
    [:model-id      ms/PositiveInt]
    [:rerun-cutoff  ms/TemporalInstant]])
 
+(def ^:private download-contexts
+  "Contexts of runs that export a Card's results, which never read the cache."
+  ["csv-download" "xlsx-download" "json-download"
+   "public-csv-download" "public-xlsx-download" "public-json-download"
+   "embedded-csv-download" "embedded-xlsx-download" "embedded-json-download"])
+
+(defn- not-download-run
+  "Where-clause on the `query_execution.context` column `context-column` that leaves out runs in `download-contexts`."
+  [context-column]
+  [:or [:= context-column nil] [:not-in context-column download-contexts]])
+
 (mu/defn card-cache-config
   "The most specific CacheConfig applying to the Card with `card-id` on the Dashboard with `dashboard-id` in the
   Database with `database-id`, or nil."
@@ -89,6 +100,7 @@
                                               [:>= :qe.started_at started-after]
                                               [:= :qe.error nil]
                                               [:= :qe.is_sandboxed false]
+                                              (not-download-run :qe.context)
                                               (if parameterized?
                                                 [:and
                                                  [:= :qe.parameterized true]
@@ -105,7 +117,7 @@
 
 (mu/defn scheduled-base-query-to-rerun
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or
-  nil. Runs in `referenced-run-contexts` don't count."
+  nil. Runs in `referenced-run-contexts` and `download-contexts` don't count."
   [card-id       :- ::lib.schema.id/card
    started-after :- ms/TemporalInstant]
   (t2/select-one :model/Query
@@ -118,6 +130,7 @@
                              [:= :qe.error nil]
                              [:= :qe.is_sandboxed false]
                              (queries/not-referenced-run :qe.context)
+                             (not-download-run :qe.context)
                              [:>= :qe.started_at started-after]]
                   :order-by [[:qe.started_at :desc]]
                   :limit    1}))
@@ -138,7 +151,8 @@
                          [:not= :qe.context "cache-refresh"]
                          [:= :parameterized true]
                          [:= :qe.error nil]
-                         [:= :qe.is_sandboxed false]]
+                         [:= :qe.is_sandboxed false]
+                         (not-download-run :qe.context)]
               :group-by [:q.query_hash :q.query :qe.card_id]
               :order-by [[[:count :q.query_hash] :desc]
                          [[:min :qe.started_at] :asc]]
