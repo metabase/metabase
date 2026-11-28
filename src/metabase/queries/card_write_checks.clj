@@ -99,6 +99,14 @@
   (queries.card/check-new-card-goal-references card)
   (check-no-save-cycle (:dataset_query card)))
 
+(defn- check-updated-card-can-be-saved
+  "Throws a 400 when `card-updates` change the query or the type of `card-before-update` into a Card that cannot be saved."
+  [card-before-update card-updates]
+  (let [card-type (or (:type card-updates) (:type card-before-update))]
+    (when (and (= card-type :metric)
+               (or (:dataset_query card-updates) (:type card-updates)))
+      (check-card-can-be-saved! (or (:dataset_query card-updates) (:dataset_query card-before-update)) card-type))))
+
 (mu/defn check-allowed-to-update-card!
   "Throws unless the current user may apply `card-updates` to `card-before-update`."
   [card-before-update :- ::queries.schema/card
@@ -106,7 +114,8 @@
   (check-embedding-enabled-to-change-embedding card-before-update card-updates)
   (api/update-check card-before-update card-updates)
   (queries.card/check-updated-goal-references [[card-before-update card-updates]])
-  (doseq [f [check-update-result-metadata-data-perms
+  (doseq [f [check-updated-card-can-be-saved
+             check-update-result-metadata-data-perms
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))
 
