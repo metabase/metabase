@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetadataFromState } from "__support__/metadata";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
 import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
 import {
   createMockDashboardState,
@@ -13,12 +16,24 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import * as Lib from "metabase-lib";
-import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { Card, VirtualCard } from "metabase-types/api";
+import type {
+  Card,
+  Database,
+  Parameter,
+  TestQuerySpec,
+  TestStageWithSourceSpec,
+  VirtualCard,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -34,8 +49,13 @@ import {
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
   PRODUCTS,
   PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -742,7 +762,14 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
     ),
   });
 
-  const setupConnected = (card: Card) => {
+  const setupConnected = (
+    card: Card,
+    {
+      parameter = TEXT_PARAMETER,
+      database = createSampleDatabase(),
+      questions = [card],
+    }: { parameter?: Parameter; database?: Database; questions?: Card[] } = {},
+  ) => {
     const dashcard = createMockDashboardCard({
       id: DASHCARD_ID,
       dashboard_id: DASHBOARD_ID,
@@ -753,7 +780,7 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
     });
     const dashboard = createMockDashboard({
       id: DASHBOARD_ID,
-      parameters: [TEXT_PARAMETER],
+      parameters: [parameter],
     });
 
     renderWithProviders(
@@ -761,8 +788,8 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
       {
         storeInitialState: createMockState({
           entities: createMockEntitiesState({
-            databases: [createSampleDatabase()],
-            questions: [card],
+            databases: [database],
+            questions,
           }),
           dashboard: createMockDashboardState({
             dashboardId: DASHBOARD_ID,
@@ -776,7 +803,7 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
             editingDashboard: dashboard,
             sidebar: {
               name: "editParameter",
-              props: { parameterId: TEXT_PARAMETER.id },
+              props: { parameterId: parameter.id },
             },
           }),
         }),
@@ -801,5 +828,535 @@ describe("DashCardParameterMapper connected to the dashboard store", () => {
     ).not.toBeInTheDocument();
     await userEvent.click(screen.getByText("Select…"));
     expect(await screen.findByText("Category")).toBeInTheDocument();
+  });
+
+  describe("multi-stage queries", () => {
+    // The sample database mock gives every field the same position. Give the
+    // fields their real order, so the picker has to keep it.
+    const SAMPLE_DATABASE = createSampleDatabase();
+    const FIELD_POSITIONS = new Map(
+      [ORDERS, PRODUCTS, PEOPLE, REVIEWS].flatMap((table) =>
+        Object.values(table).map((fieldId, position) => [fieldId, position]),
+      ),
+    );
+    const DATABASE: Database = {
+      ...SAMPLE_DATABASE,
+      tables: SAMPLE_DATABASE.tables?.map((table) => ({
+        ...table,
+        fields: table.fields?.map((field) => ({
+          ...field,
+          position:
+            typeof field.id === "number"
+              ? (FIELD_POSITIONS.get(field.id) ?? field.position)
+              : field.position,
+        })),
+      })),
+    };
+
+    const createProvider = (questions: Card[]) =>
+      createMetadataProvider({
+        metadata: createMockMetadata({ databases: [DATABASE], questions }),
+      });
+
+    const ORDERS_QUESTION = createMockCard({
+      id: 101,
+      name: "Q0 Orders",
+      dataset_query: Lib.createTestJsQuery(createProvider([]), {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+    });
+
+    const createOrdersQuestionCard = (
+      id: number,
+      name: string,
+      type: Card["type"],
+    ) =>
+      createMockCard({
+        id,
+        name,
+        type,
+        dataset_query: Lib.createTestJsQuery(
+          createProvider([ORDERS_QUESTION]),
+          {
+            stages: [{ source: { type: "card", id: ORDERS_QUESTION.id } }],
+          },
+        ),
+      });
+
+    const BASE_QUESTION = createOrdersQuestionCard(
+      102,
+      "Base Orders Question",
+      "question",
+    );
+    const BASE_MODEL = createOrdersQuestionCard(
+      103,
+      "Base Orders Model",
+      "model",
+    );
+
+    const SOURCE_PROVIDER = createProvider([
+      ORDERS_QUESTION,
+      BASE_QUESTION,
+      BASE_MODEL,
+    ]);
+
+    // Q1 - join, custom column, no aggregations, no breakouts
+    const createQ1Stage = (sourceCardId: number): TestStageWithSourceSpec => ({
+      source: { type: "card", id: sourceCardId },
+      expressions: [
+        {
+          name: "Net",
+          value: {
+            type: "operator",
+            operator: "-",
+            args: [
+              { type: "column", name: "TOTAL" },
+              { type: "column", name: "TAX" },
+            ],
+          },
+        },
+      ],
+      joins: [
+        {
+          source: { type: "table", id: REVIEWS_ID },
+          strategy: "left-join",
+          alias: "Reviews - Product",
+          conditions: [
+            {
+              operator: "=",
+              left: { type: "column", name: "PRODUCT_ID" },
+              right: { type: "column", fieldId: REVIEWS.PRODUCT_ID },
+            },
+          ],
+        },
+      ],
+    });
+
+    // Q8 - Q4 (Q1 + 2 aggregations, 3 breakouts) + 2nd stage with join,
+    // custom column, 2 aggregations, 2 breakouts
+    const createQ8Query = (sourceCardId: number): TestQuerySpec => ({
+      stages: [
+        {
+          ...createQ1Stage(sourceCardId),
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+          ],
+          breakouts: [
+            { type: "column", fieldId: ORDERS.CREATED_AT, unit: "month" },
+            {
+              type: "column",
+              fieldId: PRODUCTS.CATEGORY,
+              sourceFieldId: ORDERS.PRODUCT_ID,
+            },
+            {
+              type: "column",
+              fieldId: PEOPLE.CREATED_AT,
+              sourceFieldId: ORDERS.USER_ID,
+              unit: "year",
+            },
+          ],
+        },
+        {
+          expressions: [
+            {
+              name: "5 * Count",
+              value: {
+                type: "operator",
+                operator: "*",
+                args: [
+                  { type: "literal", value: 5 },
+                  { type: "column", name: "count" },
+                ],
+              },
+            },
+          ],
+          joins: [
+            {
+              source: { type: "table", id: REVIEWS_ID },
+              strategy: "left-join",
+              alias: "Reviews - Created At: Month",
+              conditions: [
+                {
+                  operator: "=",
+                  left: {
+                    type: "column",
+                    fieldId: ORDERS.CREATED_AT,
+                    unit: "month",
+                  },
+                  right: {
+                    type: "column",
+                    fieldId: REVIEWS.CREATED_AT,
+                    unit: "month",
+                  },
+                },
+              ],
+            },
+          ],
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [
+                {
+                  type: "column",
+                  fieldId: REVIEWS.RATING,
+                  joinAlias: "Reviews - Created At: Month",
+                },
+              ],
+            },
+          ],
+          breakouts: [
+            {
+              type: "column",
+              fieldId: REVIEWS.REVIEWER,
+              joinAlias: "Reviews - Created At: Month",
+            },
+            { type: "column", fieldId: PRODUCTS.CATEGORY },
+          ],
+        },
+      ],
+    });
+
+    // What the backend returns as the results metadata of a Q8 model
+    const Q8_MODEL_RESULT_METADATA = [
+      createMockColumn({
+        id: REVIEWS.REVIEWER,
+        name: "REVIEWER",
+        display_name: "Reviews - Created At: Month → Reviewer",
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        field_ref: ["field", "REVIEWER", { "base-type": "type/Text" }],
+      }),
+      createMockColumn({
+        id: PRODUCTS.CATEGORY,
+        name: "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        display_name: "Product → Category",
+        base_type: "type/Text",
+        effective_type: "type/Text",
+        semantic_type: "type/Category",
+        field_ref: [
+          "field",
+          "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+          { "base-type": "type/Text" },
+        ],
+      }),
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        semantic_type: "type/Quantity",
+        field_ref: ["field", "count", { "base-type": "type/BigInteger" }],
+      }),
+      createMockColumn({
+        name: "sum",
+        display_name: "Sum of Reviews - Created At: Month → Rating",
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        field_ref: ["field", "sum", { "base-type": "type/BigInteger" }],
+      }),
+    ];
+
+    const createQ8Card = (
+      id: number,
+      name: string,
+      type: Card["type"],
+      sourceCard: Card,
+    ) =>
+      createMockCard({
+        id,
+        name,
+        type,
+        dataset_query: Lib.createTestJsQuery(
+          SOURCE_PROVIDER,
+          createQ8Query(sourceCard.id),
+        ),
+        result_metadata: type === "model" ? Q8_MODEL_RESULT_METADATA : [],
+      });
+
+    const QUESTION_BASED_QUESTION = createQ8Card(
+      201,
+      "Question-based Question",
+      "question",
+      BASE_QUESTION,
+    );
+    const MODEL_BASED_QUESTION = createQ8Card(
+      202,
+      "Model-based Question",
+      "question",
+      BASE_MODEL,
+    );
+    const QUESTION_BASED_MODEL = createQ8Card(
+      203,
+      "Question-based Model",
+      "model",
+      BASE_QUESTION,
+    );
+    const MODEL_BASED_MODEL = createQ8Card(
+      204,
+      "Model-based Model",
+      "model",
+      BASE_MODEL,
+    );
+
+    const PIVOT_QUESTION = createMockCard({
+      id: 205,
+      name: "Question - pivot viz",
+      display: "pivot",
+      dataset_query: Lib.createTestJsQuery(SOURCE_PROVIDER, {
+        stages: [
+          {
+            ...createQ1Stage(BASE_QUESTION.id),
+            aggregations: [{ type: "operator", operator: "count" }],
+            breakouts: [
+              { type: "column", fieldId: ORDERS.CREATED_AT, unit: "month" },
+              {
+                type: "column",
+                fieldId: PRODUCTS.CATEGORY,
+                sourceFieldId: ORDERS.PRODUCT_ID,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const PARAMETERS = {
+      date: createMockParameter({
+        id: "date-param",
+        name: "Date",
+        slug: "date",
+        type: "date/all-options",
+        sectionId: "date",
+      }),
+      text: TEXT_PARAMETER,
+      number: createMockParameter({
+        id: "number-param",
+        name: "Number",
+        slug: "number",
+        type: "number/=",
+        sectionId: "number",
+      }),
+    };
+
+    const ORDERS_DATE_COLUMNS = ["Created At"];
+    const ORDERS_NUMBER_COLUMNS = [
+      "Subtotal",
+      "Tax",
+      "Total",
+      "Discount",
+      "Quantity",
+    ];
+    const PRODUCTS_DATE_COLUMNS = ["Created At"];
+    const PRODUCTS_TEXT_COLUMNS = ["Ean", "Title", "Category", "Vendor"];
+    const PRODUCTS_NUMBER_COLUMNS = ["Price", "Rating"];
+    const PEOPLE_DATE_COLUMNS = ["Birth Date", "Created At"];
+    const PEOPLE_TEXT_COLUMNS = [
+      "Address",
+      "Email",
+      "Password",
+      "Name",
+      "Source",
+    ];
+    const PEOPLE_NUMBER_COLUMNS = ["Longitude", "Latitude"];
+    const REVIEWS_DATE_COLUMNS = ["Created At"];
+    const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
+    const REVIEWS_NUMBER_COLUMNS = ["Rating"];
+
+    // A section title (null when the list hides it) and the column names
+    type MappingSection = [string | null, string[]];
+
+    // The Reviews and Product columns are listed twice because both stages
+    // offer them under the same section name (metabase#46845).
+    const twice = (columns: string[]) => [...columns, ...columns];
+
+    const getQ8QuestionSections = (
+      sourceName: string,
+    ): Record<keyof typeof PARAMETERS, MappingSection[]> => ({
+      date: [
+        [sourceName, ORDERS_DATE_COLUMNS],
+        ["Reviews", twice(REVIEWS_DATE_COLUMNS)],
+        ["Product", twice(PRODUCTS_DATE_COLUMNS)],
+        ["User", PEOPLE_DATE_COLUMNS],
+        ["Summaries", ["Created At: Month", "User → Created At: Year"]],
+      ],
+      text: [
+        ["Reviews", twice(REVIEWS_TEXT_COLUMNS)],
+        ["Product", twice(PRODUCTS_TEXT_COLUMNS)],
+        ["User", PEOPLE_TEXT_COLUMNS],
+        ["Summaries", ["Product → Category"]],
+        [
+          "Summaries (2)",
+          ["Reviews - Created At: Month → Reviewer", "Product → Category"],
+        ],
+      ],
+      number: [
+        [sourceName, [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", twice(REVIEWS_NUMBER_COLUMNS)],
+        ["Product", twice(PRODUCTS_NUMBER_COLUMNS)],
+        ["User", PEOPLE_NUMBER_COLUMNS],
+        ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+        [
+          "Summaries (2)",
+          ["Count", "Sum of Reviews - Created At: Month → Rating"],
+        ],
+      ],
+    });
+
+    const Q8_MODEL_SECTIONS: Partial<
+      Record<keyof typeof PARAMETERS, MappingSection[]>
+    > = {
+      text: [
+        [
+          null,
+          ["Reviews - Created At: Month → Reviewer", "Product → Category"],
+        ],
+      ],
+      number: [
+        [null, ["Count", "Sum of Reviews - Created At: Month → Rating"]],
+      ],
+    };
+
+    const PIVOT_SECTIONS: Record<keyof typeof PARAMETERS, MappingSection[]> = {
+      date: [
+        ["Base Orders Question", ORDERS_DATE_COLUMNS],
+        ["Reviews", REVIEWS_DATE_COLUMNS],
+        // Product is joined implicitly from both Orders and Reviews (metabase#46845)
+        ["Product", twice(PRODUCTS_DATE_COLUMNS)],
+        ["User", PEOPLE_DATE_COLUMNS],
+      ],
+      text: [
+        ["Reviews", REVIEWS_TEXT_COLUMNS],
+        ["Product", twice(PRODUCTS_TEXT_COLUMNS)],
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ],
+      number: [
+        ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", REVIEWS_NUMBER_COLUMNS],
+        ["Product", twice(PRODUCTS_NUMBER_COLUMNS)],
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ],
+    };
+
+    const NO_VALID_FIELDS_TOOLTIP =
+      "This card doesn't have any fields or parameters that can be mapped to this parameter type.";
+
+    type SetupMultiStageOpts = {
+      card: Card;
+      parameterType: keyof typeof PARAMETERS;
+    };
+
+    const setupMultiStage = ({ card, parameterType }: SetupMultiStageOpts) =>
+      setupConnected(card, {
+        parameter: PARAMETERS[parameterType],
+        database: DATABASE,
+        questions: [
+          ORDERS_QUESTION,
+          BASE_QUESTION,
+          BASE_MODEL,
+          QUESTION_BASED_QUESTION,
+          MODEL_BASED_QUESTION,
+          QUESTION_BASED_MODEL,
+          MODEL_BASED_MODEL,
+          PIVOT_QUESTION,
+        ],
+      });
+
+    // Reads the open picker top to bottom: section titles and column names
+    const getMappingSections = (): MappingSection[] => {
+      const list = within(screen.getByRole("tree"));
+      const rows = [
+        ...list.queryAllByTestId("list-section-header"),
+        ...list.getAllByRole("option"),
+      ].sort((a, b) =>
+        a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
+          ? -1
+          : 1,
+      );
+      return rows.reduce<MappingSection[]>((sections, row) => {
+        if (row.getAttribute("role") !== "option") {
+          return [...sections, [row.textContent, []]];
+        }
+        const columnName = row.getAttribute("aria-label") ?? "";
+        const lastSection = sections.at(-1);
+        if (lastSection == null) {
+          return [[null, [columnName]]];
+        }
+        lastSection[1].push(columnName);
+        return sections;
+      }, []);
+    };
+
+    const openPicker = async () => {
+      await userEvent.click(screen.getByRole("button", { name: /Select…/ }));
+      expect(await screen.findByRole("tree")).toBeInTheDocument();
+    };
+
+    describe.each([
+      [
+        "question-based question",
+        QUESTION_BASED_QUESTION,
+        "Base Orders Question",
+      ],
+      ["model-based question", MODEL_BASED_QUESTION, "Base Orders Model"],
+    ])("%s", (_name, card, sourceName) => {
+      it.each(["date", "text", "number"] as const)(
+        "lists the %s columns of both stages",
+        async (parameterType) => {
+          setupMultiStage({ card, parameterType });
+          await openPicker();
+          expect(getMappingSections()).toEqual(
+            getQ8QuestionSections(sourceName)[parameterType],
+          );
+        },
+      );
+    });
+
+    describe.each([
+      ["question-based model", QUESTION_BASED_MODEL],
+      ["model-based model", MODEL_BASED_MODEL],
+    ])("%s", (_name, card) => {
+      it.each(["text", "number"] as const)(
+        "lists only the %s columns the model returns",
+        async (parameterType) => {
+          setupMultiStage({ card, parameterType });
+          await openPicker();
+          expect(getMappingSections()).toEqual(
+            Q8_MODEL_SECTIONS[parameterType],
+          );
+        },
+      );
+
+      it("has no valid fields for a date filter", async () => {
+        setupMultiStage({ card, parameterType: "date" });
+        const button = screen.getByRole("button", {
+          name: NO_VALID_FIELDS_TOOLTIP,
+        });
+        expect(button).toHaveTextContent("No valid fields");
+        expect(button).toBeDisabled();
+        expect(
+          screen.queryByRole("button", { name: /Select…/ }),
+        ).not.toBeInTheDocument();
+        await userEvent.hover(within(button).getByText("No valid fields"));
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          NO_VALID_FIELDS_TOOLTIP,
+        );
+      });
+    });
+
+    it.each(["date", "text", "number"] as const)(
+      "does not use an extra filtering stage for a pivot table (%s columns)",
+      async (parameterType) => {
+        setupMultiStage({ card: PIVOT_QUESTION, parameterType });
+        await openPicker();
+        expect(getMappingSections()).toEqual(PIVOT_SECTIONS[parameterType]);
+      },
+    );
   });
 });
