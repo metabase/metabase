@@ -2484,3 +2484,19 @@
       (is (= ["https://localhost/"]
              (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
           (str "should be found in " k)))))
+
+(deftest timestamp-tz-breakout-converted-to-report-timezone-test
+  (testing "truncating a TIMESTAMP_TZ column in a breakout converts it to the report timezone first (#24400)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 {:database {:id 1 :engine :snowflake :details {:db "TEST_DB"} :features #{:basic-aggregations :set-timezone}}
+                  :tables   [{:id 1 :name "TIMESTAMP_TEST" :db-id 1}]
+                  :fields   [{:id 1 :table-id 1 :name "TS" :database-type "TIMESTAMPTZ"
+                              :base-type :type/DateTimeWithLocalTZ :effective-type :type/DateTimeWithLocalTZ}]})
+          query (-> (lib/query mp (lib.metadata/table mp 1))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp 1) :minute)))
+          sql   (mt/with-empty-h2-app-db!
+                  (driver/with-driver :snowflake
+                    (mt/with-report-timezone-id! "Asia/Kolkata"
+                      (:query (qp.compile/compile query)))))]
+      (is (str/includes? (u/lower-case-en sql) "to_timestamp_ltz")))))
