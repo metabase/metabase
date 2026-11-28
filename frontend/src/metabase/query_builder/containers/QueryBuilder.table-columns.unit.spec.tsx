@@ -1804,6 +1804,12 @@ describe("QueryBuilder > table columns settings", () => {
         "ID",
         "Product ID",
       ]);
+      // the new order is saved to the question
+      expect(await getSavedColumnOrder(3)).toEqual([
+        "User ID",
+        "ID",
+        "Product ID",
+      ]);
     });
 
     it("should allow reordering a column from the pinned section into the unpinned section", async () => {
@@ -1825,6 +1831,13 @@ describe("QueryBuilder > table columns settings", () => {
         expect(getPinnedHeaderNames()).toEqual(["User ID", "Product ID"]),
       );
       expect(getColumnHeaderNames().slice(0, 4)).toEqual([
+        "User ID",
+        "Product ID",
+        "Subtotal",
+        "ID",
+      ]);
+      // the new order is saved to the question
+      expect(await getSavedColumnOrder(4)).toEqual([
         "User ID",
         "Product ID",
         "Subtotal",
@@ -2383,6 +2396,13 @@ function mockHeaderRects() {
         bottom: HEADER_HEIGHT,
       });
     });
+}
+
+/** The first columns of the column list in the settings sidebar */
+async function getSavedColumnOrder(count: number) {
+  await userEvent.click(screen.getByTestId("viz-settings-button"));
+  const columnList = await screen.findByTestId("chart-settings-table-columns");
+  return getItemNames(columnList).slice(0, count);
 }
 
 /** Drags the header of a column and drops it on the header of another */
