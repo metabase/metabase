@@ -36,7 +36,10 @@
 (defmethod dependencies :default [_] nil)
 
 (defmulti results
-  "Return a reducible of the search result matching a given query."
+  "Return a reducible of the search result matching a given query.
+
+  When the engine has no index that can serve the query, it throws an ex-info with `:search/index-not-found? true`
+  in its ex-data. Callers check it with `metabase.search.core/index-not-found?`."
   {:arglists '([search-context])}
   :search-engine
   :hierarchy #'search.hierarchy/hierarchy)

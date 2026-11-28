@@ -43,7 +43,7 @@
 (defn- do-with-search-stub!
   "Call `thunk` with the engines set to `engines`, `ranked-results` answering each search string from
   `string->ranked`, and `search-results` paginating whatever ranking it is handed. A search string that
-  `string->ranked` has no entry for throws, as a failing query would."
+  `string->ranked` has no entry for throws the error of a missing search index."
   [engines string->ranked thunk]
   (with-redefs [perms/impersonated-user?     (constantly false)
                 perms/sandboxed-user?        (constantly false)
@@ -51,7 +51,8 @@
                 search.engine/disjunction    (fn [_ terms] terms)
                 search-core/ranked-results   (fn [{:keys [search-string]}]
                                                (or (string->ranked search-string)
-                                                   (throw (ex-info "Search index unavailable" {}))))
+                                                   (throw (ex-info "Search index unavailable"
+                                                                   {:search/index-not-found? true}))))
                 search-core/search-results   (fn [{:keys [limit-int]} _ ranked]
                                                {:data  (vec (cond->> ranked limit-int (take limit-int)))
                                                 :total (count ranked)})]
@@ -754,9 +755,10 @@
                     (invoke-search [#'search/search-tool] {:keyword_queries ["x"] :limit limit})))))))))
 
 (deftest ^:parallel search-failure-test
-  (testing "a failing search backend lets the agent browse what the search was limited to (BOT-2540)"
+  (testing "a missing search index lets the agent browse what the search was limited to (BOT-2540)"
     (mt/with-test-user :crowberto
-      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found." {})))]
+      (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search Index not found."
+                                                                        {:search/index-not-found? true})))]
         (let [instance-step (str "Find the data with `read_resource` instead: read `metabase://collections` for "
                                  "metrics, models, questions and dashboards, or `metabase://databases`, then "
                                  "`metabase://database/{id}/tables`, for tables.")
@@ -792,6 +794,26 @@
             (is (= {:error  {:class :recoverable :code ::search/search-failed}
                     :output (str "Search failed.\n" no-retry-step)}
                    (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]})))))))))
+
+(deftest search-failure-is-recoverable-only-for-a-missing-index-test
+  (mt/with-test-user :crowberto
+    (doseq [[description ex expected-error]
+            [["a missing index" (ex-info "Search Index not found." {:search/index-not-found? true})
+              {:class :recoverable :code ::search/search-failed}]
+             ["a missing index in the cause chain, as an engine that wraps its errors throws it"
+              (ex-info "Error executing semantic search" {:type :semantic-search-error}
+                       (ex-info "Search Index not found." {:search/index-not-found? true}))
+              {:class :recoverable :code ::search/search-failed}]
+             ["a failure nobody planned for" (ex-info "Boom" {})
+              {:class :unrecoverable :code :internal}]]
+            queries [["orders"] ["orders" "invoices"]]]
+      ;; Several queries run in futures, so this also checks that the futures do not change the outcome.
+      ;; Outside H2, appdb joins keyword queries into one query, so keep them separate.
+      (testing (str description ", with " (count queries) " queries")
+        (with-redefs [search.engine/disjunction  (fn [_ terms] terms)
+                      search-core/ranked-results (fn [_] (throw ex))]
+          (is (= expected-error
+                 (:error (invoke-search [#'search/search-tool] {:keyword_queries queries})))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
