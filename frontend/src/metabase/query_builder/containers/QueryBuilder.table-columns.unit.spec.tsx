@@ -486,6 +486,40 @@ describe("QueryBuilder > table columns settings", () => {
       ).toHaveAttribute("data-enabled", "false");
     });
 
+    it("should show the columns in the detail view in the order and visibility of the table settings", async () => {
+      const columnList = await setupQuestion(ORDERS_JOIN_PRODUCTS_CARD);
+
+      let detail = await openRowDetail(0);
+      expect(within(detail).getByText("Tax")).toBeInTheDocument();
+      expect(getDetailLabels(detail, ["User ID", "Quantity"])).toEqual([
+        "User ID",
+        "Quantity",
+      ]);
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByTestId("object-detail")).not.toBeInTheDocument(),
+      );
+
+      await hideColumn(columnList, "Tax");
+      // before User ID
+      await dragItem(columnList, { from: 8, to: 1 });
+      await waitFor(() =>
+        expect(getItemNames(columnList)?.slice(0, 3)).toEqual([
+          "ID",
+          "Quantity",
+          "User ID",
+        ]),
+      );
+
+      detail = await openRowDetail(0);
+      expect(within(detail).queryByText("Tax")).not.toBeInTheDocument();
+      expect(within(detail).getByText("Subtotal")).toBeInTheDocument();
+      expect(getDetailLabels(detail, ["User ID", "Quantity"])).toEqual([
+        "Quantity",
+        "User ID",
+      ]);
+    });
+
     it("should show a message when every column is hidden, also a column of an implicit join (metabase#29140)", async () => {
       const card = createMockUnsavedCard({
         display: "table",
@@ -670,6 +704,25 @@ const setupQuestion = async (card: UnsavedCard) => {
   mockItemRects(columnList);
   return columnList;
 };
+
+const openRowDetail = async (rowIndex: number) => {
+  // the first part of the row has the row index column
+  const row = screen
+    .getAllByRole("row")
+    .find((row) => row.getAttribute("data-index") === String(rowIndex));
+  if (row == null) {
+    throw new Error(`Row ${rowIndex} is not rendered`);
+  }
+  await userEvent.click(within(row).getByTestId("detail-shortcut"));
+  return screen.findByTestId("object-detail");
+};
+
+/** The labels of the detail view among `labels`, in their order on the page */
+function getDetailLabels(detail: HTMLElement, labels: string[]) {
+  return within(detail)
+    .getAllByText(new RegExp(`^(${labels.join("|")})$`))
+    .map((element) => element.textContent);
+}
 
 const hideColumn = async (columnList: HTMLElement, name: string) => {
   await userEvent.click(within(columnList).getByTestId(`${name}-hide-button`));
