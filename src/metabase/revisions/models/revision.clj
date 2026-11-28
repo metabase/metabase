@@ -278,6 +278,9 @@
   (let [model    (u/ignore-exceptions (t2.model/resolve-model (symbol model)))
         defaults (:defaults (revisions.spec/spec model))]
     (cond-> revision
+      (map? (:object revision))
+      (update :object #(apply dissoc % revisions.spec/implicit-columns))
+
       (and (seq defaults) (map? (:object revision)))
       (update :object #(reduce-kv (fn [object k v] (cond-> object (nil? (get object k)) (assoc k v))) % defaults))
 
