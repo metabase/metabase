@@ -11,7 +11,7 @@ import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
-import type { SearchResult } from "metabase-types/api";
+import type { Database, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockModelResult,
@@ -33,6 +33,7 @@ export interface SetupOpts {
   filterSearchByScope?: boolean;
   /** Re-render the step with each query passed to `updateQuery` */
   applyQueryUpdates?: boolean;
+  databases?: Database[];
 }
 export const setup = async ({
   step = createMockNotebookStep(),
@@ -42,6 +43,7 @@ export const setup = async ({
   searchItems = [],
   filterSearchByScope = false,
   applyQueryUpdates = false,
+  databases = [createSampleDatabase()],
 }: SetupOpts = {}) => {
   if (enterprisePlugins) {
     enterprisePlugins.forEach((plugin) => {
@@ -54,7 +56,7 @@ export const setup = async ({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });
-  setupDatabasesEndpoints([createSampleDatabase()]);
+  setupDatabasesEndpoints(databases);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   // In embedding SDK we call a different endpoint because we use a different data picker (metabase#52889)

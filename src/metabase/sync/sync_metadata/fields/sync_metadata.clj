@@ -75,6 +75,7 @@
          new-database-is-nullable       :database-is-nullable
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required
+         new-json-unfolding             :json-unfolding
          new-nfc-path                   :nfc-path} field-metadata
         new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
@@ -87,6 +88,12 @@
 
         new-base-type?
         (not= old-base-type new-base-type)
+
+        ;; `json_unfolding` is set when a Field is created, so set it also when an existing Field becomes JSON
+        becomes-json?
+        (and (isa? new-base-type :type/JSON)
+             (not (isa? old-base-type :type/JSON))
+             (some? new-json-unfolding))
 
         new-semantic-type?
         (and (nil? old-semantic-type)
@@ -150,6 +157,8 @@
             :fingerprint         nil
             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
             :semantic_type       nil})
+         (when becomes-json?
+           {:json_unfolding new-json-unfolding})
          (when healing-effective-type?
            (log/warnf "Healing %s: effective_type %s ≠ base_type %s with no coercion_strategy. Resetting effective_type to match base_type."
                       (common/field-metadata-name-for-logging table metabase-field)
