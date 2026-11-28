@@ -1459,6 +1459,22 @@
                (mt/rows
                 (qp.pivot/run-pivot-query query))))))))
 
+(deftest ^:parallel cumulative-sum-pivot-test
+  (testing "Cumulative sum over non-temporal breakouts gives the same values in the pivot QP as in a plain query (#52483)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                      (lib/aggregate (lib/cum-sum (lib.metadata/field mp (mt/id :products :price))))
+                      (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                      (lib/breakout (lib.metadata/field mp (mt/id :products :vendor))))
+            plain (->> (qp/process-query query)
+                       (mt/formatted-rows [str str 2.0]))
+            pivot (->> (qp.pivot/run-pivot-query query)
+                       (mt/formatted-rows [str str int 2.0])
+                       (filter (comp zero? #(nth % 2)))
+                       (map (juxt first second last)))]
+        (is (= plain pivot))))))
+
 (deftest ^:parallel offset-pivot-test
   (testing "Window functions like OFFSET (... OVER ...) should work correctly with the pivot QP (#70088)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
