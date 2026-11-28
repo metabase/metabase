@@ -366,6 +366,10 @@ export const replaceCardWithVisualization =
           series: secondaryCards,
           parameter_mappings,
           visualization_settings: {
+            ..._.pick(
+              originalDashCard.visualization_settings ?? {},
+              "click_behavior",
+            ),
             visualization,
           },
         },
