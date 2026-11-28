@@ -95,4 +95,3 @@ export const entityIdApi = Api.injectEndpoints({
     }),
   }),
 });
-export const { useTranslateEntityIdQuery } = entityIdApi;
