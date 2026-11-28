@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "src/**/*.unit.spec.*",
+    "src/mantine-consumer.d.ts",
     "../src/metabase/ui/**/*.spec.*",
     "../src/metabase/ui/**/*.stories.*",
     "../src/metabase/ui/stories/**",

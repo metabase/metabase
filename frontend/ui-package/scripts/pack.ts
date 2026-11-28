@@ -9,8 +9,9 @@ rmSync(packDir, { recursive: true, force: true });
 mkdirSync(packDir);
 
 // Packs a local tarball only. This script never publishes.
-const result = spawnSync("bun", ["pm", "pack", "--destination", packDir], {
-  cwd: packageDir,
-  stdio: "inherit",
-});
+const result = spawnSync(
+  "bun",
+  ["pm", "pack", "--filename", resolve(packDir, "metabase-ui.tgz")],
+  { cwd: packageDir, stdio: "inherit" },
+);
 process.exit(result.status ?? 1);

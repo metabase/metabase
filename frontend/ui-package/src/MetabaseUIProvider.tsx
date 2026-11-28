@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { type ReactNode, useMemo } from "react";
 
+import { drawerOverrides } from "../../src/metabase/ui/components/overlays/Drawer/Drawer.config";
 import { tooltipOverrides } from "../../src/metabase/ui/components/overlays/Tooltip/Tooltip.config";
 import { ThemeProvider } from "../../src/metabase/ui/components/theme/ThemeProvider";
 import { deepMerge } from "../../src/metabase/utils/deep-merge";
@@ -48,16 +49,24 @@ const getThemeOverride = (
   const overlayZIndex = readOverlayZIndex(otherRest.popover);
   const popoverLayer = getDefaultZIndex("popover");
   const components = { ...rest.components };
+  if (overlayZIndex !== getDefaultZIndex("modal")) {
+    components.Drawer = withOverlayDefaults(components.Drawer, overlayZIndex);
+    components.DrawerRoot = withOverlayDefaults(
+      components.DrawerRoot,
+      overlayZIndex,
+      drawerOverrides?.DrawerRoot?.defaultProps,
+    );
+  }
   const raiseTooltip = overlayZIndex >= popoverLayer + 1;
   if (raiseTooltip || typeof components.Tooltip?.defaultProps === "function") {
-    components.Tooltip = withTooltipDefaults(
+    components.Tooltip = withOverlayDefaults(
       components.Tooltip,
       raiseTooltip ? overlayZIndex + 1 : undefined,
       tooltipOverrides?.Tooltip?.defaultProps,
     );
   }
   if (overlayZIndex >= popoverLayer) {
-    components.TooltipFloating = withTooltipDefaults(
+    components.TooltipFloating = withOverlayDefaults(
       components.TooltipFloating,
       overlayZIndex + 1,
     );
@@ -65,7 +74,7 @@ const getThemeOverride = (
   return { ...rest, other: otherRest, components };
 };
 
-function withTooltipDefaults(
+function withOverlayDefaults(
   component: MantineThemeComponent | undefined,
   zIndex: number | undefined,
   baseDefaults?: unknown,
