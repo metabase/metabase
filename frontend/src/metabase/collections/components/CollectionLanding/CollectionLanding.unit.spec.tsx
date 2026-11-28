@@ -92,7 +92,13 @@ function setupMovableCollectionEndpoints() {
   );
 }
 
-async function setup() {
+type SetupOpts = {
+  initialRoute?: string;
+};
+
+function renderCollectionLanding({
+  initialRoute = `/collection/${COLLECTION_IN_PERSONAL.id}-c30235`,
+}: SetupOpts = {}) {
   mockGetBoundingClientRect();
 
   setupMovableCollectionEndpoints();
@@ -137,16 +143,23 @@ async function setup() {
   setupEnterpriseOnlyPlugin("collections");
 
   renderWithProviders(
-    <Route path="/collection/:slug" element={<CollectionLanding />}>
-      {modalRoute("move", MoveCollectionModal)}
-    </Route>,
+    <>
+      <Route path="/trash" element={<div>Trash page</div>} />
+      <Route path="/collection/:slug" element={<CollectionLanding />}>
+        {modalRoute("move", MoveCollectionModal)}
+      </Route>
+    </>,
     {
       withRouter: true,
       withDND: true,
-      initialRoute: `/collection/${COLLECTION_IN_PERSONAL.id}-c30235`,
+      initialRoute,
       storeInitialState,
     },
   );
+}
+
+async function setup() {
+  renderCollectionLanding();
 
   await waitFor(() =>
     expect(screen.getByTestId("collection-name-heading")).toHaveValue(
@@ -167,6 +180,20 @@ async function openCollectionMenu() {
 describe("CollectionLanding", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it("shows the not found page for an address without a collection ID", async () => {
+    renderCollectionLanding({ initialRoute: "/collection/marketing-reports" });
+
+    expect(
+      await screen.findByText("We're a little lost..."),
+    ).toBeInTheDocument();
+  });
+
+  it("sends /collection/trash to the trash", async () => {
+    renderCollectionLanding({ initialRoute: "/collection/trash" });
+
+    expect(await screen.findByText("Trash page")).toBeInTheDocument();
   });
 
   it("should allow to make a collection official after moving it from a personal collection to the root collection (metabase#30235)", async () => {
