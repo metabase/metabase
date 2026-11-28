@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { useGetCollectionQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { Outlet, useNavigate, useParams } from "metabase/router";
 import { extractCollectionId } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
@@ -17,11 +18,11 @@ const CollectionLanding = () => {
   const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 
   const collectionId = extractCollectionId(slug);
+  const isTrashSlug = slug === "trash";
 
   useEffect(
     function redirectIfTrashCollection() {
       // redirect /collection/trash and /collection/<trash-collection-id> to /trash
-      const isTrashSlug = slug === "trash";
       const isTrashCollectionId =
         collectionId &&
         trashCollection?.id &&
@@ -31,11 +32,17 @@ const CollectionLanding = () => {
         navigate("/trash", { replace: true });
       }
     },
-    [slug, trashCollection?.id, collectionId, navigate],
+    [isTrashSlug, trashCollection?.id, collectionId, navigate],
   );
 
-  if (!isNotNull(collectionId)) {
+  // `/collection/trash` is on its way to `/trash`.
+  if (isTrashSlug) {
     return null;
+  }
+
+  // A value that is not a collection ID would otherwise leave the page blank (metabase#78725).
+  if (!isNotNull(collectionId)) {
+    return <NotFound />;
   }
 
   return (
