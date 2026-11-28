@@ -1032,8 +1032,10 @@
    ["2019-12-25" "2020-01-08"]])
 
 (defn- check-week-of-year-labels!
-  "Checks, for every first day of the week, that a week-of-year filter's name is the week its query returns."
-  []
+  "Checks, for every first day of the week, that a week-of-year filter's name is the week its query returns.
+  With `check-days?`, the query must return exactly the days in [[week-of-year-test-ranges]].
+  Otherwise it must return at least those days."
+  [check-days?]
   (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]]
     (mt/with-temporary-setting-values [start-of-week start-of-week]
       (testing start-of-week
@@ -1053,15 +1055,35 @@
                                  day         (t/iterate t/plus (t/local-date start) (t/days 1))
                                  :while      (not (t/after? day (t/local-date end)))]
                              (str day))]
-          (is (= days (map first rows)))
+          (if check-days?
+            (is (= days (map first rows)))
+            ;; Bucketing in UTC adds days at the edges of each range but must not drop any.
+            (is (every? (set (map first rows)) days)))
           (is (= (for [[day _] rows]
                    [day (lib/filter-args-display-name query -1 (lib/= week-of-year day))])
-                 rows)))))))
+                 rows))
+          ;; A filter on a date selects the week holding that date, which each driver works out from the literal.
+          (doseq [day ["2017-01-01" "2018-01-01" "2019-01-01" "2020-01-01"]
+                  :let [week     (lib/= week-of-year day)
+                        filtered (-> orders (lib/filter week) (lib/breakout week-of-year))]]
+            (testing day
+              (is (= [(lib/filter-args-display-name filtered -1 week)]
+                     (for [[week-number] (mt/rows (qp/process-query filtered))]
+                       (str (long week-number))))))))))))
 
 (deftest week-of-year-label-matches-query-test
   (testing "a week-of-year filter's name is the week its query returns"
     (mt/test-drivers (mt/normal-drivers)
-      (check-week-of-year-labels!))))
+      (check-week-of-year-labels! true))))
+
+(deftest week-of-year-label-matches-query-report-timezone-test
+  (testing "week numbers count days in the report time zone"
+    (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
+      ;; Ahead of UTC, so a week that starts at local midnight on Jan 1 is still Dec 31 in UTC.
+      (mt/with-report-timezone-id! "Asia/Kathmandu"
+        ;; These drivers bucket days in UTC rather than the report time zone (#5789), so the days they return differ.
+        ;; Their week numbers still match their own days, which is what the labels must agree with.
+        (check-week-of-year-labels! (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*)))))))
 
 ;;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;;; difference is how the beginning of hte month is represented, since we always return times with our dates
