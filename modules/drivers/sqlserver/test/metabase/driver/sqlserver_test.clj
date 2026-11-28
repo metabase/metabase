@@ -365,7 +365,7 @@
         (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
                                 bad-host-details (update details :host str ";" bad-option)]
                             (is (thrown-with-msg? java.lang.Exception
-                                                  #"Potentially dangerous keys in additional options"
+                                                  #"Potentially dangerous keys in connection options"
                                                   (driver/can-connect? :sqlserver bad-opts-details)))
                             (is (thrown-with-msg? java.lang.Exception
                                                   #"Potentially dangerous keys in connection details"

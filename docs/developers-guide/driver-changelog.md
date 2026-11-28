@@ -77,6 +77,11 @@ summary: Changes to the Metabase driver interface, listed by release.
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
   those keys holds something else, such as a whole connection string (H2) or a file path (SQLite).
 
+- `metabase.driver/connection-option-strings` `[driver details]` -- new multimethod returning the strings in
+  `details` in which a user writes client connection options, such as the options of a whole connection URI.
+  Metabase searches each for the `metabase.driver/disallowed-connection-parameters`. Defaults to the
+  `:additional-options` string.
+
 - `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
   whitespace as well as case.
 

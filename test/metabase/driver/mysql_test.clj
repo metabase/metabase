@@ -1246,7 +1246,7 @@
       (testing "Reject connection strings with malicious properties"
         (are [bad-option] (let [details (assoc details :additional-options bad-option)]
                             (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                                  #"Potentially dangerous keys in additional options"
+                                                  #"Potentially dangerous keys in connection options"
                                                   (driver/can-connect? :mysql details))))
           "allowLoadLocalInfile=true"
           "allowLoadLocalInfileInPath=1"
