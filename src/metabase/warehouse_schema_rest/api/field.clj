@@ -17,6 +17,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema-rest.natural-keys :as natural-keys]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.dimension :as dimension]
@@ -47,6 +48,31 @@
 (def ^:private max-field-ids-for-table-id-lookup
   1000)
 
+(def ^:private GetFieldQuery
+  "The query params of `GET /api/field/:id`, which `GET /api/field/by-name` takes too."
+  [:map {:closed true}
+   [:include_editable_data_model {:default false} ms/BooleanValue]])
+
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/by-name"
+  "Get the Field named by `db`, its Database's name, `schema`, its Table's schema, left out or empty for none,
+  `table`, its Table's name, and `field`, its name, repeated for a nested Field to name each of its ancestors, root
+  first; as `GET /api/field/:id` does, taking its query params too. These are the names serialization and remote sync
+  name a Field by, and a Database name names the oldest Database with that name."
+  {:scope api-scope/data-app}
+  [_route-params
+   {include-editable-data-model? :include_editable_data_model
+    :as                          query-params} :- (into GetFieldQuery natural-keys/field-entries)]
+  (schema.field/get-field (natural-keys/field-id query-params)
+                          {:include-editable-data-model? include-editable-data-model?}))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -60,8 +86,7 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
-                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
+   {include-editable-data-model? :include_editable_data_model} :- GetFieldQuery]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (api.macros/defendpoint :post "/table-ids" :- [:map
@@ -93,30 +118,27 @@
     (let [table (field/table field)]
       (quick-task/submit-task! (fn [] (sync/sync-table! table))))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/:id"
-  "Update `Field` with ID."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
-   _query-params
-   {coercion-strategy :coercion_strategy
-    json-unfolding    :json_unfolding
-    :as body} :- [:map {:closed true}
-                  [:caveats            {:optional true} [:maybe ms/NonBlankString]]
-                  [:description        {:optional true} [:maybe ms/NonBlankString]]
-                  [:display_name       {:optional true} ms/NonBlankString]
-                  [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
-                  [:points_of_interest {:optional true} [:maybe ms/NonBlankString]]
-                  [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-                  [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
-                  [:visibility_type    {:optional true} FieldVisibilityType]
-                  [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
-                  [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
-                  [:settings           {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
-                  [:json_unfolding     {:optional true} :boolean]]]
+(def ^:private UpdateFieldBody
+  "The body of `PUT /api/field/:id` and `PUT /api/field/by-name`."
+  [:map {:closed true}
+   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
+   [:description        {:optional true} [:maybe ms/NonBlankString]]
+   [:display_name       {:optional true} ms/NonBlankString]
+   [:fk_target_field_id {:optional true} [:maybe ms/PositiveInt]]
+   [:points_of_interest {:optional true} [:maybe ms/NonBlankString]]
+   [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+   [:visibility_type    {:optional true} FieldVisibilityType]
+   [:data_sensitivity   {:optional true} [:maybe FieldDataSensitivity]]
+   [:has_field_values   {:optional true} ::lib.schema.metadata/column.has-field-values]
+   [:settings           {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
+   [:json_unfolding     {:optional true} :boolean]])
+
+(defn- update-field!
+  "Update the Field with `id` from `body`, an `UpdateFieldBody`, returning what `PUT /api/field/:id` returns."
+  [id {coercion-strategy :coercion_strategy
+       json-unfolding    :json_unfolding
+       :as body}]
   (let [field          (api/write-check (warehouse-schema-rest.db/field id))
         effective-type (cond
                          (not (contains? body :coercion_strategy)) ((some-fn :effective_type :base_type) field)
@@ -156,6 +178,30 @@
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
           ;; Run with admin perms to match behavior during normal sync.
           (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! updated)))))))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id"
+  "Update `Field` with ID."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- UpdateFieldBody]
+  (update-field! id body))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/by-name"
+  "Update the Field named by `db`, `schema`, `table` and `field`, as `PUT /api/field/:id` does. See
+  `GET /api/field/by-name`."
+  [_route-params
+   query-params :- natural-keys/FieldQuery
+   body :- UpdateFieldBody]
+  (update-field! (natural-keys/field-id query-params) body))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 

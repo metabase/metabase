@@ -7,6 +7,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -3441,6 +3443,95 @@
     (mt/with-dynamic-fn-redefs [sync/schedule-database-sync! #(swap! database-ids conj %)]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)))
       (is (= [(mt/id)] @database-ids)))))
+
+(deftest database-by-name-test
+  (testing "GET /api/database/by-name"
+    (let [db-name (:name (mt/db))]
+      (testing "returns the same Database as GET /api/database/:id"
+        (is (= (mt/user-http-request :crowberto :get 200 (str "database/" (mt/id)))
+               (mt/user-http-request :crowberto :get 200 "database/by-name" :db db-name))))
+      (testing "takes the query params of GET /api/database/:id"
+        (is (=? {:id     (mt/id)
+                 :tables (mt/malli=? [:sequential {:min 1} :map])}
+                (mt/user-http-request :crowberto :get 200 "database/by-name" :db db-name :include "tables"))))
+      (testing "an unknown name is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "database/by-name" :db "no such database"))))
+      (testing "a name is required"
+        (mt/user-http-request :crowberto :get 400 "database/by-name"))))
+  (testing "two Databases with one name resolve to the oldest, as in serialization"
+    (mt/with-temp [:model/Database {older :id} {:name "by-name twin" :engine :h2 :details {}}
+                   :model/Database _           {:name "by-name twin" :engine :h2 :details {}}]
+      (is (=? {:id older}
+              (mt/user-http-request :crowberto :get 200 "database/by-name" :db "by-name twin")))))
+  (testing "PUT /api/database/by-name updates like PUT /api/database/:id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "by-name put" :engine :h2 :details {}}]
+      (is (=? {:id db-id :description "Updated by name"}
+              (mt/user-http-request :crowberto :put 200 "database/by-name" {:description "Updated by name"}
+                                    :db "by-name put")))
+      (is (= "Updated by name" (t2/select-one-fn :description :model/Database :id db-id)))
+      (testing "and checks permissions"
+        (mt/user-http-request :rasta :put 403 "database/by-name" {:description "No"} :db "by-name put")))))
+
+(deftest database-by-name-schema-test
+  (testing "GET /api/database/by-name/schema returns the Tables of a schema, like GET /api/database/:id/schema/:schema"
+    (let [db-name (:name (mt/db))
+          schema  (t2/select-one-fn :schema :model/Table :id (mt/id :venues))]
+      (is (= (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/%s" (mt/id) schema))
+             (mt/user-http-request :crowberto :get 200 "database/by-name/schema" :db db-name :schema schema)))
+      (testing "a missing schema param names the Tables with no schema"
+        (mt/with-temp [:model/Database {db-id :id} {:name "by-name no schema" :engine :h2 :details {}}
+                       :model/Table    {table-id :id} {:db_id db-id :schema nil :name "SCHEMALESS"}]
+          (is (=? [{:id table-id}]
+                  (mt/user-http-request :crowberto :get 200 "database/by-name/schema" :db "by-name no schema")))))
+      (testing "an unknown schema is a 404"
+        (mt/user-http-request :crowberto :get 404 "database/by-name/schema" :db db-name :schema "NO_SUCH_SCHEMA")))))
+
+(deftest database-by-name-unreadable-test
+  (let [db-name (:name (mt/db))
+        schema  (t2/select-one-fn :schema :model/Table :id (mt/id :venues))]
+    (testing "a Database the user cannot read is a 404 by name, as an unknown one is, so a name reveals nothing"
+      (mt/with-no-data-perms-for-all-users!
+        (is (= "Not found." (mt/user-http-request :rasta :get 404 "database/by-name" :db db-name)))
+        (is (= "Not found." (mt/user-http-request :rasta :put 404 "database/by-name" {:description "No"} :db db-name)))
+        (is (= "Not found." (mt/user-http-request :rasta :get 404 "database/by-name/schema" :db db-name :schema schema)))))
+    (testing "a Database the user can read but not edit is a 403, as by id"
+      (mt/user-http-request :rasta :put 403 "database/by-name" {:description "No"} :db db-name))))
+
+(defn- query-param-names
+  "The names of the query params that the OpenAPI spec of the routes of `nmspace` documents for `method` `path`."
+  [nmspace path method]
+  (into #{}
+        (comp (filter (comp #{:query} :in)) (map :name))
+        (-> (open-api/open-api-spec (api.macros/ns-handler nmspace) "")
+            (get-in [:paths path method :parameters]))))
+
+(deftest ^:parallel by-name-routes-document-their-query-params-test
+  (testing "the OpenAPI spec documents the query params of the by-name routes and of the /:id routes they share them with"
+    (are [nmspace path method params] (= params (query-param-names nmspace path method))
+      'metabase.warehouses-rest.api "/{id}" :get
+      #{"include" "include_editable_data_model" "exclude_uneditable_details"}
+
+      'metabase.warehouses-rest.api "/by-name" :get
+      #{"db" "include" "include_editable_data_model" "exclude_uneditable_details"}
+
+      'metabase.warehouses-rest.api "/by-name" :put
+      #{"db"}
+
+      'metabase.warehouses-rest.api "/by-name/schema" :get
+      #{"db" "schema" "include_hidden" "include_editable_data_model" "can-query" "include_measures"}
+
+      'metabase.warehouse-schema-rest.api.table "/by-name" :get
+      #{"db" "schema" "table" "include_editable_data_model"}
+
+      'metabase.warehouse-schema-rest.api.table "/by-name" :put
+      #{"db" "schema" "table"}
+
+      'metabase.warehouse-schema-rest.api.field "/by-name" :get
+      #{"db" "schema" "table" "field" "include_editable_data_model"}
+
+      'metabase.warehouse-schema-rest.api.field "/by-name" :put
+      #{"db" "schema" "table" "field"})))
 
 (defn- insert-restricted-databases!
   "Inserts `n` Databases with a Table in each schema of `schemas`, gives All Users nothing on them and the group with

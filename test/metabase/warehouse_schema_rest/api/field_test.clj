@@ -1080,3 +1080,46 @@
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
         (is (not (t2/exists? :model/FieldValues :id fv)))))))
+
+(deftest field-by-name-test
+  (testing "GET /api/field/by-name returns the same Field as GET /api/field/:id"
+    (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :venues))
+          field-name            (t2/select-one-fn :name :model/Field :id (mt/id :venues :price))]
+      (is (= (mt/user-http-request :crowberto :get 200 (str "field/" (mt/id :venues :price)))
+             (mt/user-http-request :crowberto :get 200 "field/by-name"
+                                   :db (:name (mt/db)) :schema schema :table name :field field-name)))
+      (testing "an unknown name is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "field/by-name"
+                                     :db (:name (mt/db)) :schema schema :table name :field "NO_SUCH_FIELD"))))
+      (testing "a field is required"
+        (mt/user-http-request :crowberto :get 400 "field/by-name" :db (:name (mt/db)) :schema schema :table name))))
+  (mt/with-temp [:model/Database {db-id :id}     {:name "by-name fields" :engine :h2 :details {}}
+                 :model/Table    {table-id :id}  {:db_id db-id :schema "S" :name "T"}
+                 :model/Field    {parent-id :id} {:table_id table-id :name "address"}
+                 :model/Field    {nested-id :id} {:table_id table-id :name "city" :parent_id parent-id}]
+    (testing "a repeated field param names a nested Field, root first"
+      (is (=? {:id nested-id}
+              (mt/user-http-request :crowberto :get 200 "field/by-name"
+                                    :db "by-name fields" :schema "S" :table "T" :field ["address" "city"])))
+      (is (=? {:id parent-id}
+              (mt/user-http-request :crowberto :get 200 "field/by-name"
+                                    :db "by-name fields" :schema "S" :table "T" :field "address"))))
+    (testing "PUT /api/field/by-name updates like PUT /api/field/:id"
+      (is (=? {:id nested-id :description "Updated by name"}
+              (mt/user-http-request :crowberto :put 200 "field/by-name" {:description "Updated by name"}
+                                    :db "by-name fields" :schema "S" :table "T" :field ["address" "city"])))
+      (testing "and checks permissions"
+        (mt/user-http-request :rasta :put 403 "field/by-name" {:description "No"}
+                              :db "by-name fields" :schema "S" :table "T" :field "address")))))
+
+(deftest field-by-name-unreadable-test
+  (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :venues))
+        field-name            (t2/select-one-fn :name :model/Field :id (mt/id :venues :price))
+        params                [:db (:name (mt/db)) :schema schema :table name :field field-name]]
+    (testing "a Field the user cannot read is a 404 by name, as an unknown one is, so a name reveals nothing"
+      (mt/with-no-data-perms-for-all-users!
+        (is (= "Not found." (apply mt/user-http-request :rasta :get 404 "field/by-name" params)))
+        (is (= "Not found." (apply mt/user-http-request :rasta :put 404 "field/by-name" {:description "No"} params)))))
+    (testing "a Field the user can read but not edit is a 403, as by id"
+      (apply mt/user-http-request :rasta :put 403 "field/by-name" {:description "No"} params))))
