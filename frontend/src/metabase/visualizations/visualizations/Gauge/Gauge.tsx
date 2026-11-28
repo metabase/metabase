@@ -40,6 +40,7 @@ import {
 } from "./definition";
 import { isGaugeRange } from "./types";
 import {
+  fixSwappedMinMax,
   getGaugeWarningValues,
   getSegmentsRange,
   getValue,
@@ -92,7 +93,7 @@ function GaugeComponent({
           data,
           goalData.sourceResults,
           settings["gauge.segments"],
-        )
+        ).map(fixSwappedMinMax)
       : [];
   const gaugeRange = settings["gauge.range"];
   const range: number[] =

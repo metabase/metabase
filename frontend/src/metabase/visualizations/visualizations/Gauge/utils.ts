@@ -56,6 +56,20 @@ export function getGaugeWarningValues(
   }
 }
 
+export function fixSwappedMinMax(
+  segment: ResolvedGoalSegment,
+): ResolvedGoalSegment {
+  if (segment.min > segment.max) {
+    return {
+      ...segment,
+      min: segment.max,
+      max: segment.min,
+    };
+  }
+
+  return segment;
+}
+
 export function getSegmentsRange(
   segments: ResolvedGoalSegment[],
 ): GaugeRange | null {

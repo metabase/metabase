@@ -151,20 +151,6 @@ export function gaugeSorter(
   return thisSegment.min - thatSegment.min || thatSegment.max - thisSegment.max;
 }
 
-export function fixSwappedMinMax(
-  segment: ResolvedGoalSegment,
-): ResolvedGoalSegment {
-  if (segment.min > segment.max) {
-    return {
-      ...segment,
-      min: segment.max,
-      max: segment.min,
-    };
-  }
-
-  return segment;
-}
-
 // a bound that is unset or can't resolve runs the segment to that end of the gauge
 export function resolveGaugeSegments(
   data: GoalData,

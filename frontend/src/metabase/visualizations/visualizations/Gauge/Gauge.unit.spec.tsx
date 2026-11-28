@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { ClickObject } from "metabase/visualizations/types";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
-import type { ClickBehavior } from "metabase-types/api";
+import type { ClickBehavior, GoalSegment } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -21,7 +21,13 @@ const CLICK_BEHAVIOR: ClickBehavior = {
 };
 const GAUGE_CARD = createMockCard({ display: "gauge" });
 
-function setup() {
+interface SetupOpts {
+  segments?: GoalSegment[];
+}
+
+function setup({
+  segments = [{ min: 0, max: 2000, color: "#84BB4C", label: "" }],
+}: SetupOpts = {}) {
   const onVisualizationClick = jest.fn<void, [ClickObject | null]>();
   const series = createMockSingleSeries(GAUGE_CARD, {
     data: createMockDatasetData({
@@ -43,9 +49,7 @@ function setup() {
         rawSeries: [series],
         settings: {
           "gauge.range": [0, 2000],
-          "gauge.segments": [
-            { min: 0, max: 2000, color: "#84BB4C", label: "" },
-          ],
+          "gauge.segments": segments,
           column: () => ({}),
           click_behavior: CLICK_BEHAVIOR,
         },
@@ -79,5 +83,16 @@ describe("Gauge", () => {
     expect(onVisualizationClick).toHaveBeenCalledTimes(1);
     const [clicked] = onVisualizationClick.mock.calls[0];
     expect(clicked?.settings?.click_behavior).toEqual(CLICK_BEHAVIOR);
+  });
+
+  it("passes lower bound of segment with swapped min and max on click", async () => {
+    const { onVisualizationClick } = setup({
+      segments: [{ min: 2000, max: 500, color: "#84BB4C", label: "" }],
+    });
+
+    await userEvent.click(screen.getByTestId("gauge-arc-0"));
+
+    const [clicked] = onVisualizationClick.mock.calls[0];
+    expect(clicked?.value).toBe(500);
   });
 });

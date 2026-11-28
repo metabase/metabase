@@ -4,6 +4,7 @@ import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { DEFAULT_GAUGE_RANGE } from "metabase/visualizations/visualizations/Gauge/constants";
 import {
+  fixSwappedMinMax,
   getSegmentsRange,
   getValue,
 } from "metabase/visualizations/visualizations/Gauge/utils";
@@ -27,7 +28,6 @@ import {
   calculateRelativeValueAngle,
   calculateSegmentLabelPosition,
   calculateSegmentLabelTextAnchor,
-  fixSwappedMinMax,
   gaugeSorter,
   populateDefaultColumnSettings,
   removeDuplicateElements,
